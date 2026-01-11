@@ -83,7 +83,17 @@ Start the Frontend
 python -m streamlit run streamlit_app/app.py
 
 
+Vision (Future)
 
+InI.ai aims to become a lightweight, intuitive tool for:
+
+learners
+
+career switchers
+
+curious minds
+
+people who learn better through questions + examples
 
 Author
 Sudipto Bhadra
