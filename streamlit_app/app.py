@@ -387,8 +387,11 @@ if interrogate_clicked and topic.strip():
     r = requests.post("http://127.0.0.1:8000/interrogate", json={"topic": topic})
     data = r.json()
     st.subheader(f"Interrogating: {data['topic']}")
-    for q in data["questions"]:
-        st.write("• " + q)
+
+    for cat, qs in data["categories"].items():
+        st.markdown(f"**{cat}**")
+        for q in qs:
+            st.write("• " + q)
 
 if illustrate_clicked and topic.strip():
     r = requests.post("http://127.0.0.1:8000/illustrate", json={"topic": topic})
