@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from api.interrogate import interrogate
 from api.illustrate import illustrate as illustrate_logic
+from api.resume import resume as resume_logic
+
+
 
 app = FastAPI()
 
@@ -19,6 +22,11 @@ def interrogate_route(payload: TopicIn):
 @app.post("/illustrate")
 def illustrate_route(payload: TopicIn):
     return illustrate_logic(payload.topic)
+
+
+@app.post("/resume")
+def resume_route():
+    return resume_logic()
 
 
 
