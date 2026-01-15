@@ -210,6 +210,7 @@ def detect_topic_type(topic: str) -> str:
 def build_categories(topic: str, topic_type: str) -> dict:
     t = topic
 
+   
     if topic_type == "troubleshooting":
         return {
             "Describe": [
@@ -288,6 +289,11 @@ def build_categories(topic: str, topic_type: str) -> dict:
             f"What is {t} in plain language?",
             f"What are the key parts/components of {t}?",
             f"What problem does {t} exist to solve?",
+            f"What are the main benefits of {t}?",
+            f"What are the limitations or downsides of {t}?",
+            f"What are common use cases for {t}?",
+            f"What are the important topics to understand about {t}?",
+            f"What terminology should I know related to {t}?",
         ],
         "Why": [
             f"Why does {t} matter?",
@@ -307,7 +313,44 @@ def build_categories(topic: str, topic_type: str) -> dict:
             f"Where is {t} used in real life?",
             f"Where does {t} usually fail or break in practice?",
         ],
+        "Misconceptions": [
+    f"What is a common misconception about {t}?",
+    f"What is {t} often confused with?",
+],
+        "Examples": [
+    f"What is a simple example that illustrates {t}?",
+    f"What are some real-world examples of {t} in action?",
+],
+        "Related Topics": [
+    f"What topics are closely related to {t}?",
+    f"How does {t} connect to other important concepts?",
+],
+    "how to": [
+    f"What are the first steps to get started with {t}?",
+    f"What resources are best for learning {t}?",
+],
+
+    "Common Challenges": [
+    f"What are common challenges people face when learning {t}?",
+    f"What pitfalls should I avoid when studying {t}?",
+],
+    "who": [
+    f"Who are the leading experts or influencers in the field of {t}?",
+    f"Who created or discovered {t}?",
+],
+
+
+
     }
+
+
+def cap_categories(categories: dict, max_per_category: int = 5) -> dict:
+    capped = {}
+    for cat, qs in categories.items():
+        capped[cat] = qs[:max_per_category]
+    return capped
+
+
 
 
 
@@ -324,6 +367,8 @@ def interrogate(topic: str) -> Dict[str, object]:
     
     topic_type = detect_topic_type(clean_topic)
     categories = build_categories(clean_topic, topic_type)
+    categories = cap_categories(categories, max_per_category=5)
+
 
     notes = [
         "v0: template-based interrogation (no external knowledge yet).",
