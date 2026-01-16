@@ -30,3 +30,15 @@ def resume_route():
 
 
 
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
+        "service": "InI.ai",
+        "version": "0.1",
+        "components": [
+            "interrogate",
+            "illustrate",
+            "resume"
+        ]
+    }
