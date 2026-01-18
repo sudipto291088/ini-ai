@@ -117,7 +117,7 @@ def extract_topic(user_text: str) -> str:
         "what likely is",
         "what generally is",
         "what typically is",
-        "what possibly is"
+        "what possibly is",
         "give me clarity on",
         "clarity on",
         "shed light on",
@@ -155,9 +155,114 @@ def extract_topic(user_text: str) -> str:
         'please shed light on',
         'could you shed light on',
         'would you shed light on',
-        "please teach me about"
-
-
+        "please teach me about",
+        "could you teach me about",
+        "would you teach me about",
+        "please help me understand",
+        "could you help me understand",
+        "would you help me understand",
+        "i'm eager to learn about",
+        "i am eager to learn about",
+        "i would be eager to learn about",
+        "i'm keen to learn about",
+        "mind telling me about",
+        "would you mind telling me about",
+        "could you mind telling me about",
+        "please mind telling me about",
+        "i'm fascinated by",
+        "i am fascinated by",
+        "i would like to be fascinated by",
+        "could you fascinate me with",
+        "would you fascinate me with",
+        "please fascinate me with",
+        "i want to be fascinated by",
+        "i would like to be fascinated by",
+        "could you fascinate me with",
+        "would you fascinate me with",
+        "please fascinate me with",
+        "explain to me",
+        "could you explain to me",
+        "would you explain to me",
+        "please explain to me",
+        "what could we know about",
+        "what can we know about",
+        "what would we know about",
+        "what should we know about",
+        "what do we know about",
+        "what is the current understanding of",
+        "what is the latest information on",
+        "what is the most recent update on",
+        "what is the most up-to-date information on",
+        "what is the most current knowledge on",
+        "what is the most recent knowledge on",
+        "what is the most up-to-date understanding of",
+        "what is the most current understanding of",
+        "what do experts say about",
+        "what do specialists say about",
+        "what do professionals say about",
+        "what do authorities say about",
+        "what do researchers say about",
+        "what do scholars say about",
+        "what do academics say about",
+        "what do scientists say about",
+        "what do analysts say about",
+        "what do commentators say about",
+        "what do critics say about",
+        "what do reviewers say about",
+        "what do observers say about",
+        "what do insiders say about",
+        "what do outsiders say about",
+        "what do insiders say about",
+        "what do outsiders say about",
+        "could you provide insights on",
+        "would you provide insights on",
+        "please provide insights on",
+        "what are the fundamentals of",
+        "fundamentals of",
+        "what could possibly be",
+        "what can possibly be",
+        "what would possibly be",
+        "what should possibly be",
+        "what might possibly be",
+        "what may possibly be",
+        "what is possibly be",
+        "what are possibly be",
+        "what could probably be",
+        "what can probably be",
+        "what would probably be",
+        "what should probably be",
+        "what might probably be",
+        "what may probably be",
+        "what is probably be",
+        "what are probably be",
+        "what could generally be",
+        "what can generally be",
+        "what would generally be",
+        "what should generally be",
+        "what might generally be",
+        "what may generally be",
+        "what is generally be",
+        "what are generally be",
+        "what could typically be",
+        "what can typically be",
+        "what would typically be",
+        "what should typically be",
+        "what might typically be",
+        "what may typically be",
+        "what is typically be",
+        "what are typically be",    
+        "what could likely be",
+        "what can likely be",
+        "what would likely be",
+        "what should likely be",
+        "what might likely be",
+        "what may likely be",
+        "what is likely be",
+        "what are likely be",
+        "what are the chances of",
+        "what is the likelihood of",
+        "what are teh topics on",
+        "what topics are on",
 
     ]
 
@@ -177,34 +282,47 @@ def extract_topic(user_text: str) -> str:
 
 
 
-def detect_topic_type(topic: str) -> str:
+def detect_topic_type(topic: str) -> tuple[str, float]:
     t = topic.lower()
 
     troubleshooting_signals = [
-        "error", "not working", "failed", "issue", "problem", "exception",
-        "refused", "cannot", "can't"
+        "error", "not working", "failed", "issue", "problem",
+        "exception", "refused", "cannot", "can't"
     ]
 
     decision_signals = [
-        "vs", "versus", "should i", "or", "better", "which", "choose",
-        "leasing", "buying", "rent"
+        "should i", "or", "better", "which",
+        "choose", "leasing", "buying"
     ]
 
     skill_signals = [
-        "how to", "learn", "practice", "trading", "coding", "programming",
-        "using", "develop"
+        "how to", "learn", "practice", "trading", "coding",
+        "programming", "using", "develop"
     ]
 
-    if any(s in t for s in troubleshooting_signals):
-        return "troubleshooting"
+    comparison_signals = [" vs ", " vs", "vs ", "vs", " versus ", "versus", "compare", "comparison"]
+    if any(s in t for s in comparison_signals):
+        # treat explicit comparisons as their own type
+        return "comparison", 0.67
 
-    if any(s in t for s in decision_signals):
-        return "decision"
 
-    if any(s in t for s in skill_signals):
-        return "skill"
+    scores = {
+        "troubleshooting": sum(s in t for s in troubleshooting_signals),
+        "decision": sum(s in t for s in decision_signals),
+        "skill": sum(s in t for s in skill_signals),
+        "concept": 1,  # default baseline
+        "comparison": sum(s in t for s in comparison_signals),
+    }
 
-    return "concept"
+    
+
+    topic_type = max(scores, key=scores.get)
+    max_score = scores[topic_type]
+
+    confidence = min(1.0, max_score / 3)
+
+    return topic_type, round(confidence, 2)
+
 
 
 def build_categories(topic: str, topic_type: str) -> dict:
@@ -281,7 +399,54 @@ def build_categories(topic: str, topic_type: str) -> dict:
                 "What does intermediate/advanced look like?",
                 "What projects prove competence?",
             ],
+
+            "Common Mistakes": [
+    f"What are the top 3 beginner mistakes in {t}?",
+    "What habit causes most people to plateau?",
+],
+
+            "Resources": [
+    f"What are the best resources to learn {t} effectively?",
+    f"What communities or groups focus on {t}?",
+],
+
+"who": [
+    f"Who are the top experts or influencers in {t}?",
+    f"Who created or pioneered {t}?",
+],
+
+"Common Traps": [
+    f"What do people commonly overlook when deciding about {t}?",
+    "What terms/conditions should be read carefully?",
+],
+
         }
+    
+
+    if topic_type == "comparison":
+        return {
+                    "Define": [
+                                    f"What is {t} comparing, exactly (A vs B)?",
+                                     "What is the real goal behind this comparison?",
+        ],
+        "Similarities": [
+            "In what ways are the two options similar?",
+            "What do they both do well?",
+        ],
+        "Differences": [
+            "What are the biggest differences (features, cost, risk, complexity)?",
+            "What difference matters most for your situation?",
+        ],
+        "Who Should Choose What": [
+            "Who should choose option A, and who should choose option B?",
+            "What’s the most common wrong choice people make here?",
+        ],
+        "Decision Rule": [
+            "What simple rule can decide quickly?",
+            "What’s the ‘good enough’ choice if you’re unsure?",
+        ],
+    }
+
 
     # default: concept
     return {
@@ -344,11 +509,55 @@ def build_categories(topic: str, topic_type: str) -> dict:
     }
 
 
+def dedupe_questions(categories: dict) -> dict:
+    """
+    Remove duplicate / near-duplicate questions within each category.
+    v0: simple normalization-based dedupe.
+    """
+    def norm(q: str) -> str:
+        q = q.strip().lower()
+        q = q.replace("?", "")
+        q = " ".join(q.split())
+        return q
+
+    cleaned = {}
+    for cat, qs in categories.items():
+        seen = set()
+        out = []
+        for q in qs:
+            k = norm(q)
+            if k not in seen:
+                seen.add(k)
+                out.append(q)
+        cleaned[cat] = out
+    return cleaned
+
+
+def clarification_for(topic: str, topic_type: str) -> str:
+    t = topic
+    if topic_type == "troubleshooting":
+        return "Is this a technical error you're trying to fix? If yes, what exact error text do you see?"
+    if topic_type == "decision":
+        return f"Are you deciding between options related to {t}? If yes, what constraints matter most (cost, time, risk)?"
+    if topic_type == "skill":
+        return f"Do you want to learn {t} (a skill), or understand {t} as a concept?"
+    # concept / fallback
+    return f"Do you want a simple definition of {t}, or a deeper explanation with examples?"
+
+
+
+
 def cap_categories(categories: dict, max_per_category: int = 5) -> dict:
     capped = {}
     for cat, qs in categories.items():
         capped[cat] = qs[:max_per_category]
     return capped
+
+
+
+
+
+
 
 
 
@@ -365,8 +574,12 @@ def interrogate(topic: str) -> Dict[str, object]:
     if not clean_topic:
         return {"topic": topic, "categories": {}, "notes": ["Empty topic received."]}
     
-    topic_type = detect_topic_type(clean_topic)
+    topic_type, confidence = detect_topic_type(clean_topic)
+    needs_clarification = confidence < 0.5
+    clarifying_question = clarification_for(clean_topic, topic_type) if needs_clarification else ""
+
     categories = build_categories(clean_topic, topic_type)
+    categories = dedupe_questions(categories)
     categories = cap_categories(categories, max_per_category=5)
 
 
@@ -379,7 +592,10 @@ def interrogate(topic: str) -> Dict[str, object]:
     "topic": clean_topic,
     "topic_type": topic_type,
     "categories": categories,
-    "notes": notes
+    "notes": notes,
+    "confidence": confidence,
+    "needs_clarification": needs_clarification,
+    "clarifying_question": clarifying_question
 }
 
 
