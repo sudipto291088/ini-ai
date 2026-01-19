@@ -56,7 +56,7 @@ def extract_topic(user_text: str) -> str:
         "looking for information on",
         "looking for details on",
         "looking for insights on",
-        "could you explain",
+        "could you tell me about",
         "would you explain",
         "please explain",
         "what do you know about",
@@ -96,8 +96,7 @@ def extract_topic(user_text: str) -> str:
         "brief on",
         "i'm curious about",
         "i am curious about",
-        "can you explain",
-        "could you explain",
+        "can you explain",        
         "would you explain",
         "please explain",
         "what are the basics of",
@@ -182,6 +181,7 @@ def extract_topic(user_text: str) -> str:
         "please fascinate me with",
         "explain to me",
         "could you explain to me",
+        "could you explain to me about",
         "would you explain to me",
         "please explain to me",
         "what could we know about",
@@ -263,10 +263,44 @@ def extract_topic(user_text: str) -> str:
         "what is the likelihood of",
         "what are teh topics on",
         "what topics are on",
+        "topics on",
+        "topics about",
+        "could you give me an overview of",
+        "would you give me an overview of",
+        "please give me an overview of",
+        "give me an overview of",
+        "overview of",
+        "summary of",
+        "could you give me a brief on",
+        "would you give me a brief on",
+        "please give me a brief on",
+        "give me a brief on",
+        "brief on",
+        "explain like i'm five",
+        "explain like im five",
+        "explain like i'm 5",
+        "explain like im 5",
+        "explain like a beginner",
+        "explain like beginner",
+        "explain like a novice",
+        "explain like novice",
+        "in simple terms",
+        "in layman's terms",
+        "in laymans terms",
+        "in simple language",
+        "in easy terms",
+        "in easy language",
+        "for dummies",
+        "for beginners",
+        "for novices",
+        "for newbies",
+        
+
+
 
     ]
 
-    for p in prefixes:
+    for p in sorted(prefixes, key=len, reverse=True):
         if t.startswith(p):
             t = t[len(p):].strip()
             break
@@ -280,6 +314,104 @@ def extract_topic(user_text: str) -> str:
     return t
 
 
+def build_summary(topic: str, topic_type: str, confidence: float) -> list[str]:
+    t = topic
+
+        # v0 override: "how to learn/..." is clear intent even if confidence is low
+    if topic_type == "skill":
+        return [
+            f"{t} is a skill you can build with practice.",
+            "Progress comes from small drills, feedback loops, and clear milestones.",
+            "We’ll outline a beginner path and common mistakes to avoid.",
+        ]
+
+
+    if confidence < 0.5 and len(topic.split()) <= 4:
+        return [
+            f"Topic: {t}.",
+            "I might need a bit more context to be precise.",
+            "Start with a simple overview, then we can go deeper.",
+        ]
+
+    if topic_type == "comparison":
+        return [
+            f"{t} is a comparison question (A vs B).",
+            "The goal is to identify the key differences and what matters most for your situation.",
+            "A good comparison ends with a simple decision rule.",
+        ]
+
+    if topic_type == "decision":
+        return [
+            f"{t} is a decision topic.",
+            "Good decisions clarify constraints, tradeoffs, and risks.",
+            "We’ll narrow down options and use a simple rule to choose.",
+        ]
+
+    if topic_type == "troubleshooting":
+        return [
+            f"{t} sounds like a troubleshooting problem.",
+            "We’ll identify symptoms, reproduce the issue, and isolate the root cause.",
+            "Then we’ll try the safest fix first and re-test.",
+        ]
+
+    if topic_type == "skill":
+        return [
+            f"{t} is a skill you can build with practice.",
+            "Progress comes from small drills, feedback loops, and clear milestones.",
+            "We’ll outline a beginner path and common mistakes to avoid.",
+        ]
+
+    # concept default
+    return [
+        f"{t} is a concept/topic to understand clearly.",
+        "We’ll define it simply, break it into parts, and connect it to real-world use.",
+        "Then we’ll test understanding using focused questions and examples.",
+    ]
+
+
+
+def build_illustrations(topic: str, topic_type: str) -> dict:
+    t = topic
+
+    if topic_type == "troubleshooting":
+        return {
+            "symptom": f"A real-world symptom where {t} appears.",
+            "root_cause": "A common underlying cause for this issue.",
+            "fix": "A safe first fix most people should try.",
+            "prevention": "How to avoid this issue in the future.",
+        }
+
+    if topic_type == "decision":
+        return {
+            "option_a": f"Scenario where choosing one option in {t} makes sense.",
+            "option_b": f"Scenario where the alternative is better.",
+            "tradeoff": "What you gain vs what you give up.",
+            "regret_case": "A common regret people report after deciding poorly.",
+        }
+
+    if topic_type == "skill":
+        return {
+            "beginner": f"A beginner practicing {t} for the first time.",
+            "practice": "A concrete practice exercise.",
+            "mistake": "A mistake beginners commonly make.",
+            "progress": "What improvement looks like after consistent practice.",
+        }
+
+    if topic_type == "comparison":
+        return {
+            "side_by_side": f"A vs B comparison scenario for {t}.",
+            "winner_case": "When option A clearly wins.",
+            "loser_case": "When option B is the wrong choice.",
+            "tie_case": "When both options are equally acceptable.",
+        }
+
+    # default: concept
+    return {
+        "everyday": f"An everyday example of {t}.",
+        "work": f"A professional use of {t}.",
+        "analogy": f"An analogy to explain {t} simply.",
+        "failure": f"What goes wrong without understanding {t}.",
+    }
 
 
 def detect_topic_type(topic: str) -> tuple[str, float]:
@@ -321,7 +453,62 @@ def detect_topic_type(topic: str) -> tuple[str, float]:
 
     confidence = min(1.0, max_score / 3)
 
+    # v0: avoid under-confident "concept" for clean topic phrases
+    if topic_type == "concept" and max_score <= 1:
+        confidence = 0.67
+
+
     return topic_type, round(confidence, 2)
+
+
+
+
+
+def build_quick_examples(topic: str, topic_type: str, confidence: float) -> list[str]:
+    t = topic
+
+    # If we're uncertain, keep it extra short + safe
+    if confidence < 0.5:
+        return [
+            f"Everyday: a simple place you might notice {t}.",
+            f"Work/real-life: one practical situation involving {t}.",
+        ]
+
+    if topic_type == "comparison":
+        return [
+            f"Scenario: choosing between two options related to {t}.",
+            "Quick rule: pick A when speed/short-term matters; pick B when long-term stability matters.",
+            "Common mistake: comparing prices only, ignoring total cost/constraints.",
+        ]
+
+    if topic_type == "decision":
+        return [
+            f"Scenario: you must decide something involving {t} this week.",
+            "Tradeoff example: saving money vs saving time/effort.",
+            "Regret case: choosing quickly without checking constraints.",
+        ]
+
+    if topic_type == "troubleshooting":
+        return [
+            f"Symptom: something goes wrong related to {t}.",
+            "First check: confirm the simplest cause before deeper steps.",
+            "Fix example: apply one safe change, then re-test.",
+        ]
+
+    if topic_type == "skill":
+        return [
+            f"Practice: spend 20 minutes/day doing one small task in {t}.",
+            "Beginner mistake: trying advanced stuff before basics.",
+            "Progress sign: you can explain it in 2 sentences + do a tiny demo.",
+        ]
+
+    # default: concept
+    return [
+        f"Everyday: a simple example of {t}.",
+        f"Work: how {t} shows up in a job or project.",
+        f"Without it: what becomes confusing or fails when you ignore {t}.",
+    ]
+
 
 
 
@@ -533,6 +720,35 @@ def dedupe_questions(categories: dict) -> dict:
     return cleaned
 
 
+
+def dedupe_across_categories(categories: dict) -> dict:
+    """
+    Remove repeated questions across categories (global dedupe).
+    Keeps the first occurrence and drops later duplicates.
+    v0: normalization-based.
+    """
+    def norm(q: str) -> str:
+        q = q.strip().lower()
+        q = q.replace("?", "")
+        q = " ".join(q.split())
+        return q
+
+    seen = set()
+    out = {}
+    for cat, qs in categories.items():
+        kept = []
+        for q in qs:
+            k = norm(q)
+            if k not in seen:
+                seen.add(k)
+                kept.append(q)
+        out[cat] = kept
+    return out
+
+
+
+
+
 def clarification_for(topic: str, topic_type: str) -> str:
     t = topic
     if topic_type == "troubleshooting":
@@ -565,6 +781,10 @@ def cap_categories(categories: dict, max_per_category: int = 5) -> dict:
 
 
 
+
+
+
+
 def interrogate(topic: str) -> Dict[str, object]:
     """
     Return structured, relevant interrogative questions for a topic.
@@ -575,11 +795,13 @@ def interrogate(topic: str) -> Dict[str, object]:
         return {"topic": topic, "categories": {}, "notes": ["Empty topic received."]}
     
     topic_type, confidence = detect_topic_type(clean_topic)
+    summary = build_summary(clean_topic, topic_type, confidence)
     needs_clarification = confidence < 0.5
     clarifying_question = clarification_for(clean_topic, topic_type) if needs_clarification else ""
 
     categories = build_categories(clean_topic, topic_type)
     categories = dedupe_questions(categories)
+    categories = dedupe_across_categories(categories)
     categories = cap_categories(categories, max_per_category=5)
 
 
@@ -588,6 +810,9 @@ def interrogate(topic: str) -> Dict[str, object]:
         "Next: add topic-type detection (concept vs skill vs decision vs troubleshooting).",
     ]
 
+    quick_examples = build_quick_examples(clean_topic, topic_type, confidence)
+
+
     return {
     "topic": clean_topic,
     "topic_type": topic_type,
@@ -595,7 +820,10 @@ def interrogate(topic: str) -> Dict[str, object]:
     "notes": notes,
     "confidence": confidence,
     "needs_clarification": needs_clarification,
-    "clarifying_question": clarifying_question
+    "clarifying_question": clarifying_question,
+    "quick_examples": quick_examples,
+    "summary": summary
+
 }
 
 
