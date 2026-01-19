@@ -387,16 +387,37 @@ if interrogate_clicked and topic.strip():
     r = requests.post("http://127.0.0.1:8000/interrogate", json={"topic": topic})
     data = r.json()
     st.subheader(f"Interrogating: {data['topic']}")
+    # --- Summary (top) ---
+    if "summary" in data and data["summary"]:
+        for line in data["summary"]:
+             st.write(line)
+        st.write("")  # small spacer
+
+    
 
     for cat, qs in data["categories"].items():
         st.markdown(f"**{cat}**")
         for q in qs:
             st.write("• " + q)
 
+    # --- Few examples (quick preview) ---
+    if "quick_examples" in data and data["quick_examples"]:
+        st.markdown("### Few examples")
+        for ex in data["quick_examples"]:
+            st.write("• " + ex)
+
+
 if illustrate_clicked and topic.strip():
     r = requests.post("http://127.0.0.1:8000/illustrate", json={"topic": topic})
     data = r.json()
     st.subheader(f"Illustrating: {data['topic']}")
-    for ex in data["examples"]:
-        st.write("• " + ex)
+
+    # new structure: illustrations is a dict
+    illustrations = data.get("illustrations", {})
+    for k, v in illustrations.items():
+        st.markdown(f"**{k.replace('_',' ').title()}**")
+        st.write("• " + str(v))
+
+
+
 
