@@ -1,9 +1,51 @@
+import json
 import streamlit as st
 import requests
 
 
 
 st.set_page_config(page_title="InI.ai", layout="centered")
+
+
+
+API_BASE = "http://127.0.0.1:8000"
+
+def safe_post(path: str, payload: dict, timeout: int = 10):
+    url = f"{API_BASE}{path}"
+    try:
+        r = requests.post(url, json=payload, timeout=timeout)
+        # Raise HTTP error codes (400/500) as exceptions
+        r.raise_for_status()
+        return r.json(), None
+    except requests.exceptions.Timeout:
+        return None, f"Timeout: backend took too long at {url}"
+    except requests.exceptions.ConnectionError:
+        return None, f"ConnectionError: backend not reachable at {url}. Is uvicorn running?"
+    except requests.exceptions.HTTPError:
+        # show response body for debugging
+        body = r.text if "r" in locals() else ""
+        return None, f"HTTPError {getattr(r, 'status_code', '')}: {body}"
+    except Exception as e:
+        return None, f"Unexpected error: {e}"
+
+
+
+
+
+with st.sidebar:
+    st.markdown("## Diagnostics")
+    if st.button("Check backend /health"):
+        try:
+            hr = requests.get(f"{API_BASE}/health", timeout=5)
+            st.write("Status code:", hr.status_code)
+            st.json(hr.json())
+        except Exception as e:
+            st.error(f"Health check failed: {e}")
+    show_raw = st.checkbox("Show raw JSON", value=False)
+
+
+
+
 
 st.markdown(
     """
@@ -19,239 +61,13 @@ st.markdown(
 )
 
 
-# st.markdown(
-#     """
-#     <style>
-#     /* Button background */
-#     div.stButton > button {
-#         background-color: black !important;
-#         border: none !important;
-#     }
-
-#     /* Button text (Streamlit wraps it inside) */
-#     div.stButton > button,
-#     div.stButton > button span,
-#     div.stButton > button p {
-#         color: white !important;
-#         font-weight: 900 !important;
-#         font-size: 18px !important;
-#     }
-#     </style>
-#     """,
-#     unsafe_allow_html=True
-# )
-
-
-# st.markdown(
-#     """
-#     <style>
-#     div.stButton > button {
-#         background-color: black !important;
-#         color: white !important;
-#         font-weight: 900 !important;
-#         font-size: 18px !important;
-
-#         min-width: 160px;          /* forces equal width */
-#         padding: 10px 16px;
-#         white-space: nowrap;       /* prevents word wrapping */
-#         text-align: center;
-#         border-radius: 8px;
-#     }
-#     </style>
-#     """,
-#     unsafe_allow_html=True
-# )
-
-# st.markdown(
-#     """
-#     <style>
-#     /* Center the title above the input */
-# h1 {
-#     text-align: center !important;
-#     position: relative;
-#     left: 30px;
-# }
-
-#     /* Push content down (your current vertical centering) */
-#     div.block-container {
-#         padding-top: 28vh;
-#     }
-
-
-#     # div[data-testid="stTextInput"] input {
-#     #     height: 52px !important;
-#     # }
-
-
-#     /* --- Input: force a true 4-side border by styling BOTH wrapper + input --- */
-#     div[data-testid="stTextInput"] > div {
-#         border: 2px solid black !important;
-#         border-radius: 6px !important;
-#         box-shadow: none !important;
-#         background: white !important;
-
-#         min-height: 64px !important;      /* <-- controls bar thickness */
-#     display: flex !important;
-#     align-items: center !important;
-#     }
-
-#     div[data-testid="stTextInput"] input {
-#         padding: 30px 32px !important;
-#         border: none !important;          /* border is handled by wrapper */
-#         box-shadow: none !important;
-#         outline: none !important;
-#         #height: 48px !important;
-#         font-size: 18px !important;
-#         background: transparent !important;
-#     }
-
-#     div[data-testid="stTextInput"] input:focus {
-#         box-shadow: none !important;
-#         outline: none !important;
-#     }
-
-#     /* Input width (we can revisit later) */
-#     div[data-testid="stTextInput"] {
-#         width: 800px !important;
-#         margin-left: auto !important;
-#         margin-right: auto !important;
-#         right: 120px;
-#         }
-
-#     /* --- Buttons: same height + style --- */
-#     div.stButton > button {
-#         background-color: black !important;
-#         min-width: 160px !important;
-#         height: 44px !important;
-#         padding: 10px 18px !important;
-#         border-radius: 8px !important;
-#         white-space: nowrap !important;
-#         border: none !important;
-#     }
-
-#     div.stButton > button,
-#     div.stButton > button span,
-#     div.stButton > button p {
-#         color: white !important;
-#         font-weight: 900 !important;
-#         font-size: 18px !important;
-#         text-align: center !important;
-#     }
-#     </style>
-#     """,
-#     unsafe_allow_html=True
-# )
-
-# st.markdown(
-#     """
-#     <style>
-
-#     /* ===== Page vertical centering ===== */
-#     div.block-container {
-#         padding-top: 28vh;
-#     }
-
-#     /* ===== Title (InI.ai) ===== */
-#     h1 {
-#         text-align: center !important;
-#         position: relative;
-#         left: 30px;   /* aligns dot with button gap */
-#         font-weight: 800 !important;
-#     }
-
-#     /* ===== Input container (controls WIDTH + POSITION) ===== */
-#     div[data-testid="stTextInput"] {
-#         width: 800px !important;        /* horizontal length */
-#         margin: 0 auto !important;
-#         position: relative;
-#         right: 120px;                   /* your chosen visual alignment */
-#     }
-
-#     /* ===== Input wrapper (controls BORDER + HEIGHT) ===== */
-#     div[data-testid="stTextInput"] > div {
-#         border: 3px solid black !important;
-#         border-radius: 8px !important;
-#         background: white !important;
-
-#         min-height: 154px !important;    /* TOP–BOTTOM thickness */
-#         display: flex !important;
-#         align-items: center !important;
-#         box-shadow: none !important;
-#     }
-
-#     /* ===== Actual text input ===== */
-#     div[data-testid="stTextInput"] input {
-#         border: none !important;
-#         outline: none !important;
-#         box-shadow: none !important;
-
-#         padding: 18px 18px !important;  /* fine control of thickness */
-#         font-size: 18px !important;
-#         background: transparent !important;
-
-#         width: 100% !important;
-#         box-sizing: border-box !important;
-#     }
-
-#     /* ===== Remove Streamlit focus underline ===== */
-#     div[data-testid="stTextInput"] input:focus {
-#         box-shadow: none !important;
-#         outline: none !important;
-#     }
-
-#     /* ===== Buttons ===== */
-#     div.stButton > button {
-#         background-color: black !important;
-#         min-width: 160px !important;
-#         height: 44px !important;         /* MATCHES input thickness */
-#         padding: 10px 18px !important;
-#         border-radius: 8px !important;
-#         border: none !important;
-#         white-space: nowrap !important;
-#     }
-
-#     div.stButton > button,
-#     div.stButton > button span,
-#     div.stButton > button p {
-#         color: white !important;
-#         font-weight: 900 !important;
-#         font-size: 20px !important;
-#         text-align: top !important;
-#     }
-
-    
-#     /* 1) Hide the "Press Enter to apply" helper */
-# div[data-testid="stTextInput"] [data-testid="InputInstructions"],
-# div[data-testid="stTextInput"] div[aria-live="polite"],
-# div[data-testid="stTextInput"] small {
-#     display: none !important;
-# }
-
-# /* 2) Remove grey background inside the bar (make it pure white) */
-# div[data-testid="stTextInput"] > div {
-#     background: 8c92ac !important;
-# }
-
-# div[data-testid="stTextInput"] input {
-#     background: 8c92ac !important;
-# }
-
-# /* 3) Make the whole app background ghost white */
-# html, body, [data-testid="stApp"] {
-#     background-color: #fffafa !important;
-# }
-
-#     </style>
-#     """,
-#     unsafe_allow_html=True
-# )
 
 st.markdown(
     """
     <style>
     /* ===== App background ===== */
     html, body, [data-testid="stApp"] {
-        background-color: #eb6d46 !important;
+        background-color: white !important;
     }
 
     /* ===== Page vertical centering ===== */
@@ -261,7 +77,7 @@ st.markdown(
 
     /* ===== Title (InI.ai) ===== */
     h1 {
-    color: white !important;
+    color: black !important;
     font-size: 78px !important;
         text-align: center !important;
         position: relative;
@@ -293,8 +109,8 @@ st.markdown(
 
     /* ===== Actual input (TRANSPARENT so no inner strip) ===== */
     div[data-testid="stTextInput"] input {
-        border: none !important;
-        outline: none !important;
+        border: black !important;
+        outline: black !important;
         box-shadow: none !important;
 
         background: transparent !important;      /* key: removes inner strip */
@@ -340,22 +156,6 @@ st.markdown(
 )
 
 
-
-# st.title("InI.ai (v0)")
-
-# topic = st.text_input("Topic", placeholder="Try: Artificial Intelligence")
-
-
-# left, b1, spacer, b2, right = st.columns([3,2,0.8,2,4])
-
-
-# with b1:
-#     interrogate_clicked = st.button("Interrogate")
-
-# with b2:
-#     illustrate_clicked = st.button("Illustrate")
-
-# --- TOP UI (title + input + buttons) kept in ONE centered column ---
 st.title("InI.ai")
 
 left, mid, right = st.columns([1,6,1])
@@ -380,43 +180,55 @@ with mid:
 
 
 
-
-
-
 if interrogate_clicked and topic.strip():
-    r = requests.post("http://127.0.0.1:8000/interrogate", json={"topic": topic})
-    data = r.json()
-    st.subheader(f"Interrogating: {data['topic']}")
-    # --- Summary (top) ---
-    if "summary" in data and data["summary"]:
-        for line in data["summary"]:
-             st.write(line)
-        st.write("")  # small spacer
+    data, err = safe_post("/interrogate", {"topic": topic})
+    if err:
+        st.error(err)
+    else:
+        st.subheader(f"Interrogating: {data['topic']}")
 
-    
+        # --- Summary (top) ---
+        if "summary" in data and data["summary"]:
+            for line in data["summary"]:
+                st.write(line)
+            st.write("")
 
-    for cat, qs in data["categories"].items():
-        st.markdown(f"**{cat}**")
-        for q in qs:
-            st.write("• " + q)
+        if show_raw:
+            st.markdown("### Raw response")
+            st.json(data)
 
-    # --- Few examples (quick preview) ---
-    if "quick_examples" in data and data["quick_examples"]:
-        st.markdown("### Few examples")
-        for ex in data["quick_examples"]:
-            st.write("• " + ex)
+        for cat, qs in data["categories"].items():
+            st.markdown(f"**{cat}**")
+            for q in qs:
+                st.write("• " + q)
+
+        # --- Few examples (quick preview) ---
+        if "quick_examples" in data and data["quick_examples"]:
+            st.markdown("### Few examples")
+            for ex in data["quick_examples"]:
+                st.write("• " + ex)
+
+
+
 
 
 if illustrate_clicked and topic.strip():
-    r = requests.post("http://127.0.0.1:8000/illustrate", json={"topic": topic})
-    data = r.json()
-    st.subheader(f"Illustrating: {data['topic']}")
+    data, err = safe_post("/illustrate", {"topic": topic})
+    if err:
+        st.error(err)
+    else:
+        st.subheader(f"Illustrating: {data['topic']}")
 
-    # new structure: illustrations is a dict
-    illustrations = data.get("illustrations", {})
-    for k, v in illustrations.items():
-        st.markdown(f"**{k.replace('_',' ').title()}**")
-        st.write("• " + str(v))
+        if show_raw:
+            st.markdown("### Raw response")
+            st.json(data)
+
+        illustrations = data.get("illustrations", {})
+        for k, v in illustrations.items():
+            st.markdown(f"**{k.replace('_',' ').title()}**")
+            st.write("• " + str(v))
+
+
 
 
 
