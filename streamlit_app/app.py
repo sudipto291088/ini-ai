@@ -197,10 +197,13 @@ if interrogate_clicked and topic.strip():
             st.markdown("### Raw response")
             st.json(data)
 
-        for cat, qs in data["categories"].items():
+        for cat, items in data["categories"].items():
             st.markdown(f"**{cat}**")
-            for q in qs:
-                st.write("• " + q)
+            for item in items:
+                q_text = item.get("question", "")
+                a_text = item.get("answer", "")
+                with st.expander("• " + q_text):
+                    st.write(a_text)
 
         # --- Few examples (quick preview) ---
         if "quick_examples" in data and data["quick_examples"]:
