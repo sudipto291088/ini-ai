@@ -294,6 +294,30 @@ def extract_topic(user_text: str) -> str:
         "for beginners",
         "for novices",
         "for newbies",
+        "for newbs",
+        "for starters",
+        "I want to understand",
+        "i would like to understand",
+        "i need to understand",
+        "could you help me understand",
+        "would you help me understand",
+        "please help me understand",
+        "i wish to understand",
+        "i would wish to understand",
+        "i desire to understand",
+        "i would desire to understand",
+        "i want to learn"
+        "i would like to learn",
+        "i need to learn",
+        "could you help me learn",
+        "would you help me learn",
+        "please help me learn",
+        "i want to learn",
+        "i would like to learn",
+        "i need to learn",
+        "could you help me learn",
+        "would you help me learn",
+        
         
 
 
@@ -770,6 +794,66 @@ def cap_categories(categories: dict, max_per_category: int = 5) -> dict:
     return capped
 
 
+def _slug(s: str) -> str:
+    return "".join(ch.lower() if ch.isalnum() else "_" for ch in s).strip("_")
+
+
+def build_answer(topic: str, topic_type: str, category: str, question: str) -> str:
+    """
+    v0: template-based answers (short, non-dumpy).
+    Goal: every question has an answer that is at least directionally useful.
+    """
+    t = topic
+    c = category.lower()
+
+    # Decision/comparison oriented
+    if topic_type in ("decision", "comparison"):
+        if "cost" in question.lower() or "money" in question.lower():
+            return f"For {t}, compare total cost over time (upfront + ongoing + hidden fees). The best choice depends on your time horizon and risk tolerance."
+        if "risk" in question.lower() or "trap" in question.lower():
+            return f"Common risks in {t} include hidden assumptions, one-sided comparisons, and ignoring second-order effects. List constraints first, then evaluate trade-offs."
+        return f"A good way to answer this for {t} is to list 2–3 options, compare trade-offs (cost/time/risk), and pick based on your constraints."
+
+    # Skill / learning oriented
+    if topic_type == "skill" or "learn" in question.lower():
+        if "prereq" in question.lower() or "prerequisite" in question.lower():
+            return f"For learning {t}, start with fundamentals first, then practice with small projects. Fill gaps only when they block progress."
+        if "how" in question.lower() or "steps" in question.lower():
+            return f"To learn {t}, follow: basics → guided exercises → small projects → feedback → repeat. Consistency beats intensity."
+        return f"The practical answer for {t} is to define your goal, choose a learning path, and validate with hands-on practice."
+
+    # Troubleshooting oriented
+    if topic_type == "troubleshooting":
+        return f"For {t}, first reproduce the issue, capture the exact error text, then isolate the smallest failing case. That usually reveals the root cause."
+
+    # Concept / general
+    if "why" in question.lower():
+        return f"{t} matters because it affects outcomes and decisions in real life. The ‘why’ is usually impact: efficiency, cost, safety, or capability."
+    if "how" in question.lower():
+        return f"At a high level, {t} works through inputs → process → output. Understand the moving parts, then look at real examples."
+    if "when" in question.lower() or "where" in question.lower():
+        return f"{t} applies when it helps you achieve a goal under constraints. Look for real-world contexts where it changes results measurably."
+
+    # Fallback
+    return f"A useful way to answer this about {t} is to define it in one sentence, identify key parts, then test the idea with one example."
+    
+
+def attach_answers(categories: dict, topic: str, topic_type: str) -> dict:
+    """
+    Convert category -> [question str] into category -> [{id, question, answer}]
+    """
+    out = {}
+    for cat, qs in categories.items():
+        items = []
+        cat_id = _slug(cat)
+        for i, q in enumerate(qs, start=1):
+            items.append({
+                "id": f"{cat_id}_{i}",
+                "question": q,
+                "answer": build_answer(topic, topic_type, cat, q)
+            })
+        out[cat] = items
+    return out
 
 
 
@@ -812,11 +896,15 @@ def interrogate(topic: str) -> Dict[str, object]:
 
     quick_examples = build_quick_examples(clean_topic, topic_type, confidence)
 
+    qa_categories = attach_answers(categories, clean_topic, topic_type)
+
+
+
 
     return {
     "topic": clean_topic,
     "topic_type": topic_type,
-    "categories": categories,
+    "categories": qa_categories,
     "notes": notes,
     "confidence": confidence,
     "needs_clarification": needs_clarification,
