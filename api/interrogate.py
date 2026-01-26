@@ -6,6 +6,39 @@ from typing import Dict, List
 
 
 
+ARCHETYPE_ORDER = [
+    "ORIENT",
+    "MECHANISM",
+    "APPLY",
+    "LEARN",
+    "COMPARE",
+    "DECIDE",
+    "RISK",
+    "NEXT",
+]
+
+ARCHETYPE_MAP = {
+    "Understanding": "ORIENT",
+    "Basics": "ORIENT",
+    "How it works": "MECHANISM",
+    "Mechanism": "MECHANISM",
+    "Applications": "APPLY",
+    "Use cases": "APPLY",
+    "Learning": "LEARN",
+    "Getting started": "LEARN",
+    "Comparison": "COMPARE",
+    "Decision": "DECIDE",
+    "Risks": "RISK",
+    "Misconceptions": "RISK",
+    "Next steps": "NEXT",
+}
+
+
+
+
+
+
+
 
 
 def extract_topic(user_text: str) -> str:
@@ -317,11 +350,17 @@ def extract_topic(user_text: str) -> str:
         "i need to learn",
         "could you help me learn",
         "would you help me learn",
+        "please help me learn",
+        "i want to learn",
+        "i would like to learn",
+        "i need to learn",
+        "could you help me learn",
+        "would you help me learn",
+        "educate me about",
+        "could you educate me about",
+        "would you educate me about",
+        "please educate me about",
         
-        
-
-
-
     ]
 
     for p in sorted(prefixes, key=len, reverse=True):
@@ -847,8 +886,11 @@ def attach_answers(categories: dict, topic: str, topic_type: str) -> dict:
         items = []
         cat_id = _slug(cat)
         for i, q in enumerate(qs, start=1):
+            archetype = ARCHETYPE_MAP.get(cat, "ORIENT")
+
             items.append({
                 "id": f"{cat_id}_{i}",
+                "archetype": archetype,
                 "question": q,
                 "answer": build_answer(topic, topic_type, cat, q)
             })
@@ -897,6 +939,16 @@ def interrogate(topic: str) -> Dict[str, object]:
     quick_examples = build_quick_examples(clean_topic, topic_type, confidence)
 
     qa_categories = attach_answers(categories, clean_topic, topic_type)
+
+
+    ordered_categories = {}
+    for arch in ARCHETYPE_ORDER:
+        for cat, items in qa_categories.items():
+            if items and items[0].get("archetype") == arch:
+                ordered_categories[cat] = items
+
+    qa_categories = ordered_categories
+
 
 
 
