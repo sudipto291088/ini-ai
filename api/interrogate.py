@@ -837,44 +837,70 @@ def _slug(s: str) -> str:
     return "".join(ch.lower() if ch.isalnum() else "_" for ch in s).strip("_")
 
 
-def build_answer(topic: str, topic_type: str, category: str, question: str) -> str:
-    """
-    v0: template-based answers (short, non-dumpy).
-    Goal: every question has an answer that is at least directionally useful.
-    """
-    t = topic
-    c = category.lower()
+def build_answer(topic, topic_type, category, question, archetype):
+    topic = topic.strip()
 
-    # Decision/comparison oriented
-    if topic_type in ("decision", "comparison"):
-        if "cost" in question.lower() or "money" in question.lower():
-            return f"For {t}, compare total cost over time (upfront + ongoing + hidden fees). The best choice depends on your time horizon and risk tolerance."
-        if "risk" in question.lower() or "trap" in question.lower():
-            return f"Common risks in {t} include hidden assumptions, one-sided comparisons, and ignoring second-order effects. List constraints first, then evaluate trade-offs."
-        return f"A good way to answer this for {t} is to list 2–3 options, compare trade-offs (cost/time/risk), and pick based on your constraints."
+    if archetype == "ORIENT":
+        return (
+            f"{topic} is a concept that exists to address a specific problem or need. "
+            f"At a high level, it refers to how humans design systems, processes, or ideas "
+            f"to achieve better outcomes. This overview helps you frame what {topic} is "
+            f"before going into details."
+        )
 
-    # Skill / learning oriented
-    if topic_type == "skill" or "learn" in question.lower():
-        if "prereq" in question.lower() or "prerequisite" in question.lower():
-            return f"For learning {t}, start with fundamentals first, then practice with small projects. Fill gaps only when they block progress."
-        if "how" in question.lower() or "steps" in question.lower():
-            return f"To learn {t}, follow: basics → guided exercises → small projects → feedback → repeat. Consistency beats intensity."
-        return f"The practical answer for {t} is to define your goal, choose a learning path, and validate with hands-on practice."
+    if archetype == "MECHANISM":
+        return (
+            f"{topic} works by combining several components that interact with each other. "
+            f"At a high level, inputs are processed through defined steps or models, "
+            f"leading to outputs that improve decisions or actions. The exact mechanics "
+            f"depend on the specific system or implementation."
+        )
 
-    # Troubleshooting oriented
-    if topic_type == "troubleshooting":
-        return f"For {t}, first reproduce the issue, capture the exact error text, then isolate the smallest failing case. That usually reveals the root cause."
+    if archetype == "APPLY":
+        return (
+            f"In real life, {topic} is used in practical scenarios such as workplaces, "
+            f"products, or everyday tools. These applications help solve real problems, "
+            f"improve efficiency, or enable new capabilities that were previously difficult."
+        )
 
-    # Concept / general
-    if "why" in question.lower():
-        return f"{t} matters because it affects outcomes and decisions in real life. The ‘why’ is usually impact: efficiency, cost, safety, or capability."
-    if "how" in question.lower():
-        return f"At a high level, {t} works through inputs → process → output. Understand the moving parts, then look at real examples."
-    if "when" in question.lower() or "where" in question.lower():
-        return f"{t} applies when it helps you achieve a goal under constraints. Look for real-world contexts where it changes results measurably."
+    if archetype == "LEARN":
+        return (
+            f"To learn {topic}, start with the fundamentals and build gradually. "
+            f"Focus first on core concepts, then practice applying them through small exercises "
+            f"or projects. Consistent practice and real-world exposure matter more than speed."
+        )
 
-    # Fallback
-    return f"A useful way to answer this about {t} is to define it in one sentence, identify key parts, then test the idea with one example."
+    if archetype == "COMPARE":
+        return (
+            f"When comparing options related to {topic}, the key differences usually involve "
+            f"purpose, complexity, cost, and suitability for a given situation. "
+            f"The better choice depends on what problem you are trying to solve."
+        )
+
+    if archetype == "DECIDE":
+        return (
+            f"Whether you should pursue or choose {topic} depends on your goals, constraints, "
+            f"and current situation. Consider factors such as time investment, expected benefits, "
+            f"and how it aligns with your long-term plans."
+        )
+
+    if archetype == "RISK":
+        return (
+            f"Common mistakes with {topic} include misunderstanding its purpose, "
+            f"overestimating what it can do, or skipping fundamentals. "
+            f"Avoid rushing ahead without building a solid base."
+        )
+
+    if archetype == "NEXT":
+        return (
+            f"A good next step after understanding {topic} is to apply it in a small, "
+            f"controlled way. This could mean experimenting, building something simple, "
+            f"or deepening one specific area rather than trying to learn everything at once."
+        )
+
+    # fallback (should rarely hit)
+    return f"This question relates to {topic}. Consider exploring it step by step for clarity."
+
     
 
 def attach_answers(categories: dict, topic: str, topic_type: str) -> dict:
@@ -892,7 +918,7 @@ def attach_answers(categories: dict, topic: str, topic_type: str) -> dict:
                 "id": f"{cat_id}_{i}",
                 "archetype": archetype,
                 "question": q,
-                "answer": build_answer(topic, topic_type, cat, q)
+                "answer": build_answer(topic, topic_type, cat, q,archetype)
             })
         out[cat] = items
     return out
