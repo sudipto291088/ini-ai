@@ -1,238 +1,193 @@
-import json
+import hashlib
 import streamlit as st
 import requests
 
-
-
 st.set_page_config(page_title="InI.ai", layout="centered")
-
-
 
 API_BASE = "http://127.0.0.1:8000"
 
+
+# ---------------- Helpers ----------------
 def safe_post(path: str, payload: dict, timeout: int = 10):
-    url = f"{API_BASE}{path}"
     try:
-        r = requests.post(url, json=payload, timeout=timeout)
-        # Raise HTTP error codes (400/500) as exceptions
+        r = requests.post(f"{API_BASE}{path}", json=payload, timeout=timeout)
         r.raise_for_status()
         return r.json(), None
-    except requests.exceptions.Timeout:
-        return None, f"Timeout: backend took too long at {url}"
-    except requests.exceptions.ConnectionError:
-        return None, f"ConnectionError: backend not reachable at {url}. Is uvicorn running?"
-    except requests.exceptions.HTTPError:
-        # show response body for debugging
-        body = r.text if "r" in locals() else ""
-        return None, f"HTTPError {getattr(r, 'status_code', '')}: {body}"
     except Exception as e:
-        return None, f"Unexpected error: {e}"
+        return None, str(e)
 
 
+def safe_key(text: str) -> str:
+    return hashlib.md5(text.encode("utf-8")).hexdigest()
 
 
-
-with st.sidebar:
-    st.markdown("## Diagnostics")
-    if st.button("Check backend /health"):
-        try:
-            hr = requests.get(f"{API_BASE}/health", timeout=5)
-            st.write("Status code:", hr.status_code)
-            st.json(hr.json())
-        except Exception as e:
-            st.error(f"Health check failed: {e}")
-    show_raw = st.checkbox("Show raw JSON", value=False)
+def qa_id(qa: dict, prefix: str):
+    if qa.get("id"):
+        return str(qa["id"])
+    return f"{prefix}_{safe_key(qa.get('question',''))}"
 
 
+# ---------------- State ----------------
+if "interrogate_data" not in st.session_state:
+    st.session_state.interrogate_data = None
+
+if "interrogate_err" not in st.session_state:
+    st.session_state.interrogate_err = None
+
+if "illustrate_data" not in st.session_state:
+    st.session_state.illustrate_data = None
+
+if "illustrate_err" not in st.session_state:
+    st.session_state.illustrate_err = None
+
+if "last_topic" not in st.session_state:
+    st.session_state.last_topic = None
+
+if "show_more" not in st.session_state:
+    st.session_state.show_more = False
+
+# Var A state
+if "open_ids" not in st.session_state:
+    st.session_state.open_ids = set()
+
+if "viewed_ids" not in st.session_state:
+    st.session_state.viewed_ids = set()
 
 
-
-st.markdown(
-    """
-    <style>
-    /* Center the main block and limit its width */
-    section.main > div {
-        max-width: 820px;
-        margin: 0 auto;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-
-
-st.markdown(
-    """
-    <style>
-    /* ===== App background ===== */
-    html, body, [data-testid="stApp"] {
-        background-color: white !important;
-    }
-
-    /* ===== Page vertical centering ===== */
-    div.block-container {
-        padding-top: 28vh;
-    }
-
-    /* ===== Title (InI.ai) ===== */
-    h1 {
-    color: black !important;
-    font-size: 78px !important;
-        text-align: center !important;
-        position: relative;
-        left: 30px;            /* your chosen alignment */
-        font-weight: 8200 !important;
-    }
-
-    /* ===== Input container (WIDTH + POSITION) ===== */
-    div[data-testid="stTextInput"] {
-        width: 800px !important;
-        margin: 0 auto !important;
-        position: relative;
-        right: 120px;          /* your chosen alignment */
-    }
-
-    /* ===== Input wrapper (FULL BAR COLOR + BORDER + HEIGHT) ===== */
-    div[data-testid="stTextInput"] > div {
-        border: 4px solid black !important;
-        border-radius: 6px !important;
-        box-shadow: none !important;
-
-        background-color: black !important;   /* FULL inside color */
-        min-height: 184px !important;
-
-        display: flex !important;
-        align-items: stretch !important;         /* key: prevents "strip" */
-        padding: 0 !important;                   /* key: prevents inner band */
-    }
-
-    /* ===== Actual input (TRANSPARENT so no inner strip) ===== */
-    div[data-testid="stTextInput"] input {
-        border: black !important;
-        outline: black !important;
-        box-shadow: none !important;
-
-        background: transparent !important;      /* key: removes inner strip */
-        width: 100% !important;
-        height: 100% !important;
-        box-sizing: border-box !important;
-
-        padding: 18px 20px !important;           /* text spacing only */
-        font-size: 18px !important;
-        color: black !important;
-    }
-
-    /* ===== Hide "Press Enter to apply" helper ===== */
-    div[data-testid="stTextInput"] [data-testid="InputInstructions"],
-    div[data-testid="stTextInput"] div[aria-live],
-    div[data-testid="stTextInput"] small {
-        display: none !important;
-    }
-
-    /* ===== Buttons (keep slim, bold text) ===== */
-    div.stButton > button {
-        background-color: black !important;
-        min-width: 160px !important;
-        height: 44px !important;                 /* keep NOT too thick */
-        padding: 8px 16px !important;
-        border-radius: 8px !important;
-        border: none !important;
-        white-space: nowrap !important;
-    }
-
-    div.stButton > button,
-    div.stButton > button span,
-    div.stButton > button p {
-        color: white !important;
-        font-weight: 900 !important;
-        font-size: 18px !important;
-        text-align: center !important;
-    }
-
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-
+# ---------------- UI: Home ----------------
 st.title("InI.ai")
 
-left, mid, right = st.columns([1,6,1])
-
-with mid:
-    topic = st.text_area(
+topic = st.text_area(
     "Topic",
-    placeholder="Type your message here...",
+    placeholder="Type your message here…",
     height=110
 )
 
-    #topic = st.text_input("", placeholder="Try: Artificial Intelligence")
-
-    # keep the two buttons close (centered under the input)
-    _l, b1, gap, b2, _r = st.columns([2, 2, 0.6, 2, 2])
-
-    with b1:
-        interrogate_clicked = st.button("Interrogate")
-
-    with b2:
-        illustrate_clicked = st.button("Illustrate")
+c1, c2 = st.columns(2)
+with c1:
+    interrogate_clicked = st.button("Interrogate")
+with c2:
+    illustrate_clicked = st.button("Illustrate")
 
 
-
+# ---------------- Interrogate: fetch ----------------
 if interrogate_clicked and topic.strip():
     data, err = safe_post("/interrogate", {"topic": topic})
-    if err:
-        st.error(err)
-    else:
-        st.subheader(f"Interrogating: {data['topic']}")
+    st.session_state.interrogate_data = data
+    st.session_state.interrogate_err = err
 
-        # --- Summary (top) ---
-        if "summary" in data and data["summary"]:
-            for line in data["summary"]:
-                st.write(line)
-            st.write("")
-
-        if show_raw:
-            st.markdown("### Raw response")
-            st.json(data)
-
-        for cat, items in data["categories"].items():
-            st.markdown(f"**{cat}**")
-            for item in items:
-                q_text = item.get("question", "")
-                a_text = item.get("answer", "")
-                with st.expander("• " + q_text):
-                    st.write(a_text)
-
-        # --- Few examples (quick preview) ---
-        if "quick_examples" in data and data["quick_examples"]:
-            st.markdown("### Few examples")
-            for ex in data["quick_examples"]:
-                st.write("• " + ex)
+    if data and not err:
+        clean = data.get("topic", "").strip().lower()
+        if st.session_state.last_topic != clean:
+            st.session_state.last_topic = clean
+            st.session_state.show_more = False
+            st.session_state.open_ids = set()
+            st.session_state.viewed_ids = set()
 
 
-
-
-
+# ---------------- Illustrate: fetch ----------------
 if illustrate_clicked and topic.strip():
     data, err = safe_post("/illustrate", {"topic": topic})
-    if err:
-        st.error(err)
+    st.session_state.illustrate_data = data
+    st.session_state.illustrate_err = err
+
+
+# ---------------- Interrogate: render ----------------
+idata = st.session_state.interrogate_data
+ierr = st.session_state.interrogate_err
+
+if ierr:
+    st.error(ierr)
+
+if idata and not ierr:
+    st.subheader(f"Interrogating: {idata.get('topic','')}")
+
+    # short orientation
+    for line in idata.get("summary", []):
+        st.write(line)
+
+    categories = idata.get("categories", {}) or {}
+
+    # flatten questions
+    flat = []
+    for cat, items in categories.items():
+        if isinstance(items, list):
+            for qa in items:
+                if qa.get("question") and qa.get("answer"):
+                    flat.append((cat, qa))
+
+    # -------- Top 7 --------
+    if not st.session_state.show_more:
+        st.markdown("### Top most questions")
+
+        for idx, (cat, qa) in enumerate(flat[:7], start=1):
+            qid = qa_id(qa, cat.lower().replace(" ", "_"))
+            q = qa["question"]
+            a = qa["answer"]
+
+            visited = qid in st.session_state.viewed_ids
+            dot = "🔵" if visited else "⚪"
+
+            if st.button(f"{dot} {q}", key=f"top_{idx}_{safe_key(qid)}"):
+                if qid in st.session_state.open_ids:
+                    st.session_state.open_ids.remove(qid)
+                else:
+                    st.session_state.open_ids.add(qid)
+                    st.session_state.viewed_ids.add(qid)
+                st.rerun()
+
+            # answer directly below the question
+            if qid in st.session_state.open_ids:
+                with st.expander("", expanded=True):
+                    st.write(a)
+
+        if st.button("See more…"):
+            st.session_state.show_more = True
+            st.rerun()
+
+    # -------- All questions --------
     else:
-        st.subheader(f"Illustrating: {data['topic']}")
+        st.markdown("### All questions")
 
-        if show_raw:
-            st.markdown("### Raw response")
-            st.json(data)
+        for cat, items in categories.items():
+            st.markdown(f"#### {cat}")
+            for qa in items:
+                if not qa.get("question") or not qa.get("answer"):
+                    continue
 
-        illustrations = data.get("illustrations", {})
-        for k, v in illustrations.items():
-            st.markdown(f"**{k.replace('_',' ').title()}**")
-            st.write("• " + str(v))
+                qid = qa_id(qa, cat.lower().replace(" ", "_"))
+                q = qa["question"]
+                a = qa["answer"]
+
+                visited = qid in st.session_state.viewed_ids
+                dot = "🔵" if visited else "⚪"
+
+                if st.button(f"{dot} {q}", key=f"all_{safe_key(qid)}"):
+                    if qid in st.session_state.open_ids:
+                        st.session_state.open_ids.remove(qid)
+                    else:
+                        st.session_state.open_ids.add(qid)
+                        st.session_state.viewed_ids.add(qid)
+                    st.rerun()
+
+                if qid in st.session_state.open_ids:
+                    with st.expander("", expanded=True):
+                        st.write(a)
+
+        if st.button("Back"):
+            st.session_state.show_more = False
+            st.rerun()
 
 
+# ---------------- Illustrate: render ----------------
+ldata = st.session_state.illustrate_data
+lerr = st.session_state.illustrate_err
 
+if lerr:
+    st.error(lerr)
 
-
-
+if ldata and not lerr:
+    st.subheader(f"Illustrating: {ldata.get('topic','')}")
+    for k, v in (ldata.get("illustrations") or {}).items():
+        st.markdown(f"**{k.replace('_',' ').title()}**")
+        st.write(v)

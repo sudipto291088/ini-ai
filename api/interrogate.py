@@ -33,9 +33,46 @@ ARCHETYPE_MAP = {
     "Next steps": "NEXT",
 }
 
+ARCHETYPE_MAP.update({
+    "What": "ORIENT",
+    "Why": "ORIENT",
+    "How": "MECHANISM",
+    "Where": "APPLY",
+    "When": "ORIENT",
+    "Examples": "APPLY",
+    "Related Topics": "NEXT",
+    "Common Challenges": "RISK",
+    "Common Traps": "RISK",
+    "Decision Rule": "DECIDE",
+    "Differences": "COMPARE",
+    "Similarities": "COMPARE",
+    "Who Should Choose What": "DECIDE",
+})
 
 
 
+
+ERA_HOOKS = {
+    "Artificial Intelligence": {
+        "keywords": ["agent", "agentic", "generative", "foundation model"],
+        "notes": "Modern discussions often include generative models and agent-based systems."
+    },
+    "AI": {
+        "keywords": ["agent", "agentic", "generative"],
+        "notes": "Current AI focuses heavily on generative and agent-like capabilities."
+    },
+    "Machine Learning": {
+        "keywords": ["deep learning", "transformers"],
+        "notes": "Recent ML progress is driven largely by deep learning architectures."
+    }
+}
+
+
+def get_era_note(topic):
+    for key, data in ERA_HOOKS.items():
+        if key.lower() in topic.lower():
+            return data["notes"]
+    return None
 
 
 
@@ -339,8 +376,6 @@ def extract_topic(user_text: str) -> str:
         "i would wish to understand",
         "i desire to understand",
         "i would desire to understand",
-        "i want to learn"
-        "i would like to learn",
         "i need to learn",
         "could you help me learn",
         "would you help me learn",
@@ -351,8 +386,6 @@ def extract_topic(user_text: str) -> str:
         "could you help me learn",
         "would you help me learn",
         "please help me learn",
-        "i want to learn",
-        "i would like to learn",
         "i need to learn",
         "could you help me learn",
         "would you help me learn",
@@ -380,7 +413,7 @@ def extract_topic(user_text: str) -> str:
 def build_summary(topic: str, topic_type: str, confidence: float) -> list[str]:
     t = topic
 
-        # v0 override: "how to learn/..." is clear intent even if confidence is low
+    # v0 override: "how to learn/..." is clear intent even if confidence is low
     if topic_type == "skill":
         return [
             f"{t} is a skill you can build with practice.",
@@ -415,13 +448,6 @@ def build_summary(topic: str, topic_type: str, confidence: float) -> list[str]:
             f"{t} sounds like a troubleshooting problem.",
             "We’ll identify symptoms, reproduce the issue, and isolate the root cause.",
             "Then we’ll try the safest fix first and re-test.",
-        ]
-
-    if topic_type == "skill":
-        return [
-            f"{t} is a skill you can build with practice.",
-            "Progress comes from small drills, feedback loops, and clear milestones.",
-            "We’ll outline a beginner path and common mistakes to avoid.",
         ]
 
     # concept default
@@ -837,24 +863,42 @@ def _slug(s: str) -> str:
     return "".join(ch.lower() if ch.isalnum() else "_" for ch in s).strip("_")
 
 
+
+
+
+
+
+
+
 def build_answer(topic, topic_type, category, question, archetype):
     topic = topic.strip()
 
+    era_note = get_era_note(topic)
+
     if archetype == "ORIENT":
-        return (
-            f"{topic} is a concept that exists to address a specific problem or need. "
-            f"At a high level, it refers to how humans design systems, processes, or ideas "
-            f"to achieve better outcomes. This overview helps you frame what {topic} is "
-            f"before going into details."
-        )
+        base = (
+                    f"{topic} is a concept that exists to address a specific problem or need. "
+                    f"At a high level, it refers to how humans design systems, processes, or ideas "
+                    f"to achieve better outcomes."
+    )    
+        if era_note:
+            base += " " + era_note
+        return base
+
 
     if archetype == "MECHANISM":
-        return (
+        base = (
             f"{topic} works by combining several components that interact with each other. "
             f"At a high level, inputs are processed through defined steps or models, "
             f"leading to outputs that improve decisions or actions. The exact mechanics "
             f"depend on the specific system or implementation."
         )
+        
+        if era_note:
+            base += " " + era_note
+        return base
+
+
 
     if archetype == "APPLY":
         return (
@@ -864,11 +908,14 @@ def build_answer(topic, topic_type, category, question, archetype):
         )
 
     if archetype == "LEARN":
-        return (
+        base = (
             f"To learn {topic}, start with the fundamentals and build gradually. "
             f"Focus first on core concepts, then practice applying them through small exercises "
             f"or projects. Consistent practice and real-world exposure matter more than speed."
         )
+        if era_note:
+            base += " " + era_note
+        return base
 
     if archetype == "COMPARE":
         return (
@@ -918,7 +965,7 @@ def attach_answers(categories: dict, topic: str, topic_type: str) -> dict:
                 "id": f"{cat_id}_{i}",
                 "archetype": archetype,
                 "question": q,
-                "answer": build_answer(topic, topic_type, cat, q,archetype)
+                "answer": build_answer(topic, topic_type, cat, q, archetype)
             })
         out[cat] = items
     return out
@@ -959,7 +1006,7 @@ def interrogate(topic: str) -> Dict[str, object]:
 
     notes = [
         "v0: template-based interrogation (no external knowledge yet).",
-        "Next: add topic-type detection (concept vs skill vs decision vs troubleshooting).",
+        "v0: archetype-aware answers + ordered understanding flow.",
     ]
 
     quick_examples = build_quick_examples(clean_topic, topic_type, confidence)
@@ -968,12 +1015,21 @@ def interrogate(topic: str) -> Dict[str, object]:
 
 
     ordered_categories = {}
+    seen = set()
+    
     for arch in ARCHETYPE_ORDER:
         for cat, items in qa_categories.items():
-            if items and items[0].get("archetype") == arch:
+            if items and items[0].get("archetype") == arch and cat not in seen:
                 ordered_categories[cat] = items
+                seen.add(cat)
+
+    # Keep anything we didn't classify explicitly (so nothing disappears)for cat, items in qa_categories.items():
+    for cat, items in qa_categories.items():
+        if cat not in seen:
+            ordered_categories[cat] = items
 
     qa_categories = ordered_categories
+
 
 
 
