@@ -4,6 +4,29 @@ import requests
 
 st.set_page_config(page_title="InI.ai", layout="centered")
 
+st.markdown("""
+<style>
+/* Slightly tighter spacing */
+.block-container { padding-top: 2rem; padding-bottom: 2rem; }
+
+/* Make expanders look like “answer cards” */
+div[data-testid="stExpander"] details {
+  border: 1px solid rgba(49,51,63,0.15);
+  border-radius: 12px;
+  padding: 0.25rem 0.75rem;
+  background: rgba(255,255,255,0.55);
+}
+
+/* Make expander header text a bit stronger */
+div[data-testid="stExpander"] summary {
+  font-weight: 650;
+}
+
+/* Make topic input label lighter */
+label { font-weight: 600; }
+</style>
+""", unsafe_allow_html=True)
+
 API_BASE = "http://127.0.0.1:8000"
 
 
@@ -116,6 +139,11 @@ if idata and not ierr:
                 if qa.get("question") and qa.get("answer"):
                     flat.append((cat, qa))
 
+    # ONE clear button (works in both views)
+    if st.button("Clear opened answers", key="clear_opened"):
+        st.session_state.open_ids = set()
+        st.rerun()
+
     # -------- Top 7 --------
     if not st.session_state.show_more:
         st.markdown("### Top most questions")
@@ -141,7 +169,7 @@ if idata and not ierr:
                 with st.expander("", expanded=True):
                     st.write(a)
 
-        if st.button("See more…"):
+        if st.button("See more…", key="see_more_btn"):
             st.session_state.show_more = True
             st.rerun()
 
@@ -174,7 +202,7 @@ if idata and not ierr:
                     with st.expander("", expanded=True):
                         st.write(a)
 
-        if st.button("Back"):
+        if st.button("Back", key="back_btn"):
             st.session_state.show_more = False
             st.rerun()
 
