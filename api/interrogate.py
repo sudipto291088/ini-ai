@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Dict, List
 
 
-
 ARCHETYPE_ORDER = [
     "ORIENT",
     "MECHANISM",
@@ -50,8 +49,6 @@ ARCHETYPE_MAP.update({
 })
 
 
-
-
 ERA_HOOKS = {
     "Artificial Intelligence": {
         "keywords": ["agent", "agentic", "generative", "foundation model"],
@@ -75,9 +72,6 @@ def get_era_note(topic):
     return None
 
 
-
-
-
 def extract_topic(user_text: str) -> str:
     """
     Extract a clean topic phrase from a natural language user prompt.
@@ -85,7 +79,6 @@ def extract_topic(user_text: str) -> str:
     """
     t = user_text.strip().lower()
 
-    # Common leading phrases to strip
     prefixes = [
         "can you teach me about",
         "about",
@@ -98,302 +91,16 @@ def extract_topic(user_text: str) -> str:
         "i want to learn about",
         "i would like to learn about",
         "could you explain",
-        "hi there, explain",
-        "hello, explain",
         "please explain",
-        " hi, tell me about",
-        " hello, tell me about",
-        " please tell me about",
-        "whats up with",
-        "what's up with",
-        "i want to know about",
-        "i would like to know about",
-        "i want to understand",
-        "whats up",
-        "what's up",
-        "can you explain",
-        "how do i",
-        "how to",
-        "give me information on",
-        "give me details on",
-        "provide insights on",
-        "i need to know about",
-        "information about",
-        "details about",
-        "insights about",
-        "i'm interested in",
-        "i am interested in",
-        "looking for information on",
-        "looking for details on",
-        "looking for insights on",
         "could you tell me about",
-        "would you explain",
-        "please explain",
-        "what do you know about",
-        "what do you know about",
         "give me an overview of",
         "overview of",
         "summary of",
-        "i want to understand",
-        "help me with",
-        "assist me with",
-        "i have a question about",
-        "my question is about",
-        "teach me",
-        "learn about",
-        "information on",
-        "details on",
-        "insights on",
-        "explanation of",
-        "whose",
-        "who is",
-        "where is",
-        "when is",
-        "why is",
-        "how is",
-        "what's",
-        "whats",
-        "define",
-        "definition of",
-        "describe",
-        "description of",
-        "i want to know",
-        "i would like to know",
-        "could you tell me about",
-        "would you tell me about",
-        "please tell me about",
-        "give me a brief on",
-        "brief on",
-        "i'm curious about",
-        "i am curious about",
-        "can you explain",        
-        "would you explain",
-        "please explain",
-        "what are the basics of",
-        "basics of",
-        "fundamentals of",
-        "introduction to",
-        "intro to",
-        "i need help with",
-        "assist me in understanding",
-        "help me in understanding",
-        "i want assistance with",
-        "i would like assistance with",
-        "could you assist me with",
-        "would you assist me with",
-        "please assist me with",
-        "what probably is",
-        "what likely is",
-        "what generally is",
-        "what typically is",
-        "what possibly is",
-        "give me clarity on",
-        "clarity on",
-        "shed light on",
-        "i seek knowledge on",
-        "i am seeking knowledge on",
-        "i would like to learn about",
-        "i want to gain knowledge on",
-        "i would like to gain knowledge on",
-        "could you provide information on",
-        "would you provide information on",
-        "please provide information on",
-        "i'm looking to understand",
-        "i'm looking to explore",
-        "i look forward to explore",
-        "i am looking to understand",
-        "i would like to understand",
-        "i want to explore",
-        "i would like to explore",
-        "could you explore",
-        "would you explore",
-        "please explore",
-        "give me insights into",
-        "insights into",
-        "i need insights into",
-        "i would like insights into",
-        "could you give me insights into",
-        "would you give me insights into",
-        "please give me insights into",
-        "wish you could explain",
-        "hope you can explain",
-        "looking forward to understanding",
-        "looking forward to exploring",
-        "wish you could tell me about",
-        "hope you can tell me about",
-        'please shed light on',
-        'could you shed light on',
-        'would you shed light on',
-        "please teach me about",
-        "could you teach me about",
-        "would you teach me about",
-        "please help me understand",
-        "could you help me understand",
-        "would you help me understand",
-        "i'm eager to learn about",
-        "i am eager to learn about",
-        "i would be eager to learn about",
-        "i'm keen to learn about",
-        "mind telling me about",
-        "would you mind telling me about",
-        "could you mind telling me about",
-        "please mind telling me about",
-        "i'm fascinated by",
-        "i am fascinated by",
-        "i would like to be fascinated by",
-        "could you fascinate me with",
-        "would you fascinate me with",
-        "please fascinate me with",
-        "i want to be fascinated by",
-        "i would like to be fascinated by",
-        "could you fascinate me with",
-        "would you fascinate me with",
-        "please fascinate me with",
         "explain to me",
         "could you explain to me",
-        "could you explain to me about",
-        "would you explain to me",
         "please explain to me",
-        "what could we know about",
-        "what can we know about",
-        "what would we know about",
-        "what should we know about",
-        "what do we know about",
-        "what is the current understanding of",
-        "what is the latest information on",
-        "what is the most recent update on",
-        "what is the most up-to-date information on",
-        "what is the most current knowledge on",
-        "what is the most recent knowledge on",
-        "what is the most up-to-date understanding of",
-        "what is the most current understanding of",
-        "what do experts say about",
-        "what do specialists say about",
-        "what do professionals say about",
-        "what do authorities say about",
-        "what do researchers say about",
-        "what do scholars say about",
-        "what do academics say about",
-        "what do scientists say about",
-        "what do analysts say about",
-        "what do commentators say about",
-        "what do critics say about",
-        "what do reviewers say about",
-        "what do observers say about",
-        "what do insiders say about",
-        "what do outsiders say about",
-        "what do insiders say about",
-        "what do outsiders say about",
-        "could you provide insights on",
-        "would you provide insights on",
-        "please provide insights on",
-        "what are the fundamentals of",
-        "fundamentals of",
-        "what could possibly be",
-        "what can possibly be",
-        "what would possibly be",
-        "what should possibly be",
-        "what might possibly be",
-        "what may possibly be",
-        "what is possibly be",
-        "what are possibly be",
-        "what could probably be",
-        "what can probably be",
-        "what would probably be",
-        "what should probably be",
-        "what might probably be",
-        "what may probably be",
-        "what is probably be",
-        "what are probably be",
-        "what could generally be",
-        "what can generally be",
-        "what would generally be",
-        "what should generally be",
-        "what might generally be",
-        "what may generally be",
-        "what is generally be",
-        "what are generally be",
-        "what could typically be",
-        "what can typically be",
-        "what would typically be",
-        "what should typically be",
-        "what might typically be",
-        "what may typically be",
-        "what is typically be",
-        "what are typically be",    
-        "what could likely be",
-        "what can likely be",
-        "what would likely be",
-        "what should likely be",
-        "what might likely be",
-        "what may likely be",
-        "what is likely be",
-        "what are likely be",
-        "what are the chances of",
-        "what is the likelihood of",
-        "what are teh topics on",
-        "what topics are on",
-        "topics on",
-        "topics about",
-        "could you give me an overview of",
-        "would you give me an overview of",
-        "please give me an overview of",
-        "give me an overview of",
-        "overview of",
-        "summary of",
-        "could you give me a brief on",
-        "would you give me a brief on",
-        "please give me a brief on",
-        "give me a brief on",
-        "brief on",
-        "explain like i'm five",
-        "explain like im five",
-        "explain like i'm 5",
-        "explain like im 5",
-        "explain like a beginner",
-        "explain like beginner",
-        "explain like a novice",
-        "explain like novice",
-        "in simple terms",
-        "in layman's terms",
-        "in laymans terms",
-        "in simple language",
-        "in easy terms",
-        "in easy language",
-        "for dummies",
-        "for beginners",
-        "for novices",
-        "for newbies",
-        "for newbs",
-        "for starters",
-        "I want to understand",
-        "i would like to understand",
-        "i need to understand",
-        "could you help me understand",
-        "would you help me understand",
-        "please help me understand",
-        "i wish to understand",
-        "i would wish to understand",
-        "i desire to understand",
-        "i would desire to understand",
-        "i need to learn",
-        "could you help me learn",
-        "would you help me learn",
-        "please help me learn",
-        "i want to learn",
-        "i would like to learn",
-        "i need to learn",
-        "could you help me learn",
-        "would you help me learn",
-        "please help me learn",
-        "i need to learn",
-        "could you help me learn",
-        "would you help me learn",
-        "educate me about",
-        "could you educate me about",
-        "would you educate me about",
-        "please educate me about",
-        
+        "how do i",
+        "how to",
     ]
 
     for p in sorted(prefixes, key=len, reverse=True):
@@ -401,26 +108,20 @@ def extract_topic(user_text: str) -> str:
             t = t[len(p):].strip()
             break
 
-    # Remove trailing punctuation
     t = t.rstrip("?.!")
-
-    # Capitalize nicely (simple heuristic)
     t = " ".join(word.capitalize() for word in t.split())
-
     return t
 
 
 def build_summary(topic: str, topic_type: str, confidence: float) -> list[str]:
     t = topic
 
-    # v0 override: "how to learn/..." is clear intent even if confidence is low
     if topic_type == "skill":
         return [
             f"{t} is a skill you can build with practice.",
             "Progress comes from small drills, feedback loops, and clear milestones.",
             "We’ll outline a beginner path and common mistakes to avoid.",
         ]
-
 
     if confidence < 0.5 and len(topic.split()) <= 4:
         return [
@@ -450,57 +151,11 @@ def build_summary(topic: str, topic_type: str, confidence: float) -> list[str]:
             "Then we’ll try the safest fix first and re-test.",
         ]
 
-    # concept default
     return [
         f"{t} is a concept/topic to understand clearly.",
         "We’ll define it simply, break it into parts, and connect it to real-world use.",
         "Then we’ll test understanding using focused questions and examples.",
     ]
-
-
-
-def build_illustrations(topic: str, topic_type: str) -> dict:
-    t = topic
-
-    if topic_type == "troubleshooting":
-        return {
-            "symptom": f"A real-world symptom where {t} appears.",
-            "root_cause": "A common underlying cause for this issue.",
-            "fix": "A safe first fix most people should try.",
-            "prevention": "How to avoid this issue in the future.",
-        }
-
-    if topic_type == "decision":
-        return {
-            "option_a": f"Scenario where choosing one option in {t} makes sense.",
-            "option_b": f"Scenario where the alternative is better.",
-            "tradeoff": "What you gain vs what you give up.",
-            "regret_case": "A common regret people report after deciding poorly.",
-        }
-
-    if topic_type == "skill":
-        return {
-            "beginner": f"A beginner practicing {t} for the first time.",
-            "practice": "A concrete practice exercise.",
-            "mistake": "A mistake beginners commonly make.",
-            "progress": "What improvement looks like after consistent practice.",
-        }
-
-    if topic_type == "comparison":
-        return {
-            "side_by_side": f"A vs B comparison scenario for {t}.",
-            "winner_case": "When option A clearly wins.",
-            "loser_case": "When option B is the wrong choice.",
-            "tie_case": "When both options are equally acceptable.",
-        }
-
-    # default: concept
-    return {
-        "everyday": f"An everyday example of {t}.",
-        "work": f"A professional use of {t}.",
-        "analogy": f"An analogy to explain {t} simply.",
-        "failure": f"What goes wrong without understanding {t}.",
-    }
 
 
 def detect_topic_type(topic: str) -> tuple[str, float]:
@@ -512,7 +167,7 @@ def detect_topic_type(topic: str) -> tuple[str, float]:
     ]
 
     decision_signals = [
-        "should i", "or", "better", "which",
+        "should i", "better", "which",
         "choose", "leasing", "buying"
     ]
 
@@ -521,42 +176,30 @@ def detect_topic_type(topic: str) -> tuple[str, float]:
         "programming", "using", "develop"
     ]
 
-    comparison_signals = [" vs ", " vs", "vs ", "vs", " versus ", "versus", "compare", "comparison"]
+    comparison_signals = [" vs ", " versus ", "compare", "comparison"]
     if any(s in t for s in comparison_signals):
-        # treat explicit comparisons as their own type
         return "comparison", 0.67
-
 
     scores = {
         "troubleshooting": sum(s in t for s in troubleshooting_signals),
         "decision": sum(s in t for s in decision_signals),
         "skill": sum(s in t for s in skill_signals),
-        "concept": 1,  # default baseline
-        "comparison": sum(s in t for s in comparison_signals),
+        "concept": 1,
     }
-
-    
 
     topic_type = max(scores, key=scores.get)
     max_score = scores[topic_type]
-
     confidence = min(1.0, max_score / 3)
 
-    # v0: avoid under-confident "concept" for clean topic phrases
     if topic_type == "concept" and max_score <= 1:
         confidence = 0.67
 
-
     return topic_type, round(confidence, 2)
-
-
-
 
 
 def build_quick_examples(topic: str, topic_type: str, confidence: float) -> list[str]:
     t = topic
 
-    # If we're uncertain, keep it extra short + safe
     if confidence < 0.5:
         return [
             f"Everyday: a simple place you might notice {t}.",
@@ -591,7 +234,6 @@ def build_quick_examples(topic: str, topic_type: str, confidence: float) -> list
             "Progress sign: you can explain it in 2 sentences + do a tiny demo.",
         ]
 
-    # default: concept
     return [
         f"Everyday: a simple example of {t}.",
         f"Work: how {t} shows up in a job or project.",
@@ -599,12 +241,9 @@ def build_quick_examples(topic: str, topic_type: str, confidence: float) -> list
     ]
 
 
-
-
 def build_categories(topic: str, topic_type: str) -> dict:
     t = topic
 
-   
     if topic_type == "troubleshooting":
         return {
             "Describe": [
@@ -675,56 +314,36 @@ def build_categories(topic: str, topic_type: str) -> dict:
                 "What does intermediate/advanced look like?",
                 "What projects prove competence?",
             ],
-
             "Common Mistakes": [
-    f"What are the top 3 beginner mistakes in {t}?",
-    "What habit causes most people to plateau?",
-],
-
-            "Resources": [
-    f"What are the best resources to learn {t} effectively?",
-    f"What communities or groups focus on {t}?",
-],
-
-"who": [
-    f"Who are the top experts or influencers in {t}?",
-    f"Who created or pioneered {t}?",
-],
-
-"Common Traps": [
-    f"What do people commonly overlook when deciding about {t}?",
-    "What terms/conditions should be read carefully?",
-],
-
+                f"What are the top 3 beginner mistakes in {t}?",
+                "What habit causes most people to plateau?",
+            ],
         }
-    
 
     if topic_type == "comparison":
         return {
-                    "Define": [
-                                    f"What is {t} comparing, exactly (A vs B)?",
-                                     "What is the real goal behind this comparison?",
-        ],
-        "Similarities": [
-            "In what ways are the two options similar?",
-            "What do they both do well?",
-        ],
-        "Differences": [
-            "What are the biggest differences (features, cost, risk, complexity)?",
-            "What difference matters most for your situation?",
-        ],
-        "Who Should Choose What": [
-            "Who should choose option A, and who should choose option B?",
-            "What’s the most common wrong choice people make here?",
-        ],
-        "Decision Rule": [
-            "What simple rule can decide quickly?",
-            "What’s the ‘good enough’ choice if you’re unsure?",
-        ],
-    }
+            "Define": [
+                f"What is {t} comparing, exactly (A vs B)?",
+                "What is the real goal behind this comparison?",
+            ],
+            "Similarities": [
+                "In what ways are the two options similar?",
+                "What do they both do well?",
+            ],
+            "Differences": [
+                "What are the biggest differences (features, cost, risk, complexity)?",
+                "What difference matters most for your situation?",
+            ],
+            "Who Should Choose What": [
+                "Who should choose option A, and who should choose option B?",
+                "What’s the most common wrong choice people make here?",
+            ],
+            "Decision Rule": [
+                "What simple rule can decide quickly?",
+                "What’s the ‘good enough’ choice if you’re unsure?",
+            ],
+        }
 
-
-    # default: concept
     return {
         "What": [
             f"What is {t} in plain language?",
@@ -732,9 +351,6 @@ def build_categories(topic: str, topic_type: str) -> dict:
             f"What problem does {t} exist to solve?",
             f"What are the main benefits of {t}?",
             f"What are the limitations or downsides of {t}?",
-            f"What are common use cases for {t}?",
-            f"What are the important topics to understand about {t}?",
-            f"What terminology should I know related to {t}?",
         ],
         "Why": [
             f"Why does {t} matter?",
@@ -755,46 +371,32 @@ def build_categories(topic: str, topic_type: str) -> dict:
             f"Where does {t} usually fail or break in practice?",
         ],
         "Misconceptions": [
-    f"What is a common misconception about {t}?",
-    f"What is {t} often confused with?",
-],
+            f"What is a common misconception about {t}?",
+            f"What is {t} often confused with?",
+        ],
         "Examples": [
-    f"What is a simple example that illustrates {t}?",
-    f"What are some real-world examples of {t} in action?",
-],
+            f"What is a simple example that illustrates {t}?",
+            f"What are some real-world examples of {t} in action?",
+        ],
         "Related Topics": [
-    f"What topics are closely related to {t}?",
-    f"How does {t} connect to other important concepts?",
-],
-    "how to": [
-    f"What are the first steps to get started with {t}?",
-    f"What resources are best for learning {t}?",
-],
-
-    "Common Challenges": [
-    f"What are common challenges people face when learning {t}?",
-    f"What pitfalls should I avoid when studying {t}?",
-],
-    "who": [
-    f"Who are the leading experts or influencers in the field of {t}?",
-    f"Who created or discovered {t}?",
-],
-
-
-
+            f"What topics are closely related to {t}?",
+            f"How does {t} connect to other important concepts?",
+        ],
+        "how to": [
+            f"What are the first steps to get started with {t}?",
+            f"What resources are best for learning {t}?",
+        ],
+        "who": [
+            f"Who are the leading experts or influencers in the field of {t}?",
+            f"Who created or discovered {t}?",
+        ],
     }
 
 
 def dedupe_questions(categories: dict) -> dict:
-    """
-    Remove duplicate / near-duplicate questions within each category.
-    v0: simple normalization-based dedupe.
-    """
     def norm(q: str) -> str:
-        q = q.strip().lower()
-        q = q.replace("?", "")
-        q = " ".join(q.split())
-        return q
+        q = q.strip().lower().replace("?", "")
+        return " ".join(q.split())
 
     cleaned = {}
     for cat, qs in categories.items():
@@ -809,33 +411,8 @@ def dedupe_questions(categories: dict) -> dict:
     return cleaned
 
 
-
-def dedupe_across_categories(categories: dict) -> dict:
-    """
-    Remove repeated questions across categories (global dedupe).
-    Keeps the first occurrence and drops later duplicates.
-    v0: normalization-based.
-    """
-    def norm(q: str) -> str:
-        q = q.strip().lower()
-        q = q.replace("?", "")
-        q = " ".join(q.split())
-        return q
-
-    seen = set()
-    out = {}
-    for cat, qs in categories.items():
-        kept = []
-        for q in qs:
-            k = norm(q)
-            if k not in seen:
-                seen.add(k)
-                kept.append(q)
-        out[cat] = kept
-    return out
-
-
-
+def cap_categories(categories: dict, max_per_category: int = 5) -> dict:
+    return {cat: qs[:max_per_category] for cat, qs in categories.items()}
 
 
 def clarification_for(topic: str, topic_type: str) -> str:
@@ -846,28 +423,153 @@ def clarification_for(topic: str, topic_type: str) -> str:
         return f"Are you deciding between options related to {t}? If yes, what constraints matter most (cost, time, risk)?"
     if topic_type == "skill":
         return f"Do you want to learn {t} (a skill), or understand {t} as a concept?"
-    # concept / fallback
     return f"Do you want a simple definition of {t}, or a deeper explanation with examples?"
-
-
-
-
-def cap_categories(categories: dict, max_per_category: int = 5) -> dict:
-    capped = {}
-    for cat, qs in categories.items():
-        capped[cat] = qs[:max_per_category]
-    return capped
 
 
 def _slug(s: str) -> str:
     return "".join(ch.lower() if ch.isalnum() else "_" for ch in s).strip("_")
 
 
+# ----------------------------
+# ORIENT: intent-aware answers
+# ----------------------------
 
+def _orient_answer(topic: str, question: str = "", category: str = "") -> str:
+    """
+    ORIENT answers must match the user's intent:
+    definition vs components vs benefits vs limitations vs history vs confusion, etc.
+    """
+    t = (topic or "").strip()
+    tl = t.lower()
+    q = (question or "").strip().lower()
+    c = (category or "").strip().lower()
 
+    era_note = get_era_note(t)
 
+    ai_signals = [
+        "artificial intelligence", "machine learning", "deep learning", "neural network",
+        "transformer", "llm", "large language model", "generative ai", "genai",
+        "agentic", "foundation model"
+    ]
+    is_ai = ("ai" == tl) or (" ai" in f" {tl} ") or any(sig in tl for sig in ai_signals)
 
+    if is_ai:
+        # Definition / plain meaning
+        if ("what is" in q) or ("plain language" in q) or (c == "what"):
+            parts = [
+                "Artificial Intelligence (AI) is a machine-based way to achieve human-defined goals by making predictions, recommendations, or decisions from data.",
+                "In everyday terms: AI is software that learns patterns from examples and uses them to understand, generate, or decide.",
+                "AI is not consciousness or human-like understanding by default; it is limited by its data, objective, and design.",
+            ]
+            if era_note:
+                parts.append(era_note)
+            return "\n\n".join(parts)
 
+        # Key parts/components
+        if ("key parts" in q) or ("components" in q):
+            parts = [
+                "At a high level, modern AI systems usually include:",
+                "• Data (examples the system learns from)\n• A model (the pattern-learning engine)\n• An objective (what it is optimized to do)\n• Training/evaluation (how it learns + is tested)\n• Deployment + monitoring (how it’s used and kept reliable).",
+                "AI is not just 'the model'—it’s the full pipeline from data to behavior.",
+            ]
+            if era_note:
+                parts.append(era_note)
+            return "\n\n".join(parts)
+
+        # Problem it exists to solve
+        if ("what problem" in q) or ("exist to solve" in q):
+            parts = [
+                "AI exists to automate or augment tasks where writing explicit step-by-step rules is too hard, too slow, or too brittle.",
+                "It’s most useful for pattern-heavy problems (language, images, forecasting, ranking, anomaly detection).",
+                "AI is not the best tool when you need guaranteed correctness, strict rules, or fully transparent logic.",
+            ]
+            if era_note:
+                parts.append(era_note)
+            return "\n\n".join(parts)
+
+        # Benefits
+        if ("benefits" in q):
+            return "\n\n".join([
+                "AI can improve speed, scale, and consistency in tasks like classification, search, summarization, personalization, and prediction.",
+                "It can also unlock capabilities (translation, drafting, detection of subtle patterns) that are difficult to do manually at scale.",
+                "AI is not guaranteed to be correct—benefits depend on data quality, evaluation, and guardrails.",
+            ])
+
+        # Limitations / downsides
+        if ("limitations" in q) or ("downsides" in q):
+            return "\n\n".join([
+                "AI can be wrong in confident ways, inherit bias from data, and break when the real world changes (data drift).",
+                "It can be hard to explain, hard to audit, and risky when connected to tools or sensitive data without safeguards.",
+                "AI is not a substitute for responsibility—high-stakes use needs testing, monitoring, and human oversight.",
+            ])
+
+        # Why it matters
+        if (c == "why") or ("why does" in q):
+            return "\n\n".join([
+                "AI matters because it shifts work from manual effort to automated pattern recognition and decision support—changing productivity across industries.",
+                "It also changes what skills are valuable (evaluation, tool use, data literacy, governance).",
+                "AI is not 'just another app'—it’s becoming a general-purpose capability embedded into many products.",
+            ])
+
+        # History/context
+        if ("history" in q) or ("become necessary" in q):
+            return "\n\n".join([
+                "AI became practical as computing power, data availability, and machine learning techniques improved.",
+                "Recent breakthroughs came from deep learning and transformer-based models, enabling large-scale language and multimodal systems.",
+                "AI is not new—but the recent jump is the scale and generality of modern models.",
+            ])
+
+        # Confusion
+        if ("confused" in q):
+            return "\n\n".join([
+                "People get confused because 'AI' is an umbrella term for many things: rules, machine learning, deep learning, generative AI, and agents.",
+                "A simple clarity rule: ML learns from data; deep learning is ML with neural nets; generative AI produces new content; agentic AI can plan/act toward goals.",
+                "AI is not one single technology—it’s a family of approaches.",
+            ])
+
+        # When to use/avoid
+        if (c == "when") or ("when should" in q):
+            return "\n\n".join([
+                "Use AI when the task is pattern-based, you can test it, and errors are manageable or can be caught.",
+                "Avoid AI when you need guaranteed correctness, strict interpretability, or when errors cause high harm (unless you add strong controls).",
+                "AI is not a silver bullet—use it where it measurably improves outcomes.",
+            ])
+
+        # Learning/resources
+        if (c == "how to") or ("first steps" in q) or ("resources" in q):
+            return "\n\n".join([
+                "A good starting path is: (1) understand what machine learning is, (2) learn how models are trained/evaluated, (3) build tiny projects with real data.",
+                "Then explore modern areas like generative AI and agentic systems as extensions of fundamentals, not replacements.",
+                "AI is not learned by theory alone—small builds + evaluation habits matter.",
+            ])
+
+        # Who created / experts
+        if (c == "who") or ("who created" in q) or ("who are" in q):
+            return "\n\n".join([
+                "AI has no single creator; it emerged from many researchers across computer science, math, and cognitive science over decades.",
+                "If you want, we can later add a curated 'key contributors' list as a separate knowledge layer (v1), because names change by subfield (ML, NLP, vision, agents).",
+                "AI is not one person’s invention—it’s a field.",
+            ])
+
+        # Fallback for AI topic
+        parts = [
+            "AI is a machine-based way to achieve human-defined objectives using data-driven models.",
+            "Modern AI learns patterns from data to predict, generate, or decide.",
+            "AI is not human-like understanding by default; it has limits and needs evaluation.",
+        ]
+        if era_note:
+            parts.append(era_note)
+        return "\n\n".join(parts)
+
+    # Generic ORIENT fallback
+    parts = [
+        f"{t} is a clearly defined idea, system, or practice people use to achieve a goal or solve a problem.",
+        "To orient yourself fast: define it, identify its purpose, and understand its limits.",
+        f"{t} is not a vague buzzword; it has boundaries and tradeoffs in real use.",
+    ]
+    if era_note:
+        parts.append(era_note)
+    return "\n\n".join(parts)
 
 
 def build_answer(topic, topic_type, category, question, archetype):
@@ -876,15 +578,7 @@ def build_answer(topic, topic_type, category, question, archetype):
     era_note = get_era_note(topic)
 
     if archetype == "ORIENT":
-        base = (
-                    f"{topic} is a concept that exists to address a specific problem or need. "
-                    f"At a high level, it refers to how humans design systems, processes, or ideas "
-                    f"to achieve better outcomes."
-    )    
-        if era_note:
-            base += " " + era_note
-        return base
-
+        return _orient_answer(topic, question=question, category=category)
 
     if archetype == "MECHANISM":
         base = (
@@ -893,12 +587,9 @@ def build_answer(topic, topic_type, category, question, archetype):
             f"leading to outputs that improve decisions or actions. The exact mechanics "
             f"depend on the specific system or implementation."
         )
-        
         if era_note:
             base += " " + era_note
         return base
-
-
 
     if archetype == "APPLY":
         return (
@@ -945,22 +636,16 @@ def build_answer(topic, topic_type, category, question, archetype):
             f"or deepening one specific area rather than trying to learn everything at once."
         )
 
-    # fallback (should rarely hit)
     return f"This question relates to {topic}. Consider exploring it step by step for clarity."
 
-    
 
 def attach_answers(categories: dict, topic: str, topic_type: str) -> dict:
-    """
-    Convert category -> [question str] into category -> [{id, question, answer}]
-    """
     out = {}
     for cat, qs in categories.items():
         items = []
         cat_id = _slug(cat)
         for i, q in enumerate(qs, start=1):
             archetype = ARCHETYPE_MAP.get(cat, "ORIENT")
-
             items.append({
                 "id": f"{cat_id}_{i}",
                 "archetype": archetype,
@@ -971,28 +656,11 @@ def attach_answers(categories: dict, topic: str, topic_type: str) -> dict:
     return out
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 def interrogate(topic: str) -> Dict[str, object]:
-    """
-    Return structured, relevant interrogative questions for a topic.
-    v0 intelligence: templates + light normalization.
-    """
     clean_topic = extract_topic(topic)
     if not clean_topic:
         return {"topic": topic, "categories": {}, "notes": ["Empty topic received."]}
-    
+
     topic_type, confidence = detect_topic_type(clean_topic)
     summary = build_summary(clean_topic, topic_type, confidence)
     needs_clarification = confidence < 0.5
@@ -1000,9 +668,7 @@ def interrogate(topic: str) -> Dict[str, object]:
 
     categories = build_categories(clean_topic, topic_type)
     categories = dedupe_questions(categories)
-    categories = dedupe_across_categories(categories)
     categories = cap_categories(categories, max_per_category=5)
-
 
     notes = [
         "v0: template-based interrogation (no external knowledge yet).",
@@ -1013,39 +679,27 @@ def interrogate(topic: str) -> Dict[str, object]:
 
     qa_categories = attach_answers(categories, clean_topic, topic_type)
 
-
+    # Order categories by archetype flow
     ordered_categories = {}
     seen = set()
-    
     for arch in ARCHETYPE_ORDER:
         for cat, items in qa_categories.items():
             if items and items[0].get("archetype") == arch and cat not in seen:
                 ordered_categories[cat] = items
                 seen.add(cat)
 
-    # Keep anything we didn't classify explicitly (so nothing disappears)for cat, items in qa_categories.items():
     for cat, items in qa_categories.items():
         if cat not in seen:
             ordered_categories[cat] = items
 
-    qa_categories = ordered_categories
-
-
-
-
-
-
     return {
-    "topic": clean_topic,
-    "topic_type": topic_type,
-    "categories": qa_categories,
-    "notes": notes,
-    "confidence": confidence,
-    "needs_clarification": needs_clarification,
-    "clarifying_question": clarifying_question,
-    "quick_examples": quick_examples,
-    "summary": summary
-
-}
-
-
+        "topic": clean_topic,
+        "topic_type": topic_type,
+        "categories": ordered_categories,
+        "notes": notes,
+        "confidence": confidence,
+        "needs_clarification": needs_clarification,
+        "clarifying_question": clarifying_question,
+        "quick_examples": quick_examples,
+        "summary": summary
+    }
