@@ -572,6 +572,184 @@ def _orient_answer(topic: str, question: str = "", category: str = "") -> str:
     return "\n\n".join(parts)
 
 
+
+def _mechanism_answer(topic: str, question: str = "", category: str = "", topic_type: str = "") -> str:
+    """
+    MECHANISM answers = how it works (mental model + steps + optional under-the-hood).
+    v0: still template-based, but intent-aware and topic-aware for AI family.
+    """
+    t = (topic or "").strip()
+    tl = t.lower()
+    q = (question or "").strip().lower()
+
+    era_note = get_era_note(t)
+
+    ai_signals = [
+        "artificial intelligence", "ai", "machine learning", "ml", "deep learning",
+        "neural network", "transformer", "llm", "large language model", "generative ai",
+        "genai", "agentic", "foundation model"
+    ]
+    is_ai = any(sig in tl for sig in ai_signals) or tl in {"ai", "ml"}
+
+    # --------------------
+    # AI / ML mechanism
+    # --------------------
+    if is_ai:
+        # intent: "high level"
+        if "high level" in q or "works" in q:
+            parts = [
+                "At a high level, modern AI works by learning patterns from data instead of following only hand-written rules.",
+                "The core loop is: collect data → train a model → evaluate it → deploy it → monitor and improve it over time.",
+                "Under the hood, many systems use neural networks that adjust parameters to minimize errors on training examples."
+            ]
+            if era_note:
+                parts.append(era_note)
+            return "\n\n".join(parts)
+
+        # intent: beginner learning steps (belongs to LEARN sometimes, but your MECHANISM question includes it)
+        if "beginners" in q or "first 3 steps" in q or "start learning" in q:
+            parts = [
+                "A practical way to start is to understand the mechanism in this order:",
+                "1) Learn what training data is and what a model predicts (inputs → outputs).",
+                "2) Learn the training loop (loss → optimization → evaluation).",
+                "3) Build a tiny project and measure results (accuracy, errors, failure cases).",
+            ]
+            if era_note:
+                parts.append(era_note)
+            return "\n\n".join(parts)
+
+        # intent: test understanding
+        if "tell if" in q or "truly understand" in q:
+            return "\n\n".join([
+                "You truly understand AI at a mechanism level when you can explain:",
+                "• what the inputs/outputs are\n• what data it learns from\n• what objective it optimizes\n• what can make it fail (bias, drift, weak data).",
+                "A quick test: describe how you would evaluate it and what metrics would prove it works."
+            ])
+
+        # fallback AI mechanism
+        parts = [
+            "AI works by learning statistical patterns from examples (data) and using those patterns to make predictions, generate outputs, or choose actions.",
+            "Most systems follow a pipeline: data → model → training → evaluation → deployment → monitoring."
+        ]
+        if era_note:
+            parts.append(era_note)
+        return "\n\n".join(parts)
+
+    # --------------------
+    # Generic mechanism fallback
+    # --------------------
+    parts = [
+        f"{t} works by taking inputs, applying a process or set of steps, and producing outputs that achieve a goal.",
+        "A useful way to understand the mechanism is: inputs → transformation steps → outputs → feedback/iteration.",
+        f"If you share the context (learning vs using vs building), the mechanism explanation can be made more exact for {t}."
+    ]
+    if era_note:
+        parts.append(era_note)
+    return "\n\n".join(parts)
+
+
+
+def _apply_answer(topic: str, question: str = "", category: str = "", topic_type: str = "") -> str:
+    """
+    APPLY answers = where it's used + concrete examples.
+    v0: topic-aware for AI family; generic fallback for everything else.
+    """
+    t = (topic or "").strip()
+    tl = t.lower()
+    q = (question or "").strip().lower()
+
+    ai_signals = [
+        "artificial intelligence", "ai", "machine learning", "ml", "deep learning",
+        "neural network", "transformer", "llm", "large language model", "generative ai",
+        "genai", "agentic", "foundation model"
+    ]
+    is_ai = any(sig in tl for sig in ai_signals) or tl in {"ai", "ml"}
+
+    # --------------------
+    # AI / ML examples
+    # --------------------
+    if is_ai:
+        # If the question is explicitly "simple example"
+        if "simple example" in q or "a simple example" in q:
+            return "\n\n".join([
+                "Simple example: email spam detection.",
+                "The system learns patterns from labeled emails (spam/not spam) and predicts whether a new email is spam.",
+                "Why it’s AI: it learns from examples rather than relying only on hard-coded rules."
+            ])
+
+        # If the question is "real-world examples"
+        if "real-world" in q or "in action" in q or "examples" in q:
+            return "\n\n".join([
+                "Real-world examples of AI:",
+                "• Search & ranking (Google/YouTube deciding what to show first)",
+                "• Recommendations (Netflix/Amazon suggesting items)",
+                "• Fraud detection (banks flagging unusual transactions)",
+                "• Customer support (chatbots + ticket triage)",
+                "• Generative AI (drafting text, code, images)."
+            ])
+
+        # If the question is "where used"
+        if "where is" in q or "used in real life" in q:
+            return "\n\n".join([
+                "AI shows up anywhere decisions or predictions are made from data at scale:",
+                "• Consumer apps (recommendations, translation, camera features)",
+                "• Business systems (forecasting, quality checks, routing/logistics)",
+                "• Security (fraud, anomaly detection, phishing filters)",
+                "• Creation tools (writing/code assistance, image generation)."
+            ])
+
+        # If the question is "where it fails"
+        if "fail" in q or "break" in q:
+            return "\n\n".join([
+                "AI often fails in practice when:",
+                "• The real-world data changes (data drift) and the model isn’t retrained",
+                "• Training data is biased or incomplete",
+                "• The task requires strict correctness (math, legal/medical) without guardrails",
+                "• The system is used outside the conditions it was tested for."
+            ])
+
+        # Fallback AI apply
+        return "\n\n".join([
+            "AI is applied when you need predictions/decisions at scale from patterns in data.",
+            "Examples include recommendations, search ranking, detection (fraud/spam), forecasting, and generative tools."
+        ])
+
+    # --------------------
+    # Generic fallback examples (non-AI)
+    # --------------------
+    if "simple example" in q:
+        return "\n\n".join([
+            f"Simple example of {t}:",
+            f"• One everyday situation where {t} shows up.",
+            "If you tell me your context (school/work/personal), I can make it more precise."
+        ])
+
+    if "real-world" in q or "in action" in q or "examples" in q:
+        return "\n\n".join([
+            f"Real-world examples of {t}:",
+            "• Example in everyday life",
+            "• Example in work/school",
+            "• Example in a product/tool people use"
+        ])
+
+    if "fail" in q or "break" in q:
+        return "\n\n".join([
+            f"{t} usually fails when:",
+            "• assumptions don’t hold",
+            "• people skip fundamentals",
+            "• the environment changes",
+            "• the method is applied outside its intended use"
+        ])
+
+    return "\n\n".join([
+        f"{t} is used in real situations where it helps achieve a goal or solve a recurring problem.",
+        "If you share your use-case, I can tailor the examples to your life (student/work/project)."
+    ])
+
+
+
+
+
 def build_answer(topic, topic_type, category, question, archetype):
     topic = topic.strip()
 
@@ -579,24 +757,14 @@ def build_answer(topic, topic_type, category, question, archetype):
 
     if archetype == "ORIENT":
         return _orient_answer(topic, question=question, category=category)
-
+    
     if archetype == "MECHANISM":
-        base = (
-            f"{topic} works by combining several components that interact with each other. "
-            f"At a high level, inputs are processed through defined steps or models, "
-            f"leading to outputs that improve decisions or actions. The exact mechanics "
-            f"depend on the specific system or implementation."
-        )
-        if era_note:
-            base += " " + era_note
-        return base
+        return _mechanism_answer(topic, question=question, category=category, topic_type=topic_type)
+
 
     if archetype == "APPLY":
-        return (
-            f"In real life, {topic} is used in practical scenarios such as workplaces, "
-            f"products, or everyday tools. These applications help solve real problems, "
-            f"improve efficiency, or enable new capabilities that were previously difficult."
-        )
+        return _apply_answer(topic, question=question, category=category, topic_type=topic_type)
+       
 
     if archetype == "LEARN":
         base = (
