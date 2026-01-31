@@ -32,6 +32,7 @@ ARCHETYPE_MAP = {
 
 # -----------------------------
 # Era awareness (light, v0)
+# (COHESION RULE: Only ORIENT mentions era note)
 # -----------------------------
 ERA_HOOKS = {
     "Artificial Intelligence": "Modern AI discussions include generative models and agentic systems.",
@@ -43,6 +44,50 @@ def get_era_note(topic: str) -> str | None:
     for k, v in ERA_HOOKS.items():
         if k.lower() in topic.lower():
             return v
+    return None
+
+
+# -----------------------------
+# Topic Core (COHESION ENGINE)
+# -----------------------------
+TOPIC_CORE = {
+    "artificial intelligence": {
+        "one_liner": "AI is software that achieves goals by learning patterns from data to predict, generate, or decide.",
+        "mechanism": [
+            "Pipeline: data → model → training (optimize loss) → evaluation → deployment → monitoring.",
+            "Under the hood: models adjust parameters to reduce error on examples."
+        ],
+        "apply": [
+            "Recommendations (what to watch/buy next).",
+            "Search ranking (what results appear first).",
+            "Fraud/spam detection (flagging suspicious patterns).",
+            "Forecasting (demand, time series, risk).",
+            "Translation and speech (text↔speech, language translation).",
+            "Content generation (text/code/images, with guardrails).",
+        ],
+        "risk": [
+            "AI does not truly understand; it matches patterns.",
+            "Main failure mode is overtrust without evaluation or monitoring.",
+            "Data drift (the world changes) can silently break performance.",
+            "Bias in training data can produce unfair or unsafe outputs."
+        ],
+        "next": [
+            "Learn evaluation habits: define success metrics + test failure cases.",
+            "Build a tiny project: dataset → baseline → error analysis.",
+            "Practice monitoring thinking: what can change and how you’d detect it."
+        ]
+    }
+}
+
+
+def _get_core_key(topic: str) -> str | None:
+    """
+    Return a TOPIC_CORE key if the topic matches.
+    v0: only AI core is defined.
+    """
+    tl = (topic or "").strip().lower()
+    if "artificial intelligence" in tl or tl == "ai":
+        return "artificial intelligence"
     return None
 
 
@@ -152,60 +197,105 @@ def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
 
 # -----------------------------
 # ORIENT answers
+# (COHESION: define the topic here once; others assume this.)
 # -----------------------------
 def _orient_answer(topic: str, question: str, category: str) -> str:
+    ql = (question or "").lower()
+    core_key = _get_core_key(topic)
     era = get_era_note(topic)
 
-    if "plain language" in question.lower():
+    # AI cohesive ORIENT
+    if core_key == "artificial intelligence":
+        core = TOPIC_CORE[core_key]
+        one_liner = core["one_liner"]
+
+        if "plain language" in ql:
+            parts = [
+                one_liner,
+                "In practice, AI systems learn from examples (data) and generalize to new inputs.",
+                "They can be powerful, but they are limited by data quality, evaluation, and how they’re used."
+            ]
+            if era:
+                parts.append(era)
+            return "\n\n".join(parts)
+
+        if "problem" in ql:
+            parts = [
+                "AI exists because many real-world tasks are too complex for hand-written rules.",
+                "It helps when you need predictions/decisions/generation based on patterns in large data."
+            ]
+            if era:
+                parts.append(era)
+            return "\n\n".join(parts)
+
+        if "benefits" in ql:
+            parts = [
+                "Benefits: speed and scale (automation), pattern detection, and decision support.",
+                "It’s most valuable when it augments people and processes—especially with good evaluation."
+            ]
+            if era:
+                parts.append(era)
+            return "\n\n".join(parts)
+
+        if "limitations" in ql:
+            parts = [
+                "Limitations: it can be confidently wrong, inherit bias, and fail when the environment changes (drift).",
+                "You need evaluation, monitoring, and guardrails—especially in high-stakes uses."
+            ]
+            if era:
+                parts.append(era)
+            return "\n\n".join(parts)
+
+        if "confused" in ql:
+            parts = [
+                "People often confuse AI with human understanding or reasoning.",
+                "Most AI is pattern-based: it can look smart without truly understanding."
+            ]
+            if era:
+                parts.append(era)
+            return "\n\n".join(parts)
+
+        parts = [one_liner]
+        if era:
+            parts.append(era)
+        return "\n\n".join(parts)
+
+    # Generic ORIENT fallback
+    if "plain language" in ql:
         parts = [
-            f"{topic} refers to building systems that can perform tasks normally requiring human intelligence.",
-            "Instead of following fixed rules, these systems learn patterns from data.",
-            "They are goal-driven but limited by data, design, and evaluation."
+            f"{topic} refers to a concept or method people use to solve a problem or achieve a goal.",
+            "A good understanding starts with what it is, why it exists, and where it helps in real life."
         ]
         if era:
             parts.append(era)
         return "\n\n".join(parts)
 
-    if "problem" in question.lower():
+    if "problem" in ql:
         return (
-            "It exists to automate or assist tasks where writing explicit rules is impractical.\n\n"
-            "This includes perception, prediction, language understanding, and decision support."
+            f"{topic} exists to address a real need where simpler approaches fall short.\n\n"
+            "Understanding the problem it solves clarifies when it’s useful."
         )
 
-    if "benefits" in question.lower():
+    if "benefits" in ql:
         return (
-            "Key benefits include scalability, speed, and the ability to detect patterns humans may miss.\n\n"
-            "Its value comes from augmenting human decision-making, not replacing it entirely."
+            f"{topic} can bring speed, clarity, or better outcomes when applied correctly.\n\n"
+            "The benefits depend on the context and constraints."
         )
 
-    if "limitations" in question.lower():
+    if "limitations" in ql:
         return (
-            "AI systems can fail silently, inherit bias from data, and behave unpredictably outside tested conditions.\n\n"
-            "They require monitoring, evaluation, and human oversight."
+            f"{topic} has limits and failure modes that matter in practice.\n\n"
+            "Knowing where it breaks prevents overconfidence."
         )
 
-    if "confused" in question.lower():
+    if "confused" in ql:
         return (
-            "People confuse AI with human intelligence or consciousness.\n\n"
-            "In reality, most AI systems are specialized statistical tools."
+            f"People get confused about {topic} when they mix it up with similar concepts or skip fundamentals.\n\n"
+            "A clear definition plus examples usually fixes it."
         )
-
-    return (
-        f"{topic} is best understood by defining its purpose, limits, and real-world use.\n\n"
-        "Clarity comes from understanding both what it can and cannot do."
-    )
-
-
-# -----------------------------
-# MECHANISM answers
-# -----------------------------
-def _mechanism_answer(topic: str, question: str) -> str:
-    era = get_era_note(topic)
 
     parts = [
-        "At a high level, AI works by learning patterns from data rather than following explicit rules.",
-        "The core loop is: data → model → training → evaluation → deployment → monitoring.",
-        "Under the hood, many systems use neural networks that adjust parameters to minimize error."
+        f"{topic} is best understood by defining its purpose, limits, and real-world use."
     ]
     if era:
         parts.append(era)
@@ -213,79 +303,145 @@ def _mechanism_answer(topic: str, question: str) -> str:
 
 
 # -----------------------------
+# MECHANISM answers
+# (COHESION: do NOT redefine topic; assume ORIENT already defined it.)
+# -----------------------------
+def _mechanism_answer(topic: str, question: str) -> str:
+    core_key = _get_core_key(topic)
+    ql = (question or "").lower()
+
+    if core_key == "artificial intelligence":
+        core = TOPIC_CORE[core_key]
+
+        if "tell if" in ql or "truly understand" in ql:
+            return "\n\n".join([
+                "Mechanism check (do you really understand it?):",
+                "• what the inputs/outputs are\n• what data it learns from\n• what objective it optimizes\n• how you evaluate it\n• what can make it fail (bias/drift).",
+                "If you can explain the pipeline and how you’d test failures, you understand it."
+            ])
+
+        # default mechanism
+        parts = ["Mechanism:"]
+        parts.extend(core["mechanism"])
+        return "\n\n".join(parts)
+
+    # Generic fallback mechanism
+    return "\n\n".join([
+        "Mechanism:",
+        f"{topic} works by taking inputs, applying steps or rules, and producing outputs.",
+        "A useful model is: inputs → transformation → outputs → feedback/iteration."
+    ])
+
+
+# -----------------------------
 # APPLY answers
+# (COHESION: use core examples; avoid re-definition.)
 # -----------------------------
 def _apply_answer(topic: str, question: str) -> str:
-    q = question.lower()
+    core_key = _get_core_key(topic)
+    ql = (question or "").lower()
 
-    if "simple example" in q:
-        return (
-            "Spam detection is a simple example.\n\n"
-            "The system learns from labeled emails and predicts whether new emails are spam."
-        )
+    if core_key == "artificial intelligence":
+        core = TOPIC_CORE[core_key]
 
-    if "real-world" in q:
-        return (
-            "AI is used in recommendations, fraud detection, search ranking, translation, and content generation.\n\n"
-            "These systems operate at scale where manual decision-making is impractical."
-        )
+        if "fail" in ql or "break" in ql:
+            return "\n\n".join([
+                "Where it breaks in practice:",
+                "• data drift (the world changes)\n• biased or incomplete data\n• missing evaluation/monitoring\n• using it outside tested scope.",
+                "Most failures happen because humans overtrust outputs without verification."
+            ])
 
-    if "fail" in q:
-        return (
-            "AI often fails when data changes, bias exists, or the system is used outside its tested scope.\n\n"
-            "Failures usually come from misuse rather than the algorithm itself."
-        )
+        if "simple example" in ql:
+            return "\n\n".join([
+                "Simple example: spam detection.",
+                "A model learns from labeled emails (spam/not spam) and predicts the label for new emails.",
+                "It works well when training data matches the real inbox and you monitor drift."
+            ])
 
-    return (
-        f"{topic} is applied wherever large volumes of data must be interpreted or acted upon efficiently."
-    )
+        # real-world / where used
+        return "Where you see AI in real life:\n\n• " + "\n• ".join(core["apply"])
+
+    # Generic fallback
+    if "fail" in ql:
+        return "\n\n".join([
+            f"{topic} tends to fail when:",
+            "• assumptions don’t hold\n• context changes\n• people skip fundamentals\n• it’s applied outside its intended use."
+        ])
+
+    if "simple example" in ql:
+        return "\n\n".join([
+            f"Simple example of {topic}:",
+            "• One everyday case where it appears.",
+            "If you share your context, I can make the example specific."
+        ])
+
+    return "\n\n".join([
+        f"{topic} is applied wherever it helps solve a recurring problem or achieve a goal more effectively.",
+        "Use-cases depend strongly on context."
+    ])
 
 
 # -----------------------------
-# RISK answers (KEY UPDATE)
+# RISK answers
+# (COHESION: use core risk points; corrective, not preachy.)
 # -----------------------------
 def _risk_answer(topic: str, question: str) -> str:
-    tl = topic.lower()
-    ql = question.lower()
+    core_key = _get_core_key(topic)
+    ql = (question or "").lower()
 
-    is_ai = any(x in tl for x in ["ai", "artificial intelligence", "machine learning"])
+    if core_key == "artificial intelligence":
+        core = TOPIC_CORE[core_key]
 
-    if is_ai:
         if "misconception" in ql:
-            return (
-                "A common misconception is that AI understands or reasons like a human.\n\n"
-                "In reality, it recognizes statistical patterns without true understanding.\n\n"
-                "Overtrusting AI leads to poor decisions and hidden failures."
-            )
+            # pick the most important misconception first
+            return "\n\n".join([
+                "Common misconception:",
+                "AI 'understands' like a human. It usually doesn’t—it matches patterns.",
+                "This misconception leads to overtrust and missed failure modes."
+            ])
 
-        return (
-            "The biggest risk is assuming AI outputs are correct without evaluation.\n\n"
-            "Most real-world failures come from misuse, weak data, or lack of oversight."
-        )
+        # challenges/pitfalls
+        return "Common traps:\n\n• " + "\n• ".join(core["risk"])
 
-    return (
-        f"People often misuse {topic} by assuming it works universally.\n\n"
-        "Understanding limits is as important as understanding capabilities."
-    )
+    # Generic fallback
+    if "misconception" in ql:
+        return "\n\n".join([
+            f"A common misconception about {topic} is assuming it works universally.",
+            "Most tools/concepts have a scope where they work well—and places they don’t."
+        ])
+
+    return "\n\n".join([
+        f"People often misuse {topic} by skipping fundamentals or ignoring constraints.",
+        "The risk is false confidence rather than the concept itself."
+    ])
 
 
 # -----------------------------
 # NEXT answers
+# (COHESION: actionable next steps; consistent voice.)
 # -----------------------------
 def _next_answer(topic: str) -> str:
-    return (
-        f"A good next step is to apply {topic} in a small, controlled way.\n\n"
-        "Hands-on experience reveals limits faster than theory alone."
-    )
+    core_key = _get_core_key(topic)
+
+    if core_key == "artificial intelligence":
+        core = TOPIC_CORE[core_key]
+        return "Next steps:\n\n• " + "\n• ".join(core["next"])
+
+    return "\n\n".join([
+        f"A good next step is to apply {topic} in a small, controlled way.",
+        "Hands-on practice reveals limits faster than theory alone."
+    ])
 
 
 # -----------------------------
 # Attach answers
 # -----------------------------
 def attach_answers(categories: Dict[str, List[str]], topic: str, topic_type: str):
-    out = {}
+    out: Dict[str, List[Dict[str, str]]] = {}
+
     for cat, questions in categories.items():
         items = []
+
         for idx, q in enumerate(questions, start=1):
             archetype = ARCHETYPE_MAP.get(cat, "ORIENT")
 
@@ -310,6 +466,7 @@ def attach_answers(categories: Dict[str, List[str]], topic: str, topic_type: str
             })
 
         out[cat] = items
+
     return out
 
 
@@ -331,6 +488,6 @@ def interrogate(text: str) -> Dict[str, object]:
         "confidence": confidence,
         "notes": [
             "v0: template-based interrogation",
-            "v0: intent-aware ORIENT, MECHANISM, APPLY, RISK",
+            "v0: cohesion pass for AI via TOPIC_CORE (consistent ORIENT→NEXT flow).",
         ],
     }
