@@ -1,17 +1,21 @@
-from typing import Dict, List, Tuple
+# api/interrogate.py
+# InI.ai – Interrogation Engine (v0)
+# Guided thinking order: ORIENT → RISK → MECHANISM → APPLY → NEXT
+
+from typing import Dict, List, Tuple, Any
 
 
-# -----------------------------
+# ==================================================
 # Archetype ordering (learning flow)
-# -----------------------------
+# ==================================================
 ARCHETYPE_ORDER = [
     "ORIENT",
+    "RISK",
     "MECHANISM",
     "APPLY",
     "LEARN",
     "COMPARE",
     "DECIDE",
-    "RISK",
     "NEXT",
 ]
 
@@ -20,64 +24,123 @@ ARCHETYPE_MAP = {
     "Why": "ORIENT",
     "When": "ORIENT",
     "who": "ORIENT",
-    "how to": "LEARN",
-    "How": "MECHANISM",
-    "Where": "APPLY",
-    "Examples": "APPLY",
     "Misconceptions": "RISK",
     "Common Challenges": "RISK",
+    "How": "MECHANISM",
+    "Examples": "APPLY",
+    "Where": "APPLY",
+    "how to": "LEARN",
     "Related Topics": "NEXT",
 }
 
 
-# -----------------------------
+# ==================================================
 # Era awareness (light, v0)
-# -----------------------------
+# ==================================================
 ERA_HOOKS = {
     "Artificial Intelligence": "Modern AI discussions include generative models and agentic systems.",
     "AI": "Modern AI discussions include generative models and agentic systems.",
 }
 
 
+# ==================================================
+# Topic-specific intelligence core (v0)
+# ==================================================
 TOPIC_CORE = {
     "artificial intelligence": {
-        "one_liner": "AI is software that achieves goals by learning patterns from data to predict, generate, or decide.",
+        "one_liner": (
+            "AI is software that achieves goals by learning patterns from data to predict, generate, or decide."
+        ),
+
+        # ---------- ORIENT ----------
         "orient_plain": (
             "Artificial Intelligence (AI) refers to systems that perform tasks by learning patterns from data "
-            "instead of following fixed, hand-written rules.\n\n"
-            "Most modern AI is task-specific (narrow): it can be excellent at a particular job, but it is not "
-            "general human intelligence.\n\n"
-            "AI often looks smart because it is trained on many examples and optimized to produce useful outputs."
+            "rather than following fixed, hand-written rules.\n\n"
+            "Most modern AI systems are narrow: they excel at specific tasks such as prediction, generation, "
+            "or classification, but they are not general human intelligence.\n\n"
+            "AI often appears intelligent because it is trained on large amounts of data and optimized to produce useful outputs."
         ),
         "orient_problem": (
-            "AI exists to handle problems where rules are too complex, too brittle, or too costly to write manually.\n\n"
-            "These are often tasks like recognizing patterns, predicting outcomes, ranking options, understanding language, "
-            "or generating content from examples.\n\n"
-            "AI shifts work from 'coding rules' to 'learning from data + measuring performance'."
+            "AI exists to solve problems where explicit rules are too complex, too brittle, or too costly to write.\n\n"
+            "These include pattern recognition, language understanding, prediction, and decision-making under uncertainty.\n\n"
+            "Instead of coding rules, humans provide examples and feedback, and the system learns what works."
         ),
         "orient_benefits": (
-            "AI can automate repetitive decisions, improve accuracy on pattern-heavy tasks, and scale expertise.\n\n"
-            "It is valuable when speed, personalization, detection (fraud/spam), prediction, or generation is needed.\n\n"
-            "Used well, AI augments humans; used blindly, it can create silent failures."
+            "AI enables speed, scale, and consistency in tasks that involve large volumes of data or repeated decisions.\n\n"
+            "It allows personalization, automation, and prediction beyond human limits.\n\n"
+            "When used well, AI amplifies human capability rather than replacing judgment."
         ),
         "orient_limits": (
-            "AI is limited by its data, objective, and evaluation setup.\n\n"
-            "It can output confident but wrong results, reflect bias in data, and degrade when conditions change (data drift).\n\n"
-            "AI does not 'understand' truth—most systems optimize patterns and probabilities."
+            "AI systems are limited by their data, objectives, and evaluation methods.\n\n"
+            "They can be confidently wrong, reflect bias, and fail when conditions change.\n\n"
+            "AI does not understand meaning or truth—it optimizes statistical patterns."
         ),
+
+        # ---------- RISK ----------
         "risk": [
-            "AI does not truly understand; it matches patterns.",
-            "Main failure mode: overtrust without evaluation/monitoring; also bias + data drift."
+            "AI does not understand; it matches patterns and probabilities.",
+            "The most common failure is overtrust without validation, monitoring, or context."
         ],
+
+        # ---------- MECHANISM ----------
+        "mech_high_level": (
+            "At a high level, AI works as a loop: data → model → predictions → evaluation → improvement.\n\n"
+            "A model is a mathematical function with adjustable parameters. Training modifies those parameters so outputs "
+            "match desired outcomes (supervised), discover structure (unsupervised), or maximize reward (reinforcement).\n\n"
+            "Modern AI often uses large neural networks trained on massive datasets to learn representations for language, vision, and decision tasks."
+        ),
+        "mech_beginner_steps": (
+            "A practical beginner path:\n\n"
+            "1) Learn core concepts: data, features, labels, training vs inference, overfitting.\n"
+            "2) Build small projects: one classifier, one regression, one text-based task.\n"
+            "3) Learn evaluation: accuracy/F1, error analysis, and how models fail.\n\n"
+            "Understanding the workflow matters more than memorizing algorithms."
+        ),
+        "mech_understanding_check": (
+            "You understand AI when you can:\n\n"
+            "- Explain rules-based code vs learning from data.\n"
+            "- Describe training vs inference in one minute.\n"
+            "- Predict failure modes such as bias, overfitting, and drift.\n\n"
+            "A simple test: given a dataset, you can choose a baseline model, evaluate it, and explain its errors."
+        ),
+
+        # ---------- APPLY (NEW) ----------
+        "apply_simple_example": (
+            "Simple example: your email spam filter.\n\n"
+            "You don’t write hard rules for every spam message. Instead, the system learns patterns from labeled examples "
+            "(spam vs not spam) and predicts what new emails are likely to be."
+        ),
+        "apply_real_world": (
+            "Real-world AI examples (today):\n\n"
+            "1) Search & recommendations: ranking posts/videos/products you’re likely to engage with.\n"
+            "2) Customer support: chat + ticket triage + suggested replies.\n"
+            "3) Fraud detection: spotting unusual transactions using patterns.\n"
+            "4) Medical imaging assistance: highlighting areas of concern (still requires clinician judgment).\n"
+            "5) Generative tools: drafting text, code, images (must be reviewed)."
+        ),
+        "apply_where_used": (
+            "AI is used where decisions repeat at scale and data exists:\n\n"
+            "- Retail: demand forecasting, personalization, inventory signals\n"
+            "- Finance: fraud, risk scoring, anomaly detection\n"
+            "- Healthcare: decision support, imaging assistance\n"
+            "- Software: autocomplete, testing assistance, monitoring\n"
+            "- Operations: scheduling, routing, quality checks"
+        ),
+        "apply_where_fails": (
+            "AI often fails when:\n\n"
+            "- The environment changes (data drift) and the model isn’t updated.\n"
+            "- The data is biased or incomplete.\n"
+            "- The task requires ground truth the system can’t access (hidden context).\n"
+            "- People over-trust outputs without verification.\n\n"
+            "Practical rule: treat AI like a strong assistant, not an authority."
+        ),
     }
 }
 
 
-
-
-
-
-
+# ==================================================
+# Helpers
+# ==================================================
 def get_era_note(topic: str) -> str | None:
     for k, v in ERA_HOOKS.items():
         if k.lower() in topic.lower():
@@ -85,18 +148,43 @@ def get_era_note(topic: str) -> str | None:
     return None
 
 
-# -----------------------------
-# Topic extraction
-# -----------------------------
-def extract_topic(text: str) -> str:
-    t = text.strip().lower()
+def extract_topic(user_text: str) -> str:
+    """
+    v0-but-robust topic extraction.
+
+    Handles:
+    - "can you tell me about AI"
+    - "please explain machine learning"
+    - "can you teach me about AI and how to learn it?"
+    - "tell me about AI, and also its applications"
+    - "what is AI?"
+    """
+
+    t = (user_text or "").strip().lower()
+    t = t.strip().rstrip("?.!,")
+
+    # 1) Strip common polite/intent prefixes
     prefixes = [
+        # kept + expanded (no removals)
+        "can you please tell me about",
+        "can you tell me about",
+        "could you tell me about",
+        "would you tell me about",
+        "please tell me about",
+        "tell me about",
+        "i want to learn about",
+        "i want to know about",
+        "can you explain",
+        "could you explain",
+        "would you explain",
+        "please explain",
         "explain to me",
         "explain",
-        "tell me about",
-        "can you teach me about",
-        "teach me about",
         "help me understand",
+        "can you teach me about",
+        "could you teach me about",
+        "teach me about",
+        "teach me",
         "what is",
         "what are",
         "how to",
@@ -106,34 +194,91 @@ def extract_topic(text: str) -> str:
         if t.startswith(p):
             t = t[len(p):].strip()
             break
-    t = t.rstrip("?.!")
-    return " ".join(w.capitalize() for w in t.split())
+
+    # 2) Remove leftover filler words at start
+    fillers = {"the", "a", "an", "about", "regarding", "on", "of"}
+    while True:
+        parts = t.split()
+        if parts and parts[0] in fillers:
+            t = " ".join(parts[1:]).strip()
+        else:
+            break
+
+    # 3) Extract topic from full sentences by cutting at common tail-clauses
+    cut_markers = [
+        " and how to",
+        " and how do i",
+        " and how can i",
+        " and what about",
+        " and also",
+        " and its",
+        " and their",
+        " and then",
+        " and where",
+        " and when",
+        " and why",
+        " and who",
+        " and what",
+        " because",
+        " so that",
+        " so i can",
+        " for beginners",
+        " in simple words",
+        " step by step",
+        " with examples",
+    ]
+    for m in cut_markers:
+        idx = t.find(m)
+        if idx != -1:
+            t = t[:idx].strip()
+            break
+
+    # If the user wrote something like: "ai and ..." (generic "and")
+    # keep "x vs y" intact, but cut plain "x and y" (we treat as extra request)
+    if " vs " not in t and " versus " not in t:
+        if " and " in t:
+            t = t.split(" and ", 1)[0].strip()
+
+    # 4) Normalize whitespace
+    t_clean = " ".join(t.split()).strip()
+
+    # 5) Abbreviation normalization (v0-high impact)
+    norm_map = {
+        "ai": "Artificial Intelligence",
+        "ml": "Machine Learning",
+        "dl": "Deep Learning",
+        "nlp": "Natural Language Processing",
+        "gen ai": "Generative AI",
+        "llm": "Large Language Models",
+    }
+
+    if not t_clean:
+        return ""
+
+    if t_clean in norm_map:
+        return norm_map[t_clean]
+
+    if t_clean in ["ai", "ml", "dl", "nlp", "llm"]:
+        return norm_map.get(t_clean, t_clean.title())
+
+    return " ".join(w.capitalize() for w in t_clean.split())
 
 
-# -----------------------------
-# Topic type detection
-# -----------------------------
 def detect_topic_type(topic: str) -> Tuple[str, float]:
     t = topic.lower()
 
     if any(x in t for x in [" vs ", " versus ", "compare"]):
         return "comparison", 0.67
-
     if any(x in t for x in ["should i", "better", "choose"]):
         return "decision", 0.67
-
     if any(x in t for x in ["error", "not working", "failed", "issue"]):
         return "troubleshooting", 0.75
-
     if any(x in t for x in ["learn", "practice", "how to"]):
         return "skill", 0.67
 
     return "concept", 0.67
 
 
-# -----------------------------
-# Summary block
-# -----------------------------
 def build_summary(topic: str, topic_type: str, confidence: float) -> List[str]:
     if confidence < 0.5:
         return [
@@ -144,14 +289,11 @@ def build_summary(topic: str, topic_type: str, confidence: float) -> List[str]:
 
     return [
         f"{topic} is a topic worth understanding clearly.",
-        "We’ll build clarity first, then explore how it works and where it applies.",
-        "Finally, we’ll highlight common mistakes and next steps.",
+        "We’ll build clarity first, then examine risks and how it works.",
+        "Finally, we’ll connect it to real-world use.",
     ]
 
 
-# -----------------------------
-# Question generation
-# -----------------------------
 def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
     t = topic
     return {
@@ -165,653 +307,266 @@ def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
             f"Why does {t} matter?",
             f"Why do people get confused about {t}?",
         ],
-        "How": [
-            f"How does {t} work at a high level?",
-            f"How can I tell if I truly understand {t}?",
-        ],
-        "Where": [
-            f"Where is {t} used in real life?",
-            f"Where does {t} fail or break in practice?",
-        ],
-        "Examples": [
-            f"What is a simple example of {t}?",
-            f"What are real-world examples of {t}?",
-        ],
         "Misconceptions": [
             f"What is a common misconception about {t}?",
-        ],
-        "Common Challenges": [
-            f"What challenges do people face when working with {t}?",
-        ],
-        "Related Topics": [
-            f"What topics are closely related to {t}?",
-        ],
-    }
-
-
-# -----------------------------
-# ORIENT answers (legacy; kept)
-# -----------------------------
-def _orient_answer(topic: str, question: str, category: str) -> str:
-    era = get_era_note(topic)
-
-    if "plain language" in question.lower():
-        parts = [
-            f"{topic} refers to building systems that can perform tasks normally requiring human intelligence.",
-            "Instead of following fixed rules, these systems learn patterns from data.",
-            "They are goal-driven but limited by data, design, and evaluation."
-        ]
-        if era:
-            parts.append(era)
-        return "\n\n".join(parts)
-
-    if "problem" in question.lower():
-        return (
-            "It exists to automate or assist tasks where writing explicit rules is impractical.\n\n"
-            "If you can’t easily write rules, but you can show examples, AI is often a fit."
-        )
-
-    if "benefit" in question.lower():
-        return (
-            "Benefits typically include speed, scale, and consistency.\n\n"
-            "AI can detect patterns humans miss and automate repetitive decisions."
-        )
-
-    if "limit" in question.lower() or "downside" in question.lower():
-        parts = [
-            "Limitations include errors, bias, and brittleness outside training data.",
-            "AI can be confidently wrong and requires monitoring."
-        ]
-        if era:
-            parts.append(era)
-        return "\n\n".join(parts)
-
-    return f"{topic} is a concept worth breaking down into parts and examples."
-
-
-# -----------------------------
-# Quick examples
-# -----------------------------
-def build_quick_examples(topic: str, topic_type: str, confidence: float) -> list[str]:
-    t = topic
-
-    if confidence < 0.5:
-        return [
-            f"Everyday: a simple place you might notice {t}.",
-            f"Work/real-life: one practical situation involving {t}.",
-        ]
-
-    if topic_type == "comparison":
-        return [
-            f"Scenario: choosing between two options related to {t}.",
-            "Quick rule: pick A when speed/short-term matters; pick B when long-term stability matters.",
-            "Common mistake: comparing prices only, ignoring total cost/constraints.",
-        ]
-
-    if topic_type == "decision":
-        return [
-            f"Scenario: you must decide something involving {t} this week.",
-            "Tradeoff example: saving money vs saving time/effort.",
-            "Regret case: choosing quickly without checking constraints.",
-        ]
-
-    if topic_type == "troubleshooting":
-        return [
-            f"Symptom: something goes wrong related to {t}.",
-            "First check: confirm the simplest cause before deeper steps.",
-            "Fix example: apply one safe change, then re-test.",
-        ]
-
-    if topic_type == "skill":
-        return [
-            f"Practice: spend 20 minutes/day doing one small task in {t}.",
-            "Beginner mistake: trying advanced stuff before basics.",
-            "Progress sign: you can explain it in 2 sentences + do a tiny demo.",
-        ]
-
-    return [
-        f"Everyday: a simple example of {t}.",
-        f"Work: how {t} shows up in a job or project.",
-        f"Without it: what becomes confusing or fails when you ignore {t}.",
-    ]
-
-
-def build_categories(topic: str, topic_type: str) -> dict:
-    t = topic
-
-    if topic_type == "troubleshooting":
-        return {
-            "Describe": [
-                "What exactly is happening (symptoms) in one sentence?",
-                "What is the exact error message (copy/paste if possible)?",
-            ],
-            "Reproduce": [
-                "What steps reliably reproduce the issue?",
-                "What changed right before it started (code, install, settings, update)?",
-            ],
-            "Environment": [
-                "What OS, Python version, and dependency versions are you using?",
-                "Are you using a virtual environment? If yes, which one?",
-            ],
-            "Isolate": [
-                f"What is the smallest example where {t} fails?",
-                "Does it fail for everyone or only in a specific case?",
-            ],
-            "Fix": [
-                "What are the top 3 most likely causes?",
-                "What is the safest next fix to try first (lowest risk)?",
-            ],
-        }
-
-    if topic_type == "decision":
-        return {
-            "Goal": [
-                f"What outcome are you trying to achieve with {t}?",
-                "What constraints matter most (budget, time, risk, convenience)?",
-            ],
-            "Options": [
-                f"What are the main options/choices within {t}?",
-                "What are viable alternatives you should compare against?",
-            ],
-            "Tradeoffs": [
-                "What are the biggest pros/cons of each option?",
-                "What hidden costs or downsides do people miss?",
-            ],
-            "Risks": [
-                "What can go wrong, and how likely is it?",
-                "What are the red flags that indicate a bad choice?",
-            ],
-            "Decision": [
-                "What simple decision rule can you use to decide?",
-                "What would a 'good enough' decision look like?",
-            ],
-        }
-
-    if topic_type == "skill":
-        return {
-            "Basics": [
-                f"What does 'good' look like in {t} (skills/behaviors)?",
-                f"What are the core sub-skills inside {t}?",
-            ],
-            "Learning Path": [
-                f"What should a beginner learn first in {t} (3-step path)?",
-                "What are common beginner mistakes to avoid?",
-            ],
-            "Practice": [
-                "What drills/practice tasks build the skill fastest?",
-                "How much practice per day/week is realistic and effective?",
-            ],
-            "Feedback": [
-                "How do you measure progress (metrics or checkpoints)?",
-                "How do you get feedback quickly (tests, mentors, reviews)?",
-            ],
-            "Next Level": [
-                "What does intermediate/advanced look like?",
-                "What projects prove competence?",
-            ],
-
-            "Common Mistakes": [
-                f"What are the top 3 beginner mistakes in {t}?",
-                "What habit causes most people to plateau?",
-            ],
-
-            "Resources": [
-                f"What are the best resources to learn {t} effectively?",
-                f"What communities or groups focus on {t}?",
-            ],
-
-            "who": [
-                f"Who are the top experts or influencers in {t}?",
-                f"Who created or pioneered {t}?",
-            ],
-
-            "Common Traps": [
-                f"What do people commonly overlook when deciding about {t}?",
-                "What terms/conditions should be read carefully?",
-            ],
-        }
-
-    if topic_type == "comparison":
-        return {
-            "Define": [
-                f"What is {t} comparing, exactly (A vs B)?",
-                "What is the real goal behind this comparison?",
-            ],
-            "Similarities": [
-                "In what ways are the two options similar?",
-                "What do they both do well?",
-            ],
-            "Differences": [
-                "What are the biggest differences (features, cost, risk, complexity)?",
-                "What difference matters most for your situation?",
-            ],
-            "Who Should Choose What": [
-                "Who should choose option A, and who should choose option B?",
-                "What’s the most common wrong choice people make here?",
-            ],
-            "Decision Rule": [
-                "What simple rule can decide quickly?",
-                "What’s the ‘good enough’ choice if you’re unsure?",
-            ],
-        }
-
-    # default: concept
-    return {
-        "What": [
-            f"What is {t} in plain language?",
-            f"What are the key parts/components of {t}?",
-            f"What problem does {t} exist to solve?",
-            f"What are the main benefits of {t}?",
-            f"What are the limitations or downsides of {t}?",
-            f"What are common use cases for {t}?",
-            f"What are the important topics to understand about {t}?",
-            f"What terminology should I know related to {t}?",
-        ],
-        "Why": [
-            f"Why does {t} matter?",
-            f"Why did {t} become necessary (history/context)?",
-            f"Why do people get confused about {t}?",
         ],
         "How": [
             f"How does {t} work at a high level?",
             f"How do beginners start learning {t} (first 3 steps)?",
             f"How can I tell if I truly understand {t}?",
         ],
-        "When": [
-            f"When should someone use {t} (and when should they avoid it)?",
-            f"When did {t} become important/popular?",
-        ],
-        "Where": [
-            f"Where is {t} used in real life?",
-            f"Where does {t} usually fail or break in practice?",
-        ],
-        "Misconceptions": [
-            f"What is a common misconception about {t}?",
-            f"What is {t} often confused with?",
-        ],
         "Examples": [
-            f"What is a simple example that illustrates {t}?",
-            f"What are some real-world examples of {t} in action?",
+            f"What is a simple example of {t}?",
+            f"What are real-world examples of {t}?",
         ],
         "Related Topics": [
             f"What topics are closely related to {t}?",
-            f"How does {t} connect to other important concepts?",
-        ],
-        "how to": [
-            f"What are the first steps to get started with {t}?",
-            f"What resources are best for learning {t}?",
-        ],
-        "Common Challenges": [
-            f"What are common challenges people face when learning {t}?",
-            f"What pitfalls should I avoid when studying {t}?",
-        ],
-        "who": [
-            f"Who are the leading experts or influencers in the field of {t}?",
-            f"Who created or discovered {t}?",
         ],
     }
 
 
-def dedupe_questions(categories: dict) -> dict:
-    """
-    Remove duplicate / near-duplicate questions within each category.
-    v0: simple normalization-based dedupe.
-    """
-    def norm(q: str) -> str:
-        q = q.strip().lower()
-        q = q.replace("?", "")
-        q = " ".join(q.split())
-        return q
-
-    cleaned = {}
-    for cat, qs in categories.items():
-        seen = set()
-        out = []
-        for q in qs:
-            k = norm(q)
-            if k not in seen:
-                seen.add(k)
-                out.append(q)
-        cleaned[cat] = out
-    return cleaned
-
-
-def dedupe_across_categories(categories: dict) -> dict:
-    """
-    Remove repeated questions across categories (global dedupe).
-    Keeps the first occurrence and drops later duplicates.
-    v0: normalization-based.
-    """
-    def norm(q: str) -> str:
-        q = q.strip().lower()
-        q = q.replace("?", "")
-        q = " ".join(q.split())
-        return q
-
-    seen = set()
-    out = {}
-    for cat, qs in categories.items():
-        kept = []
-        for q in qs:
-            k = norm(q)
-            if k not in seen:
-                seen.add(k)
-                kept.append(q)
-        out[cat] = kept
-    return out
-
-
-def clarification_for(topic: str, topic_type: str) -> str:
-    t = topic
-    if topic_type == "troubleshooting":
-        return "Is this a technical error you're trying to fix? If yes, what exact error text do you see?"
-    if topic_type == "decision":
-        return f"Are you deciding between options related to {t}? If yes, what constraints matter most (cost, time, risk)?"
-    if topic_type == "skill":
-        return f"Do you want to learn {t} (a skill), or understand {t} as a concept?"
-    # concept / fallback
-    return f"Do you want a simple definition of {t}, or a deeper explanation with examples?"
-
-
-def cap_categories(categories: dict, max_per_category: int = 5) -> dict:
-    capped = {}
-    for cat, qs in categories.items():
-        capped[cat] = qs[:max_per_category]
-    return capped
-
-
-def _slug(s: str) -> str:
-    return "".join(ch.lower() if ch.isalnum() else "_" for ch in s).strip("_")
-
-
-# ==========================================================
-# CORE ANSWER ENGINE (THIS IS WHAT YOUR APP USES)
-# - Upgraded ORIENT + RISK (your requirement)
-# - Everything else remains as before
-# ==========================================================
+# ==================================================
+# Core Answer Engine
+# ==================================================
 def build_answer(topic, topic_type, category, question, archetype):
     topic = topic.strip()
-    ql = (question or "").strip().lower()
+    ql = question.lower()
     era_note = get_era_note(topic)
-
-    # Topic-core lookup (v0: only a few topics; fallback works for all)
     core = TOPIC_CORE.get(topic.lower())
 
-    # -------------------------
-    # ORIENT (tuned, non-redundant)
-    # -------------------------
+    # ---------- ORIENT ----------
     if archetype == "ORIENT":
-        # Prefer topic-specific tuned answers when available
         if core:
-            if "plain language" in ql or ql.startswith("what is"):
-                ans = core.get("orient_plain") or core.get("one_liner", "")
-            elif "problem" in ql or "exist to solve" in ql:
-                ans = core.get("orient_problem") or core.get("one_liner", "")
-            elif "benefit" in ql or "main benefits" in ql:
-                ans = core.get("orient_benefits") or core.get("one_liner", "")
-            elif "limit" in ql or "downside" in ql or "limitations" in ql:
-                ans = core.get("orient_limits") or core.get("one_liner", "")
+            if "plain language" in ql:
+                ans = core["orient_plain"]
+            elif "problem" in ql:
+                ans = core["orient_problem"]
+            elif "benefit" in ql:
+                ans = core["orient_benefits"]
+            elif "limit" in ql:
+                ans = core["orient_limits"]
             else:
-                ans = core.get("one_liner", "")
-            if era_note and era_note not in ans:
-                ans = ans + "\n\n" + era_note
-            return ans
+                ans = core["one_liner"]
+        else:
+            if "plain language" in ql:
+                ans = (
+                    f"{topic} refers to an idea or system people use to solve a specific kind of problem.\n\n"
+                    "The simplest way to understand it is: what it is, why it exists, and where it shows up."
+                )
+            elif "problem" in ql:
+                ans = (
+                    f"{topic} exists to solve problems where a simple approach is too slow, too manual, or too error-prone.\n\n"
+                    "If rules are hard to write but examples are easy to show, {topic} is often relevant."
+                )
+            elif "benefit" in ql:
+                ans = (
+                    f"{topic} often brings speed, scale, and consistency.\n\n"
+                    "It helps people make better decisions or build more capable systems with less manual work."
+                )
+            elif "limit" in ql:
+                ans = (
+                    f"{topic} has limits that appear when assumptions break.\n\n"
+                    "A good habit is to ask: when does it fail, and what happens then?"
+                )
+            else:
+                ans = (
+                    f"{topic} is worth breaking down into parts and examples to make it intuitive.\n\n"
+                    "Start simple, then deepen gradually."
+                )
 
-        # Generic tuned ORIENT (works for any topic)
-        if "plain language" in ql or ql.startswith("what is"):
-            parts = [
-                f"{topic} refers to systems or methods that achieve useful outcomes by learning patterns from examples or data, rather than only following fixed rules.",
-                "In practice, most real-world systems are narrow: excellent at specific tasks but not general human intelligence.",
-                "A good mental model: it’s 'learn from examples + evaluate performance + improve'."
-            ]
-            if era_note:
-                parts.append(era_note)
-            return "\n\n".join(parts)
+        if era_note and era_note not in ans:
+            ans += "\n\n" + era_note
+        return ans
 
-        if "problem" in ql or "exist to solve" in ql:
-            parts = [
-                f"{topic} exists for situations where writing precise rules is too hard, too expensive, or too brittle.",
-                "It’s useful when you can’t easily explain rules, but you can provide examples and define what 'good' looks like.",
-                "It shifts effort from 'coding rules' to 'learning from data + measuring results'."
-            ]
-            if era_note:
-                parts.append(era_note)
-            return "\n\n".join(parts)
-
-        if "benefit" in ql:
-            parts = [
-                f"{topic} can increase speed and consistency on repetitive decisions, and improve accuracy on pattern-heavy tasks.",
-                "It enables personalization at scale (different outputs for different users/situations).",
-                "Used well, it augments human work; used blindly, it creates hidden risks."
-            ]
-            if era_note:
-                parts.append(era_note)
-            return "\n\n".join(parts)
-
-        if "confus" in ql:
-            return (
-                f"People get confused about {topic} because the term is used for many different things—from simple automation to advanced models.\n\n"
-                "Media hype often blurs the line between narrow tools and general intelligence.\n\n"
-                "A practical rule: ask what data it learns from and how performance is measured."
-            )
-
-        if "limit" in ql or "downside" in ql or "limitations" in ql:
-            parts = [
-                f"{topic} is limited by its data, objective, and evaluation setup.",
-                "It can produce confident-but-wrong outputs, reflect biases, and fail when conditions change (data drift).",
-                "It does not guarantee truth; it usually optimizes patterns/probabilities."
-            ]
-            if era_note:
-                parts.append(era_note)
-            return "\n\n".join(parts)
-
-        # ORIENT fallback
-        base = (
-            f"{topic} is a concept worth understanding clearly. "
-            "Start by defining it simply, then connect it to real-world use and common pitfalls."
-        )
-        if era_note:
-            base += " " + era_note
-        return base
-
-    # -------------------------
-    # MECHANISM (unchanged)
-    # -------------------------
-    if archetype == "MECHANISM":
-        base = (
-            f"{topic} works by combining several components that interact with each other. "
-            f"At a high level, inputs are processed through defined steps or models, "
-            f"leading to outputs that improve decisions or actions. The exact mechanics "
-            f"depend on the specific system or implementation."
-        )
-
-        if era_note:
-            base += " " + era_note
-        return base
-
-    # -------------------------
-    # APPLY (unchanged)
-    # -------------------------
-    if archetype == "APPLY":
-        return (
-            f"In real life, {topic} is used in practical scenarios such as workplaces, "
-            f"products, or everyday tools. These applications help solve real problems, "
-            f"improve efficiency, or enable new capabilities that were previously difficult."
-        )
-
-    # -------------------------
-    # LEARN (unchanged)
-    # -------------------------
-    if archetype == "LEARN":
-        base = (
-            f"To learn {topic}, start with the fundamentals and build gradually. "
-            f"Focus first on core concepts, then practice applying them through small exercises "
-            f"or projects. Consistent practice and real-world exposure matter more than speed."
-        )
-        if era_note:
-            base += " " + era_note
-        return base
-
-    # -------------------------
-    # COMPARE (unchanged)
-    # -------------------------
-    if archetype == "COMPARE":
-        return (
-            f"When comparing options related to {topic}, the key differences usually involve "
-            f"purpose, complexity, cost, and suitability for a given situation. "
-            f"The better choice depends on what problem you are trying to solve."
-        )
-
-    # -------------------------
-    # DECIDE (unchanged)
-    # -------------------------
-    if archetype == "DECIDE":
-        return (
-            f"Whether you should pursue or choose {topic} depends on your goals, constraints, "
-            f"and current situation. Consider factors such as time investment, expected benefits, "
-            f"and how it aligns with your long-term plans."
-        )
-
-    # -------------------------
-    # RISK (TUNED, immediately after ORIENT as per your requirement)
-    # -------------------------
+    # ---------- RISK ----------
     if archetype == "RISK":
-        # Topic-specific risks when available
         if core and core.get("risk"):
-            bullets = core["risk"]
-            base = (
-                f"Key risks/limits for {topic}:\n\n"
-                f"- {bullets[0]}\n"
-                f"- {bullets[1]}\n\n"
-                "A practical safety habit: verify outputs, define success metrics, and monitor for drift."
+            ans = (
+                f"Key risks and misconceptions about {topic}:\n\n"
+                f"- {core['risk'][0]}\n"
+                f"- {core['risk'][1]}\n\n"
+                "Safe practice: validate outputs, define success metrics, and monitor behavior over time."
             )
-            if era_note and era_note not in base:
-                base += "\n\n" + era_note
-            return base
+        else:
+            if "misconception" in ql:
+                ans = (
+                    f"A common misconception is thinking {topic} guarantees correctness.\n\n"
+                    "Many ideas/tools are useful but still fail under certain conditions.\n\n"
+                    "Always ask what assumptions it relies on."
+                )
+            else:
+                ans = (
+                    f"Common risks include misunderstanding {topic}, overestimating it, "
+                    "or applying it without validation.\n\n"
+                    "A good habit is to ask: where can this fail?"
+                )
+        if era_note and era_note not in ans:
+            ans += "\n\n" + era_note
+        return ans
 
-        # Generic tuned risk responses based on the question
-        if "misconception" in ql:
+    # ---------- MECHANISM ----------
+    if archetype == "MECHANISM":
+        if core:
+            if "work at a high level" in ql:
+                ans = core["mech_high_level"]
+            elif "first 3 steps" in ql or "start learning" in ql:
+                ans = core["mech_beginner_steps"]
+            elif "truly understand" in ql:
+                ans = core["mech_understanding_check"]
+            else:
+                ans = core["mech_high_level"]
+        else:
+            if "work at a high level" in ql:
+                ans = (
+                    f"{topic} works by taking inputs, applying a process or model, and producing outputs.\n\n"
+                    "To understand the mechanism, identify inputs → transformation → outputs → feedback."
+                )
+            elif "first 3 steps" in ql or "start learning" in ql:
+                ans = (
+                    f"To start learning {topic}:\n\n"
+                    "1) Learn a simple definition + core terms.\n"
+                    "2) Do one tiny example or demo.\n"
+                    "3) Learn one common failure/mistake and how to avoid it.\n\n"
+                    "Repeat with slightly harder examples until it becomes intuitive."
+                )
+            elif "truly understand" in ql:
+                ans = (
+                    f"You understand {topic} when you can explain it simply, apply it to one example, "
+                    "and predict where it fails.\n\n"
+                    "A good test: teach it in 60 seconds, then solve one small problem using it."
+                )
+            else:
+                ans = (
+                    f"{topic} works through components that interact to turn inputs into outputs.\n\n"
+                    "Focus on the flow: inputs → steps → outputs → feedback."
+                )
+
+        if era_note and era_note not in ans:
+            ans += "\n\n" + era_note
+        return ans
+
+    # ---------- APPLY (UPDATED) ----------
+    if archetype == "APPLY":
+        # Topic-core APPLY (best quality)
+        if core:
+            if "simple example" in ql:
+                ans = core.get("apply_simple_example")
+            elif "real-world examples" in ql or "some real-world examples" in ql:
+                ans = core.get("apply_real_world")
+            elif ql.startswith("where is") or "where is" in ql or "where used" in ql:
+                ans = core.get("apply_where_used")
+            elif "fail" in ql or "break" in ql:
+                ans = core.get("apply_where_fails")
+            else:
+                ans = core.get("apply_real_world") or core.get("apply_where_used")
+
+            if ans:
+                if era_note and era_note not in ans:
+                    ans += "\n\n" + era_note
+                return ans
+
+        # Generic APPLY (works for any topic)
+        if "simple example" in ql:
             return (
-                f"A common misconception is that {topic} 'understands' like a human.\n\n"
-                "Most systems optimize patterns and can sound confident even when wrong.\n\n"
-                "Treat outputs as suggestions unless verified."
+                f"Simple example of {topic}:\n\n"
+                f"Imagine a small everyday situation where you use {topic} to get a better result faster. "
+                "The goal is to see the idea in action, not memorize theory."
             )
 
-        if "challenge" in ql or "pitfall" in ql:
+        if "real-world examples" in ql:
             return (
-                f"Common pitfalls with {topic} include skipping fundamentals, overtrusting outputs, and ignoring edge cases.\n\n"
-                "A good discipline is to test failure modes early and revise assumptions often.\n\n"
-                "If it's high-stakes, require evidence, not vibes."
+                f"Real-world examples of {topic} usually show up in workplaces, products, or daily decisions.\n\n"
+                "To make it concrete: find one consumer example, one business example, and one failure case."
             )
 
-        if "confus" in ql:
+        if "where is" in ql or "where used" in ql:
             return (
-                f"People overtrust {topic} when it looks fluent, fast, or authoritative.\n\n"
-                "The risk is accepting outputs without validation.\n\n"
-                "A safe rule: ask 'what could make this wrong?' and test that first."
+                f"{topic} is used wherever it reliably improves outcomes—speed, quality, cost, or clarity.\n\n"
+                "A good lens: where does this reduce repeated effort or reduce mistakes?"
             )
 
-        if "limit" in ql or "downside" in ql:
+        if "fail" in ql or "break" in ql:
             return (
-                f"Limitations include bias from data, brittleness outside training conditions, and silent performance decay.\n\n"
-                "The most dangerous failure is confident wrong output.\n\n"
-                "Mitigation: evaluation, monitoring, and human-in-the-loop review."
+                f"{topic} often fails when assumptions break, context changes, or people over-trust it.\n\n"
+                "A practical habit: list 3 ways it can go wrong before you rely on it."
             )
 
-        # RISK fallback (still tuned)
         return (
-            f"Common mistakes with {topic} include misunderstanding its purpose, "
-            f"overestimating what it can do, and using it without validation.\n\n"
-            "Safe habit: test on edge cases, keep feedback loops, and monitor changes over time."
+            f"In practice, {topic} appears in tools, systems, or workflows that solve real problems.\n\n"
+            "Application is where usefulness becomes obvious—and where limitations show up."
         )
 
-    # -------------------------
-    # NEXT (unchanged)
-    # -------------------------
+    # ---------- NEXT ----------
     if archetype == "NEXT":
         return (
-            f"A good next step after understanding {topic} is to apply it in a small, "
-            f"controlled way. This could mean experimenting, building something simple, "
-            f"or deepening one specific area rather than trying to learn everything at once."
+            f"A good next step is to apply {topic} in a small, controlled way.\n\n"
+            "Build something simple, observe failures, and iterate."
         )
 
-    # fallback (should rarely hit)
-    return f"This question relates to {topic}. Consider exploring it step by step for clarity."
+    return f"This question relates to {topic}."
 
 
-def attach_answers(categories: dict, topic: str, topic_type: str) -> dict:
-    """
-    Convert category -> [question str] into category -> [{id, question, answer}]
-    """
-    out = {}
-    for cat, qs in categories.items():
-        items = []
-        cat_id = _slug(cat)
-        for i, q in enumerate(qs, start=1):
-            archetype = ARCHETYPE_MAP.get(cat, "ORIENT")
-
-            items.append({
-                "id": f"{cat_id}_{i}",
-                "archetype": archetype,
-                "question": q,
-                "answer": build_answer(topic, topic_type, cat, q, archetype)
-            })
-        out[cat] = items
-    return out
-
-
-def interrogate(topic: str) -> Dict[str, object]:
-    """
-    Return structured, relevant interrogative questions for a topic.
-    v0 intelligence: templates + light normalization.
-    """
+# ==================================================
+# Assembly
+# ==================================================
+def interrogate(topic: str) -> Dict[str, Any]:
     clean_topic = extract_topic(topic)
+
     if not clean_topic:
-        return {"topic": topic, "categories": {}, "notes": ["Empty topic received."]}
+        return {
+            "topic": topic,
+            "categories": {},
+            "notes": ["Empty topic received."],
+            "summary": [],
+            "confidence": 0.0,
+            "needs_clarification": True,
+            "clarifying_question": "Please provide a topic to explore.",
+        }
 
     topic_type, confidence = detect_topic_type(clean_topic)
     summary = build_summary(clean_topic, topic_type, confidence)
-    needs_clarification = confidence < 0.5
-    clarifying_question = clarification_for(clean_topic, topic_type) if needs_clarification else ""
 
     categories = build_categories(clean_topic, topic_type)
-    categories = dedupe_questions(categories)
-    categories = dedupe_across_categories(categories)
-    categories = cap_categories(categories, max_per_category=5)
 
-    notes = [
-        "v0: template-based interrogation (no external knowledge yet).",
-        "v0: archetype-aware answers + ordered understanding flow.",
-    ]
+    out = {}
+    for cat, qs in categories.items():
+        items = []
+        for i, q in enumerate(qs, start=1):
+            arch = ARCHETYPE_MAP.get(cat, "ORIENT")
+            items.append({
+                "id": f"{cat.lower()}_{i}",
+                "archetype": arch,
+                "question": q,
+                "answer": build_answer(clean_topic, topic_type, cat, q, arch)
+            })
+        out[cat] = items
 
-    quick_examples = build_quick_examples(clean_topic, topic_type, confidence)
-
-    qa_categories = attach_answers(categories, clean_topic, topic_type)
-
-    ordered_categories = {}
+    # order categories by archetype flow
+    ordered = {}
     seen = set()
-
     for arch in ARCHETYPE_ORDER:
-        for cat, items in qa_categories.items():
+        for cat, items in out.items():
             if items and items[0].get("archetype") == arch and cat not in seen:
-                ordered_categories[cat] = items
+                ordered[cat] = items
                 seen.add(cat)
 
-    # Keep anything we didn't classify explicitly (so nothing disappears)
-    for cat, items in qa_categories.items():
+    # keep leftovers (just in case)
+    for cat, items in out.items():
         if cat not in seen:
-            ordered_categories[cat] = items
-
-    qa_categories = ordered_categories
+            ordered[cat] = items
 
     return {
         "topic": clean_topic,
         "topic_type": topic_type,
-        "categories": qa_categories,
-        "notes": notes,
+        "categories": ordered,
+        "summary": summary,
         "confidence": confidence,
-        "needs_clarification": needs_clarification,
-        "clarifying_question": clarifying_question,
-        "quick_examples": quick_examples,
-        "summary": summary
+        "needs_clarification": False,
+        "clarifying_question": "",
+        "notes": [
+            "v0: guided thinking order enforced",
+            "v0: robust topic extraction (natural phrasing + abbreviations)",
+            "v0: ORIENT → RISK → MECHANISM tuned",
+            "v0: APPLY tuned (examples + where-used + where-fails)",
+        ],
     }
