@@ -28,7 +28,7 @@ ARCHETYPE_MAP = {
     "Common Challenges": "RISK",
     "How": "MECHANISM",
     "Examples": "APPLY",
-    "Where": "APPLY",
+    "Where": "APPLY",          # IMPORTANT: supported + now surfaced in build_categories()
     "how to": "LEARN",
     "Related Topics": "NEXT",
 }
@@ -38,13 +38,21 @@ ARCHETYPE_MAP = {
 # Era awareness (light, v0)
 # ==================================================
 ERA_HOOKS = {
-    "Artificial Intelligence": "Modern AI discussions include generative models and agentic systems.",
-    "AI": "Modern AI discussions include generative models and agentic systems.",
+    # Keep it light, but modern. This should not replace deeper topic-core content.
+    "Artificial Intelligence": (
+        "Modern AI discussions often include Generative AI (GenAI), Large Language Models (LLMs), "
+        "Retrieval-Augmented Generation (RAG), and agentic systems that can plan and use tools."
+    ),
+    "AI": (
+        "Modern AI discussions often include Generative AI (GenAI), Large Language Models (LLMs), "
+        "Retrieval-Augmented Generation (RAG), and agentic systems that can plan and use tools."
+    ),
 }
 
 
 # ==================================================
 # Topic-specific intelligence core (v0)
+# NOTE: This is intentionally deep for flagship topics like AI.
 # ==================================================
 TOPIC_CORE = {
     "artificial intelligence": {
@@ -58,81 +66,104 @@ TOPIC_CORE = {
             "rather than following fixed, hand-written rules.\n\n"
             "Most modern AI systems are narrow: they excel at specific tasks such as prediction, generation, "
             "or classification, but they are not general human intelligence.\n\n"
+            "In today’s world, AI also includes Generative AI (GenAI) systems that can produce text, code, images, "
+            "audio, and video, plus agentic systems that can plan steps and use tools.\n\n"
             "AI often appears intelligent because it is trained on large amounts of data and optimized to produce useful outputs."
         ),
         "orient_problem": (
             "AI exists to solve problems where explicit rules are too complex, too brittle, or too costly to write.\n\n"
-            "These include pattern recognition, language understanding, prediction, and decision-making under uncertainty.\n\n"
-            "Instead of coding rules, humans provide examples and feedback, and the system learns what works."
+            "These include pattern recognition, language processing, prediction, and decision-making under uncertainty.\n\n"
+            "Instead of coding rules, humans provide examples and feedback, and the system learns what works.\n\n"
+            "Modern AI extends this by enabling systems that can generate content (GenAI) and coordinate actions (agentic workflows)."
         ),
         "orient_benefits": (
             "AI enables speed, scale, and consistency in tasks that involve large volumes of data or repeated decisions.\n\n"
-            "It allows personalization, automation, and prediction beyond human limits.\n\n"
+            "It can reduce repetitive cognitive labor (drafting, summarizing, classifying), improve decision support "
+            "(forecasting, risk flags), and enable new creative workflows (GenAI).\n\n"
             "When used well, AI amplifies human capability rather than replacing judgment."
         ),
         "orient_limits": (
             "AI systems are limited by their data, objectives, and evaluation methods.\n\n"
-            "They can be confidently wrong, reflect bias, and fail when conditions change.\n\n"
-            "AI does not understand meaning or truth—it optimizes statistical patterns."
+            "They can be confidently wrong, reflect bias, and fail when conditions change (drift).\n\n"
+            "Generative systems can hallucinate (produce plausible but false content) and may not reliably cite ground truth.\n\n"
+            "AI does not understand meaning or truth—it optimizes statistical patterns and objective functions."
         ),
 
         # ---------- RISK ----------
+        # Keep long-form + practical. No forced brevity.
         "risk": [
-            "AI does not understand; it matches patterns and probabilities.",
-            "The most common failure is overtrust without validation, monitoring, or context."
+            "AI does not understand like a human; it learns correlations and patterns and can sound confident while being wrong.",
+            "Overtrust is the biggest failure mode: people treat outputs as truth instead of hypotheses to verify.",
+            "GenAI can hallucinate: fluent answers that may be partially or fully incorrect without clear warning signs.",
+            "Bias can enter through data, labeling, evaluation choices, and deployment context—'neutral AI' is a myth.",
+            "Drift happens: models degrade when real-world conditions change and monitoring/retraining are ignored.",
+            "Security risks: prompt injection, data leakage, and unsafe tool-use can break agentic systems if not sandboxed.",
         ],
 
         # ---------- MECHANISM ----------
         "mech_high_level": (
-            "At a high level, AI works as a loop: data → model → predictions → evaluation → improvement.\n\n"
+            "At a high level, AI works as a loop: data → model → outputs → evaluation → improvement.\n\n"
             "A model is a mathematical function with adjustable parameters. Training modifies those parameters so outputs "
             "match desired outcomes (supervised), discover structure (unsupervised), or maximize reward (reinforcement).\n\n"
-            "Modern AI often uses large neural networks trained on massive datasets to learn representations for language, vision, and decision tasks."
+            "Modern AI often uses large neural networks trained on massive datasets to learn representations for language, vision, and decision tasks.\n\n"
+            "In GenAI, models learn to generate likely continuations (text/code) or synthesize media from learned representations.\n\n"
+            "In agentic AI, the 'AI system' is not only the model: it is typically model + tools + memory/context + planner/controller + evaluators/guards."
         ),
         "mech_beginner_steps": (
             "A practical beginner path:\n\n"
             "1) Learn core concepts: data, features, labels, training vs inference, overfitting.\n"
             "2) Build small projects: one classifier, one regression, one text-based task.\n"
             "3) Learn evaluation: accuracy/F1, error analysis, and how models fail.\n\n"
+            "Then add modern AI system skills:\n"
+            "- Prompting and verification habits\n"
+            "- Retrieval (RAG) basics: grounding answers in sources\n"
+            "- Simple agent loops: plan → act (tool) → check → iterate\n\n"
             "Understanding the workflow matters more than memorizing algorithms."
         ),
         "mech_understanding_check": (
             "You understand AI when you can:\n\n"
             "- Explain rules-based code vs learning from data.\n"
             "- Describe training vs inference in one minute.\n"
-            "- Predict failure modes such as bias, overfitting, and drift.\n\n"
-            "A simple test: given a dataset, you can choose a baseline model, evaluate it, and explain its errors."
+            "- Predict failure modes such as bias, overfitting, drift, and hallucinations.\n\n"
+            "A simple test: given a dataset, you can choose a baseline model, evaluate it, and explain its errors.\n\n"
+            "For GenAI: you can describe why hallucinations happen, and how grounding (RAG) + verification reduces them.\n\n"
+            "For agentic AI: you can explain why tool-use needs constraints (permissions, sandboxes, checks)."
         ),
 
-        # ---------- APPLY (NEW) ----------
+        # ---------- APPLY ----------
         "apply_simple_example": (
             "Simple example: your email spam filter.\n\n"
             "You don’t write hard rules for every spam message. Instead, the system learns patterns from labeled examples "
-            "(spam vs not spam) and predicts what new emails are likely to be."
+            "(spam vs not spam) and predicts what new emails are likely to be.\n\n"
+            "Modern GenAI example: a writing assistant that drafts an email based on your prompt, which you then edit and verify."
         ),
         "apply_real_world": (
             "Real-world AI examples (today):\n\n"
             "1) Search & recommendations: ranking posts/videos/products you’re likely to engage with.\n"
-            "2) Customer support: chat + ticket triage + suggested replies.\n"
+            "2) Customer support: chat + ticket triage + suggested replies (humans still supervise).\n"
             "3) Fraud detection: spotting unusual transactions using patterns.\n"
-            "4) Medical imaging assistance: highlighting areas of concern (still requires clinician judgment).\n"
-            "5) Generative tools: drafting text, code, images (must be reviewed)."
+            "4) Medical imaging assistance: highlighting areas of concern (requires clinician judgment).\n"
+            "5) Generative tools: drafting text, code, images (must be reviewed and grounded when accuracy matters).\n"
+            "6) Agentic workflows: AI that can plan steps, call tools/APIs, and iterate toward a goal (needs guardrails)."
         ),
         "apply_where_used": (
-            "AI is used where decisions repeat at scale and data exists:\n\n"
+            "AI is used where decisions repeat at scale and reliable data exists:\n\n"
             "- Retail: demand forecasting, personalization, inventory signals\n"
             "- Finance: fraud, risk scoring, anomaly detection\n"
             "- Healthcare: decision support, imaging assistance\n"
-            "- Software: autocomplete, testing assistance, monitoring\n"
-            "- Operations: scheduling, routing, quality checks"
+            "- Software: autocomplete, test assistance, monitoring/triage\n"
+            "- Operations: scheduling, routing, quality checks\n"
+            "- Knowledge work: summarization, drafting, research assistance (with verification)\n\n"
+            "Rule of thumb: AI shines when it augments humans with speed + pattern detection, not when it replaces judgment."
         ),
         "apply_where_fails": (
             "AI often fails when:\n\n"
-            "- The environment changes (data drift) and the model isn’t updated.\n"
-            "- The data is biased or incomplete.\n"
-            "- The task requires ground truth the system can’t access (hidden context).\n"
-            "- People over-trust outputs without verification.\n\n"
-            "Practical rule: treat AI like a strong assistant, not an authority."
+            "- The environment changes (drift) and the model isn’t updated.\n"
+            "- The data is biased, incomplete, or unrepresentative.\n"
+            "- The task needs hidden context the model cannot access.\n"
+            "- People over-trust outputs without verification.\n"
+            "- Agentic systems get unsafe tool access (prompt injection / bad actions).\n\n"
+            "Practical rule: treat AI like a strong assistant, not an authority. Add checks, monitoring, and human review."
         ),
     }
 }
@@ -152,6 +183,7 @@ def extract_topic(user_text: str) -> str:
     """
     v0-but-robust topic extraction.
 
+    Imperative: DO NOT regress on natural phrasing.
     Handles:
     - "can you tell me about AI"
     - "please explain machine learning"
@@ -161,19 +193,20 @@ def extract_topic(user_text: str) -> str:
     """
 
     t = (user_text or "").strip().lower()
-    t = t.strip().rstrip("?.!,")
+    t = t.strip().rstrip("?.!,;:")
 
-    # 1) Strip common polite/intent prefixes
+    # 1) Strip common polite/intent prefixes (kept + expanded; no removals)
     prefixes = [
-        # kept + expanded (no removals)
         "can you please tell me about",
         "can you tell me about",
         "could you tell me about",
         "would you tell me about",
         "please tell me about",
+        "tell me something about",
         "tell me about",
         "i want to learn about",
         "i want to know about",
+        "i want to understand",
         "can you explain",
         "could you explain",
         "would you explain",
@@ -189,6 +222,7 @@ def extract_topic(user_text: str) -> str:
         "what are",
         "how to",
         "how do i",
+        "how can i",
     ]
     for p in prefixes:
         if t.startswith(p):
@@ -233,8 +267,7 @@ def extract_topic(user_text: str) -> str:
             t = t[:idx].strip()
             break
 
-    # If the user wrote something like: "ai and ..." (generic "and")
-    # keep "x vs y" intact, but cut plain "x and y" (we treat as extra request)
+    # Cut plain "x and y" (treat as extra request), but keep "x vs y"
     if " vs " not in t and " versus " not in t:
         if " and " in t:
             t = t.split(" and ", 1)[0].strip()
@@ -245,11 +278,17 @@ def extract_topic(user_text: str) -> str:
     # 5) Abbreviation normalization (v0-high impact)
     norm_map = {
         "ai": "Artificial Intelligence",
+        "genai": "Generative AI",
+        "gen ai": "Generative AI",
+        "llm": "Large Language Models",
+        "llms": "Large Language Models",
+        "rag": "Retrieval-Augmented Generation",
         "ml": "Machine Learning",
         "dl": "Deep Learning",
         "nlp": "Natural Language Processing",
-        "gen ai": "Generative AI",
-        "llm": "Large Language Models",
+        "agentic ai": "Agentic AI",
+        "agents": "AI Agents",
+        "agent ai": "AI Agents",
     }
 
     if not t_clean:
@@ -257,9 +296,6 @@ def extract_topic(user_text: str) -> str:
 
     if t_clean in norm_map:
         return norm_map[t_clean]
-
-    if t_clean in ["ai", "ml", "dl", "nlp", "llm"]:
-        return norm_map.get(t_clean, t_clean.title())
 
     return " ".join(w.capitalize() for w in t_clean.split())
 
@@ -280,6 +316,7 @@ def detect_topic_type(topic: str) -> Tuple[str, float]:
 
 
 def build_summary(topic: str, topic_type: str, confidence: float) -> List[str]:
+    # Keep existing behavior; it only triggers if confidence is low.
     if confidence < 0.5:
         return [
             f"Topic: {topic}.",
@@ -319,6 +356,13 @@ def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
             f"What is a simple example of {t}?",
             f"What are real-world examples of {t}?",
         ],
+
+        # ✅ RESTORED / GUARANTEED VISIBILITY
+        "Where": [
+            f"Where is {t} used in real life?",
+            f"Where does {t} usually fail or break in practice?",
+        ],
+
         "Related Topics": [
             f"What topics are closely related to {t}?",
         ],
@@ -356,7 +400,7 @@ def build_answer(topic, topic_type, category, question, archetype):
             elif "problem" in ql:
                 ans = (
                     f"{topic} exists to solve problems where a simple approach is too slow, too manual, or too error-prone.\n\n"
-                    "If rules are hard to write but examples are easy to show, {topic} is often relevant."
+                    f"If rules are hard to write but examples are easy to show, {topic} is often relevant."
                 )
             elif "benefit" in ql:
                 ans = (
@@ -381,25 +425,30 @@ def build_answer(topic, topic_type, category, question, archetype):
     # ---------- RISK ----------
     if archetype == "RISK":
         if core and core.get("risk"):
+            bullets = "\n".join([f"- {x}" for x in core["risk"]])
             ans = (
                 f"Key risks and misconceptions about {topic}:\n\n"
-                f"- {core['risk'][0]}\n"
-                f"- {core['risk'][1]}\n\n"
-                "Safe practice: validate outputs, define success metrics, and monitor behavior over time."
+                f"{bullets}\n\n"
+                "Safe practice:\n"
+                "- Validate outputs (treat them as hypotheses).\n"
+                "- Define success metrics.\n"
+                "- Monitor behavior over time.\n"
+                "- Use guardrails when tools/actions are involved."
             )
         else:
             if "misconception" in ql:
                 ans = (
                     f"A common misconception is thinking {topic} guarantees correctness.\n\n"
                     "Many ideas/tools are useful but still fail under certain conditions.\n\n"
-                    "Always ask what assumptions it relies on."
+                    "Always ask what assumptions it relies on, and where it breaks."
                 )
             else:
                 ans = (
                     f"Common risks include misunderstanding {topic}, overestimating it, "
                     "or applying it without validation.\n\n"
-                    "A good habit is to ask: where can this fail?"
+                    "A good habit is to ask: where can this fail, and how will I notice?"
                 )
+
         if era_note and era_note not in ans:
             ans += "\n\n" + era_note
         return ans
@@ -445,13 +494,13 @@ def build_answer(topic, topic_type, category, question, archetype):
             ans += "\n\n" + era_note
         return ans
 
-    # ---------- APPLY (UPDATED) ----------
+    # ---------- APPLY ----------
     if archetype == "APPLY":
         # Topic-core APPLY (best quality)
         if core:
             if "simple example" in ql:
                 ans = core.get("apply_simple_example")
-            elif "real-world examples" in ql or "some real-world examples" in ql:
+            elif "real-world examples" in ql or "real world examples" in ql:
                 ans = core.get("apply_real_world")
             elif ql.startswith("where is") or "where is" in ql or "where used" in ql:
                 ans = core.get("apply_where_used")
@@ -566,7 +615,9 @@ def interrogate(topic: str) -> Dict[str, Any]:
         "notes": [
             "v0: guided thinking order enforced",
             "v0: robust topic extraction (natural phrasing + abbreviations)",
-            "v0: ORIENT → RISK → MECHANISM tuned",
-            "v0: APPLY tuned (examples + where-used + where-fails)",
+            "v0: ORIENT tuned (deep, non-trimmed answers)",
+            "v0: RISK tuned (misconceptions + modern failure modes)",
+            "v0: MECHANISM tuned (model + systems framing for modern AI)",
+            "v0: APPLY tuned (examples + where-used + where-fails restored)",
         ],
     }
