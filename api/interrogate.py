@@ -1,6 +1,11 @@
 # api/interrogate.py
 # InI.ai – Interrogation Engine (v0)
 # Guided thinking order: ORIENT → RISK → MECHANISM → APPLY → NEXT
+#
+# Imperatives respected:
+# - No answer-length capping/trimming.
+# - No deletion of natural-language prefixes for topic extraction.
+# - APPLY includes WHERE USED + WHERE FAILS (visible categories).
 
 from typing import Dict, List, Tuple, Any
 
@@ -28,7 +33,7 @@ ARCHETYPE_MAP = {
     "Common Challenges": "RISK",
     "How": "MECHANISM",
     "Examples": "APPLY",
-    "Where": "APPLY",          # IMPORTANT: supported + now surfaced in build_categories()
+    "Where": "APPLY",          # IMPORTANT: supported + surfaced in build_categories()
     "how to": "LEARN",
     "Related Topics": "NEXT",
 }
@@ -38,7 +43,6 @@ ARCHETYPE_MAP = {
 # Era awareness (light, v0)
 # ==================================================
 ERA_HOOKS = {
-    # Keep it light, but modern. This should not replace deeper topic-core content.
     "Artificial Intelligence": (
         "Modern AI discussions often include Generative AI (GenAI), Large Language Models (LLMs), "
         "Retrieval-Augmented Generation (RAG), and agentic systems that can plan and use tools."
@@ -47,14 +51,25 @@ ERA_HOOKS = {
         "Modern AI discussions often include Generative AI (GenAI), Large Language Models (LLMs), "
         "Retrieval-Augmented Generation (RAG), and agentic systems that can plan and use tools."
     ),
+    "Machine Learning": (
+        "Modern ML often overlaps with deep learning, and it powers real-world systems such as recommendations, "
+        "fraud detection, forecasting, and personalization."
+    ),
+    "ML": (
+        "Modern ML often overlaps with deep learning, and it powers real-world systems such as recommendations, "
+        "fraud detection, forecasting, and personalization."
+    ),
 }
 
 
 # ==================================================
 # Topic-specific intelligence core (v0)
-# NOTE: This is intentionally deep for flagship topics like AI.
+# NOTE: AI is flagship; ML is now richly tuned.
 # ==================================================
 TOPIC_CORE = {
+    # ----------------------------
+    # Artificial Intelligence (flagship)
+    # ----------------------------
     "artificial intelligence": {
         "one_liner": (
             "AI is software that achieves goals by learning patterns from data to predict, generate, or decide."
@@ -90,7 +105,6 @@ TOPIC_CORE = {
         ),
 
         # ---------- RISK ----------
-        # Keep long-form + practical. No forced brevity.
         "risk": [
             "AI does not understand like a human; it learns correlations and patterns and can sound confident while being wrong.",
             "Overtrust is the biggest failure mode: people treat outputs as truth instead of hypotheses to verify.",
@@ -165,7 +179,150 @@ TOPIC_CORE = {
             "- Agentic systems get unsafe tool access (prompt injection / bad actions).\n\n"
             "Practical rule: treat AI like a strong assistant, not an authority. Add checks, monitoring, and human review."
         ),
-    }
+
+        # ---------- NEXT ----------
+        "next_map": (
+            "A clean learning map (AI → next topics):\n\n"
+            "1) Machine Learning (ML): the core method for learning from data.\n"
+            "2) Deep Learning (DL): neural networks that power modern vision/language.\n"
+            "3) Generative AI (GenAI): models that generate text/code/images.\n"
+            "4) AI Systems: model + retrieval (RAG) + tools + monitoring.\n"
+            "5) Agentic AI: planning + tool-use + evaluation loops.\n\n"
+            "If your goal is practical proficiency, learn ML basics first, then GenAI + AI systems."
+        ),
+    },
+
+    # ----------------------------
+    # Machine Learning (validation topic, now richly tuned)
+    # ----------------------------
+    "machine learning": {
+        "one_liner": (
+            "Machine Learning (ML) is a way to make systems learn from data so they can predict or decide without explicit rules."
+        ),
+
+        # ---------- ORIENT ----------
+        "orient_plain": (
+            "Machine Learning (ML) is a subset of Artificial Intelligence where a system learns patterns from data.\n\n"
+            "Instead of you writing rules like “if X then Y,” you provide examples (data), and the system learns a model that maps inputs to outputs.\n\n"
+            "ML is used for prediction (what will happen), classification (which category), ranking (what to show first), and detection (what looks unusual).\n\n"
+            "Important distinction:\n"
+            "- AI = the broader goal (machines doing intelligent tasks)\n"
+            "- ML = a primary method to achieve that goal (learning from data)\n"
+            "- GenAI = a newer family of ML models focused on generating content (text/code/images), not just predicting labels.\n\n"
+            "So ML is foundational: most modern AI products are built on ML, even if the user experiences them as “AI.”"
+        ),
+        "orient_problem": (
+            "ML exists for problems where writing rules is too complex or brittle, but examples are available.\n\n"
+            "For example, you can’t easily hand-code all the patterns that make an email spam, but you can label many emails as spam or not spam.\n\n"
+            "ML turns those examples into a model that can generalize to new cases.\n\n"
+            "It’s most valuable when decisions repeat at scale, outcomes can be measured, and the environment is stable enough to learn useful patterns."
+        ),
+        "orient_benefits": (
+            "ML benefits come from scale + consistency + pattern detection.\n\n"
+            "It can automate repeated classification decisions, surface signals humans miss, and improve over time as more (better) data becomes available.\n\n"
+            "It also lets you start simple: a baseline model may already deliver strong value. You only move to more complex models when error analysis proves it’s necessary.\n\n"
+            "In real deployments, the biggest value often comes from the full loop: data → model → evaluation → monitoring → improvement."
+        ),
+        "orient_limits": (
+            "ML is limited by data quality, problem framing, and evaluation choices.\n\n"
+            "If the data is biased or incomplete, the model learns those distortions.\n\n"
+            "If the problem is framed poorly (wrong label/target), the model can be ‘accurate’ while being useless.\n\n"
+            "ML also struggles when:\n"
+            "- edge cases matter more than averages\n"
+            "- the world changes (drift)\n"
+            "- the needed context isn’t captured in features\n\n"
+            "In short: ML is powerful, but it is not magic—its reliability depends on measurement, monitoring, and careful constraints."
+        ),
+
+        # ---------- RISK ----------
+        "risk": [
+            "Confusion risk: ML is a subset of AI (and not the same as GenAI). People call everything ‘AI’ and skip the distinction.",
+            "Overfitting: the model learns training noise and fails on new data. The cure is evaluation discipline + simplicity first.",
+            "Data leakage: the model accidentally gets information that wouldn’t exist at prediction time, making results look falsely strong.",
+            "Spurious correlations: the model can learn shortcuts that don’t hold in reality (e.g., proxies for sensitive traits).",
+            "Metric trap: optimizing the wrong metric can create a model that looks ‘great’ but fails the real goal.",
+            "Drift: real-world behavior changes; performance silently degrades unless you monitor and retrain.",
+            "Deployment mismatch: training inputs and real-world inputs differ (distribution shift), causing unexpected failures.",
+        ],
+
+        # ---------- MECHANISM ----------
+        "mech_high_level": (
+            "ML works by training a model on examples.\n\n"
+            "In supervised learning, you provide inputs (features X) and outputs (labels y). Training adjusts parameters to reduce error.\n\n"
+            "After training, the model performs inference: it predicts labels/values for new inputs.\n\n"
+            "A practical workflow:\n"
+            "Define problem → collect/clean data → build baseline → evaluate → error analysis → improve → deploy → monitor."
+        ),
+        "mech_beginner_steps": (
+            "A practical beginner path for ML:\n\n"
+            "1) Learn core terms: features, labels, training vs testing, baseline, overfitting.\n"
+            "2) Build two tiny projects: one classification + one regression.\n"
+            "3) Learn evaluation and error analysis: where does it fail and why?\n\n"
+            "Then learn real-world discipline:\n"
+            "- leakage detection\n"
+            "- cross-validation\n"
+            "- monitoring + drift\n"
+            "- communicating results clearly"
+        ),
+        "mech_understanding_check": (
+            "You truly understand ML when you can:\n\n"
+            "- Define the prediction target clearly (what exactly are we predicting?).\n"
+            "- Explain what features matter and why.\n"
+            "- Choose a metric that matches the real goal.\n"
+            "- Perform error analysis (top failure cases).\n"
+            "- Suggest improvements via data, features, or model choice.\n\n"
+            "If you can do this on a small dataset, you have real ML understanding—not just algorithm names."
+        ),
+
+        # ---------- APPLY ----------
+        "apply_simple_example": (
+            "Simple example: predicting whether a customer will cancel a subscription (churn).\n\n"
+            "Inputs: usage frequency, last login date, support tickets, plan type.\n"
+            "Output: likely to churn (yes/no) or churn probability.\n\n"
+            "You train on historical customer data where churn is known. The model learns patterns that help prioritize retention actions.\n\n"
+            "This shows ML’s value: scaling a repeated decision using data patterns."
+        ),
+        "apply_real_world": (
+            "Real-world ML examples:\n\n"
+            "1) Recommendations: ranking products/videos/posts you’re likely to engage with.\n"
+            "2) Fraud/anomaly detection: flagging unusual transactions or behaviors.\n"
+            "3) Forecasting: sales, demand, staffing, inventory.\n"
+            "4) Risk scoring: credit risk, churn likelihood, lead scoring.\n"
+            "5) Classification: spam detection, sentiment, document routing.\n\n"
+            "ML often becomes ‘quiet infrastructure’—you use it daily without noticing it’s ML."
+        ),
+        "apply_where_used": (
+            "ML is used where decisions repeat and outcomes can be measured:\n\n"
+            "- Retail/e-commerce: recommendations, demand forecasting, churn prediction\n"
+            "- Finance: fraud detection, credit risk scoring\n"
+            "- Operations: forecasting, routing, quality checks\n"
+            "- Marketing: segmentation, conversion prediction\n"
+            "- Support: ticket classification and triage\n\n"
+            "Rule of thumb: ML fits when you have enough examples, a stable signal, and a clear success metric."
+        ),
+        "apply_where_fails": (
+            "ML fails or breaks when:\n\n"
+            "- The target is unclear or labels are noisy.\n"
+            "- Training data doesn’t match real-world inputs (distribution shift).\n"
+            "- Leakage inflates performance during development.\n"
+            "- The world changes (drift) and the model isn’t monitored.\n"
+            "- Rare edge cases dominate impact (e.g., safety-critical systems).\n\n"
+            "Practical rule: start with a baseline, validate carefully, monitor after deployment, and iterate."
+        ),
+
+        # ---------- NEXT (the mapping you requested) ----------
+        "next_map": (
+            "A clean learning map (ML → next topics):\n\n"
+            "1) Statistics foundations: probability, bias/variance, sampling, distributions.\n"
+            "2) Core supervised ML: regression, classification, trees/ensembles.\n"
+            "3) Model evaluation: metrics, cross-validation, error analysis, leakage checks.\n"
+            "4) Deep Learning (DL): neural networks (vision, speech, language).\n"
+            "5) Generative AI (GenAI): LLMs that generate text/code/images.\n"
+            "6) AI Systems: RAG, tool use, monitoring, deployment discipline.\n"
+            "7) Agentic AI: planning + tool execution + self-check loops.\n\n"
+            "If your goal is modern AI work: learn ML basics → evaluation discipline → then DL/GenAI → then AI systems → then agents."
+        ),
+    },
 }
 
 
@@ -187,9 +344,9 @@ def extract_topic(user_text: str) -> str:
     Handles:
     - "can you tell me about AI"
     - "please explain machine learning"
-    - "can you teach me about AI and how to learn it?"
-    - "tell me about AI, and also its applications"
-    - "what is AI?"
+    - "can you teach me about ML and how to learn it?"
+    - "tell me about ML, and also its applications"
+    - "what is ML?"
     """
 
     t = (user_text or "").strip().lower()
@@ -284,6 +441,7 @@ def extract_topic(user_text: str) -> str:
         "llms": "Large Language Models",
         "rag": "Retrieval-Augmented Generation",
         "ml": "Machine Learning",
+        "machine learning": "Machine Learning",
         "dl": "Deep Learning",
         "nlp": "Natural Language Processing",
         "agentic ai": "Agentic AI",
@@ -356,15 +514,13 @@ def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
             f"What is a simple example of {t}?",
             f"What are real-world examples of {t}?",
         ],
-
-        # ✅ RESTORED / GUARANTEED VISIBILITY
         "Where": [
             f"Where is {t} used in real life?",
             f"Where does {t} usually fail or break in practice?",
         ],
-
         "Related Topics": [
             f"What topics are closely related to {t}?",
+            f"What should I learn next after {t}?",
         ],
     }
 
@@ -382,15 +538,15 @@ def build_answer(topic, topic_type, category, question, archetype):
     if archetype == "ORIENT":
         if core:
             if "plain language" in ql:
-                ans = core["orient_plain"]
+                ans = core.get("orient_plain", core.get("one_liner", ""))
             elif "problem" in ql:
-                ans = core["orient_problem"]
+                ans = core.get("orient_problem", core.get("one_liner", ""))
             elif "benefit" in ql:
-                ans = core["orient_benefits"]
+                ans = core.get("orient_benefits", core.get("one_liner", ""))
             elif "limit" in ql:
-                ans = core["orient_limits"]
+                ans = core.get("orient_limits", core.get("one_liner", ""))
             else:
-                ans = core["one_liner"]
+                ans = core.get("one_liner", "")
         else:
             if "plain language" in ql:
                 ans = (
@@ -457,13 +613,13 @@ def build_answer(topic, topic_type, category, question, archetype):
     if archetype == "MECHANISM":
         if core:
             if "work at a high level" in ql:
-                ans = core["mech_high_level"]
+                ans = core.get("mech_high_level", core.get("one_liner", ""))
             elif "first 3 steps" in ql or "start learning" in ql:
-                ans = core["mech_beginner_steps"]
+                ans = core.get("mech_beginner_steps", core.get("one_liner", ""))
             elif "truly understand" in ql:
-                ans = core["mech_understanding_check"]
+                ans = core.get("mech_understanding_check", core.get("one_liner", ""))
             else:
-                ans = core["mech_high_level"]
+                ans = core.get("mech_high_level", core.get("one_liner", ""))
         else:
             if "work at a high level" in ql:
                 ans = (
@@ -496,7 +652,6 @@ def build_answer(topic, topic_type, category, question, archetype):
 
     # ---------- APPLY ----------
     if archetype == "APPLY":
-        # Topic-core APPLY (best quality)
         if core:
             if "simple example" in ql:
                 ans = core.get("apply_simple_example")
@@ -514,7 +669,6 @@ def build_answer(topic, topic_type, category, question, archetype):
                     ans += "\n\n" + era_note
                 return ans
 
-        # Generic APPLY (works for any topic)
         if "simple example" in ql:
             return (
                 f"Simple example of {topic}:\n\n"
@@ -547,6 +701,12 @@ def build_answer(topic, topic_type, category, question, archetype):
 
     # ---------- NEXT ----------
     if archetype == "NEXT":
+        if core and core.get("next_map"):
+            ans = core["next_map"]
+            if era_note and era_note not in ans:
+                ans += "\n\n" + era_note
+            return ans
+
         return (
             f"A good next step is to apply {topic} in a small, controlled way.\n\n"
             "Build something simple, observe failures, and iterate."
@@ -574,7 +734,6 @@ def interrogate(topic: str) -> Dict[str, Any]:
 
     topic_type, confidence = detect_topic_type(clean_topic)
     summary = build_summary(clean_topic, topic_type, confidence)
-
     categories = build_categories(clean_topic, topic_type)
 
     out = {}
@@ -615,9 +774,8 @@ def interrogate(topic: str) -> Dict[str, Any]:
         "notes": [
             "v0: guided thinking order enforced",
             "v0: robust topic extraction (natural phrasing + abbreviations)",
-            "v0: ORIENT tuned (deep, non-trimmed answers)",
-            "v0: RISK tuned (misconceptions + modern failure modes)",
-            "v0: MECHANISM tuned (model + systems framing for modern AI)",
-            "v0: APPLY tuned (examples + where-used + where-fails restored)",
+            "v0: AI and ML have enriched long-form content blocks",
+            "v0: APPLY includes where-used + where-fails (visible in categories)",
+            "v0: NEXT includes learning-map when available (AI/ML)",
         ],
     }
