@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from api.interrogate import interrogate
 from api.illustrate import illustrate as illustrate_logic
 from api.resume import resume as resume_logic
+from api.llm_answers import llm_enabled
+
 
 
 
@@ -40,5 +42,6 @@ def health():
             "interrogate",
             "illustrate",
             "resume"
-        ]
+        ],
+        "llm_enabled": llm_enabled(),
     }

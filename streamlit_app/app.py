@@ -79,6 +79,8 @@ if "viewed_ids" not in st.session_state:
 
 # ---------------- UI: Home ----------------
 st.title("InI.ai")
+st.caption("LLM: ON (dynamic answers enabled for AI/ML)")
+
 
 topic = st.text_area(
     "Topic",
