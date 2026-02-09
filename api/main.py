@@ -4,6 +4,8 @@ from api.interrogate import interrogate
 from api.illustrate import illustrate as illustrate_logic
 from api.resume import resume as resume_logic
 from api.llm_answers import llm_enabled
+from api.study_ai import study_ai   
+
 
 
 
@@ -45,3 +47,9 @@ def health():
         ],
         "llm_enabled": llm_enabled(),
     }
+
+
+@app.post("/study/ai")
+def study_ai_route(payload: TopicIn):
+    # payload.topic is re-used as “user_message” for simplicity in v0
+    return study_ai(payload.topic)

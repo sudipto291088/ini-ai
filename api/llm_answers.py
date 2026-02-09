@@ -1,24 +1,27 @@
-# api/llm_answers.py
-import os
-from typing import Optional
+﻿import os
+from typing import Optional, Dict, Any
+import requests
 
-try:
-    from openai import OpenAI
-except Exception:
-    OpenAI = None  # allows app to run even if openai isn't installed
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-4.1-mini").strip()
+INI_LLM_TEMPERATURE = float(os.getenv("INI_LLM_TEMPERATURE", "0.4"))
+INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "1600"))
+INI_LLM_DEBUG = os.getenv("INI_LLM_DEBUG", "").strip() in {"1","true","TRUE","yes","YES"}
 
-
-DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-5-mini")  # you can change later
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-
+# MARKER: REQUESTS_ONLY_V0
 
 def llm_enabled() -> bool:
-    return bool(os.getenv("OPENAI_API_KEY")) and (OpenAI is not None)
+    return bool(OPENAI_API_KEY)
 
-
-def _client() -> "OpenAI":
-    return OpenAI(api_key=OPENAI_API_KEY)
-
+def _era_hints(topic: str) -> str:
+    t = (topic or "").strip().lower()
+    if t in {"artificial intelligence","ai"}:
+        return ("Include modern layers: classical AI, ML, deep learning, GenAI/LLMs, "
+                "RAG, tool-use, agentic systems, evaluation, safety.")
+    if t in {"machine learning","ml"}:
+        return ("Include ML fundamentals + modern practice: supervised/unsupervised/self-supervised, "
+                "metrics, deployment, monitoring, connection to GenAI.")
+    return ""
 
 def generate_dynamic_answer(
     *,
@@ -26,81 +29,61 @@ def generate_dynamic_answer(
     topic_type: str,
     archetype: str,
     question: str,
+    meta: Optional[Dict[str, Any]] = None,
+    **_ignored: Any,
 ) -> Optional[str]:
-    """
-    Returns a dynamic answer string or None (if disabled / error).
-
-    Design:
-    - Only used for AI/ML in v0.
-    - No hard length caps.
-    - Structured, to-the-point, but can be long when needed.
-    """
     if not llm_enabled():
         return None
 
-    # Light era-awareness hints
-    era_hint = ""
-    if topic.lower() in {"artificial intelligence", "ai"}:
-        era_hint = (
-            "Modern AI should mention GenAI/LLMs, RAG, and agentic/tool-using systems when relevant."
-        )
-    elif topic.lower() in {"machine learning", "ml"}:
-        era_hint = (
-            "Modern ML should connect to deep learning, GenAI, and agents as a learning/progression map when asked."
-        )
-
-    system = (
-        "You are InI.ai, a 'question engine' tutor.\n"
-        "Answer the user's question clearly and accurately.\n"
+    system_prompt = (
+        "You are InI.ai — a teaching-first AI mentor.\n"
         "Rules:\n"
-        "- Be precise, not fluffy.\n"
-        "- Do NOT artificially cap answer length; be as long as needed.\n"
-        "- Use short paragraphs and occasional bullets when helpful.\n"
-        "- If the question asks for examples, provide concrete examples.\n"
-        "- If the archetype is RISK, include misconceptions/pitfalls and safe practice.\n"
-        "- If the archetype is APPLY, include where-used and where-fails if relevant.\n"
-        "- If the archetype is NEXT, give a learning map / next steps.\n"
-        "- Avoid pretending you have live browsing; use stable knowledge.\n"
+        "- Be accurate, thorough, and clear.\n"
+        "- Do NOT artificially cap length.\n"
+        "- Use headings/bullets when helpful.\n"
+        "- Include 1–2 examples when useful.\n"
+        "- If RISK: misconceptions/pitfalls/limits.\n"
+        "- If APPLY: where-used AND where-fails.\n"
+        "- If NEXT: practical roadmap.\n"
+        "- Do NOT pretend to browse.\n"
     )
 
-    user = (
+    hints = _era_hints(topic)
+    meta_txt = ""
+    if isinstance(meta, dict) and meta:
+        meta_txt = "Meta: " + ", ".join(f"{k}={meta.get(k)}" for k in list(meta.keys())[:8])
+
+    user_prompt = (
         f"Topic: {topic}\n"
         f"Topic type: {topic_type}\n"
         f"Archetype: {archetype}\n"
-        f"Question: {question}\n\n"
-        f"Era hints: {era_hint}\n"
+        f"{meta_txt}\n"
+        f"Era hints: {hints}\n\n"
+        f"Instruction:\n{question}\n"
     )
 
+    url = "https://api.openai.com/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": DEFAULT_MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": INI_LLM_TEMPERATURE,
+        "max_tokens": INI_LLM_MAX_TOKENS,
+    }
+
     try:
-        c = _client()
-        resp = c.responses.create(
-            model=DEFAULT_MODEL,
-            input=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-        )
-
-        # Best-effort text extraction (SDK returns a rich object)
-        # Many SDK versions provide resp.output_text
-        text = getattr(resp, "output_text", None)
-        if text and isinstance(text, str) and text.strip():
-            return text.strip()
-
-        # Fallback: try to dig through output blocks
-        out = getattr(resp, "output", None)
-        if isinstance(out, list):
-            chunks = []
-            for item in out:
-                content = getattr(item, "content", None)
-                if isinstance(content, list):
-                    for c2 in content:
-                        t = getattr(c2, "text", None)
-                        if isinstance(t, str):
-                            chunks.append(t)
-            merged = "\n".join(x.strip() for x in chunks if x.strip()).strip()
-            return merged or None
-
-        return None
-    except Exception:
+        r = requests.post(url, headers=headers, json=payload, timeout=90)
+        if r.status_code != 200:
+            if INI_LLM_DEBUG:
+                return f"[LLM DEBUG] HTTP {r.status_code}: {r.text[:500]}"
+            return None
+        data = r.json()
+        text = data["choices"][0]["message"]["content"]
+        return text.strip() if isinstance(text, str) and text.strip() else None
+    except Exception as e:
+        if INI_LLM_DEBUG:
+            return f"[LLM DEBUG] requests exception: {type(e).__name__}: {e}"
         return None
