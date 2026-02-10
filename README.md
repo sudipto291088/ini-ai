@@ -95,5 +95,19 @@ curious minds
 
 people who learn better through questions + examples
 
+
+## Windows UTF-8 Note
+
+For clean UTF-8 output when running FastAPI on Windows, set:
+
+```powershell
+$env:PYTHONUTF8="1"
+
+
+
+
+
+
+
 Author
 Sudipto Bhadra
