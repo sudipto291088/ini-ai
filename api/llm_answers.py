@@ -11,49 +11,29 @@ import requests
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
 # IMPORTANT:
-# gpt-4o-mini supports /v1/chat/completions
-# gpt-4.1-mini does NOT
+# gpt-4o-mini supports /v1/chat/completions and JSON mode.
 DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-4o-mini").strip()
 
 INI_LLM_TEMPERATURE = float(os.getenv("INI_LLM_TEMPERATURE", "0.4"))
 INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "1600"))
-
-INI_LLM_DEBUG = os.getenv("INI_LLM_DEBUG", "").strip() in {
-    "1", "true", "TRUE", "yes", "YES"
-}
+INI_LLM_DEBUG = os.getenv("INI_LLM_DEBUG", "0").strip() in ("1", "true", "True", "YES", "yes")
 
 
-# ----------------------------
-# Public helpers
-# ----------------------------
 def llm_enabled() -> bool:
+    """LLM is enabled only if an API key exists."""
     return bool(OPENAI_API_KEY)
 
 
 def _era_hints(topic: str) -> str:
-    t = (topic or "").strip().lower()
-
-    if t in {"artificial intelligence", "ai"}:
-        return (
-            "Cover AI across layers and eras when relevant: "
-            "symbolic/classical AI, machine learning, deep learning, "
-            "foundation models, LLMs/GenAI, RAG, tool use, agentic systems, "
-            "evaluation, alignment, and safety."
-        )
-
-    if t in {"machine learning", "ml"}:
-        return (
-            "Cover ML comprehensively: supervised, unsupervised, self-supervised learning, "
-            "feature engineering, deep learning, evaluation (bias/variance, metrics), "
-            "deployment, monitoring, and how ML connects to GenAI/LLMs."
-        )
-
+    """Small hint helper (kept as-is)."""
+    t = (topic or "").lower()
+    if "artificial intelligence" in t or t == "ai":
+        return "Include: Classical AI → ML → Deep Learning → Foundation Models → GenAI/LLMs → Tool-use/Agents."
+    if "machine learning" in t or t == "ml":
+        return "Include: supervised/unsupervised, features, evaluation, overfitting, deployment."
     return ""
 
 
-# ----------------------------
-# Core LLM function (v0)
-# ----------------------------
 def generate_dynamic_answer(
     *,
     topic: str,
@@ -71,11 +51,19 @@ def generate_dynamic_answer(
     - Research-level depth allowed
     - Works reliably on Windows
     - Chat Completions compatible
+    - JSON mode supported when meta expects JSON
     """
 
     if not llm_enabled():
         return None
 
+    # If caller expects JSON, enforce JSON mode.
+    expects_json = False
+    if isinstance(meta, dict):
+        expects = str(meta.get("expects", "")).lower().strip()
+        expects_json = expects in ("json", "json_object", "strict_json")
+
+    # System prompt (slightly strengthened for JSON mode)
     system_prompt = (
         "You are InI.ai — a teaching-first AI mentor.\n\n"
         "Non-negotiable rules:\n"
@@ -89,6 +77,12 @@ def generate_dynamic_answer(
         "- If archetype is NEXT: include a clear learning roadmap.\n"
         "- Do NOT pretend to browse the internet.\n"
     )
+
+    if expects_json:
+        system_prompt += (
+            "\nOUTPUT RULE (STRICT): Return a single valid JSON object only. "
+            "No markdown, no commentary, no code fences.\n"
+        )
 
     hints = _era_hints(topic)
 
@@ -113,15 +107,20 @@ def generate_dynamic_answer(
         "Content-Type": "application/json",
     }
 
-    payload = {
+    payload: Dict[str, Any] = {
         "model": DEFAULT_MODEL,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "temperature": INI_LLM_TEMPERATURE,
+        # JSON mode is more reliable at lower temperature; keep your default otherwise.
+        "temperature": 0.2 if expects_json else INI_LLM_TEMPERATURE,
         "max_tokens": INI_LLM_MAX_TOKENS,
     }
+
+    # The key fix: enforce JSON object output when requested.
+    if expects_json:
+        payload["response_format"] = {"type": "json_object"}
 
     try:
         response = requests.post(
@@ -145,12 +144,9 @@ def generate_dynamic_answer(
         if isinstance(content, str) and content.strip():
             return content.strip()
 
-        if INI_LLM_DEBUG:
-            return "[LLM DEBUG] Empty content in response."
-
         return None
 
     except Exception as e:
         if INI_LLM_DEBUG:
-            return f"[LLM DEBUG] requests exception: {type(e).__name__}: {e}"
+            return f"[LLM DEBUG] EXCEPTION: {type(e).__name__}: {e}"
         return None

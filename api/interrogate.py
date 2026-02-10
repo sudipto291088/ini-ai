@@ -1,17 +1,15 @@
+# api/interrogate.py
+import json
 import re
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
 
 # ------------------------------------------------------------
 # OPTIONAL LLM HOOKS (safe import)
 # ------------------------------------------------------------
-# We will use LLM only for AI / Machine Learning topics (Option A).
-# If api.llm_answers isn't available or doesn't expose these names,
-# the app will fall back to template answers.
-# ------------------------------------------------------------
-# LLM HOOKS (robust)
+# LLM is used ONLY for AI / ML topics in v0.
+# Other topics use templates.
 # ------------------------------------------------------------
 try:
-    # Your repo already uses generate_dynamic_answer earlier, so we support it.
     from api.llm_answers import llm_enabled as _llm_enabled
     from api.llm_answers import generate_dynamic_answer as llm_answer_question
 except Exception:
@@ -31,7 +29,6 @@ def _llm_is_enabled() -> bool:
         return bool(_llm_enabled()) if callable(_llm_enabled) else bool(_llm_enabled)
     except Exception:
         return False
-
 
 
 # ------------------------------------------------------------
@@ -88,14 +85,12 @@ def extract_topic(user_text: str) -> str:
     if m and len(m.group(1).strip()) >= 2:
         text = m.group(1).strip()
 
-    # Normalize simple cases like "ai" -> "AI"
+    # Normalize simple cases
     if text.lower() == "ai":
         return "Artificial Intelligence"
     if text.lower() in ["ml", "machine learning"]:
         return "Machine Learning"
 
-    # Title-case but keep acronyms
-    # (Don’t overdo. Keep user's wording mostly.)
     if len(text) <= 4 and text.isalpha():
         return text.upper()
 
@@ -103,22 +98,19 @@ def extract_topic(user_text: str) -> str:
 
 
 # ------------------------------------------------------------
-# Topic type detection (kept)
+# Topic type detection
 # ------------------------------------------------------------
 def detect_topic_type(topic: str) -> Tuple[str, float]:
     t = (topic or "").strip().lower()
     if not t:
         return "unknown", 0.0
 
-    # comparison
     if any(x in t for x in [" vs ", "versus", "compare", "comparison", "difference between"]):
         return "comparison", 0.67
 
-    # how-to / learning intent
     if any(x in t for x in ["how to", "learn", "study", "become", "start with", "roadmap"]):
         return "how_to", 0.67
 
-    # decision
     if any(x in t for x in ["should i", "choose", "buy or", "pick", "decide"]):
         return "decision", 0.67
 
@@ -127,36 +119,38 @@ def detect_topic_type(topic: str) -> Tuple[str, float]:
 
 # ------------------------------------------------------------
 # Archetypes + category ordering
-# Imperative: RISK should come immediately after ORIENT in the guided flow.
 # ------------------------------------------------------------
 ARCHETYPE_MAP = {
     "What": "ORIENT",
     "Why": "ORIENT",
-    "When": "ORIENT",
-    "Who": "ORIENT",
-    "How to": "ORIENT",
 
+    # RISK immediately after ORIENT
     "Misconceptions": "RISK",
     "Common Challenges": "RISK",
 
     "How": "MECHANISM",
-
     "Where": "APPLY",
     "Examples": "APPLY",
-
     "Related Topics": "NEXT",
 }
 
+CATEGORY_ORDER = [
+    "What",
+    "Why",
+    "Misconceptions",
+    "Common Challenges",
+    "How",
+    "Where",
+    "Examples",
+    "Related Topics",
+]
+
 
 def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
-    """Return category -> list of questions.
-    Keep it deterministic and readable (v0).
-    """
+    """Deterministic template question bank (non-AI topics in v0)."""
     T = topic
-
     categories: Dict[str, List[str]] = {}
 
-    # ORIENT
     categories["What"] = [
         f"What is {T} in plain language?",
         f"What problem does {T} exist to solve?",
@@ -169,31 +163,29 @@ def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
         f"Why do people get confused about {T}?",
     ]
 
-    # RISK (immediately after ORIENT)
     categories["Misconceptions"] = [
         f"What is a common misconception about {T}?",
     ]
+
     categories["Common Challenges"] = [
         f"What pitfalls should I avoid when learning or using {T}?",
     ]
 
-    # MECHANISM
     categories["How"] = [
         f"How does {T} work at a high level?",
         f"How can I tell if I truly understand {T}?",
     ]
 
-    # APPLY (this is where your screenshot showed “Where used / Where fails” missing)
     categories["Where"] = [
         f"Where is {T} used in real life?",
         f"Where does {T} usually fail or break in practice?",
     ]
+
     categories["Examples"] = [
         f"What is a simple example of {T}?",
         f"What are real-world examples of {T}?",
     ]
 
-    # NEXT
     categories["Related Topics"] = [
         f"What topics are closely related to {T}?",
     ]
@@ -201,9 +193,6 @@ def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
     return categories
 
 
-# ------------------------------------------------------------
-# Summaries (keep friendly and not capped)
-# ------------------------------------------------------------
 def build_summary(topic: str, topic_type: str, confidence: float) -> List[str]:
     if topic_type == "comparison":
         return [
@@ -223,176 +212,266 @@ def build_summary(topic: str, topic_type: str, confidence: float) -> List[str]:
 
 
 # ------------------------------------------------------------
-# Template answers (fallback when LLM is off or for non-AI/ML topics)
-# NOTE: No “answer length capping” here—answers can be long.
+# Template answers (fallback)
+# IMPORTANT: DO NOT shorten answers; keep full explanations.
 # ------------------------------------------------------------
 def _orient_answer(topic: str, question: str, cat: str) -> str:
-    tl = topic.lower()
-    ql = question.lower()
+    ql = (question or "").lower()
 
-    # Slightly richer for AI/ML even in template fallback
-    is_ai = any(x in tl for x in ["artificial intelligence", "ai", "machine learning", "ml"])
-    if is_ai and ("plain language" in ql or ql.startswith("what is")):
+    if "plain language" in ql or ql.startswith("what is"):
         return (
-            "Artificial Intelligence (AI) is when computers perform tasks that usually require human intelligence—"
-            "like recognizing patterns, understanding language, making predictions, or generating content.\n\n"
-            "Most modern AI is built from machine learning: models learn patterns from data and then use those patterns "
-            "to classify, predict, or generate outputs.\n\n"
-            "AI isn’t automatically ‘human-like understanding’—it’s typically narrow, goal-driven, and constrained by "
-            "training data and design."
+            f"{topic} in plain language:\n"
+            f"- It’s a way of thinking about and solving problems using structured concepts and methods.\n"
+            f"- The key is being able to define it clearly, give an example, and describe where it fails.\n"
         )
 
     if "problem" in ql:
         return (
-            f"{topic} exists to help make better decisions or automate tasks when rules are too complex to write by hand.\n\n"
-            "It’s especially useful when you have patterns in data, repeated decisions, or large scale processes."
+            f"{topic} exists to solve problems where simple rules are not enough.\n"
+            f"It helps by introducing a structured way to represent the problem and evaluate outcomes."
         )
 
     if "benefit" in ql:
         return (
-            f"Key benefits of {topic} include speed, consistency, and the ability to detect patterns humans may miss.\n\n"
-            "It can reduce manual effort, improve accuracy for certain tasks, and unlock new capabilities (like personalization)."
+            f"Benefits of {topic} typically include:\n"
+            f"- clearer structure\n"
+            f"- faster or more consistent decisions\n"
+            f"- better communication of ideas\n"
         )
 
     if "limitation" in ql:
         return (
-            f"{topic} can fail when data is biased, incomplete, or different from real-world conditions.\n\n"
-            "It can also be brittle: it may perform well in testing but degrade when inputs change, objectives shift, or humans misuse it."
+            f"Limitations of {topic} usually come from:\n"
+            f"- unclear goals\n"
+            f"- missing context\n"
+            f"- incorrect assumptions\n"
+            f"- misuse (using it where it doesn’t apply)\n"
         )
 
     if "confused" in ql:
         return (
-            f"People get confused about {topic} because marketing terms blur boundaries and because outputs can look confident.\n\n"
-            "A good mental model: the system is optimizing a goal using patterns—not ‘understanding’ like a person."
+            f"People get confused about {topic} when definitions are mixed with buzzwords.\n"
+            f"A good test: can you explain it simply and give one real example + one failure case?"
         )
 
-    return f"{topic} is best understood by defining it, seeing its parts, and mapping it to real-life use."
+    return (
+        f"{topic} becomes clear when you can explain it simply, give an example, and state when it fails."
+    )
 
 
 def _mechanism_answer(topic: str, question: str) -> str:
-    ql = question.lower()
-    if "high level" in ql:
-        return (
-            f"At a high level, {topic} works by taking inputs, transforming them through a learned or designed process, "
-            "and producing outputs that support a decision or action.\n\n"
-            "In machine learning systems, the transformation is a model trained on examples; in rule systems, it’s logic written by humans.\n\n"
-            "What matters most is: the data, the objective, and how you evaluate performance."
-        )
     return (
-        f"You can test understanding of {topic} by explaining it simply, giving a real example, and stating when it fails.\n\n"
-        "If you can do that without buzzwords, you’re on the right track."
+        f"Mechanism (high level) for {topic}:\n"
+        f"- Identify inputs and desired outputs.\n"
+        f"- Apply a method/process that transforms inputs into outputs.\n"
+        f"- Evaluate performance with a clear metric.\n"
+        f"- Iterate based on errors and edge cases.\n"
     )
 
 
 def _apply_answer(topic: str, question: str) -> str:
-    ql = question.lower()
-    if "used in real life" in ql:
-        return (
-            f"{topic} shows up in products and workflows where decisions repeat at scale.\n\n"
-            "Common places: recommendations, search, fraud detection, forecasting, customer support, routing, quality checks, and personalization.\n\n"
-            "The best applications have clear goals and measurable success criteria."
-        )
+    ql = (question or "").lower()
     if "fail" in ql or "break" in ql:
         return (
-            f"{topic} often fails when real-world inputs differ from what the system was designed or trained for.\n\n"
-            "Typical failure causes: distribution shift, hidden bias, unclear objectives, lack of monitoring, and overtrust by users.\n\n"
-            "A strong system includes feedback loops, guardrails, and evaluation—not just a model."
-        )
-    if "simple example" in ql:
-        return (
-            f"Simple example of {topic}: a spam filter that learns patterns from labeled emails and predicts whether a new email is spam.\n\n"
-            "Even simpler: a rules-based system that flags emails with suspicious links—less flexible but easy to explain."
+            f"{topic} commonly fails when the real-world context violates assumptions.\n"
+            f"Watch for edge cases, drift, misuse, and unclear success criteria."
         )
     return (
-        f"Real-world examples of {topic} include automation in workplaces, smarter products, and systems that adapt based on data.\n\n"
-        "The exact form depends on the domain and constraints."
+        f"{topic} is used wherever decisions repeat at scale and outcomes can be measured."
     )
 
 
 def _risk_answer(topic: str, question: str) -> str:
-    ql = question.lower()
+    ql = (question or "").lower()
     if "misconception" in ql:
         return (
-            f"A common misconception is that {topic} ‘understands’ the way humans do.\n\n"
-            "Often it is pattern-matching and optimization. It can look intelligent without having human reasoning.\n\n"
-            "A second misconception: higher accuracy automatically means the system is safe—real usage still needs monitoring and constraints."
+            f"A common misconception about {topic} is thinking the label explains the mechanism.\n"
+            f"Always ask: what inputs, what method, what metric, what failure modes?"
         )
     return (
-        f"Common pitfalls with {topic}: skipping fundamentals, trusting outputs without checking, and using it outside its intended scope.\n\n"
-        "Avoid treating it like magic—treat it like an engineered system with limits, failure modes, and responsibilities."
+        f"Pitfalls with {topic} include skipping fundamentals, using it outside its scope, and overtrusting outputs."
     )
 
 
 def _next_answer(topic: str) -> str:
     return (
-        f"Next step: apply {topic} in a small controlled project.\n\n"
-        "Pick one clear goal, measure success, and iterate. Practical work reveals gaps quickly."
+        f"Next step: apply {topic} in a small project with a clear goal and a measurable metric."
     )
 
 
 # ------------------------------------------------------------
-# LLM routing (Option A)
-# AI/ML topics -> LLM answers for ALL categories when enabled
+# LLM routing (AI / ML only)
 # ------------------------------------------------------------
 def _is_llm_topic(topic: str) -> bool:
     tl = (topic or "").lower()
     return any(x in tl for x in ["artificial intelligence", "ai", "machine learning", "ml"])
 
 
-def _llm_answer(topic: str, question: str, meta: Dict[str, Any]) -> str:
-    # meta can help your llm_answers.py craft better responses
-    return llm_answer_question(topic, question, meta)
+def _extract_json_object(text: str) -> Optional[dict]:
+    """
+    Pull a JSON object from an LLM response.
+    Handles ```json fences and extra text.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return None
+
+    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+    if fenced:
+        candidate = fenced.group(1).strip()
+        try:
+            return json.loads(candidate)
+        except Exception:
+            pass
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        candidate = text[start:end + 1].strip()
+        try:
+            return json.loads(candidate)
+        except Exception:
+            return None
+
+    return None
+
+
+def _llm_generate_full_interrogation(topic: str, topic_type: str) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
+    """
+    One LLM call:
+    - Generates a brief summary
+    - Generates categories with Q+A pairs
+    """
+    instruction = f"""
+You are InI.ai (Interrogate mode). Topic is AI-related.
+
+PRIMARY GOAL:
+- Teach via the RIGHT questions (question engine), then provide research-grade answers.
+
+FOUNDATIONAL RULE: 
+- The FIRST question in the "What" section MUST be "What is Artificial Intelligence?" explained at a beginner, non-buzzword, conceptual level.
+
+
+STRICT COVERAGE (must appear naturally in What / How / Where):
+- Classical AI vs Machine Learning vs Deep Learning (clear distinctions)
+- Generative AI vs LLMs (what each means, how they relate)
+- RAG (retrieval-augmented generation): what it is + why it exists + when to use it
+- Tool use vs Agentic AI (agents): what “agentic” means, examples, and failure modes
+- Evaluation: how to measure quality (hallucinations, accuracy, usefulness)
+- Safety & limits: what AI cannot do / where it breaks
+
+QUESTION QUALITY RULES:
+- Questions must be relevant, up-to-date, and phrased to reveal understanding gaps.
+- Include diagnostic questions to catch misconceptions.
+- Avoid duplicates and fluff.
+
+OUTPUT FORMAT:
+Return STRICT JSON only (no markdown, no commentary), with this shape:
+
+{{
+  "summary": ["brief bullet 1", "brief bullet 2", "brief bullet 3"],
+  "categories": {{
+    "What": [{{"question": "...", "answer": "..."}}, ...],
+    "Why": [...],
+    "Misconceptions": [...],
+    "Common Challenges": [...],
+    "How": [...],
+    "Where": [...],
+    "Examples": [...],
+    "Related Topics": [...]
+  }}
+}}
+
+CONTENT RULES:
+- Answers must be research-based, concrete, and include examples where useful.
+- Do NOT be short. Clarity matters more than brevity.
+- Total questions: ~18–28 is fine.
+- Keep categories present (use empty list only if truly necessary).
+
+Topic: {topic}
+Topic type: {topic_type}
+""".strip()
+
+    raw = llm_answer_question(
+        topic=topic,
+        topic_type=topic_type,
+        archetype="ORIENT",
+        question=instruction,
+        meta={"mode": "interrogate_batch", "expects": "json"},
+    )
+
+    data = _extract_json_object(raw or "")
+    if not isinstance(data, dict):
+        return (build_summary(topic, topic_type, 0.67), {})
+
+    summary = data.get("summary") if isinstance(data.get("summary"), list) else []
+    cats = data.get("categories") if isinstance(data.get("categories"), dict) else {}
+
+    categories_out: Dict[str, List[Dict[str, Any]]] = {}
+    global_count = 0
+
+    for cat in CATEGORY_ORDER:
+        items = cats.get(cat, [])
+        if not isinstance(items, list):
+            items = []
+
+        archetype = ARCHETYPE_MAP.get(cat, "ORIENT")
+        out_items: List[Dict[str, Any]] = []
+
+        for idx, it in enumerate(items, start=1):
+            if not isinstance(it, dict):
+                continue
+
+            q = (it.get("question") or "").strip()
+            a = (it.get("answer") or "").strip()
+
+            if not q or not a:
+                continue
+
+            global_count += 1
+            out_items.append(
+                {
+                    "id": f"{cat.lower().replace(' ', '_')}_{idx}",
+                    "archetype": archetype,
+                    "question": q,
+                    "answer": a,            # IMPORTANT: do NOT shorten
+                    "collapsed": True,
+                    "visible": global_count <= 8,
+                }
+            )
+
+        categories_out[cat] = out_items
+
+    if not any(categories_out.get(c) for c in categories_out):
+        return (build_summary(topic, topic_type, 0.67), {})
+
+    return (summary, categories_out)
 
 
 def attach_answers(categories: Dict[str, List[str]], topic: str, topic_type: str) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Non-AI topics: template questions + template answers.
+    IMPORTANT: answers must NOT equal the question.
+    """
     out: Dict[str, List[Dict[str, Any]]] = {}
 
-    use_llm = _llm_is_enabled() and _is_llm_topic(topic) and (llm_answer_question is not None)
-
-
-    for cat, questions in categories.items():
+    for cat in CATEGORY_ORDER:
+        questions = categories.get(cat, [])
         items: List[Dict[str, Any]] = []
+        archetype = ARCHETYPE_MAP.get(cat, "ORIENT")
+
         for idx, q in enumerate(questions, start=1):
-            archetype = ARCHETYPE_MAP.get(cat, "ORIENT")
-
-            ans = None
-
-            if use_llm:
-                meta = {
-        "topic_type": topic_type,
-        "category": cat,
-        "archetype": archetype,
-        "mode": "llm",
-    }
-                ans = _llm_answer(topic, q, meta)
-
-    # IMPORTANT: for AI/ML we DO NOT fall back
-                if not ans:
-                    ans = (
-            "LLM answer could not be generated at this time. "
-            "Please retry."
-        )
+            if archetype == "ORIENT":
+                ans = _orient_answer(topic, q, cat)
+            elif archetype == "MECHANISM":
+                ans = _mechanism_answer(topic, q)
+            elif archetype == "APPLY":
+                ans = _apply_answer(topic, q)
+            elif archetype == "RISK":
+                ans = _risk_answer(topic, q)
+            elif archetype == "NEXT":
+                ans = _next_answer(topic)
             else:
-                    # Non-AI/ML topics may use templates
-                if archetype == "ORIENT":
-                    ans = _orient_answer(topic, q, cat)
-                elif archetype == "MECHANISM":
-                    ans = _mechanism_answer(topic, q)
-                elif archetype == "APPLY":
-                    ans = _apply_answer(topic, q)
-                elif archetype == "RISK":
-                    ans = _risk_answer(topic, q)
-                elif archetype == "NEXT":
-                    ans = _next_answer(topic)
-                else:
-                    ans = f"This question relates to {topic}."
-
-            
-            
-
-
-
-           
+                ans = f"This question relates to {topic}."
 
             items.append(
                 {
@@ -400,6 +479,8 @@ def attach_answers(categories: Dict[str, List[str]], topic: str, topic_type: str
                     "archetype": archetype,
                     "question": q,
                     "answer": ans,
+                    "collapsed": True,
+                    "visible": False,  # Streamlit controls top-8 view globally
                 }
             )
 
@@ -428,6 +509,43 @@ def interrogate(text: str) -> Dict[str, Any]:
 
     topic_type, confidence = detect_topic_type(clean_topic)
 
+    # AI topic: ONE LLM call for Q+A pairs
+    use_llm = _llm_is_enabled() and _is_llm_topic(clean_topic) and (llm_answer_question is not None)
+
+    if use_llm:
+        summary, llm_categories = _llm_generate_full_interrogation(clean_topic, topic_type)
+        if llm_categories:
+            return {
+                "topic": clean_topic,
+                "topic_type": topic_type,
+                "categories": llm_categories,
+                "summary": summary or build_summary(clean_topic, topic_type, confidence),
+                "confidence": confidence,
+                "notes": [
+                    "v0: interrogation engine",
+                    "v0: AI uses LLM for questions + answers (single-call batch)",
+                    "v0: UI reveals answers on click (progressive disclosure)",
+                ],
+                "llm_used": True,
+            }
+
+        # LLM JSON parse failed → fall back to templates (v0 must still run)
+        categories = build_categories(clean_topic, topic_type)
+        qa = attach_answers(categories, clean_topic, topic_type)
+        return {
+            "topic": clean_topic,
+            "topic_type": topic_type,
+            "categories": qa,
+            "summary": build_summary(clean_topic, topic_type, confidence),
+            "confidence": confidence,
+            "notes": [
+                "v0: interrogation engine",
+                "v0: AI LLM batch failed to parse; template fallback used",
+            ],
+            "llm_used": False,
+        }
+
+    # Non-AI topics: templates
     categories = build_categories(clean_topic, topic_type)
     qa = attach_answers(categories, clean_topic, topic_type)
 
@@ -439,8 +557,10 @@ def interrogate(text: str) -> Dict[str, Any]:
         "confidence": confidence,
         "notes": [
             "v0: interrogation engine",
-            "v0: RISK follows ORIENT (guided flow)",
-            "v0: AI/ML uses LLM answers when enabled (Option A)",
+            "v0: templates for non-AI topics",
         ],
-        "llm_used": bool(_llm_enabled) and _is_llm_topic(clean_topic),
+        "llm_used": False,
     }
+
+
+__all__ = ["interrogate", "extract_topic", "detect_topic_type"]

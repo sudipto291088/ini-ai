@@ -31,7 +31,7 @@ API_BASE = "http://127.0.0.1:8000"
 
 
 # ---------------- Helpers ----------------
-def safe_post(path: str, payload: dict, timeout: int = 10):
+def safe_post(path: str, payload: dict, timeout: int = 60):
     try:
         r = requests.post(f"{API_BASE}{path}", json=payload, timeout=timeout)
         r.raise_for_status()
@@ -150,7 +150,7 @@ if idata and not ierr:
     if not st.session_state.show_more:
         st.markdown("### Top most questions")
 
-        for idx, (cat, qa) in enumerate(flat[:7], start=1):
+        for idx, (cat, qa) in enumerate(flat[:8], start=1):
             qid = qa_id(qa, cat.lower().replace(" ", "_"))
             q = qa["question"]
             a = qa["answer"]
