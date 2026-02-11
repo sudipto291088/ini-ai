@@ -335,21 +335,21 @@ def _extract_json_object(text: str) -> Optional[dict]:
     return None
 
 
-def _llm_generate_full_interrogation(topic: str, topic_type: str) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
+def _llm_generate_questions_only(topic: str, topic_type: str) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
     """
-    One LLM call:
+    One LLM call (AI/ML only):
     - Generates a brief summary
-    - Generates categories with Q+A pairs
+    - Generates categories with QUESTIONS ONLY
+    - Answers are fetched later via /answer on click (Streamlit session cache)
     """
     instruction = f"""
 You are InI.ai (Interrogate mode). Topic is AI-related.
 
 PRIMARY GOAL:
-- Teach via the RIGHT questions (question engine), then provide research-grade answers.
+- Teach via the RIGHT questions (question engine). Answers will be requested later per question.
 
-FOUNDATIONAL RULE: 
-- The FIRST question in the "What" section MUST be "What is Artificial Intelligence?" explained at a beginner, non-buzzword, conceptual level.
-
+FOUNDATIONAL RULE:
+- The FIRST question in the "What" section MUST be exactly: "What is Artificial Intelligence?"
 
 STRICT COVERAGE (must appear naturally in What / How / Where):
 - Classical AI vs Machine Learning vs Deep Learning (clear distinctions)
@@ -370,20 +370,18 @@ Return STRICT JSON only (no markdown, no commentary), with this shape:
 {{
   "summary": ["brief bullet 1", "brief bullet 2", "brief bullet 3"],
   "categories": {{
-    "What": [{{"question": "...", "answer": "..."}}, ...],
-    "Why": [...],
-    "Misconceptions": [...],
-    "Common Challenges": [...],
-    "How": [...],
-    "Where": [...],
-    "Examples": [...],
-    "Related Topics": [...]
+    "What": [{{"question": "..."}}, ...],
+    "Why": [{{"question": "..."}}, ...],
+    "Misconceptions": [{{"question": "..."}}, ...],
+    "Common Challenges": [{{"question": "..."}}, ...],
+    "How": [{{"question": "..."}}, ...],
+    "Where": [{{"question": "..."}}, ...],
+    "Examples": [{{"question": "..."}}, ...],
+    "Related Topics": [{{"question": "..."}}, ...]
   }}
 }}
 
 CONTENT RULES:
-- Answers must be research-based, concrete, and include examples where useful.
-- Do NOT be short. Clarity matters more than brevity.
 - Total questions: ~18–28 is fine.
 - Keep categories present (use empty list only if truly necessary).
 
@@ -396,7 +394,7 @@ Topic type: {topic_type}
         topic_type=topic_type,
         archetype="ORIENT",
         question=instruction,
-        meta={"mode": "interrogate_batch", "expects": "json"},
+        meta={"mode": "interrogate_questions_only", "expects": "json"},
     )
 
     data = _extract_json_object(raw or "")
@@ -422,9 +420,7 @@ Topic type: {topic_type}
                 continue
 
             q = (it.get("question") or "").strip()
-            a = (it.get("answer") or "").strip()
-
-            if not q or not a:
+            if not q:
                 continue
 
             global_count += 1
@@ -433,7 +429,7 @@ Topic type: {topic_type}
                     "id": f"{cat.lower().replace(' ', '_')}_{idx}",
                     "archetype": archetype,
                     "question": q,
-                    "answer": a,            # IMPORTANT: do NOT shorten
+                    "answer": "",          # answers fetched later via /answer on click
                     "collapsed": True,
                     "visible": global_count <= 8,
                 }
@@ -509,11 +505,11 @@ def interrogate(text: str) -> Dict[str, Any]:
 
     topic_type, confidence = detect_topic_type(clean_topic)
 
-    # AI topic: ONE LLM call for Q+A pairs
+    # AI topic: LLM questions-only (answers on click via /answer)
     use_llm = _llm_is_enabled() and _is_llm_topic(clean_topic) and (llm_answer_question is not None)
 
     if use_llm:
-        summary, llm_categories = _llm_generate_full_interrogation(clean_topic, topic_type)
+        summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
         if llm_categories:
             return {
                 "topic": clean_topic,
@@ -523,26 +519,28 @@ def interrogate(text: str) -> Dict[str, Any]:
                 "confidence": confidence,
                 "notes": [
                     "v0: interrogation engine",
-                    "v0: AI uses LLM for questions + answers (single-call batch)",
+                    "v0: AI uses LLM for questions (fast)",
+                    "v0: answers fetched on click via /answer (LLM)",
                     "v0: UI reveals answers on click (progressive disclosure)",
                 ],
                 "llm_used": True,
             }
 
-        # LLM JSON parse failed → fall back to templates (v0 must still run)
-        categories = build_categories(clean_topic, topic_type)
-        qa = attach_answers(categories, clean_topic, topic_type)
+        # AI should NOT fall back to templates (avoid "meh" answers)
+        empty_cats = {c: [] for c in CATEGORY_ORDER}
         return {
             "topic": clean_topic,
             "topic_type": topic_type,
-            "categories": qa,
+            "categories": empty_cats,
             "summary": build_summary(clean_topic, topic_type, confidence),
             "confidence": confidence,
             "notes": [
                 "v0: interrogation engine",
-                "v0: AI LLM batch failed to parse; template fallback used",
+                "v0: AI LLM questions-only failed to parse; no template fallback for AI",
             ],
             "llm_used": False,
+            "needs_clarification": True,
+            "clarifying_question": "AI question generation failed. Please retry the same topic.",
         }
 
     # Non-AI topics: templates

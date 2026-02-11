@@ -1,0 +1,92 @@
+>>   -Body '{"topic":"Artificial Intelligence","question":"What is Artificial Intelligence?"}'
+>>
+>> $r.answer
+>>
+Short definition
+- Artificial intelligence (AI) is the design of computer systems that perform tasks which, if a human did them, we would describe as requiring intelligence: perceiving, learning patterns, making decisions, planning, or generating language/creative works. Practically, AI is a set of models, algorithms, data, and engineering that make computers do specific cognitive-like tasks.
+
+Core ingredients (what makes an AI system)
+- Data: examples the system learns from (images, text, sensor logs).
+- Model/algorithm: the mathematical structure that maps inputs to outputs.
+- Objective: a measurable goal (loss function, reward signal).
+- Compute and engineering: hardware, software, pipelines to train and run models.
+- Evaluation: tests and metrics to decide how well the system performs.
+
+Kinds of AI people talk about
+- Narrow (or weak) AI: systems specialized for one task (image recognition, translation).
+- General AI (an aspirational idea): a system with broad, flexible intelligence comparable to humans.
+- Symbolic vs statistical approaches: earlier systems used rules and logic explicitly; modern systems mainly learn patterns from data statistically.
+
+A short historical walk-through (classical â agentic)
+- Classical AI (1950sâ1980s)
+  - What: rule-based, symbolic systems using logic, search, planning (e.g., theorem provers, expert systems).
+  - Methods: hand-coded rules, knowledge representations, search algorithms.
+  - Strengths: clear reasoning steps, interpretable rules. Good for structured problems (puzzles, planning with known models).
+  - Limits: brittle, required extensive manual knowledge engineering, poor at noisy real-world perception.
+
+- Machine Learning (1990sâ2000s)
+  - What: algorithms that learn from data rather than rules (decision trees, SVMs, probabilistic models).
+  - Methods: supervised/unsupervised learning, statistical estimation.
+  - Strengths: better at noisy data, pattern recognition; replaced many hand-coded pipelines.
+  - Limits: needed careful feature engineering; performance tied to quality/quantity of labeled data.
+
+- Deep Learning (2010s)
+  - What: multi-layer neural networks that learn hierarchical representations (CNNs for vision, RNNs/LSTMs for sequences).
+  - Methods: gradient-based optimization, large datasets, GPUs.
+  - Strengths: state-of-the-art on speech, vision, many perception tasks; learns features automatically.
+  - Limits: data- and compute-hungry; models are often opaque and can be brittle.
+
+- Foundation Models (late 2010sâ2020s)
+  - What: very large models pre-trained on broad data (text, images) and fine-tuned for downstream tasks (e.g., BERT, GPT, CLIP).
+  - Methods: self-supervised pretraining, transfer learning.
+  - Strengths: strong zero-/few-shot ability, reuse across tasks, fast iteration for applications.
+  - Limits: can encode biases from training data; large cost to train; can hallucinate facts.
+
+- Generative AI / Large Language Models (LLMs)
+  - What: models that generate coherent text (and increasingly images/audio/video), trained to predict or produce sequences.
+  - Methods: transformer architectures, autoregressive or masked modeling.
+  - Strengths: fluent generation, summarization, coding help, drafting emails, conversing.
+  - Limits: not guaranteed to be truthful or grounded; can invent plausible-sounding but false information.
+
+- Tool use & retrieval-augmented systems
+  - What: models connected to external tools, databases, or code execution (search, calculators, APIs).
+  - Methods: retrieval-augmentation, API/tool-call interfaces, grounding outputs with external facts.
+  - Strengths: reduces hallucination, allows extended functionality (e.g., live data, precise calculation).
+  - Limits: integration complexity; errors can arise from tool misuse or mismatched formats.
+
+- Agentic AI (emerging)
+  - What: systems that plan and act in environments, chaining reasoning steps and tool uses (autonomous assistants, robots).
+  - Methods: planners, reinforcement learning, hierarchical control, LLMs as planners/executors.
+  - Strengths: can perform multi-step workflows, coordinate tools and sensors.
+  - Limits: safety, reliability, long-term goal alignment, unexpected behaviors in open environments.
+
+Where AI works well (typical strengths)
+- Pattern recognition: images, speech, handwriting.
+- Language tasks: translation, summarization, information retrieval, drafting.
+- Optimization and prediction: forecasting, anomaly detection, recommendation.
+- Automation and augmentation: speeding up repetitive human tasks, helping with coding or research.
+
+Where AI commonly fails or struggles
+- Out-of-distribution generalization: performs poorly on situations different from training data.
+- Robust common-sense and causal reasoning: may make logically inconsistent or nonsensical conclusions.
+- Hallucinations: confidently producing false or fabricated facts.
+- Interpretability and explainability: complex models can be hard to inspect or justify.
+- Ethical failures: biased, unfair, or privacy-violating outputs if trained on biased data.
+
+Common misconceptions
+- âAI is sentient or consciousâ: current AI systems are not conscious; they manipulate patterns and probabilities, not subjective experience.
+- âAI is infallibleâ: models can be very wrong, especially outside their training scope or with adversarial inputs.
+- âBigger always means betterâ: scaling helps, but data quality, task mismatch, and safety matters remain crucial.
+
+Evaluation and safety concerns
+- Benchmarks test capabilities but can be gamed and donât guarantee real-world reliability.
+- Safety issues include adversarial attacks, reward hacking (gaming metrics), privacy leaks, and unintended social harms.
+
+Short examples to illustrate differences
+- Chess engine (classical/statistical): uses search and evaluation functions to find optimal moves â excellent in a closed, rule-defined environment.
+- Image classifier (deep learning): maps pixels to labels by learning features â great accuracy but can fail with slight, adversarial perturbations.
+- GPT-style LLM (generative): produces fluent text, answers questions, writes code â fluent but can invent facts and lacks persistent factual memory unless connected to databases.
+
+Big-picture trajectory and why it matters
+- AI has moved from hand-coded rules â statistical learning â large learned models that generalize across tasks â systems that connect to tools and act in the world.
+- This progression increases usefulness and risk:
