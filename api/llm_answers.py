@@ -11,11 +11,18 @@ import requests
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
-# Responses-compatible model
+# Deep / research model (answers)
 DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-5-mini-2025-08-07").strip()
 
-# Responses API uses max_output_tokens
+# Fast / reliable JSON model (interrogate questions-only)
+# You can override via env if you want later.
+INTERROGATE_JSON_MODEL = os.getenv("INI_INTERROGATE_JSON_MODEL", "gpt-4o-mini").strip()
+
+# Token budgets (Responses API uses max_output_tokens)
 INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "2000"))
+
+# Smaller budget for interrogate JSON (questions-only should be fast)
+INI_INTERROGATE_MAX_TOKENS = int(os.getenv("INI_INTERROGATE_MAX_TOKENS", "900"))
 
 INI_LLM_DEBUG = os.getenv("INI_LLM_DEBUG", "0").lower() in ("1", "true", "yes")
 
@@ -43,6 +50,23 @@ def _era_hints(topic: str) -> str:
     return ""
 
 
+def _select_model_and_budget(meta: Optional[Dict[str, Any]], expects_json: bool) -> tuple[str, int]:
+    """
+    Routing rules:
+    - Interrogate questions-only + JSON: use fast model + smaller token budget
+      to avoid "reasoning-only" responses and long latency.
+    - Everything else: use DEFAULT_MODEL + full budget.
+    """
+    mode = ""
+    if isinstance(meta, dict):
+        mode = str(meta.get("mode", "")).strip().lower()
+
+    if expects_json and mode == "interrogate_questions_only":
+        return INTERROGATE_JSON_MODEL, INI_INTERROGATE_MAX_TOKENS
+
+    return DEFAULT_MODEL, INI_LLM_MAX_TOKENS
+
+
 # ============================================================
 # CORE LLM CALL (RESPONSES API)
 # ============================================================
@@ -63,9 +87,9 @@ def generate_dynamic_answer(
     - Use /v1/responses
     - Use input[]
     - Use max_output_tokens
-    - Do NOT send temperature (some models enforce default)
-    - If meta expects JSON, enable JSON mode via text.format={"type":"json_object"} (Responses API)
-      (per OpenAI docs).
+    - Do NOT send temperature (some models enforce default only)
+    - If meta expects JSON, enable JSON mode via:
+        payload["text"] = {"format": {"type": "json_object"}}
     """
 
     if not llm_enabled():
@@ -76,6 +100,9 @@ def generate_dynamic_answer(
     if isinstance(meta, dict):
         expects = str(meta.get("expects", "")).lower().strip()
         expects_json = expects in ("json", "json_object", "strict_json")
+
+    # Choose model/budget based on task
+    model, max_tokens = _select_model_and_budget(meta, expects_json)
 
     system_prompt = (
         "You are InI.ai — a teaching-first AI mentor.\n\n"
@@ -114,23 +141,21 @@ def generate_dynamic_answer(
     )
 
     url = "https://api.openai.com/v1/responses"
-
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json",
     }
 
     payload: Dict[str, Any] = {
-        "model": DEFAULT_MODEL,
+        "model": model,
         "input": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "max_output_tokens": INI_LLM_MAX_TOKENS,
+        "max_output_tokens": max_tokens,
     }
 
-    # ✅ The critical fix: Responses API JSON mode
-    # OpenAI docs: set text.format to {"type":"json_object"} for JSON mode.
+    # Responses API JSON mode
     if expects_json:
         payload["text"] = {"format": {"type": "json_object"}}
 

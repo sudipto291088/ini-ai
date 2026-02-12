@@ -1,4 +1,5 @@
 # api/interrogate.py
+import os
 import json
 import re
 from typing import Dict, List, Tuple, Any, Optional
@@ -398,7 +399,25 @@ Topic type: {topic_type}
     )
 
     data = _extract_json_object(raw or "")
+
+    # === CHANGE: expose raw LLM output when debug is enabled ===
     if not isinstance(data, dict):
+        if os.getenv("INI_LLM_DEBUG", "0").lower() in ("1", "true", "yes"):
+            return (
+                ["DEBUG: LLM returned non-JSON. See categories.debug_raw."],
+                {
+                    "debug_raw": [
+                        {
+                            "id": "debug_raw_1",
+                            "archetype": "DEBUG",
+                            "question": "RAW_LLM_OUTPUT",
+                            "answer": (raw or "")[:4000],
+                            "collapsed": False,
+                            "visible": True,
+                        }
+                    ]
+                },
+            )
         return (build_summary(topic, topic_type, 0.67), {})
 
     summary = data.get("summary") if isinstance(data.get("summary"), list) else []
