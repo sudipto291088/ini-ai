@@ -1,6 +1,6 @@
 # api/llm_answers.py
 import os
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 
 import requests
 
@@ -15,11 +15,11 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-5-mini-2025-08-07").strip()
 
 # Fast / reliable JSON model (interrogate questions-only)
-# You can override via env if you want later.
 INTERROGATE_JSON_MODEL = os.getenv("INI_INTERROGATE_JSON_MODEL", "gpt-4o-mini").strip()
 
 # Token budgets (Responses API uses max_output_tokens)
-INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "2000"))
+# IMPORTANT: bigger = fewer truncations, but slower + more cost.
+INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "3300"))
 
 # Smaller budget for interrogate JSON (questions-only should be fast)
 INI_INTERROGATE_MAX_TOKENS = int(os.getenv("INI_INTERROGATE_MAX_TOKENS", "900"))
@@ -50,11 +50,10 @@ def _era_hints(topic: str) -> str:
     return ""
 
 
-def _select_model_and_budget(meta: Optional[Dict[str, Any]], expects_json: bool) -> tuple[str, int]:
+def _select_model_and_budget(meta: Optional[Dict[str, Any]], expects_json: bool) -> Tuple[str, int]:
     """
     Routing rules:
-    - Interrogate questions-only + JSON: use fast model + smaller token budget
-      to avoid "reasoning-only" responses and long latency.
+    - Interrogate questions-only + JSON: use fast model + smaller token budget.
     - Everything else: use DEFAULT_MODEL + full budget.
     """
     mode = ""
@@ -65,6 +64,31 @@ def _select_model_and_budget(meta: Optional[Dict[str, Any]], expects_json: bool)
         return INTERROGATE_JSON_MODEL, INI_INTERROGATE_MAX_TOKENS
 
     return DEFAULT_MODEL, INI_LLM_MAX_TOKENS
+
+
+def _extract_output_text(data: Dict[str, Any]) -> str:
+    """
+    Extract best-effort text from Responses API result.
+    We prefer message->content->output_text.
+    """
+    # Primary path
+    for item in data.get("output", []) or []:
+        if item.get("type") == "message":
+            for c in item.get("content", []) or []:
+                if c.get("type") == "output_text" and c.get("text"):
+                    return str(c["text"])
+
+    # Some incomplete responses may not include a message; return empty.
+    return ""
+
+
+def _debug_incomplete_info(data: Dict[str, Any]) -> str:
+    status = str(data.get("status", "")).lower()
+    inc = data.get("incomplete_details") or {}
+    reason = inc.get("reason")
+    model = data.get("model")
+    usage = data.get("usage") or {}
+    return f"status={status} reason={reason} model={model} usage={usage}"
 
 
 # ============================================================
@@ -83,9 +107,9 @@ def generate_dynamic_answer(
     """
     Uses OpenAI Responses API.
 
-    Key rules (compatibility):
-    - Use /v1/responses
-    - Use input[]
+    Rules (compatibility):
+    - POST /v1/responses
+    - Use input[] list of messages
     - Use max_output_tokens
     - Do NOT send temperature (some models enforce default only)
     - If meta expects JSON, enable JSON mode via:
@@ -95,13 +119,11 @@ def generate_dynamic_answer(
     if not llm_enabled():
         return None
 
-    # If caller expects JSON, enforce JSON mode.
     expects_json = False
     if isinstance(meta, dict):
         expects = str(meta.get("expects", "")).lower().strip()
         expects_json = expects in ("json", "json_object", "strict_json")
 
-    # Choose model/budget based on task
     model, max_tokens = _select_model_and_budget(meta, expects_json)
 
     system_prompt = (
@@ -116,7 +138,6 @@ def generate_dynamic_answer(
         "- If archetype is NEXT: give concrete next learning steps.\n"
     )
 
-    # IMPORTANT: when using JSON mode, we still instruct JSON (docs requirement).
     if expects_json:
         system_prompt += (
             "\nOUTPUT RULE (STRICT): Return ONE valid JSON object only. "
@@ -155,12 +176,11 @@ def generate_dynamic_answer(
         "max_output_tokens": max_tokens,
     }
 
-    # Responses API JSON mode
     if expects_json:
         payload["text"] = {"format": {"type": "json_object"}}
 
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=90)
+        response = requests.post(url, headers=headers, json=payload, timeout=120)
 
         if response.status_code != 200:
             if INI_LLM_DEBUG:
@@ -169,19 +189,17 @@ def generate_dynamic_answer(
 
         data = response.json()
 
-        # Robust extraction for Responses API
-        content = None
-        for item in data.get("output", []):
-            if item.get("type") == "message":
-                for c in item.get("content", []):
-                    if c.get("type") == "output_text" and c.get("text"):
-                        content = c["text"]
-                        break
+        text = _extract_output_text(data).strip()
+        if text:
+            # If it was incomplete, we still return the partial text (NO shortening),
+            # and the UI can fetch more via Continue.
+            if INI_LLM_DEBUG and str(data.get("status", "")).lower() == "incomplete":
+                return text + "\n\n" + f"[LLM DEBUG] INCOMPLETE: {_debug_incomplete_info(data)}"
+            return text
 
-        if content and content.strip():
-            return content.strip()
-
+        # No text found
         if INI_LLM_DEBUG:
+            # Preserve the full payload for troubleshooting
             return f"[LLM DEBUG] NO TEXT FOUND: {data}"
 
         return None

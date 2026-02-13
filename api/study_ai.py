@@ -26,7 +26,6 @@ def _parse_llm_debug_error(text: str) -> Tuple[Optional[int], str]:
     if code == 401:
         return code, "invalid_api_key"
     if code == 429:
-        # could be rate limit OR quota; your earlier error was insufficient_quota
         return code, "rate_limited_or_quota"
     if 400 <= code < 500:
         return code, "bad_request"
@@ -41,10 +40,6 @@ def _fallback_ai_lesson(
     goal: str,
     time_per_day: str,
 ) -> str:
-    """
-    Deterministic, gift-ready AI lesson (no LLM required).
-    Keep it structured, actionable, and sufficient for v0.
-    """
     return f"""# Study AI (Fallback Lesson)
 
 **Status:** LLM unavailable right now — serving a built-in lesson instead.
@@ -132,7 +127,6 @@ def study_ai(
 ) -> Dict[str, Any]:
     topic = "Artificial Intelligence"
 
-    # If LLM isn't even configured, serve fallback immediately
     if not (callable(llm_enabled) and llm_enabled() and generate_dynamic_answer):
         return {
             "mode": "study",
@@ -150,17 +144,39 @@ User profile:
 - goal: {goal}
 - time_per_day: {time_per_day}
 
-User message:
+User input:
 {user_message}
 
-Deliver a HYBRID response:
-- Clear headings + bullets where useful
-- Warm tutor tone
-- Go deep (no artificial length caps)
-- Cover modern layers: Classical AI → ML → Deep Learning → GenAI/LLMs → Agentic/Tool-using AI
+QUALITY BAR:
+- Research-grade explanations. Prioritize correctness, nuance, and useful examples.
+- Do NOT shorten answers artificially. Depth is welcome.
+
+FORMAT RULES (very important):
+- Write clean Markdown with stable structure:
+  - Use headings (##, ###) for sections.
+  - Use bullets with consistent indentation (2 spaces under a bullet for sub-bullets).
+  - Keep blank line before a bullet block.
+- NEVER break a sentence across lines.
+  - Do not insert a newline in the middle of a paragraph or sentence.
+  - Do not split words across lines.
+- Avoid ultra-long “single-line” paragraphs. Prefer short paragraphs.
+
+CONTENT COVERAGE:
+- Classical AI → ML → Deep Learning → Foundation Models → GenAI/LLMs → Tool use → Agentic AI
 - Include misconceptions + what AI is NOT
-- Include 1–2 examples
-- End with: (1) 3 next actions, (2) 3 practice prompts, (3) 1 mini-project idea
+- Include 1–2 concrete examples
+- End with:
+  (1) 3 next actions
+  (2) 3 practice prompts
+  (3) 1 mini-project idea
+
+CRITICAL CONTINUATION RULES:
+- If the user input includes a CONTEXT block, treat it as the immediately preceding text shown to the user.
+- Continue DIRECTLY from the end of that context.
+- NEVER say "I don't have the previous part", "tell me the last heading", or ask what the user saw.
+- NEVER ask clarifying questions during continuation.
+- Do NOT restart. Do NOT repeat earlier sections unless explicitly requested.
+- Write the next sections as a seamless continuation.
 """.strip()
 
     ans = generate_dynamic_answer(
@@ -170,7 +186,6 @@ Deliver a HYBRID response:
         question=instruction,
     )
 
-    # If LLM failed (None or debug error string), serve fallback cleanly
     if not ans:
         return {
             "mode": "study",
@@ -194,7 +209,6 @@ Deliver a HYBRID response:
             "answer": _fallback_ai_lesson(user_message, level, goal, time_per_day),
         }
 
-    # Success
     return {
         "mode": "study",
         "topic": topic,
