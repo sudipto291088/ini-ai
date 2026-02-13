@@ -11,19 +11,15 @@ import requests
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
-# Deep / research model (answers)
+# Responses-compatible model
 DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-5-mini-2025-08-07").strip()
 
-# Fast / reliable JSON model (interrogate questions-only)
-INTERROGATE_JSON_MODEL = os.getenv("INI_INTERROGATE_JSON_MODEL", "gpt-4o-mini").strip()
+# Responses API uses max_output_tokens
+# (You are overriding this via env var already, which is good.)
+INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "2000"))
 
-# Token budgets (Responses API uses max_output_tokens)
-# IMPORTANT: bigger = fewer truncations, but slower + more cost.
-INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "3300"))
-
-# Smaller budget for interrogate JSON (questions-only should be fast)
-INI_INTERROGATE_MAX_TOKENS = int(os.getenv("INI_INTERROGATE_MAX_TOKENS", "900"))
-
+# If True, we keep extra debug info internally in the returned dict,
+# but we do NOT append it inside the user-visible answer.
 INI_LLM_DEBUG = os.getenv("INI_LLM_DEBUG", "0").lower() in ("1", "true", "yes")
 
 
@@ -50,81 +46,84 @@ def _era_hints(topic: str) -> str:
     return ""
 
 
-def _select_model_and_budget(meta: Optional[Dict[str, Any]], expects_json: bool) -> Tuple[str, int]:
-    """
-    Routing rules:
-    - Interrogate questions-only + JSON: use fast model + smaller token budget.
-    - Everything else: use DEFAULT_MODEL + full budget.
-    """
-    mode = ""
-    if isinstance(meta, dict):
-        mode = str(meta.get("mode", "")).strip().lower()
-
-    if expects_json and mode == "interrogate_questions_only":
-        return INTERROGATE_JSON_MODEL, INI_INTERROGATE_MAX_TOKENS
-
-    return DEFAULT_MODEL, INI_LLM_MAX_TOKENS
-
-
 def _extract_output_text(data: Dict[str, Any]) -> str:
     """
-    Extract best-effort text from Responses API result.
-    We prefer message->content->output_text.
+    Extract best-effort assistant text from Responses API output.
     """
-    # Primary path
     for item in data.get("output", []) or []:
         if item.get("type") == "message":
             for c in item.get("content", []) or []:
                 if c.get("type") == "output_text" and c.get("text"):
                     return str(c["text"])
-
-    # Some incomplete responses may not include a message; return empty.
     return ""
 
 
-def _debug_incomplete_info(data: Dict[str, Any]) -> str:
-    status = str(data.get("status", "")).lower()
+def _is_incomplete(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+    """
+    Detect "incomplete" responses (most often max_output_tokens).
+    Returns (incomplete, reason).
+    """
+    status = str(data.get("status", "")).lower().strip()
+    if status == "incomplete":
+        inc = data.get("incomplete_details") or {}
+        reason = inc.get("reason")
+        return True, str(reason) if reason else "unknown"
+
+    # Some responses may not set status cleanly; keep a safety check
     inc = data.get("incomplete_details") or {}
-    reason = inc.get("reason")
-    model = data.get("model")
-    usage = data.get("usage") or {}
-    return f"status={status} reason={reason} model={model} usage={usage}"
+    if inc:
+        reason = inc.get("reason")
+        return True, str(reason) if reason else "unknown"
+
+    return False, None
 
 
 # ============================================================
 # CORE LLM CALL (RESPONSES API)
 # ============================================================
 
-def generate_dynamic_answer(
+def generate_dynamic_answer_result(
     *,
     topic: str,
     topic_type: str,
     archetype: str,
     question: str,
     meta: Optional[Dict[str, Any]] = None,
+    timeout_s: int = 90,
     **_ignored: Any,
-) -> Optional[str]:
+) -> Dict[str, Any]:
     """
-    Uses OpenAI Responses API.
+    Returns a structured result:
+      {
+        "answer": "<text or ''>",
+        "incomplete": <bool>,
+        "stop_reason": "<reason or None>",
+        "model": "<model>",
+        "http_status": <int or None>,
+        "error": "<string or None>",
+        "raw": <full response json only when INI_LLM_DEBUG=1 else None>
+      }
 
-    Rules (compatibility):
-    - POST /v1/responses
-    - Use input[] list of messages
-    - Use max_output_tokens
-    - Do NOT send temperature (some models enforce default only)
-    - If meta expects JSON, enable JSON mode via:
-        payload["text"] = {"format": {"type": "json_object"}}
+    IMPORTANT:
+    - We NEVER append debug strings inside "answer".
+    - "Continue" logic should be driven by result["incomplete"].
     """
 
     if not llm_enabled():
-        return None
+        return {
+            "answer": "",
+            "incomplete": False,
+            "stop_reason": None,
+            "model": DEFAULT_MODEL,
+            "http_status": None,
+            "error": "llm_disabled",
+            "raw": None,
+        }
 
     expects_json = False
     if isinstance(meta, dict):
         expects = str(meta.get("expects", "")).lower().strip()
         expects_json = expects in ("json", "json_object", "strict_json")
-
-    model, max_tokens = _select_model_and_budget(meta, expects_json)
 
     system_prompt = (
         "You are InI.ai — a teaching-first AI mentor.\n\n"
@@ -168,43 +167,82 @@ def generate_dynamic_answer(
     }
 
     payload: Dict[str, Any] = {
-        "model": model,
+        "model": DEFAULT_MODEL,
         "input": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "max_output_tokens": max_tokens,
+        "max_output_tokens": INI_LLM_MAX_TOKENS,
     }
 
+    # Responses API JSON mode
     if expects_json:
         payload["text"] = {"format": {"type": "json_object"}}
 
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=120)
+        resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
 
-        if response.status_code != 200:
-            if INI_LLM_DEBUG:
-                return f"[LLM DEBUG] HTTP {response.status_code}: {response.text}"
-            return None
+        if resp.status_code != 200:
+            return {
+                "answer": "",
+                "incomplete": False,
+                "stop_reason": None,
+                "model": DEFAULT_MODEL,
+                "http_status": resp.status_code,
+                "error": resp.text[:1200],
+                "raw": None,
+            }
 
-        data = response.json()
+        data = resp.json()
 
         text = _extract_output_text(data).strip()
-        if text:
-            # If it was incomplete, we still return the partial text (NO shortening),
-            # and the UI can fetch more via Continue.
-            if INI_LLM_DEBUG and str(data.get("status", "")).lower() == "incomplete":
-                return text + "\n\n" + f"[LLM DEBUG] INCOMPLETE: {_debug_incomplete_info(data)}"
-            return text
+        incomplete, reason = _is_incomplete(data)
 
-        # No text found
-        if INI_LLM_DEBUG:
-            # Preserve the full payload for troubleshooting
-            return f"[LLM DEBUG] NO TEXT FOUND: {data}"
+        # Never leak debug strings into the answer.
+        result = {
+            "answer": text,
+            "incomplete": bool(incomplete),
+            "stop_reason": reason,
+            "model": str(data.get("model") or DEFAULT_MODEL),
+            "http_status": 200,
+            "error": None,
+            "raw": data if INI_LLM_DEBUG else None,
+        }
 
-        return None
+        return result
 
     except Exception as e:
-        if INI_LLM_DEBUG:
-            return f"[LLM DEBUG] EXCEPTION: {type(e).__name__}: {e}"
-        return None
+        return {
+            "answer": "",
+            "incomplete": False,
+            "stop_reason": None,
+            "model": DEFAULT_MODEL,
+            "http_status": None,
+            "error": f"{type(e).__name__}: {e}",
+            "raw": None,
+        }
+
+
+def generate_dynamic_answer(
+    *,
+    topic: str,
+    topic_type: str,
+    archetype: str,
+    question: str,
+    meta: Optional[Dict[str, Any]] = None,
+    **kwargs: Any,
+) -> Optional[str]:
+    """
+    Backward-compatible wrapper used by existing code:
+    returns ONLY the answer text (no debug leakage).
+    """
+    res = generate_dynamic_answer_result(
+        topic=topic,
+        topic_type=topic_type,
+        archetype=archetype,
+        question=question,
+        meta=meta,
+        **kwargs,
+    )
+    ans = (res.get("answer") or "").strip()
+    return ans if ans else None
