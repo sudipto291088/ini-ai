@@ -1,4 +1,3 @@
-# api/llm_answers.py
 import os
 from typing import Optional, Dict, Any, Tuple
 
@@ -15,7 +14,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-5-mini-2025-08-07").strip()
 
 # Responses API uses max_output_tokens
-# (You are overriding this via env var already, which is good.)
 INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "2000"))
 
 # If True, we keep extra debug info internally in the returned dict,
@@ -49,12 +47,27 @@ def _era_hints(topic: str) -> str:
 def _extract_output_text(data: Dict[str, Any]) -> str:
     """
     Extract best-effort assistant text from Responses API output.
+
+    Primary path:
+      data["output"][i] where type=="message" and content includes output_text.
+
+    Fallback path:
+      sometimes providers return message-like structures or content arrays elsewhere.
     """
+    # Primary: standard Responses API
     for item in data.get("output", []) or []:
         if item.get("type") == "message":
             for c in item.get("content", []) or []:
                 if c.get("type") == "output_text" and c.get("text"):
                     return str(c["text"])
+
+    # Fallback: some responses may include top-level "content" (rare)
+    content = data.get("content")
+    if isinstance(content, list):
+        for c in content:
+            if isinstance(c, dict) and c.get("type") == "output_text" and c.get("text"):
+                return str(c["text"])
+
     return ""
 
 
@@ -69,7 +82,7 @@ def _is_incomplete(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         reason = inc.get("reason")
         return True, str(reason) if reason else "unknown"
 
-    # Some responses may not set status cleanly; keep a safety check
+    # Safety check: incomplete_details present even if status isn't "incomplete"
     inc = data.get("incomplete_details") or {}
     if inc:
         reason = inc.get("reason")
@@ -90,6 +103,7 @@ def generate_dynamic_answer_result(
     question: str,
     meta: Optional[Dict[str, Any]] = None,
     timeout_s: int = 90,
+    previous_response_id: Optional[str] = None,
     **_ignored: Any,
 ) -> Dict[str, Any]:
     """
@@ -98,6 +112,9 @@ def generate_dynamic_answer_result(
         "answer": "<text or ''>",
         "incomplete": <bool>,
         "stop_reason": "<reason or None>",
+        "status": "<responses status string or None>",
+        "response_id": "<responses id or None>",
+        "usage": <usage dict or None>,
         "model": "<model>",
         "http_status": <int or None>,
         "error": "<string or None>",
@@ -114,6 +131,9 @@ def generate_dynamic_answer_result(
             "answer": "",
             "incomplete": False,
             "stop_reason": None,
+            "status": None,
+            "response_id": None,
+            "usage": None,
             "model": DEFAULT_MODEL,
             "http_status": None,
             "error": "llm_disabled",
@@ -173,11 +193,18 @@ def generate_dynamic_answer_result(
             {"role": "user", "content": user_prompt},
         ],
         "max_output_tokens": INI_LLM_MAX_TOKENS,
+
+        # Force plain text output mode (reduces "no text found" edge cases)
+        "text": {"format": {"type": "text"}},
     }
 
     # Responses API JSON mode
     if expects_json:
         payload["text"] = {"format": {"type": "json_object"}}
+
+    # Optional: chain responses for continuity (future-proof for your "Continue" path)
+    if previous_response_id:
+        payload["previous_response_id"] = previous_response_id
 
     try:
         resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
@@ -187,6 +214,9 @@ def generate_dynamic_answer_result(
                 "answer": "",
                 "incomplete": False,
                 "stop_reason": None,
+                "status": None,
+                "response_id": None,
+                "usage": None,
                 "model": DEFAULT_MODEL,
                 "http_status": resp.status_code,
                 "error": resp.text[:1200],
@@ -198,24 +228,27 @@ def generate_dynamic_answer_result(
         text = _extract_output_text(data).strip()
         incomplete, reason = _is_incomplete(data)
 
-        # Never leak debug strings into the answer.
-        result = {
+        return {
             "answer": text,
             "incomplete": bool(incomplete),
             "stop_reason": reason,
+            "status": data.get("status"),
+            "response_id": data.get("id"),
+            "usage": data.get("usage"),
             "model": str(data.get("model") or DEFAULT_MODEL),
             "http_status": 200,
             "error": None,
             "raw": data if INI_LLM_DEBUG else None,
         }
 
-        return result
-
     except Exception as e:
         return {
             "answer": "",
             "incomplete": False,
             "stop_reason": None,
+            "status": None,
+            "response_id": None,
+            "usage": None,
             "model": DEFAULT_MODEL,
             "http_status": None,
             "error": f"{type(e).__name__}: {e}",
