@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from typing import Dict, List
-from api.interrogate import detect_topic_type, extract_topic
+from api.topic_utils import detect_topic_type, extract_topic
 
 
 
@@ -128,5 +128,6 @@ def illustrate(topic: str) -> Dict[str, object]:
         "notes": ["v0: illustration depth adapts to confidence"],
         "supports": supports,
     }
+
 
 
