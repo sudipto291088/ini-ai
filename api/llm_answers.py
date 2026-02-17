@@ -1,7 +1,23 @@
 import os
-from typing import Optional, Dict, Any, Tuple
+from pathlib import Path
+from typing import Optional, Dict, Any, Tuple, List
 
 import requests
+
+
+# ============================================================
+# Load .env from repo root (works no matter where uvicorn starts)
+# ============================================================
+try:
+    from dotenv import load_dotenv  # type: ignore
+
+    # api/llm_answers.py -> repo_root/.env
+    REPO_ROOT = Path(__file__).resolve().parents[1]
+    DOTENV_PATH = REPO_ROOT / ".env"
+    load_dotenv(dotenv_path=DOTENV_PATH)
+except Exception:
+    # If python-dotenv isn't installed, rely on OS env vars
+    pass
 
 
 # ============================================================
@@ -14,10 +30,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-5-mini-2025-08-07").strip()
 
 # Responses API uses max_output_tokens
-INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "2000"))
+INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "3000"))
 
-# If True, we keep extra debug info internally in the returned dict,
-# but we do NOT append it inside the user-visible answer.
+# If True, keep extra debug info in returned dict (not appended to answer text)
 INI_LLM_DEBUG = os.getenv("INI_LLM_DEBUG", "0").lower() in ("1", "true", "yes")
 
 
@@ -44,29 +59,97 @@ def _era_hints(topic: str) -> str:
     return ""
 
 
+def _collect_text_from_content(content: Any) -> str:
+    """
+    Normalize different content shapes into a single concatenated text.
+
+    Expected content items may look like:
+      {"type":"output_text","text":"..."}
+      {"type":"text","text":"..."}   (rare variants)
+      {"type":"output_text","text":{"value":"..."}} (older/variant)
+    """
+    parts: List[str] = []
+
+    if isinstance(content, list):
+        for c in content:
+            if not isinstance(c, dict):
+                continue
+            ctype = (c.get("type") or "").strip()
+            txt = c.get("text")
+
+            # Standard: output_text
+            if ctype == "output_text" and isinstance(txt, str) and txt.strip():
+                parts.append(txt)
+                continue
+
+            # Variant: type=text
+            if ctype == "text":
+                if isinstance(txt, str) and txt.strip():
+                    parts.append(txt)
+                    continue
+                if isinstance(txt, dict) and isinstance(txt.get("value"), str) and txt["value"].strip():
+                    parts.append(txt["value"])
+                    continue
+
+            # Variant: output_text with dict payload
+            if ctype == "output_text" and isinstance(txt, dict) and isinstance(txt.get("value"), str) and txt["value"].strip():
+                parts.append(txt["value"])
+                continue
+
+    return "\n".join([p for p in parts if p is not None]).strip()
+
+
 def _extract_output_text(data: Dict[str, Any]) -> str:
     """
     Extract best-effort assistant text from Responses API output.
 
-    Primary path:
-      data["output"][i] where type=="message" and content includes output_text.
+    Handles:
+      - Standard Responses API: output -> message -> content -> output_text
+      - Variants where message.content contains type "text"
+      - Rare cases where text appears under output item "text"
+      - Top-level content variants (rare)
 
-    Fallback path:
-      sometimes providers return message-like structures or content arrays elsewhere.
+    If nothing found, returns "".
     """
-    # Primary: standard Responses API
-    for item in data.get("output", []) or []:
-        if item.get("type") == "message":
-            for c in item.get("content", []) or []:
-                if c.get("type") == "output_text" and c.get("text"):
-                    return str(c["text"])
+    # 1) Standard + variants: output items
+    output = data.get("output") or []
+    if isinstance(output, list):
+        # Prefer message items first
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "message":
+                text = _collect_text_from_content(item.get("content"))
+                if text:
+                    return text
 
-    # Fallback: some responses may include top-level "content" (rare)
-    content = data.get("content")
-    if isinstance(content, list):
-        for c in content:
-            if isinstance(c, dict) and c.get("type") == "output_text" and c.get("text"):
-                return str(c["text"])
+        # 2) Fallback: sometimes content-like blocks appear in other output items
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+
+            # Some variants may attach "content" even if type isn't message
+            text = _collect_text_from_content(item.get("content"))
+            if text:
+                return text
+
+            # Very rare: direct "text" field at the output item
+            if isinstance(item.get("text"), str) and item["text"].strip():
+                return str(item["text"]).strip()
+
+            # Rare: item["text"] dict with value
+            if isinstance(item.get("text"), dict) and isinstance(item["text"].get("value"), str) and item["text"]["value"].strip():
+                return str(item["text"]["value"]).strip()
+
+    # 3) Top-level variants (rare)
+    top_content = data.get("content")
+    text = _collect_text_from_content(top_content)
+    if text:
+        return text
+
+    # 4) Last resort: some SDKs place output_text at top-level
+    if isinstance(data.get("output_text"), str) and data["output_text"].strip():
+        return str(data["output_text"]).strip()
 
     return ""
 
@@ -82,7 +165,6 @@ def _is_incomplete(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         reason = inc.get("reason")
         return True, str(reason) if reason else "unknown"
 
-    # Safety check: incomplete_details present even if status isn't "incomplete"
     inc = data.get("incomplete_details") or {}
     if inc:
         reason = inc.get("reason")
@@ -102,7 +184,7 @@ def generate_dynamic_answer_result(
     archetype: str,
     question: str,
     meta: Optional[Dict[str, Any]] = None,
-    timeout_s: int = 90,
+    timeout_s: int = 120,
     previous_response_id: Optional[str] = None,
     **_ignored: Any,
 ) -> Dict[str, Any]:
@@ -120,10 +202,6 @@ def generate_dynamic_answer_result(
         "error": "<string or None>",
         "raw": <full response json only when INI_LLM_DEBUG=1 else None>
       }
-
-    IMPORTANT:
-    - We NEVER append debug strings inside "answer".
-    - "Continue" logic should be driven by result["incomplete"].
     """
 
     if not llm_enabled():
@@ -136,7 +214,7 @@ def generate_dynamic_answer_result(
             "usage": None,
             "model": DEFAULT_MODEL,
             "http_status": None,
-            "error": "llm_disabled",
+            "error": "llm_disabled_or_missing_key",
             "raw": None,
         }
 
@@ -193,16 +271,12 @@ def generate_dynamic_answer_result(
             {"role": "user", "content": user_prompt},
         ],
         "max_output_tokens": INI_LLM_MAX_TOKENS,
-
-        # Force plain text output mode (reduces "no text found" edge cases)
         "text": {"format": {"type": "text"}},
     }
 
-    # Responses API JSON mode
     if expects_json:
         payload["text"] = {"format": {"type": "json_object"}}
 
-    # Optional: chain responses for continuity (future-proof for your "Continue" path)
     if previous_response_id:
         payload["previous_response_id"] = previous_response_id
 

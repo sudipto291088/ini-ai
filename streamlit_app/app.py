@@ -1,7 +1,7 @@
 import os
 import time
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import requests
 import streamlit as st
@@ -22,33 +22,83 @@ st.set_page_config(page_title="InI.ai", layout="wide")
 CSS = """
 <style>
 :root{
-  --bg:#0b0f19;
-  --panel:#111827;
   --muted:#6b7280;
-  --text:#0f172a;
   --card:#ffffff;
   --stroke:#e5e7eb;
   --soft:#f8fafc;
+  --soft2:#f3f4f6;
+  --ink:#0f172a;
+  --blue:#2563eb;
 }
+
+html, body, [class*="css"]  {
+  font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  color: var(--ink);
+}
+
+/* Keep content readable / centered */
+.main .block-container{
+  max-width: 980px;
+  padding-top: 1.25rem;
+}
+
+/* --- Sidebar clock tile (your screenshot style) --- */
+.clock_tile{
+  width: 100%;
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  background: var(--card);
+  padding: 10px 10px;
+  margin: 10px 0 12px 0;
+}
+.clock_row_top{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:10px;
+}
+.clock_time{
+  font-size: 36px;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: 0.5px;
+}
+.clock_ampm{
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+  padding-bottom: 5px;
+}
+.clock_row_bottom{
+  display:flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.clock_box{
+  flex:1;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: var(--soft);
+  padding: 6px 8px;
+  text-align:center;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
 .badge{
   display:inline-block;
-  padding: 2px 10px;
+  padding: 3px 10px;
   border-radius:999px;
   font-size:12px;
   border:1px solid var(--stroke);
   background: var(--soft);
 }
-.muted{ color: var(--muted); }
+
 .small{ font-size: 12px; }
-.bigtitle{ font-size: 30px; font-weight: 700; margin: 0 0 12px 0; }
-.sectiontitle{ font-size: 20px; font-weight: 700; margin: 18px 0 10px 0; }
-.card{
-  border: 1px solid var(--stroke);
-  border-radius: 14px;
-  background: var(--card);
-  padding: 14px 16px;
-  margin: 10px 0;
-}
+.bigtitle{ font-size: 30px; font-weight: 750; margin: 0 0 12px 0; }
+
+/* --- Chat message rectangles --- */
 .chatmsg{
   border: 1px solid var(--stroke);
   border-radius: 14px;
@@ -56,42 +106,120 @@ CSS = """
   padding: 12px 14px;
   margin: 10px 0;
 }
+.chatheader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.chatrole{
+  font-weight: 750;
+}
+.chatbody{
+  margin-top: 6px;
+  white-space: pre-wrap;        /* preserve bullets/newlines */
+  line-height: 1.45;
+}
 .chatmeta{
   font-size: 12px;
   color: var(--muted);
-  margin-top: 6px;
+  margin-top: 8px;
+  text-align: right;            /* timestamp bottom-right */
 }
+
+/* --- UIB box --- */
 .uib{
   border: 1px solid var(--stroke);
   border-radius: 16px;
   background: var(--card);
   padding: 10px 12px;
+  margin-top: 10px;
 }
-.uib-row{
+.uib_hint{
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+/* --- Sidebar: compact nav links (no big “1999 buttons”) --- */
+.sidebar_section_title{
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--muted);
+  margin-top: 8px;
+  margin-bottom: 6px;
+  text-transform: none;
+}
+.nav_links{
+  display:flex;
+  flex-direction:column;
+  gap: 6px;
+  margin-top: 6px;
+}
+a.navlink{
   display:flex;
   align-items:center;
-  gap:10px;
+  gap: 10px;
+  text-decoration:none;
+  border: 1px solid var(--stroke);
+  background: var(--card);
+  padding: 9px 10px;
+  border-radius: 12px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
 }
-.uib-actions{
+a.navlink:hover{
+  background: var(--soft);
+  border-color: #d1d5db;
+}
+.navicon{
+  width: 18px;
+  text-align:center;
+}
+
+/* --- Learning sessions: compact like “TOPIC.Feb 15.2026” --- */
+.session_links{
+  display:flex;
+  flex-direction:column;
+  gap: 8px;
+  margin-top: 8px;
+}
+a.sesslink{
   display:flex;
   align-items:center;
-  gap:10px;
-}
-.iconbtn{
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  gap: 10px;
+  text-decoration:none;
   border: 1px solid var(--stroke);
   background: var(--soft);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight: 700;
+  padding: 9px 10px;
+  border-radius: 12px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
 }
-.center-link{
+a.sesslink:hover{
+  background: var(--soft2);
+  border-color: #d1d5db;
+}
+.sessdot{
+  width: 8px; height: 8px;
+  border-radius: 999px;
+  background: #9ca3af;
+  flex: 0 0 auto;
+}
+.sessdot.active{ background: var(--blue); }
+
+/* Sidebar padding */
+div[data-testid="stSidebar"] .block-container{
+  padding-top: 1rem;
+}
+
+/* Continue button: small and centered */
+.cont_row{
   display:flex;
   justify-content:center;
-  margin: 10px 0 0 0;
+  margin: 6px 0 2px 0;
 }
 </style>
 """
@@ -102,8 +230,17 @@ st.markdown(CSS, unsafe_allow_html=True)
 # Helpers
 # =========================
 def now_label() -> str:
-    # Keep the nice day/time display at top
     return datetime.now().strftime("%a, %b %d • %I:%M %p")
+
+
+def clock_parts() -> Dict[str, str]:
+    now = datetime.now()
+    return {
+        "time": now.strftime("%I:%M").lstrip("0") or now.strftime("%I:%M"),
+        "ampm": now.strftime("%p"),
+        "date": now.strftime("%m/%d"),
+        "dow": now.strftime("%a"),
+    }
 
 
 def normalize_mojibake(s: str) -> str:
@@ -119,6 +256,12 @@ def normalize_mojibake(s: str) -> str:
         "â€¦": "…",
         "Â·": "·",
         "Â": "",
+        "â": "—",
+        "â": "–",
+        "â": "’",
+        "â": "“",
+        "â": "”",
+        "â¦": "…",
     }
     for k, v in replacements.items():
         s = s.replace(k, v)
@@ -130,8 +273,86 @@ def session_title_for_sidebar(sess: Dict[str, Any]) -> str:
     first = (sess.get("last_prompt") or sess.get("title") or "Session").strip()
     kw = (first.split()[0] if first else "Session").strip().strip(".,:;!?").upper()
     created = sess.get("created") or datetime.now().strftime("%b %d.%Y")
-    # created stored as "Feb 15.2026"
     return f"{kw}.{created}"
+
+
+def needs_continue_flag(msg: Dict[str, Any]) -> bool:
+    """Continue should appear ONLY when model truly has more to say."""
+    if msg.get("incomplete") is True:
+        return True
+    sr = (msg.get("stop_reason") or "").strip().lower()
+    return sr == "max_output_tokens"
+
+
+def _strip_duplicate_chunk_prefix(chunk: str) -> str:
+    """
+    Remove annoying repeated lead-ins that appear at chunk boundaries
+    without deleting actual content.
+    """
+    lines = chunk.splitlines()
+    # drop leading empties
+    while lines and not lines[0].strip():
+        lines.pop(0)
+
+    # repeatedly drop known "boundary garbage" if it appears at top
+    patterns = {
+        "overview",
+        "retr overview",
+        "continuation",
+        "continuation —",
+        "continuation — numeric example (finish calculation)",
+    }
+
+    changed = True
+    while changed and lines:
+        changed = False
+        first = lines[0].strip()
+        first_clean = first.strip("•-*\"'“”‘’ ").lower()
+        # If the first line is a duplicate heading-like thing, drop it
+        if first_clean in patterns:
+            lines.pop(0)
+            changed = True
+            continue
+        # If it's a single bullet that is just "Overview" etc.
+        if first_clean.replace(":", "") in patterns and len(first_clean) <= 40:
+            lines.pop(0)
+            changed = True
+            continue
+
+    return "\n".join(lines).strip()
+
+
+def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 1600) -> str:
+    """
+    Append chunk to existing while removing overlap duplication.
+    Keeps answers long; only removes repeated boundary overlap.
+    """
+    existing = existing or ""
+    chunk = chunk or ""
+    if not chunk.strip():
+        return existing
+
+    ex = existing.rstrip()
+    ch = _strip_duplicate_chunk_prefix(chunk).lstrip()
+    if not ch:
+        return ex
+
+    tail = ex[-max_window:]
+    head = ch[:max_window]
+
+    best = 0
+    max_k = min(len(tail), len(head))
+    for k in range(80, max_k + 1):  # avoid tiny accidental matches
+        if tail[-k:] == head[:k]:
+            best = k
+
+    if best > 0:
+        ch = ch[best:].lstrip()
+
+    # Append with single newline for continuity
+    if ex:
+        return (ex + "\n" + ch).strip()
+    return ch.strip()
 
 
 # =========================
@@ -146,12 +367,17 @@ if "page" not in st.session_state:
 if "chat" not in st.session_state:
     st.session_state.chat = {"topic": "", "interrogate": None, "illustrate": None}
 
-# Learning: multiple sessions
 if "learning_sessions" not in st.session_state:
     st.session_state.learning_sessions: Dict[str, Dict[str, Any]] = {}
 
 if "learning_active_id" not in st.session_state:
     st.session_state.learning_active_id: Optional[str] = None
+
+if "_continue_msg_id" not in st.session_state:
+    st.session_state._continue_msg_id = None
+
+if "_last_page_param" not in st.session_state:
+    st.session_state._last_page_param = None
 
 
 def ensure_learning_session() -> str:
@@ -169,7 +395,6 @@ def ensure_learning_session() -> str:
 
 
 def start_new_learning_session() -> str:
-    """Always create a new learning session and make it active."""
     sid = f"learn-{int(time.time())}"
     st.session_state.learning_sessions[sid] = {
         "created": datetime.now().strftime("%b %d.%Y"),
@@ -187,15 +412,52 @@ def post_json(path: str, payload: Dict[str, Any], timeout: int = 120) -> Dict[st
     url = f"{st.session_state.api_base}{path}"
     r = requests.post(url, json=payload, timeout=timeout)
     r.raise_for_status()
-    data = r.json()
-    return data
+    return r.json()
 
 
-def fetch_study(topic: str, mode: str = "deep", continue_token: Optional[str] = None) -> Dict[str, Any]:
-    payload = {"topic": topic, "mode": mode}
+def fetch_study(
+    topic: str,
+    mode: str = "deep",
+    previous_response_id: Optional[str] = None,
+    continue_token: Optional[str] = None,
+) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {"topic": topic, "mode": mode}
+    if previous_response_id:
+        payload["previous_response_id"] = previous_response_id
     if continue_token:
         payload["continue_token"] = continue_token
     return post_json("/study/ai", payload, timeout=180)
+
+
+# =========================
+# URL / Query routing (clean nav links)
+# =========================
+qp = st.query_params
+page_param = (qp.get("page") or "chat").lower()
+learn_sid = qp.get("learn_sid")
+
+# map to internal page names
+param_to_page = {
+    "chat": "New Chat",
+    "learn": "My New Learning",
+    "proj": "New Project",
+}
+
+# Detect nav click (page param change)
+if page_param in param_to_page:
+    new_page = param_to_page[page_param]
+    # If user clicked into Learning (page=learn) WITHOUT selecting an old session,
+    # start a new session (your requirement: nav click starts new)
+    if new_page == "My New Learning":
+        if (st.session_state._last_page_param != "learn") and (learn_sid is None):
+            start_new_learning_session()
+    st.session_state.page = new_page
+
+st.session_state._last_page_param = page_param
+
+# If a specific session is requested, open it (do NOT create a new one)
+if learn_sid and learn_sid in st.session_state.learning_sessions:
+    st.session_state.learning_active_id = learn_sid
 
 
 # =========================
@@ -204,66 +466,65 @@ def fetch_study(topic: str, mode: str = "deep", continue_token: Optional[str] = 
 with st.sidebar:
     st.markdown("## InI.ai")
     st.markdown('<span class="badge">v0 • AI Tutor</span>', unsafe_allow_html=True)
-    st.markdown(f'<div class="muted small">🕒 {now_label()}</div>', unsafe_allow_html=True)
-    st.divider()
 
-    st.markdown("### Navigation")
-    # No radio buttons — use compact nav buttons
-    nav1, nav2, nav3 = st.columns([1, 1, 1], gap="small")
-    with nav1:
-        go_chat = st.button("💬 New Chat", use_container_width=True)
-    with nav2:
-        go_learn = st.button("📚 My New Learning", use_container_width=True)
-    with nav3:
-        go_proj = st.button("🧩 New Project", use_container_width=True)
+    cp = clock_parts()
+    st.markdown(
+        f"""
+        <div class="clock_tile">
+          <div class="clock_row_top">
+            <div class="clock_time">{cp["time"]}</div>
+            <div class="clock_ampm">{cp["ampm"]}</div>
+          </div>
+          <div class="clock_row_bottom">
+            <div class="clock_box">{cp["date"]}</div>
+            <div class="clock_box">{cp["dow"]}</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    # Clicking a nav item starts a fresh session for that area (ChatGPT-like)
-    if go_chat:
-        st.session_state.page = "New Chat"
-        st.session_state.chat = {"topic": "", "interrogate": None, "illustrate": None}
-    if go_proj:
-        st.session_state.page = "New Project"
-    if go_learn:
-        st.session_state.page = "My New Learning"
-        start_new_learning_session()
+    st.markdown('<div class="sidebar_section_title">Navigation</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="nav_links">
+          <a class="navlink" href="?page=chat"><span class="navicon">💬</span><span>New Chat</span></a>
+          <a class="navlink" href="?page=learn"><span class="navicon">📚</span><span>My New Learning</span></a>
+          <a class="navlink" href="?page=proj"><span class="navicon">🧩</span><span>New Project</span></a>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if DEV_MODE:
-        st.divider()
+        st.markdown("<hr/>", unsafe_allow_html=True)
         with st.expander("API Settings (dev)", expanded=False):
             st.session_state.api_base = st.text_input("API base", st.session_state.api_base)
 
+    # Compact learning sessions list
     if st.session_state.page == "My New Learning":
-        st.divider()
-        st.markdown("### Your Learning")
+        st.markdown("<hr/>", unsafe_allow_html=True)
+        st.markdown('<div class="sidebar_section_title">Your Learning</div>', unsafe_allow_html=True)
 
-        sessions = list(st.session_state.learning_sessions.items())
-        if sessions:
-            # newest first
-            sessions = sessions[::-1]
-            labels = [session_title_for_sidebar(s) for _, s in sessions]
-            ids = [sid for sid, _ in sessions]
-
-            # default active = most recent
-            if st.session_state.learning_active_id is None:
-                st.session_state.learning_active_id = ids[0]
-
-            # active id -> index
-            try:
-                active_idx = ids.index(st.session_state.learning_active_id)
-            except ValueError:
-                active_idx = 0
-                st.session_state.learning_active_id = ids[0]
-
-            picked = st.selectbox(
-                "Sessions",
-                options=list(range(len(labels))),
-                index=active_idx,
-                format_func=lambda i: labels[i],
-                label_visibility="collapsed",
-            )
-            st.session_state.learning_active_id = ids[picked]
+        sessions_items = list(st.session_state.learning_sessions.items())[::-1]  # newest first
+        if sessions_items:
+            st.markdown('<div class="session_links">', unsafe_allow_html=True)
+            for sid, sess in sessions_items:
+                label = session_title_for_sidebar(sess)
+                active = (sid == st.session_state.learning_active_id)
+                dot_cls = "sessdot active" if active else "sessdot"
+                st.markdown(
+                    f"""
+                    <a class="sesslink" href="?page=learn&learn_sid={sid}">
+                      <span class="{dot_cls}"></span>
+                      <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{label}</span>
+                    </a>
+                    """,
+                    unsafe_allow_html=True,
+                )
+            st.markdown("</div>", unsafe_allow_html=True)
         else:
-            st.markdown('<div class="muted small">No sessions yet.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="small" style="color:var(--muted);">No sessions yet.</div>', unsafe_allow_html=True)
 
 
 # =========================
@@ -282,21 +543,21 @@ def page_new_chat() -> None:
     st.info("Interrogate + Illustrate UI can be polished after My New Learning is solid.", icon="ℹ️")
     st.caption("v0 note: LLM is enabled for AI/ML; templates for other topics.")
 
-    # (You said: we’ll polish New Chat later. Keep minimal for now.)
-
 
 def render_learning_messages(sess: Dict[str, Any]) -> None:
     for msg in sess["messages"]:
         role = msg.get("role", "assistant")
         text = normalize_mojibake(msg.get("text", "")).strip()
-        ts = msg.get("ts")
+        ts = msg.get("ts") or ""
 
         if role == "user":
             st.markdown(
                 f"""
                 <div class="chatmsg">
-                  <div><b>🧑 You</b></div>
-                  <div>{text}</div>
+                  <div class="chatheader">
+                    <div class="chatrole">🧑 You</div>
+                  </div>
+                  <div class="chatbody">{text}</div>
                   <div class="chatmeta">{ts}</div>
                 </div>
                 """,
@@ -306,20 +567,65 @@ def render_learning_messages(sess: Dict[str, Any]) -> None:
             st.markdown(
                 f"""
                 <div class="chatmsg">
-                  <div><b>🤖 InI</b></div>
-                  <div>{text}</div>
+                  <div class="chatheader">
+                    <div class="chatrole">🤖 InI</div>
+                  </div>
+                  <div class="chatbody">{text}</div>
                   <div class="chatmeta">{ts}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-        # Continue block (centered), only if it truly has more
-        if msg.get("incomplete") is True and msg.get("continue_token"):
-            st.markdown('<div class="center-link">', unsafe_allow_html=True)
-            if st.button("Continue", key=f"cont-{msg.get('id')}"):
-                st.session_state._continue_from = msg.get("continue_token")
-            st.markdown("</div>", unsafe_allow_html=True)
+            # small centered Continue (not full-width)
+            if needs_continue_flag(msg):
+                st.markdown('<div class="cont_row">', unsafe_allow_html=True)
+                clicked = st.button("Continue", key=f"cont-{msg.get('id')}")
+                st.markdown("</div>", unsafe_allow_html=True)
+                if clicked:
+                    st.session_state._continue_msg_id = msg.get("id")
+                    st.rerun()
+
+
+def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
+    idx = None
+    for i, m in enumerate(sess["messages"]):
+        if m.get("id") == msg_id:
+            idx = i
+            break
+    if idx is None:
+        return
+
+    m = sess["messages"][idx]
+    if m.get("role") != "assistant":
+        return
+
+    prompt = (m.get("prompt") or "").strip()
+    mode = (m.get("mode") or "deep").strip()
+    prev_id = m.get("response_id") or None
+    legacy_token = m.get("continue_token") or None
+
+    if not prompt:
+        m["incomplete"] = False
+        m["stop_reason"] = None
+        return
+
+    resp = fetch_study(prompt, mode=mode, previous_response_id=prev_id, continue_token=legacy_token)
+    chunk = normalize_mojibake(resp.get("answer", "") or "").strip()
+
+    if chunk:
+        existing = (m.get("text") or "")
+        m["text"] = _overlap_dedupe_append(existing, chunk)
+
+    m["incomplete"] = bool(resp.get("incomplete"))
+    m["stop_reason"] = resp.get("stop_reason") or None
+
+    if resp.get("response_id"):
+        m["response_id"] = resp.get("response_id")
+    if resp.get("continue_token"):
+        m["continue_token"] = resp.get("continue_token")
+
+    m["ts"] = now_label()
 
 
 def page_my_new_learning() -> None:
@@ -329,12 +635,31 @@ def page_my_new_learning() -> None:
     sid = ensure_learning_session()
     sess = st.session_state.learning_sessions[sid]
 
-    # show history
+    # Handle pending Continue before rendering
+    if st.session_state._continue_msg_id:
+        msg_id = st.session_state._continue_msg_id
+        st.session_state._continue_msg_id = None
+        try:
+            _continue_one_chunk(sess, msg_id)
+        except Exception as e:
+            sess["messages"].append(
+                {
+                    "id": f"e-{int(time.time())}",
+                    "role": "assistant",
+                    "text": f"Error continuing: {e}",
+                    "ts": now_label(),
+                    "incomplete": False,
+                    "stop_reason": None,
+                }
+            )
+        st.rerun()
+
+    # Messages
     render_learning_messages(sess)
 
-    # UIB at bottom (ChatGPT-like). It naturally stays at bottom after first message.
+    # UIB at bottom (single row, icons inside)
     st.markdown('<div class="uib">', unsafe_allow_html=True)
-    uib_cols = st.columns([7, 1, 1, 1], gap="small")
+    uib_cols = st.columns([8, 0.8, 0.8, 0.8], gap="small")
     with uib_cols[0]:
         user_text = st.text_input(
             "",
@@ -351,41 +676,45 @@ def page_my_new_learning() -> None:
         send = st.button("➤", help="Send (deep)", key="btn_send")
     st.markdown("</div>", unsafe_allow_html=True)
 
+    st.markdown('<div class="uib_hint">➤ Deep (default) • ◎ Overview • ? Quiz</div>', unsafe_allow_html=True)
+
     mode = "deep"
     if overview:
         mode = "high"
     if quiz:
         mode = "quiz"
 
-    # Optional: Continue from previous incomplete chunk
-    continue_token = getattr(st.session_state, "_continue_from", None)
-    if continue_token:
-        # clear the continue token once used
-        st.session_state._continue_from = None
-
     if (send or overview or quiz) and user_text.strip():
-        ts = now_label()
+        prompt = user_text.strip()
+
         sess["messages"].append(
-            {"id": f"u-{int(time.time())}", "role": "user", "text": user_text.strip(), "ts": ts}
+            {"id": f"u-{int(time.time())}", "role": "user", "text": prompt, "ts": now_label()}
         )
-        sess["last_prompt"] = user_text.strip()
+        sess["last_prompt"] = prompt
 
         try:
-            resp = fetch_study(user_text.strip(), mode=mode, continue_token=continue_token)
-            answer = normalize_mojibake(resp.get("answer", "")).strip() or "(No answer returned.)"
-            incomplete = bool(resp.get("incomplete"))
-            cont = resp.get("continue_token") or None
+            resp = fetch_study(prompt, mode=mode)
+            answer = normalize_mojibake(resp.get("answer", "") or "").strip()
+            if not answer:
+                answer = "No answer generated."
 
-            sess["messages"].append(
-                {
-                    "id": f"a-{int(time.time())}",
-                    "role": "assistant",
-                    "text": answer,
-                    "ts": now_label(),
-                    "incomplete": incomplete,
-                    "continue_token": cont,
-                }
-            )
+            msg: Dict[str, Any] = {
+                "id": f"a-{int(time.time())}",
+                "role": "assistant",
+                "text": answer,
+                "ts": now_label(),
+                "incomplete": bool(resp.get("incomplete")),
+                "stop_reason": resp.get("stop_reason") or None,
+                "prompt": prompt,
+                "mode": mode,
+            }
+
+            if resp.get("response_id"):
+                msg["response_id"] = resp.get("response_id")
+            if resp.get("continue_token"):
+                msg["continue_token"] = resp.get("continue_token")
+
+            sess["messages"].append(msg)
             st.rerun()
 
         except Exception as e:
@@ -396,7 +725,7 @@ def page_my_new_learning() -> None:
                     "text": f"Error calling API: {e}",
                     "ts": now_label(),
                     "incomplete": False,
-                    "continue_token": None,
+                    "stop_reason": None,
                 }
             )
             st.rerun()
