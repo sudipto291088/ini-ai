@@ -14,7 +14,7 @@ try:
     # api/llm_answers.py -> repo_root/.env
     REPO_ROOT = Path(__file__).resolve().parents[1]
     DOTENV_PATH = REPO_ROOT / ".env"
-    load_dotenv(dotenv_path=DOTENV_PATH)
+    load_dotenv(dotenv_path=DOTENV_PATH, override=True)
 except Exception:
     # If python-dotenv isn't installed, rely on OS env vars
     pass
@@ -38,6 +38,59 @@ INI_LLM_DEBUG = os.getenv("INI_LLM_DEBUG", "0").lower() in ("1", "true", "yes")
 
 def llm_enabled() -> bool:
     return bool(OPENAI_API_KEY)
+
+
+# ============================================================
+# TEXT CLEANUP (fix mojibake / weird characters)
+# ============================================================
+
+def _normalize_text(s: str) -> str:
+    """
+    Fix common mojibake sequences we keep seeing in Windows/PS/Streamlit renders.
+    Example: “â€”” -> “—”, “â€™” -> “’”.
+    """
+    if not s:
+        return ""
+
+    # Fast path: only run replacements if we detect telltale mojibake markers
+    if "â" not in s and "Â" not in s and "Ã" not in s:
+        return s
+
+    repl = {
+        # dashes / ellipsis
+        "â€”": "—",
+        "â€“": "–",
+        "â€•": "―",
+        "â€¦": "…",
+
+        # quotes
+        "â€œ": "“",
+        "â€�": "”",
+        "â€˜": "‘",
+        "â€™": "’",
+        "â„¢": "™",
+
+        # bullets / middots
+        "â€¢": "•",
+        "Â·": "·",
+
+        # spaces / nbsp artifacts
+        "Â ": " ",
+        "Â ": " ",
+
+        # common apostrophe variant
+        "Ã¢â‚¬â„¢": "’",
+        "Ã¢â‚¬â€œ": "–",
+        "Ã¢â‚¬â€�": "—",
+        "Ã¢â‚¬Â¦": "…",
+        "Ã¢â‚¬Å“": "“",
+        "Ã¢â‚¬Â": "”",
+    }
+
+    for k, v in repl.items():
+        s = s.replace(k, v)
+
+    return s
 
 
 # ============================================================
@@ -229,7 +282,8 @@ def generate_dynamic_answer_result(
         "- Be conceptually clear and technically correct.\n"
         "- Avoid buzzwords unless explained.\n"
         "- Do not shorten answers artificially.\n"
-        "- Use examples when helpful.\n"
+        "- Prefer structured sections with headings and bullet points when helpful.\n"
+        "- Use concrete examples and failure modes when relevant.\n"
         "- If archetype is RISK: include misconceptions and failure modes.\n"
         "- If archetype is APPLY: include where it works AND where it fails.\n"
         "- If archetype is NEXT: give concrete next learning steps.\n"
@@ -300,6 +354,8 @@ def generate_dynamic_answer_result(
         data = resp.json()
 
         text = _extract_output_text(data).strip()
+        text = _normalize_text(text)
+
         incomplete, reason = _is_incomplete(data)
 
         return {

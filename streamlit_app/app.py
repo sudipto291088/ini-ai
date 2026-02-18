@@ -1,10 +1,16 @@
 import os
 import time
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 import requests
 import streamlit as st
+
+# Try autorefresh (for live clock). If not installed, app still runs.
+try:
+    from streamlit_autorefresh import st_autorefresh  # type: ignore
+except Exception:
+    st_autorefresh = None
 
 
 # =========================
@@ -51,11 +57,14 @@ html, body, [class*="css"]  {
   padding: 10px 10px;
   margin: 10px 0 12px 0;
 }
-.clock_row_top{
+
+/* Centered single-line time */
+.clock_center{
   display:flex;
-  align-items:flex-end;
-  justify-content:space-between;
-  gap:10px;
+  align-items:center;
+  justify-content:center;
+  gap: 8px;
+  margin-top: 2px;
 }
 .clock_time{
   font-size: 36px;
@@ -67,12 +76,13 @@ html, body, [class*="css"]  {
   font-size: 13px;
   font-weight: 650;
   color: var(--muted);
-  padding-bottom: 5px;
+  margin-top: 12px; /* visually aligns with big digits */
 }
+
 .clock_row_bottom{
   display:flex;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 .clock_box{
   flex:1;
@@ -215,11 +225,14 @@ div[data-testid="stSidebar"] .block-container{
   padding-top: 1rem;
 }
 
-/* Continue button: small and centered */
-.cont_row{
-  display:flex;
-  justify-content:center;
-  margin: 6px 0 2px 0;
+/* Continue button: small, centered, NEVER wraps */
+div.stButton > button{
+  border-radius: 12px;
+  padding: 6px 16px;
+  font-weight: 650;
+  white-space: nowrap !important;
+  min-width: 120px;
+  text-align: center;
 }
 </style>
 """
@@ -235,8 +248,9 @@ def now_label() -> str:
 
 def clock_parts() -> Dict[str, str]:
     now = datetime.now()
+    t = now.strftime("%I:%M").lstrip("0") or now.strftime("%I:%M")
     return {
-        "time": now.strftime("%I:%M").lstrip("0") or now.strftime("%I:%M"),
+        "time": t,
         "ampm": now.strftime("%p"),
         "date": now.strftime("%m/%d"),
         "dow": now.strftime("%a"),
@@ -290,11 +304,9 @@ def _strip_duplicate_chunk_prefix(chunk: str) -> str:
     without deleting actual content.
     """
     lines = chunk.splitlines()
-    # drop leading empties
     while lines and not lines[0].strip():
         lines.pop(0)
 
-    # repeatedly drop known "boundary garbage" if it appears at top
     patterns = {
         "overview",
         "retr overview",
@@ -308,12 +320,10 @@ def _strip_duplicate_chunk_prefix(chunk: str) -> str:
         changed = False
         first = lines[0].strip()
         first_clean = first.strip("•-*\"'“”‘’ ").lower()
-        # If the first line is a duplicate heading-like thing, drop it
         if first_clean in patterns:
             lines.pop(0)
             changed = True
             continue
-        # If it's a single bullet that is just "Overview" etc.
         if first_clean.replace(":", "") in patterns and len(first_clean) <= 40:
             lines.pop(0)
             changed = True
@@ -342,14 +352,13 @@ def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 1600) ->
 
     best = 0
     max_k = min(len(tail), len(head))
-    for k in range(80, max_k + 1):  # avoid tiny accidental matches
+    for k in range(80, max_k + 1):
         if tail[-k:] == head[:k]:
             best = k
 
     if best > 0:
         ch = ch[best:].lstrip()
 
-    # Append with single newline for continuity
     if ex:
         return (ex + "\n" + ch).strip()
     return ch.strip()
@@ -436,18 +445,14 @@ qp = st.query_params
 page_param = (qp.get("page") or "chat").lower()
 learn_sid = qp.get("learn_sid")
 
-# map to internal page names
 param_to_page = {
     "chat": "New Chat",
     "learn": "My New Learning",
     "proj": "New Project",
 }
 
-# Detect nav click (page param change)
 if page_param in param_to_page:
     new_page = param_to_page[page_param]
-    # If user clicked into Learning (page=learn) WITHOUT selecting an old session,
-    # start a new session (your requirement: nav click starts new)
     if new_page == "My New Learning":
         if (st.session_state._last_page_param != "learn") and (learn_sid is None):
             start_new_learning_session()
@@ -455,7 +460,6 @@ if page_param in param_to_page:
 
 st.session_state._last_page_param = page_param
 
-# If a specific session is requested, open it (do NOT create a new one)
 if learn_sid and learn_sid in st.session_state.learning_sessions:
     st.session_state.learning_active_id = learn_sid
 
@@ -464,25 +468,43 @@ if learn_sid and learn_sid in st.session_state.learning_sessions:
 # Sidebar
 # =========================
 with st.sidebar:
+    # ============================================================
+    # Live Clock (no page refresh)
+    # - Prefer Streamlit-native fragment when available.
+    # - Fallback to streamlit-autorefresh if installed.
+    # ============================================================
+    def _render_clock_tile():
+        cp = clock_parts()
+        st.markdown(
+            f'''
+            <div class="clock_tile">
+              <div class="clock_center">
+                <div class="clock_time">{cp["time"]}</div>
+                <div class="clock_ampm">{cp["ampm"]}</div>
+              </div>
+              <div class="clock_row_bottom">
+                <div class="clock_box">{cp["date"]}</div>
+                <div class="clock_box">{cp["dow"]}</div>
+              </div>
+            </div>
+            ''',
+            unsafe_allow_html=True,
+        )
+
+    if hasattr(st, "fragment"):
+        @st.fragment(run_every="1s")  # type: ignore[arg-type]
+        def _clock_fragment():
+            _render_clock_tile()
+        _clock_fragment()
+    elif st_autorefresh is not None:
+        st_autorefresh(interval=1000, key="ini_clock_tick")
+        _render_clock_tile()
+    else:
+        _render_clock_tile()
+        st.caption("Tip: install 'streamlit-autorefresh' to enable a live-updating clock.")
+
     st.markdown("## InI.ai")
     st.markdown('<span class="badge">v0 • AI Tutor</span>', unsafe_allow_html=True)
-
-    cp = clock_parts()
-    st.markdown(
-        f"""
-        <div class="clock_tile">
-          <div class="clock_row_top">
-            <div class="clock_time">{cp["time"]}</div>
-            <div class="clock_ampm">{cp["ampm"]}</div>
-          </div>
-          <div class="clock_row_bottom">
-            <div class="clock_box">{cp["date"]}</div>
-            <div class="clock_box">{cp["dow"]}</div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
     st.markdown('<div class="sidebar_section_title">Navigation</div>', unsafe_allow_html=True)
     st.markdown(
@@ -501,12 +523,11 @@ with st.sidebar:
         with st.expander("API Settings (dev)", expanded=False):
             st.session_state.api_base = st.text_input("API base", st.session_state.api_base)
 
-    # Compact learning sessions list
     if st.session_state.page == "My New Learning":
         st.markdown("<hr/>", unsafe_allow_html=True)
         st.markdown('<div class="sidebar_section_title">Your Learning</div>', unsafe_allow_html=True)
 
-        sessions_items = list(st.session_state.learning_sessions.items())[::-1]  # newest first
+        sessions_items = list(st.session_state.learning_sessions.items())[::-1]
         if sessions_items:
             st.markdown('<div class="session_links">', unsafe_allow_html=True)
             for sid, sess in sessions_items:
@@ -577,11 +598,10 @@ def render_learning_messages(sess: Dict[str, Any]) -> None:
                 unsafe_allow_html=True,
             )
 
-            # small centered Continue (not full-width)
             if needs_continue_flag(msg):
-                st.markdown('<div class="cont_row">', unsafe_allow_html=True)
-                clicked = st.button("Continue", key=f"cont-{msg.get('id')}")
-                st.markdown("</div>", unsafe_allow_html=True)
+                c1, c2, c3 = st.columns([1, 0.45, 1])
+                with c2:
+                    clicked = st.button("Continue", key=f"cont-{msg.get('id')}")
                 if clicked:
                     st.session_state._continue_msg_id = msg.get("id")
                     st.rerun()
@@ -635,7 +655,6 @@ def page_my_new_learning() -> None:
     sid = ensure_learning_session()
     sess = st.session_state.learning_sessions[sid]
 
-    # Handle pending Continue before rendering
     if st.session_state._continue_msg_id:
         msg_id = st.session_state._continue_msg_id
         st.session_state._continue_msg_id = None
@@ -654,10 +673,8 @@ def page_my_new_learning() -> None:
             )
         st.rerun()
 
-    # Messages
     render_learning_messages(sess)
 
-    # UIB at bottom (single row, icons inside)
     st.markdown('<div class="uib">', unsafe_allow_html=True)
     uib_cols = st.columns([8, 0.8, 0.8, 0.8], gap="small")
     with uib_cols[0]:
