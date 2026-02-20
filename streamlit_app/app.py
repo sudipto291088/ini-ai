@@ -1,5 +1,6 @@
 import os
 import time
+import re
 from datetime import datetime
 from typing import Any, Dict, Optional, List
 
@@ -114,7 +115,7 @@ html, body, [class*="css"]  {
   border-radius: 14px;
   background: var(--card);
   padding: 12px 14px;
-  margin: 10px 0;
+  margin: 14px 0;   /* more separation between bubbles */
 }
 .chatheader{
   display:flex;
@@ -126,15 +127,15 @@ html, body, [class*="css"]  {
   font-weight: 750;
 }
 .chatbody{
-  margin-top: 6px;
-  white-space: pre-wrap;        /* preserve bullets/newlines */
-  line-height: 1.45;
+  margin-top: 4px;             /* slightly tighter */
+  white-space: pre-wrap;       /* preserve bullets/newlines */
+  line-height: 1.28;           /* tighter baseline; big gaps are fixed by compactor */
 }
 .chatmeta{
   font-size: 12px;
   color: var(--muted);
   margin-top: 8px;
-  text-align: right;            /* timestamp bottom-right */
+  text-align: right;           /* timestamp bottom-right (UNCHANGED) */
 }
 
 /* --- UIB box --- */
@@ -280,6 +281,55 @@ def normalize_mojibake(s: str) -> str:
     for k, v in replacements.items():
         s = s.replace(k, v)
     return s
+
+
+def _compact_spacing_preserve_code(text: str) -> str:
+    """
+    Remove the "ugly huge gaps" without shortening content.
+    - Preserves triple-backtick code blocks exactly.
+    - Collapses whitespace-only blank lines.
+    - Tightens list formatting even when bullets are indented (e.g., "  - item", "    • item").
+    """
+    if not isinstance(text, str) or not text:
+        return text or ""
+
+    # Normalize CRLF early
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+
+    # Split by fenced code blocks. Keep code parts verbatim.
+    parts = text.split("```")
+    out_parts: List[str] = []
+
+    for i, part in enumerate(parts):
+        if i % 2 == 1:
+            # Code block content stays verbatim
+            out_parts.append(part)
+            continue
+
+        s = part
+
+        # Trim trailing spaces at EOL (prevents phantom "blank lines")
+        s = re.sub(r"[ \t]+\n", "\n", s)
+
+        # Convert "blank lines that contain spaces/tabs" into true blank lines
+        # e.g., "\n   \n" -> "\n\n"
+        s = re.sub(r"\n[ \t]+\n", "\n\n", s)
+
+        # Tighten blank lines before bullets (allow leading indentation)
+        # "\n\n   - item" -> "\n   - item"
+        s = re.sub(r"\n\s*\n(?=\s*[-*•]\s)", "\n", s)
+
+        # Tighten blank lines before numbered items (allow leading indentation)
+        # "\n\n   1. item" -> "\n   1. item"
+        s = re.sub(r"\n\s*\n(?=\s*\d+\.\s)", "\n", s)
+
+        # Global cap: collapse 3+ newlines (including whitespace-newlines) -> 2 newlines
+        s = re.sub(r"(?:\n[ \t]*){3,}", "\n\n", s)
+
+        out_parts.append(s)
+
+    compacted = "```".join(out_parts)
+    return compacted.strip()
 
 
 def session_title_for_sidebar(sess: Dict[str, Any]) -> str:
@@ -568,7 +618,8 @@ def page_new_chat() -> None:
 def render_learning_messages(sess: Dict[str, Any]) -> None:
     for msg in sess["messages"]:
         role = msg.get("role", "assistant")
-        text = normalize_mojibake(msg.get("text", "")).strip()
+        raw_text = normalize_mojibake(msg.get("text", "")).strip()
+        text = _compact_spacing_preserve_code(raw_text)
         ts = msg.get("ts") or ""
 
         if role == "user":
@@ -631,7 +682,8 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
         return
 
     resp = fetch_study(prompt, mode=mode, previous_response_id=prev_id, continue_token=legacy_token)
-    chunk = normalize_mojibake(resp.get("answer", "") or "").strip()
+    chunk_raw = normalize_mojibake(resp.get("answer", "") or "").strip()
+    chunk = _compact_spacing_preserve_code(chunk_raw)
 
     if chunk:
         existing = (m.get("text") or "")
@@ -711,7 +763,8 @@ def page_my_new_learning() -> None:
 
         try:
             resp = fetch_study(prompt, mode=mode)
-            answer = normalize_mojibake(resp.get("answer", "") or "").strip()
+            answer_raw = normalize_mojibake(resp.get("answer", "") or "").strip()
+            answer = _compact_spacing_preserve_code(answer_raw)
             if not answer:
                 answer = "No answer generated."
 

@@ -76,9 +76,8 @@ def _normalize_text(s: str) -> str:
 
         # spaces / nbsp artifacts
         "Â ": " ",
-        "Â ": " ",
 
-        # common apostrophe variant
+        # common multi-byte artifacts (seen occasionally)
         "Ã¢â‚¬â„¢": "’",
         "Ã¢â‚¬â€œ": "–",
         "Ã¢â‚¬â€�": "—",
@@ -164,7 +163,6 @@ def _extract_output_text(data: Dict[str, Any]) -> str:
 
     If nothing found, returns "".
     """
-    # 1) Standard + variants: output items
     output = data.get("output") or []
     if isinstance(output, list):
         # Prefer message items first
@@ -176,31 +174,28 @@ def _extract_output_text(data: Dict[str, Any]) -> str:
                 if text:
                     return text
 
-        # 2) Fallback: sometimes content-like blocks appear in other output items
+        # Fallback: sometimes content-like blocks appear in other output items
         for item in output:
             if not isinstance(item, dict):
                 continue
 
-            # Some variants may attach "content" even if type isn't message
             text = _collect_text_from_content(item.get("content"))
             if text:
                 return text
 
-            # Very rare: direct "text" field at the output item
             if isinstance(item.get("text"), str) and item["text"].strip():
                 return str(item["text"]).strip()
 
-            # Rare: item["text"] dict with value
             if isinstance(item.get("text"), dict) and isinstance(item["text"].get("value"), str) and item["text"]["value"].strip():
                 return str(item["text"]["value"]).strip()
 
-    # 3) Top-level variants (rare)
+    # Top-level variants (rare)
     top_content = data.get("content")
     text = _collect_text_from_content(top_content)
     if text:
         return text
 
-    # 4) Last resort: some SDKs place output_text at top-level
+    # Last resort
     if isinstance(data.get("output_text"), str) and data["output_text"].strip():
         return str(data["output_text"]).strip()
 
@@ -256,7 +251,6 @@ def generate_dynamic_answer_result(
         "raw": <full response json only when INI_LLM_DEBUG=1 else None>
       }
     """
-
     if not llm_enabled():
         return {
             "answer": "",
@@ -276,17 +270,41 @@ def generate_dynamic_answer_result(
         expects = str(meta.get("expects", "")).lower().strip()
         expects_json = expects in ("json", "json_object", "strict_json")
 
+    # ============================================================
+    # SYSTEM PROMPT (Deep Technical Drive, research-level)
+    # ============================================================
     system_prompt = (
-        "You are InI.ai — a teaching-first AI mentor.\n\n"
-        "Rules:\n"
-        "- Be conceptually clear and technically correct.\n"
-        "- Avoid buzzwords unless explained.\n"
-        "- Do not shorten answers artificially.\n"
-        "- Prefer structured sections with headings and bullet points when helpful.\n"
-        "- Use concrete examples and failure modes when relevant.\n"
-        "- If archetype is RISK: include misconceptions and failure modes.\n"
-        "- If archetype is APPLY: include where it works AND where it fails.\n"
-        "- If archetype is NEXT: give concrete next learning steps.\n"
+        "You are InI.ai — a teaching-first AI mentor and deep technical tutor.\n"
+        "Your job is to make the learner genuinely understand, not just read text.\n\n"
+        "Hard rules:\n"
+        "- Be technically correct and specific. Prefer concrete mechanisms over vague claims.\n"
+        "- Do NOT be generic or motivational. No filler, no clichés.\n"
+        "- Do NOT artificially shorten. If the topic is deep, write a deep answer.\n"
+        "- Aim for research-notes depth: include enough detail that a serious learner can implement or verify.\n"
+        "- When helpful, include light pseudocode / equations / concrete parameter examples (but keep it readable).\n"
+        "- Use crisp structure with headings and bullets. Preserve indentation.\n"
+        "- Use definitions + intuition + mechanics + examples + failure modes.\n"
+        "- If you make an assumption, state it.\n"
+        "- Prefer: precise terms, clear boundaries, and “where it breaks”.\n\n"
+        "STRUCTURE POLICY:\n"
+        "- Use the following structure internally, but DO NOT print the template text literally.\n"
+        "- Only include sections that fit the question.\n"
+        "Suggested sections:\n"
+        "• Definition\n"
+        "• Why it matters / when you use it\n"
+        "• Core mechanism (step-by-step)\n"
+        "• Concrete worked example(s)\n"
+        "• Failure modes + mitigations\n"
+        "• Practical checklist / sanity checks\n"
+        "• Next steps (only if archetype == NEXT)\n\n"
+        "Archetype rules:\n"
+        "- ORIENT: build foundations and a correct mental model.\n"
+        "- RISK: include misconceptions, failure modes, and how to detect them.\n"
+        "- APPLY: include where it works AND where it fails, with examples.\n"
+        "- NEXT: include a short actionable learning plan + exercises.\n\n"
+        "Continuation rule:\n"
+        "- If you hit output limits, stop cleanly mid-section without concluding.\n"
+        "- Only continue when asked. Do NOT add a 'Continue' label unless you truly have more content.\n"
     )
 
     if expects_json:
@@ -308,8 +326,8 @@ def generate_dynamic_answer_result(
         f"Topic type: {topic_type}\n"
         f"Archetype: {archetype}\n"
         f"{meta_txt}\n"
-        f"Era hints: {era_hint}\n\n"
-        f"Instruction:\n{question}\n"
+        f"Era hints (if relevant): {era_hint}\n\n"
+        f"User question / instruction:\n{question}\n"
     )
 
     url = "https://api.openai.com/v1/responses"
@@ -353,10 +371,28 @@ def generate_dynamic_answer_result(
 
         data = resp.json()
 
-        text = _extract_output_text(data).strip()
-        text = _normalize_text(text)
+        # Normalize immediately (first pass)
+        text = _normalize_text(_extract_output_text(data).strip())
 
         incomplete, reason = _is_incomplete(data)
+
+        # If we got incomplete but no text (rare: reasoning-only output), return debug-safe error
+        if incomplete and not text:
+            return {
+                "answer": "",
+                "incomplete": True,
+                "stop_reason": reason,
+                "status": data.get("status"),
+                "response_id": data.get("id"),
+                "usage": data.get("usage"),
+                "model": str(data.get("model") or DEFAULT_MODEL),
+                "http_status": 200,
+                "error": "incomplete_no_text",
+                "raw": data if INI_LLM_DEBUG else None,
+            }
+
+        # Normalize again at the end (second pass, prevents regressions)
+        text = _normalize_text(text)
 
         return {
             "answer": text,
