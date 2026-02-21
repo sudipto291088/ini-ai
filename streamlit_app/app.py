@@ -1,11 +1,14 @@
 import os
 import time
 import re
+import json
+import urllib.parse
 from datetime import datetime
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
 
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 # Try autorefresh (for live clock). If not installed, app still runs.
 try:
@@ -35,21 +38,39 @@ CSS = """
   --soft:#f8fafc;
   --soft2:#f3f4f6;
   --ink:#0f172a;
+
   --blue:#2563eb;
+  --blueSoft:#e0e7ff;
+
+  --purple:#7c3aed;
+  --purpleSoft:#ede9fe;
+
+  --bubbleUser:#eef2ff;
+  --bubbleAsst:#ffffff;
+
+  --uibMax: 820px;          /* capsule width */
+  --uibPad: 120px;
+  --uibHeight: 48px;
+  --uibRadius: 999px;
+  --uibIcon: 34px;
 }
 
-html, body, [class*="css"]  {
-  font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+/* Fonts */
+html, body, [class*="css"]{
+  font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
   color: var(--ink);
 }
+button, input, textarea, select, label, p, div, span{
+  font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
+}
 
-/* Keep content readable / centered */
 .main .block-container{
   max-width: 980px;
   padding-top: 1.25rem;
+  padding-bottom: 7rem; /* room for fixed UIB */
 }
 
-/* --- Sidebar clock tile (your screenshot style) --- */
+/* --- Sidebar clock tile (keep as-is; do not break sidebar) --- */
 .clock_tile{
   width: 100%;
   border: 1px solid var(--stroke);
@@ -58,8 +79,6 @@ html, body, [class*="css"]  {
   padding: 10px 10px;
   margin: 10px 0 12px 0;
 }
-
-/* Centered single-line time */
 .clock_center{
   display:flex;
   align-items:center;
@@ -77,9 +96,8 @@ html, body, [class*="css"]  {
   font-size: 13px;
   font-weight: 650;
   color: var(--muted);
-  margin-top: 12px; /* visually aligns with big digits */
+  margin-top: 12px;
 }
-
 .clock_row_bottom{
   display:flex;
   gap: 8px;
@@ -105,54 +123,71 @@ html, body, [class*="css"]  {
   border:1px solid var(--stroke);
   background: var(--soft);
 }
-
 .small{ font-size: 12px; }
 .bigtitle{ font-size: 30px; font-weight: 750; margin: 0 0 12px 0; }
 
-/* --- Chat message rectangles --- */
-.chatmsg{
-  border: 1px solid var(--stroke);
-  border-radius: 14px;
-  background: var(--card);
-  padding: 12px 14px;
-  margin: 14px 0;   /* more separation between bubbles */
-}
-.chatheader{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-}
-.chatrole{
-  font-weight: 750;
-}
-.chatbody{
-  margin-top: 4px;             /* slightly tighter */
-  white-space: pre-wrap;       /* preserve bullets/newlines */
-  line-height: 1.28;           /* tighter baseline; big gaps are fixed by compactor */
-}
-.chatmeta{
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 8px;
-  text-align: right;           /* timestamp bottom-right (UNCHANGED) */
-}
-
-/* --- UIB box --- */
-.uib{
+/* --- Chat bubble styling --- */
+.bubble{
   border: 1px solid var(--stroke);
   border-radius: 16px;
-  background: var(--card);
   padding: 10px 12px;
-  margin-top: 10px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+  background: var(--bubbleAsst);
 }
-.uib_hint{
+.bubble.user{
+  background: var(--bubbleUser);
+}
+.bubble .role{
+  font-weight: 800;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.bubble .body{
+  font-size: 14px;
+  line-height: 1.35;
+}
+.meta_right{
   font-size: 12px;
   color: var(--muted);
-  margin-top: 8px;
+  text-align: right;
+  margin-top: 4px;
 }
 
-/* --- Sidebar: compact nav links (no big “1999 buttons”) --- */
+/* Mode hint block (under user bubble, left aligned) */
+.mode_hint_left{
+  font-size: 11px;
+  color: var(--muted);
+  text-align: left;
+  margin-top: 4px;
+  line-height: 1.2;
+}
+.mode_hint_left .line{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  margin: 2px 0;
+}
+.mode_hint_left .ico{
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 12px;
+  border: 1px solid var(--stroke);
+  background: #fff;
+  opacity: 0.95;
+}
+.mode_hint_left .active{
+  font-weight: 800;
+  color: var(--ink);
+}
+.mode_hint_left .active .ico{
+  border-color: #cbd5e1;
+}
+
+/* Sidebar */
 .sidebar_section_title{
   font-size: 13px;
   font-weight: 750;
@@ -188,8 +223,6 @@ a.navlink:hover{
   width: 18px;
   text-align:center;
 }
-
-/* --- Learning sessions: compact like “TOPIC.Feb 15.2026” --- */
 .session_links{
   display:flex;
   flex-direction:column;
@@ -221,19 +254,8 @@ a.sesslink:hover{
 }
 .sessdot.active{ background: var(--blue); }
 
-/* Sidebar padding */
 div[data-testid="stSidebar"] .block-container{
   padding-top: 1rem;
-}
-
-/* Continue button: small, centered, NEVER wraps */
-div.stButton > button{
-  border-radius: 12px;
-  padding: 6px 16px;
-  font-weight: 650;
-  white-space: nowrap !important;
-  min-width: 120px;
-  text-align: center;
 }
 </style>
 """
@@ -259,7 +281,6 @@ def clock_parts() -> Dict[str, str]:
 
 
 def normalize_mojibake(s: str) -> str:
-    # Fix common “â€” / â€™” artifacts without shortening content
     if not s:
         return s
     replacements = {
@@ -283,57 +304,17 @@ def normalize_mojibake(s: str) -> str:
     return s
 
 
-def _compact_spacing_preserve_code(text: str) -> str:
-    """
-    Remove the "ugly huge gaps" without shortening content.
-    - Preserves triple-backtick code blocks exactly.
-    - Collapses whitespace-only blank lines.
-    - Tightens list formatting even when bullets are indented (e.g., "  - item", "    • item").
-    """
+def normalize_whitespace_for_readability(text: str) -> str:
     if not isinstance(text, str) or not text:
         return text or ""
-
-    # Normalize CRLF early
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-
-    # Split by fenced code blocks. Keep code parts verbatim.
-    parts = text.split("```")
-    out_parts: List[str] = []
-
-    for i, part in enumerate(parts):
-        if i % 2 == 1:
-            # Code block content stays verbatim
-            out_parts.append(part)
-            continue
-
-        s = part
-
-        # Trim trailing spaces at EOL (prevents phantom "blank lines")
-        s = re.sub(r"[ \t]+\n", "\n", s)
-
-        # Convert "blank lines that contain spaces/tabs" into true blank lines
-        # e.g., "\n   \n" -> "\n\n"
-        s = re.sub(r"\n[ \t]+\n", "\n\n", s)
-
-        # Tighten blank lines before bullets (allow leading indentation)
-        # "\n\n   - item" -> "\n   - item"
-        s = re.sub(r"\n\s*\n(?=\s*[-*•]\s)", "\n", s)
-
-        # Tighten blank lines before numbered items (allow leading indentation)
-        # "\n\n   1. item" -> "\n   1. item"
-        s = re.sub(r"\n\s*\n(?=\s*\d+\.\s)", "\n", s)
-
-        # Global cap: collapse 3+ newlines (including whitespace-newlines) -> 2 newlines
-        s = re.sub(r"(?:\n[ \t]*){3,}", "\n\n", s)
-
-        out_parts.append(s)
-
-    compacted = "```".join(out_parts)
-    return compacted.strip()
+    s = text.replace("\r\n", "\n").replace("\r", "\n")
+    s = re.sub(r"\n[ \t]+\n", "\n\n", s)
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    s = re.sub(r"(?m)^\s*\d+\.\s*[A-Za-z]?\s*$\n?", "", s)
+    return s.strip()
 
 
 def session_title_for_sidebar(sess: Dict[str, Any]) -> str:
-    """Compact label like: RAG.Feb 15.2026"""
     first = (sess.get("last_prompt") or sess.get("title") or "Session").strip()
     kw = (first.split()[0] if first else "Session").strip().strip(".,:;!?").upper()
     created = sess.get("created") or datetime.now().strftime("%b %d.%Y")
@@ -341,52 +322,59 @@ def session_title_for_sidebar(sess: Dict[str, Any]) -> str:
 
 
 def needs_continue_flag(msg: Dict[str, Any]) -> bool:
-    """Continue should appear ONLY when model truly has more to say."""
     if msg.get("incomplete") is True:
         return True
     sr = (msg.get("stop_reason") or "").strip().lower()
     return sr == "max_output_tokens"
 
 
+def mode_label(mode: str) -> str:
+    m = (mode or "").strip().lower()
+    if m == "high":
+        return "Overview"
+    if m == "quiz":
+        return "Quiz"
+    return "Deep"
+
+
+def tutor_suffix_for_v0_ai() -> str:
+    return (
+        "\n\n"
+        "Tutor instructions (v0): Teach interactively for a beginner. "
+        "Keep depth but stay cohesive. Use clear section headers. "
+        "Include: (1) quick intuition, (2) a small example, "
+        "(3) 2 check-questions, (4) next steps."
+    )
+
+
 def _strip_duplicate_chunk_prefix(chunk: str) -> str:
-    """
-    Remove annoying repeated lead-ins that appear at chunk boundaries
-    without deleting actual content.
-    """
     lines = chunk.splitlines()
     while lines and not lines[0].strip():
         lines.pop(0)
 
-    patterns = {
+    bad_first_lines = {
+        "definition",
+        "definition / quick intuition",
         "overview",
-        "retr overview",
-        "continuation",
-        "continuation —",
-        "continuation — numeric example (finish calculation)",
+        "quick intuition",
+        "why rag matters / when to use it",
+        "next steps",
     }
 
     changed = True
     while changed and lines:
         changed = False
-        first = lines[0].strip()
-        first_clean = first.strip("•-*\"'“”‘’ ").lower()
-        if first_clean in patterns:
+        first = lines[0].strip().strip(":").lower()
+        if first in bad_first_lines:
             lines.pop(0)
             changed = True
-            continue
-        if first_clean.replace(":", "") in patterns and len(first_clean) <= 40:
-            lines.pop(0)
-            changed = True
-            continue
+            while lines and not lines[0].strip():
+                lines.pop(0)
 
     return "\n".join(lines).strip()
 
 
-def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 1600) -> str:
-    """
-    Append chunk to existing while removing overlap duplication.
-    Keeps answers long; only removes repeated boundary overlap.
-    """
+def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 1800) -> str:
     existing = existing or ""
     chunk = chunk or ""
     if not chunk.strip():
@@ -409,9 +397,7 @@ def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 1600) ->
     if best > 0:
         ch = ch[best:].lstrip()
 
-    if ex:
-        return (ex + "\n" + ch).strip()
-    return ch.strip()
+    return (ex + "\n\n" + ch).strip() if ex else ch.strip()
 
 
 # =========================
@@ -430,13 +416,16 @@ if "learning_sessions" not in st.session_state:
     st.session_state.learning_sessions: Dict[str, Dict[str, Any]] = {}
 
 if "learning_active_id" not in st.session_state:
-    st.session_state.learning_active_id: Optional[str] = None
+    st.session_state.learning_active_id = None
 
 if "_continue_msg_id" not in st.session_state:
     st.session_state._continue_msg_id = None
 
 if "_last_page_param" not in st.session_state:
     st.session_state._last_page_param = None
+
+if "uib_mode" not in st.session_state:
+    st.session_state.uib_mode = "deep"
 
 
 def ensure_learning_session() -> str:
@@ -515,14 +504,9 @@ if learn_sid and learn_sid in st.session_state.learning_sessions:
 
 
 # =========================
-# Sidebar
+# Sidebar (DO NOT BREAK)
 # =========================
 with st.sidebar:
-    # ============================================================
-    # Live Clock (no page refresh)
-    # - Prefer Streamlit-native fragment when available.
-    # - Fallback to streamlit-autorefresh if installed.
-    # ============================================================
     def _render_clock_tile():
         cp = clock_parts()
         st.markdown(
@@ -615,47 +599,63 @@ def page_new_chat() -> None:
     st.caption("v0 note: LLM is enabled for AI/ML; templates for other topics.")
 
 
+def _render_mode_hint_block(active_mode: str) -> None:
+    deep_active = active_mode == "Deep"
+    ov_active = active_mode == "Overview"
+    qz_active = active_mode == "Quiz"
+
+    deep_cls = "active" if deep_active else ""
+    ov_cls = "active" if ov_active else ""
+    qz_cls = "active" if qz_active else ""
+
+    st.markdown(
+        f"""
+        <div class="mode_hint_left">
+          <div class="line {deep_cls}"><span class="ico">➤</span><span>Deep (default)</span></div>
+          <div class="line {ov_cls}"><span class="ico">◎</span><span>Overview</span></div>
+          <div class="line {qz_cls}"><span class="ico">?</span><span>Quiz</span></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_learning_messages(sess: Dict[str, Any]) -> None:
     for msg in sess["messages"]:
         role = msg.get("role", "assistant")
-        raw_text = normalize_mojibake(msg.get("text", "")).strip()
-        text = _compact_spacing_preserve_code(raw_text)
         ts = msg.get("ts") or ""
+        text = normalize_whitespace_for_readability(normalize_mojibake(msg.get("text", "") or ""))
 
         if role == "user":
-            st.markdown(
-                f"""
-                <div class="chatmsg">
-                  <div class="chatheader">
-                    <div class="chatrole">🧑 You</div>
-                  </div>
-                  <div class="chatbody">{text}</div>
-                  <div class="chatmeta">{ts}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
-                f"""
-                <div class="chatmsg">
-                  <div class="chatheader">
-                    <div class="chatrole">🤖 InI</div>
-                  </div>
-                  <div class="chatbody">{text}</div>
-                  <div class="chatmeta">{ts}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            left, right = st.columns([2.2, 7.8], gap="small")
+            with right:
+                st.markdown('<div class="bubble user">', unsafe_allow_html=True)
+                st.markdown('<div class="role">You</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="body">{text}</div>', unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
 
-            if needs_continue_flag(msg):
-                c1, c2, c3 = st.columns([1, 0.45, 1])
-                with c2:
-                    clicked = st.button("Continue", key=f"cont-{msg.get('id')}")
-                if clicked:
-                    st.session_state._continue_msg_id = msg.get("id")
-                    st.rerun()
+                active_mode = (msg.get("mode_label") or "Deep").strip()
+                _render_mode_hint_block(active_mode)
+
+                # timestamp location preserved (right/below bubble)
+                st.markdown(f'<div class="meta_right">{ts}</div>', unsafe_allow_html=True)
+
+        else:
+            left, right = st.columns([7.8, 2.2], gap="small")
+            with left:
+                st.markdown('<div class="bubble assistant">', unsafe_allow_html=True)
+                st.markdown('<div class="role">InI</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="body">{text}</div>', unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown(f'<div class="meta_right">{ts}</div>', unsafe_allow_html=True)
+
+                if needs_continue_flag(msg):
+                    c1, c2, c3 = st.columns([1, 0.45, 1])
+                    with c2:
+                        clicked = st.button("Continue", key=f"cont-{msg.get('id')}")
+                    if clicked:
+                        st.session_state._continue_msg_id = msg.get("id")
+                        st.rerun()
 
 
 def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
@@ -682,10 +682,11 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
         return
 
     resp = fetch_study(prompt, mode=mode, previous_response_id=prev_id, continue_token=legacy_token)
-    chunk_raw = normalize_mojibake(resp.get("answer", "") or "").strip()
-    chunk = _compact_spacing_preserve_code(chunk_raw)
 
-    if chunk:
+    chunk_raw = normalize_mojibake(resp.get("answer", "") or "")
+    chunk = normalize_whitespace_for_readability(chunk_raw)
+
+    if chunk.strip():
         existing = (m.get("text") or "")
         m["text"] = _overlap_dedupe_append(existing, chunk)
 
@@ -702,11 +703,12 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
 
 def page_my_new_learning() -> None:
     st.markdown('<div class="bigtitle">My New Learning</div>', unsafe_allow_html=True)
-    st.caption("Ask about AI. Enter = Deep. Use ◎ for overview. Use ? to quiz.")
+    st.caption("Interactive AI tutor (v0): AI topics only. Deep is default; use Overview/Quiz when needed.")
 
     sid = ensure_learning_session()
     sess = st.session_state.learning_sessions[sid]
 
+    # Handle Continue
     if st.session_state._continue_msg_id:
         msg_id = st.session_state._continue_msg_id
         st.session_state._continue_msg_id = None
@@ -725,80 +727,291 @@ def page_my_new_learning() -> None:
             )
         st.rerun()
 
+    # Render chat so far
     render_learning_messages(sess)
 
-    st.markdown('<div class="uib">', unsafe_allow_html=True)
-    uib_cols = st.columns([8, 0.8, 0.8, 0.8], gap="small")
-    with uib_cols[0]:
-        user_text = st.text_input(
-            "",
-            value="",
-            placeholder="Type your topic/question...",
-            label_visibility="collapsed",
-            key="learn_input",
-        )
-    with uib_cols[1]:
-        overview = st.button("◎", help="High-level overview", key="btn_overview")
-    with uib_cols[2]:
-        quiz = st.button("?", help="Quiz me", key="btn_quiz")
-    with uib_cols[3]:
-        send = st.button("➤", help="Send (deep)", key="btn_send")
-    st.markdown("</div>", unsafe_allow_html=True)
+    # =========================
+    # UIB: custom capsule (icons INSIDE capsule) + Enter/Arrow send
+    # Mode toggle only; Deep default.
+    # Submit values via query params uib_text / uib_mode
+    # =========================
 
-    st.markdown('<div class="uib_hint">➤ Deep (default) • ◎ Overview • ? Quiz</div>', unsafe_allow_html=True)
+    # Read incoming submission from the HTML capsule (if any)
+    uib_text = st.query_params.get("uib_text")
+    uib_mode = st.query_params.get("uib_mode")
 
-    mode = "deep"
-    if overview:
-        mode = "high"
-    if quiz:
-        mode = "quiz"
+    if uib_text:
+        text = urllib.parse.unquote_plus(uib_text).strip()
+        mode = (uib_mode or "deep").strip().lower()
 
-    if (send or overview or quiz) and user_text.strip():
-        prompt = user_text.strip()
-
-        sess["messages"].append(
-            {"id": f"u-{int(time.time())}", "role": "user", "text": prompt, "ts": now_label()}
-        )
-        sess["last_prompt"] = prompt
-
+        # Clear only the UIB params so refresh doesn't resend
         try:
-            resp = fetch_study(prompt, mode=mode)
-            answer_raw = normalize_mojibake(resp.get("answer", "") or "").strip()
-            answer = _compact_spacing_preserve_code(answer_raw)
-            if not answer:
-                answer = "No answer generated."
+            if "uib_text" in st.query_params:
+                del st.query_params["uib_text"]
+            if "uib_mode" in st.query_params:
+                del st.query_params["uib_mode"]
+        except Exception:
+            # fallback: ignore; worst case user refresh resubmits, but usually Streamlit allows deletion
+            pass
 
-            msg: Dict[str, Any] = {
-                "id": f"a-{int(time.time())}",
-                "role": "assistant",
-                "text": answer,
-                "ts": now_label(),
-                "incomplete": bool(resp.get("incomplete")),
-                "stop_reason": resp.get("stop_reason") or None,
-                "prompt": prompt,
-                "mode": mode,
-            }
-
-            if resp.get("response_id"):
-                msg["response_id"] = resp.get("response_id")
-            if resp.get("continue_token"):
-                msg["continue_token"] = resp.get("continue_token")
-
-            sess["messages"].append(msg)
-            st.rerun()
-
-        except Exception as e:
+        if text:
+            # user msg
+            sess["last_prompt"] = text
             sess["messages"].append(
                 {
-                    "id": f"e-{int(time.time())}",
-                    "role": "assistant",
-                    "text": f"Error calling API: {e}",
+                    "id": f"u-{int(time.time())}",
+                    "role": "user",
+                    "text": text,
                     "ts": now_label(),
-                    "incomplete": False,
-                    "stop_reason": None,
+                    "mode_label": mode_label(mode),
                 }
             )
-            st.rerun()
+
+            prompt_to_send = text + tutor_suffix_for_v0_ai()
+
+            try:
+                resp = fetch_study(prompt_to_send, mode=mode)
+                answer_raw = normalize_mojibake(resp.get("answer", "") or "")
+                answer = normalize_whitespace_for_readability(answer_raw)
+                if not answer:
+                    answer = "No answer generated."
+
+                msg: Dict[str, Any] = {
+                    "id": f"a-{int(time.time())}",
+                    "role": "assistant",
+                    "text": answer,
+                    "ts": now_label(),
+                    "incomplete": bool(resp.get("incomplete")),
+                    "stop_reason": resp.get("stop_reason") or None,
+                    "prompt": prompt_to_send,
+                    "mode": mode,
+                }
+
+                if resp.get("response_id"):
+                    msg["response_id"] = resp.get("response_id")
+                if resp.get("continue_token"):
+                    msg["continue_token"] = resp.get("continue_token")
+
+                sess["messages"].append(msg)
+
+                # Reset to deep after sending (as requested)
+                st.session_state.uib_mode = "deep"
+                st.rerun()
+
+            except Exception as e:
+                sess["messages"].append(
+                    {
+                        "id": f"e-{int(time.time())}",
+                        "role": "assistant",
+                        "text": f"Error calling API: {e}",
+                        "ts": now_label(),
+                        "incomplete": False,
+                        "stop_reason": None,
+                    }
+                )
+                st.session_state.uib_mode = "deep"
+                st.rerun()
+
+    # Render the capsule UI (always visible at bottom)
+    # Use localStorage to store mode selection + lit state.
+    capsule_html = f"""
+    <style>
+      .ini-uib-wrap {{
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 18px;
+        width: min(var(--uibMax), calc(100vw - var(--uibPad)));
+        z-index: 99999;
+      }}
+      .ini-uib {{
+        height: var(--uibHeight);
+        border: 1px solid var(--stroke);
+        background: white;
+        border-radius: var(--uibRadius);
+        display: flex;
+        align-items: center;
+        padding: 6px 8px;
+        gap: 10px;
+        box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+      }}
+      .ini-uib input {{
+        flex: 1;
+        border: none;
+        outline: none;
+        font-size: 14px;
+        padding: 10px 8px;
+        background: transparent;
+      }}
+      .ini-icon {{
+        width: var(--uibIcon);
+        height: var(--uibIcon);
+        border-radius: 999px;
+        border: 1px solid var(--stroke);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        user-select: none;
+        transition: all .15s ease-in-out;
+        background: #fff;
+      }}
+      .ini-icon:hover {{
+        border-color: #cbd5e1;
+      }}
+      .ini-icon.lit.overview {{
+        background: var(--blueSoft);
+        border-color: #c7d2fe;
+      }}
+      .ini-icon.lit.quiz {{
+        background: var(--purpleSoft);
+        border-color: #ddd6fe;
+      }}
+      .ini-send {{
+        width: var(--uibIcon);
+        height: var(--uibIcon);
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        cursor:pointer;
+        transition: all .15s ease-in-out;
+        background: #fff;
+      }}
+      .ini-send:hover {{
+        border-color: #9ca3af;
+      }}
+      .ini-subhint {{
+        margin-top: 6px;
+        font-size: 11px;
+        color: var(--muted);
+        display:flex;
+        align-items:center;
+        gap: 10px;
+        justify-content: flex-start;
+        padding-left: 10px;
+      }}
+      .ini-subhint .tag {{
+        display:inline-flex;
+        align-items:center;
+        gap: 6px;
+      }}
+      .ini-subhint .dot {{
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #9ca3af;
+      }}
+    </style>
+
+    <div class="ini-uib-wrap">
+      <div class="ini-uib">
+        <input id="iniText" placeholder="Type your topic/question..." />
+        <div id="btnOverview" class="ini-icon overview" title="Overview">
+          ◎
+        </div>
+        <div id="btnQuiz" class="ini-icon quiz" title="Quiz">
+          ?
+        </div>
+        <div id="btnSend" class="ini-send" title="Send">
+          ➤
+        </div>
+      </div>
+      <div class="ini-subhint">
+        <span class="tag"><span class="dot"></span><span id="modeLabel">Deep (default)</span></span>
+        <span style="opacity:.75;">Enter or ➤ to send • Icons toggle mode</span>
+      </div>
+    </div>
+
+    <script>
+      (function() {{
+        const qs = new URLSearchParams(window.location.search);
+        const input = document.getElementById("iniText");
+        const btnO = document.getElementById("btnOverview");
+        const btnQ = document.getElementById("btnQuiz");
+        const btnS = document.getElementById("btnSend");
+        const modeLabel = document.getElementById("modeLabel");
+
+        function getMode() {{
+          return localStorage.getItem("ini_uib_mode") || "deep";
+        }}
+        function setMode(m) {{
+          localStorage.setItem("ini_uib_mode", m);
+          renderMode();
+        }}
+
+        function renderMode() {{
+          const m = getMode();
+          btnO.classList.remove("lit");
+          btnQ.classList.remove("lit");
+          if (m === "high") {{
+            btnO.classList.add("lit");
+            modeLabel.textContent = "Overview";
+          }} else if (m === "quiz") {{
+            btnQ.classList.add("lit");
+            modeLabel.textContent = "Quiz";
+          }} else {{
+            modeLabel.textContent = "Deep (default)";
+          }}
+        }}
+
+        function toggleOverview() {{
+          const m = getMode();
+          setMode(m === "high" ? "deep" : "high");
+        }}
+        function toggleQuiz() {{
+          const m = getMode();
+          setMode(m === "quiz" ? "deep" : "quiz");
+        }}
+
+        function submit() {{
+          const text = (input.value || "").trim();
+          if (!text) return;
+          const m = getMode();
+          const newQs = new URLSearchParams(window.location.search);
+
+          // Keep existing routing params, only set UIB params
+          newQs.set("uib_text", encodeURIComponent(text));
+          newQs.set("uib_mode", m);
+
+          // Navigate (triggers Streamlit rerun)
+          window.location.search = newQs.toString();
+        }}
+
+        btnO.addEventListener("click", function(e) {{
+          e.preventDefault();
+          toggleOverview();
+        }});
+        btnQ.addEventListener("click", function(e) {{
+          e.preventDefault();
+          toggleQuiz();
+        }});
+        btnS.addEventListener("click", function(e) {{
+          e.preventDefault();
+          submit();
+        }});
+
+        input.addEventListener("keydown", function(e) {{
+          if (e.key === "Enter") {{
+            e.preventDefault();
+            submit();
+          }}
+        }});
+
+        // Initial
+        renderMode();
+
+        // Autofocus (best effort)
+        setTimeout(() => {{
+          try {{ input.focus(); }} catch (e) {{}}
+        }}, 100);
+      }})();
+    </script>
+    """
+
+    # Important: height small; fixed overlay handles visuals
+    components.html(capsule_html, height=90)
 
 
 def page_new_project() -> None:
