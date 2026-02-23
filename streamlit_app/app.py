@@ -1,14 +1,11 @@
 import os
 import time
 import re
-import json
-import urllib.parse
 from datetime import datetime
 from typing import Any, Dict, Optional
 
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
 
 # Try autorefresh (for live clock). If not installed, app still runs.
 try:
@@ -48,11 +45,12 @@ CSS = """
   --bubbleUser:#eef2ff;
   --bubbleAsst:#ffffff;
 
-  --uibMax: 820px;          /* capsule width */
+  /* UIB */
+  --uibMax: 820px;
   --uibPad: 120px;
-  --uibHeight: 48px;
+  --uibHeight: 50px;
   --uibRadius: 999px;
-  --uibIcon: 34px;
+  --uibIcon: 36px;
 }
 
 /* Fonts */
@@ -67,7 +65,7 @@ button, input, textarea, select, label, p, div, span{
 .main .block-container{
   max-width: 980px;
   padding-top: 1.25rem;
-  padding-bottom: 7rem; /* room for fixed UIB */
+  padding-bottom: 7.2rem; /* room for fixed UIB */
 }
 
 /* --- Sidebar clock tile (keep as-is; do not break sidebar) --- */
@@ -257,6 +255,92 @@ a.sesslink:hover{
 div[data-testid="stSidebar"] .block-container{
   padding-top: 1rem;
 }
+
+/* =========================
+   UIB (native, fixed bottom, icons INSIDE capsule)
+   ========================= */
+.ini-uib-wrap{
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 18px;
+  width: min(var(--uibMax), calc(100vw - var(--uibPad)));
+  z-index: 9999;
+}
+
+.ini-uib-shell{
+  height: var(--uibHeight);
+  border: 1px solid var(--stroke);
+  background: #ffffff;
+  border-radius: var(--uibRadius);
+  display:flex;
+  align-items:center;
+  padding: 6px 10px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+}
+
+.ini-uib-subhint{
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  display:flex;
+  gap: 14px;
+  align-items:center;
+  padding-left: 10px;
+}
+
+/* Remove widget chrome so the shell is the only capsule */
+.ini-uib-shell div[data-testid="stTextInput"]{
+  width: 100%;
+}
+.ini-uib-shell div[data-testid="stTextInput"] input{
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  font-size: 14px !important;
+  padding: 10px 6px !important;
+}
+.ini-uib-shell div[data-testid="stTextInput"] > label{
+  display:none !important;
+}
+
+/* Icon buttons become circles */
+.ini-uib-shell .ini-icon-wrap div.stButton > button{
+  width: var(--uibIcon) !important;
+  height: var(--uibIcon) !important;
+  border-radius: 999px !important;
+  padding: 0 !important;
+  border: 1px solid var(--stroke) !important;
+  background: #ffffff !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  box-shadow: none !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+}
+.ini-uib-shell .ini-icon-wrap div.stButton > button:hover{
+  border-color: #cbd5e1 !important;
+}
+
+/* Lit states */
+.ini-uib-shell .lit-overview div.stButton > button{
+  background: var(--blueSoft) !important;
+  border-color: #c7d2fe !important;
+}
+.ini-uib-shell .lit-quiz div.stButton > button{
+  background: var(--purpleSoft) !important;
+  border-color: #ddd6fe !important;
+}
+
+/* Send button a touch stronger */
+.ini-uib-shell .ini-send-wrap div.stButton > button{
+  border-color: #d1d5db !important;
+}
+.ini-uib-shell .ini-send-wrap div.stButton > button:hover{
+  border-color: #9ca3af !important;
+}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -426,6 +510,17 @@ if "_last_page_param" not in st.session_state:
 
 if "uib_mode" not in st.session_state:
     st.session_state.uib_mode = "deep"
+
+if "_uib_submit" not in st.session_state:
+    st.session_state._uib_submit = False
+
+# IMPORTANT: we will clear the input on the *next* run, before widget instantiation
+if "_uib_clear_next" not in st.session_state:
+    st.session_state._uib_clear_next = False
+
+# Widget key value can exist, but must be set BEFORE instantiation in a run
+if "uib_text" not in st.session_state:
+    st.session_state.uib_text = ""
 
 
 def ensure_learning_session() -> str:
@@ -637,7 +732,7 @@ def render_learning_messages(sess: Dict[str, Any]) -> None:
                 active_mode = (msg.get("mode_label") or "Deep").strip()
                 _render_mode_hint_block(active_mode)
 
-                # timestamp location preserved (right/below bubble)
+                # timestamp location preserved
                 st.markdown(f'<div class="meta_right">{ts}</div>', unsafe_allow_html=True)
 
         else:
@@ -701,6 +796,57 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
     m["ts"] = now_label()
 
 
+def _toggle_mode(new_mode: str) -> None:
+    cur = st.session_state.uib_mode
+    if new_mode == "high":
+        st.session_state.uib_mode = "deep" if cur == "high" else "high"
+    elif new_mode == "quiz":
+        st.session_state.uib_mode = "deep" if cur == "quiz" else "quiz"
+    else:
+        st.session_state.uib_mode = "deep"
+
+
+def _enter_submit() -> None:
+    st.session_state._uib_submit = True
+
+
+def _process_send(sess: Dict[str, Any], prompt: str, mode: str) -> None:
+    sess["last_prompt"] = prompt
+    sess["messages"].append(
+        {
+            "id": f"u-{int(time.time())}",
+            "role": "user",
+            "text": prompt,
+            "ts": now_label(),
+            "mode_label": mode_label(mode),
+        }
+    )
+
+    prompt_to_send = prompt + tutor_suffix_for_v0_ai()
+
+    resp = fetch_study(prompt_to_send, mode=mode)
+    answer_raw = normalize_mojibake(resp.get("answer", "") or "")
+    answer = normalize_whitespace_for_readability(answer_raw) or "No answer generated."
+
+    msg: Dict[str, Any] = {
+        "id": f"a-{int(time.time())}",
+        "role": "assistant",
+        "text": answer,
+        "ts": now_label(),
+        "incomplete": bool(resp.get("incomplete")),
+        "stop_reason": resp.get("stop_reason") or None,
+        "prompt": prompt_to_send,
+        "mode": mode,
+    }
+
+    if resp.get("response_id"):
+        msg["response_id"] = resp.get("response_id")
+    if resp.get("continue_token"):
+        msg["continue_token"] = resp.get("continue_token")
+
+    sess["messages"].append(msg)
+
+
 def page_my_new_learning() -> None:
     st.markdown('<div class="bigtitle">My New Learning</div>', unsafe_allow_html=True)
     st.caption("Interactive AI tutor (v0): AI topics only. Deep is default; use Overview/Quiz when needed.")
@@ -731,73 +877,73 @@ def page_my_new_learning() -> None:
     render_learning_messages(sess)
 
     # =========================
-    # UIB: custom capsule (icons INSIDE capsule) + Enter/Arrow send
-    # Mode toggle only; Deep default.
-    # Submit values via query params uib_text / uib_mode
+    # UIB: fixed bottom capsule (native widgets)
     # =========================
 
-    # Read incoming submission from the HTML capsule (if any)
-    uib_text = st.query_params.get("uib_text")
-    uib_mode = st.query_params.get("uib_mode")
+    # IMPORTANT: Clear input BEFORE the widget is instantiated in this run
+    if st.session_state._uib_clear_next:
+        st.session_state.uib_text = ""
+        st.session_state._uib_clear_next = False
 
-    if uib_text:
-        text = urllib.parse.unquote_plus(uib_text).strip()
-        mode = (uib_mode or "deep").strip().lower()
+    cur_mode = st.session_state.uib_mode
 
-        # Clear only the UIB params so refresh doesn't resend
-        try:
-            if "uib_text" in st.query_params:
-                del st.query_params["uib_text"]
-            if "uib_mode" in st.query_params:
-                del st.query_params["uib_mode"]
-        except Exception:
-            # fallback: ignore; worst case user refresh resubmits, but usually Streamlit allows deletion
-            pass
+    st.markdown('<div class="ini-uib-wrap"><div class="ini-uib-shell">', unsafe_allow_html=True)
 
-        if text:
-            # user msg
-            sess["last_prompt"] = text
-            sess["messages"].append(
-                {
-                    "id": f"u-{int(time.time())}",
-                    "role": "user",
-                    "text": text,
-                    "ts": now_label(),
-                    "mode_label": mode_label(mode),
-                }
-            )
+    c_input, c_over, c_quiz, c_send = st.columns([12, 1.3, 1.3, 1.3], gap="small")
 
-            prompt_to_send = text + tutor_suffix_for_v0_ai()
+    with c_input:
+        st.text_input(
+            "",
+            key="uib_text",
+            placeholder="Type your topic/question...",
+            label_visibility="collapsed",
+            on_change=_enter_submit,
+        )
 
+    with c_over:
+        lit = "lit-overview" if cur_mode == "high" else ""
+        st.markdown(f'<div class="ini-icon-wrap {lit}">', unsafe_allow_html=True)
+        if st.button("◎", key="uib_btn_overview", help="Overview (toggle)"):
+            _toggle_mode("high")
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with c_quiz:
+        lit = "lit-quiz" if cur_mode == "quiz" else ""
+        st.markdown(f'<div class="ini-icon-wrap {lit}">', unsafe_allow_html=True)
+        if st.button("?", key="uib_btn_quiz", help="Quiz (toggle)"):
+            _toggle_mode("quiz")
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with c_send:
+        st.markdown('<div class="ini-icon-wrap ini-send-wrap">', unsafe_allow_html=True)
+        send_clicked = st.button("➤", key="uib_btn_send", help="Send")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    mode_txt = "Deep (default)" if cur_mode == "deep" else ("Overview" if cur_mode == "high" else "Quiz")
+    st.markdown(
+        f"""
+        <div class="ini-uib-subhint">
+          <span>• <b>{mode_txt}</b></span>
+          <span>Enter or ➤ to send • Icons toggle mode</span>
+        </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if send_clicked:
+        st.session_state._uib_submit = True
+
+    if st.session_state._uib_submit:
+        st.session_state._uib_submit = False
+        prompt = (st.session_state.uib_text or "").strip()
+        if prompt:
             try:
-                resp = fetch_study(prompt_to_send, mode=mode)
-                answer_raw = normalize_mojibake(resp.get("answer", "") or "")
-                answer = normalize_whitespace_for_readability(answer_raw)
-                if not answer:
-                    answer = "No answer generated."
-
-                msg: Dict[str, Any] = {
-                    "id": f"a-{int(time.time())}",
-                    "role": "assistant",
-                    "text": answer,
-                    "ts": now_label(),
-                    "incomplete": bool(resp.get("incomplete")),
-                    "stop_reason": resp.get("stop_reason") or None,
-                    "prompt": prompt_to_send,
-                    "mode": mode,
-                }
-
-                if resp.get("response_id"):
-                    msg["response_id"] = resp.get("response_id")
-                if resp.get("continue_token"):
-                    msg["continue_token"] = resp.get("continue_token")
-
-                sess["messages"].append(msg)
-
-                # Reset to deep after sending (as requested)
-                st.session_state.uib_mode = "deep"
-                st.rerun()
-
+                _process_send(sess, prompt, cur_mode)
             except Exception as e:
                 sess["messages"].append(
                     {
@@ -809,209 +955,11 @@ def page_my_new_learning() -> None:
                         "stop_reason": None,
                     }
                 )
-                st.session_state.uib_mode = "deep"
-                st.rerun()
 
-    # Render the capsule UI (always visible at bottom)
-    # Use localStorage to store mode selection + lit state.
-    capsule_html = f"""
-    <style>
-      .ini-uib-wrap {{
-        position: fixed;
-        left: 50%;
-        transform: translateX(-50%);
-        bottom: 18px;
-        width: min(var(--uibMax), calc(100vw - var(--uibPad)));
-        z-index: 99999;
-      }}
-      .ini-uib {{
-        height: var(--uibHeight);
-        border: 1px solid var(--stroke);
-        background: white;
-        border-radius: var(--uibRadius);
-        display: flex;
-        align-items: center;
-        padding: 6px 8px;
-        gap: 10px;
-        box-shadow: 0 1px 0 rgba(0,0,0,0.02);
-      }}
-      .ini-uib input {{
-        flex: 1;
-        border: none;
-        outline: none;
-        font-size: 14px;
-        padding: 10px 8px;
-        background: transparent;
-      }}
-      .ini-icon {{
-        width: var(--uibIcon);
-        height: var(--uibIcon);
-        border-radius: 999px;
-        border: 1px solid var(--stroke);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        user-select: none;
-        transition: all .15s ease-in-out;
-        background: #fff;
-      }}
-      .ini-icon:hover {{
-        border-color: #cbd5e1;
-      }}
-      .ini-icon.lit.overview {{
-        background: var(--blueSoft);
-        border-color: #c7d2fe;
-      }}
-      .ini-icon.lit.quiz {{
-        background: var(--purpleSoft);
-        border-color: #ddd6fe;
-      }}
-      .ini-send {{
-        width: var(--uibIcon);
-        height: var(--uibIcon);
-        border-radius: 999px;
-        border: 1px solid #d1d5db;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        cursor:pointer;
-        transition: all .15s ease-in-out;
-        background: #fff;
-      }}
-      .ini-send:hover {{
-        border-color: #9ca3af;
-      }}
-      .ini-subhint {{
-        margin-top: 6px;
-        font-size: 11px;
-        color: var(--muted);
-        display:flex;
-        align-items:center;
-        gap: 10px;
-        justify-content: flex-start;
-        padding-left: 10px;
-      }}
-      .ini-subhint .tag {{
-        display:inline-flex;
-        align-items:center;
-        gap: 6px;
-      }}
-      .ini-subhint .dot {{
-        width: 6px;
-        height: 6px;
-        border-radius: 999px;
-        background: #9ca3af;
-      }}
-    </style>
-
-    <div class="ini-uib-wrap">
-      <div class="ini-uib">
-        <input id="iniText" placeholder="Type your topic/question..." />
-        <div id="btnOverview" class="ini-icon overview" title="Overview">
-          ◎
-        </div>
-        <div id="btnQuiz" class="ini-icon quiz" title="Quiz">
-          ?
-        </div>
-        <div id="btnSend" class="ini-send" title="Send">
-          ➤
-        </div>
-      </div>
-      <div class="ini-subhint">
-        <span class="tag"><span class="dot"></span><span id="modeLabel">Deep (default)</span></span>
-        <span style="opacity:.75;">Enter or ➤ to send • Icons toggle mode</span>
-      </div>
-    </div>
-
-    <script>
-      (function() {{
-        const qs = new URLSearchParams(window.location.search);
-        const input = document.getElementById("iniText");
-        const btnO = document.getElementById("btnOverview");
-        const btnQ = document.getElementById("btnQuiz");
-        const btnS = document.getElementById("btnSend");
-        const modeLabel = document.getElementById("modeLabel");
-
-        function getMode() {{
-          return localStorage.getItem("ini_uib_mode") || "deep";
-        }}
-        function setMode(m) {{
-          localStorage.setItem("ini_uib_mode", m);
-          renderMode();
-        }}
-
-        function renderMode() {{
-          const m = getMode();
-          btnO.classList.remove("lit");
-          btnQ.classList.remove("lit");
-          if (m === "high") {{
-            btnO.classList.add("lit");
-            modeLabel.textContent = "Overview";
-          }} else if (m === "quiz") {{
-            btnQ.classList.add("lit");
-            modeLabel.textContent = "Quiz";
-          }} else {{
-            modeLabel.textContent = "Deep (default)";
-          }}
-        }}
-
-        function toggleOverview() {{
-          const m = getMode();
-          setMode(m === "high" ? "deep" : "high");
-        }}
-        function toggleQuiz() {{
-          const m = getMode();
-          setMode(m === "quiz" ? "deep" : "quiz");
-        }}
-
-        function submit() {{
-          const text = (input.value || "").trim();
-          if (!text) return;
-          const m = getMode();
-          const newQs = new URLSearchParams(window.location.search);
-
-          // Keep existing routing params, only set UIB params
-          newQs.set("uib_text", encodeURIComponent(text));
-          newQs.set("uib_mode", m);
-
-          // Navigate (triggers Streamlit rerun)
-          window.location.search = newQs.toString();
-        }}
-
-        btnO.addEventListener("click", function(e) {{
-          e.preventDefault();
-          toggleOverview();
-        }});
-        btnQ.addEventListener("click", function(e) {{
-          e.preventDefault();
-          toggleQuiz();
-        }});
-        btnS.addEventListener("click", function(e) {{
-          e.preventDefault();
-          submit();
-        }});
-
-        input.addEventListener("keydown", function(e) {{
-          if (e.key === "Enter") {{
-            e.preventDefault();
-            submit();
-          }}
-        }});
-
-        // Initial
-        renderMode();
-
-        // Autofocus (best effort)
-        setTimeout(() => {{
-          try {{ input.focus(); }} catch (e) {{}}
-        }}, 100);
-      }})();
-    </script>
-    """
-
-    # Important: height small; fixed overlay handles visuals
-    components.html(capsule_html, height=90)
+            # Reset after sending (SAFE way)
+            st.session_state._uib_clear_next = True
+            st.session_state.uib_mode = "deep"
+            st.rerun()
 
 
 def page_new_project() -> None:
