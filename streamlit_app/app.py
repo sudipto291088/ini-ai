@@ -401,6 +401,10 @@ if "_continue_msg_id" not in st.session_state:
 if "_last_page_param" not in st.session_state:
     st.session_state._last_page_param = None
 
+# Prevent processing the same URL-submit twice across reruns/autorefresh
+if "_last_uib_nonce" not in st.session_state:
+    st.session_state._last_uib_nonce = None
+
 
 def ensure_learning_session() -> str:
     if st.session_state.learning_active_id and st.session_state.learning_active_id in st.session_state.learning_sessions:
@@ -702,76 +706,93 @@ def page_my_new_learning() -> None:
         st.rerun()
 
     # =========================
-    # UIB (fixed bottom capsule) — injected HTML (stable on Streamlit)
+    # UIB submit handler (via query params)
     # =========================
-
-    # Handle a submission (uib_send=1) BEFORE rendering, so refresh doesn't resend.
     uib_send = st.query_params.get("uib_send")
     uib_text = st.query_params.get("uib_text")
     uib_mode = st.query_params.get("uib_mode")
+    uib_nonce = st.query_params.get("uib_nonce")
 
-    if uib_send == "1" and uib_text:
-        prompt = urllib.parse.unquote_plus(str(uib_text)).strip()
-        mode = (str(uib_mode) if uib_mode else "deep").strip().lower()
+    should_process = (uib_send == "1" and bool(uib_text))
+    if should_process:
+        # Process-once guard (prevents autorefresh/fragment reruns from double-processing)
+        if uib_nonce is None:
+            # no nonce = still process, but store a fallback signature
+            nonce_sig = f"sig:{uib_send}:{uib_mode}:{uib_text}"
+        else:
+            nonce_sig = str(uib_nonce)
 
-        # Clear params so refresh doesn't resend
-        for k in ["uib_send", "uib_text", "uib_mode"]:
-            try:
-                if k in st.query_params:
-                    del st.query_params[k]
-            except Exception:
-                pass
+        if st.session_state._last_uib_nonce != nonce_sig:
+            st.session_state._last_uib_nonce = nonce_sig
 
-        if prompt:
-            sess["messages"].append(
-                {
-                    "id": f"u-{int(time.time())}",
-                    "role": "user",
-                    "text": prompt,
-                    "ts": now_label(),
-                    "mode_label": mode_label(mode),
-                }
-            )
-            sess["last_prompt"] = prompt
+            prompt = urllib.parse.unquote_plus(str(uib_text)).strip()
+            mode = (str(uib_mode) if uib_mode else "deep").strip().lower()
 
-            try:
-                resp = fetch_study(prompt, mode=mode)
-                answer = normalize_whitespace_for_readability(
-                    normalize_mojibake(resp.get("answer", "") or "")
-                ) or "No answer generated."
+            # Clear params so refresh doesn't resend
+            for k in ["uib_send", "uib_text", "uib_mode", "uib_nonce"]:
+                try:
+                    if k in st.query_params:
+                        del st.query_params[k]
+                except Exception:
+                    pass
 
+            if prompt:
                 sess["messages"].append(
                     {
-                        "id": f"a-{int(time.time())}",
-                        "role": "assistant",
-                        "text": answer,
+                        "id": f"u-{int(time.time())}",
+                        "role": "user",
+                        "text": prompt,
                         "ts": now_label(),
-                        "incomplete": bool(resp.get("incomplete")),
-                        "stop_reason": resp.get("stop_reason") or None,
-                        "prompt": prompt,
-                        "mode": mode,
-                        "response_id": resp.get("response_id"),
-                        "continue_token": resp.get("continue_token"),
+                        "mode_label": mode_label(mode),
                     }
                 )
-            except Exception as e:
-                sess["messages"].append(
-                    {
-                        "id": f"e-{int(time.time())}",
-                        "role": "assistant",
-                        "text": f"Error calling API: {e}",
-                        "ts": now_label(),
-                        "incomplete": False,
-                        "stop_reason": None,
-                    }
-                )
+                sess["last_prompt"] = prompt
 
-            st.rerun()
+                try:
+                    resp = fetch_study(prompt, mode=mode)
+                    answer = normalize_whitespace_for_readability(
+                        normalize_mojibake(resp.get("answer", "") or "")
+                    ) or "No answer generated."
+
+                    sess["messages"].append(
+                        {
+                            "id": f"a-{int(time.time())}",
+                            "role": "assistant",
+                            "text": answer,
+                            "ts": now_label(),
+                            "incomplete": bool(resp.get("incomplete")),
+                            "stop_reason": resp.get("stop_reason") or None,
+                            "prompt": prompt,
+                            "mode": mode,
+                            "response_id": resp.get("response_id"),
+                            "continue_token": resp.get("continue_token"),
+                        }
+                    )
+                except Exception as e:
+                    sess["messages"].append(
+                        {
+                            "id": f"e-{int(time.time())}",
+                            "role": "assistant",
+                            "text": f"Error calling API: {e}",
+                            "ts": now_label(),
+                            "incomplete": False,
+                            "stop_reason": None,
+                        }
+                    )
+
+                st.rerun()
 
     # Render chat so far
     render_learning_messages(sess)
 
-    # Inject the capsule (fixed bottom, icons inside capsule, lit toggle, Enter or Arrow to send)
+    # =========================
+    # UIB (fixed bottom capsule) — injected HTML
+    # Fixes:
+    # - vertical hints
+    # - responsive shrink on small screens
+    # - remove "circle around arrow" in hint text
+    # - nonce param to guarantee submit reaches Python
+    # =========================
     capsule_html = r'''
     <script>
     (function () {
@@ -795,15 +816,17 @@ def page_my_new_learning() -> None:
           --iniPurpleSoft:#ede9fe;
           --iniMax: 820px;
         }
+
         #ini-uib-capsule{
           position: fixed;
           left: 50%;
           transform: translateX(-50%);
           bottom: 18px;
-          width: min(var(--iniMax), calc(100vw - 120px));
+          width: min(var(--iniMax), calc(100vw - 32px));
           z-index: 999999;
           font-family: "Aptos","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
         }
+
         #ini-uib-row{
           height: 52px;
           border: 1px solid var(--iniStroke);
@@ -815,8 +838,10 @@ def page_my_new_learning() -> None:
           padding: 6px 10px;
           box-shadow: 0 1px 0 rgba(0,0,0,0.02);
         }
+
         #ini-uib-input{
           flex: 1 1 auto;
+          min-width: 0;
           border: none;
           outline: none;
           background: transparent;
@@ -824,6 +849,7 @@ def page_my_new_learning() -> None:
           padding: 10px 10px;
           color: var(--iniInk);
         }
+
         .ini-uib-btn{
           width: 36px;
           height: 36px;
@@ -849,10 +875,18 @@ def page_my_new_learning() -> None:
           color: var(--iniMuted);
           padding-left: 10px;
           display:flex;
-          gap: 14px;
-          align-items:center;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 2px;
+          line-height: 1.2;
         }
         #ini-uib-hint b{ color: var(--iniInk); }
+
+        /* Extra safety on very small screens */
+        @media (max-width: 520px){
+          #ini-uib-row{ gap: 8px; }
+          .ini-uib-btn{ width: 34px; height: 34px; font-size: 15px; }
+        }
       `;
       doc.head.appendChild(style);
 
@@ -866,8 +900,8 @@ def page_my_new_learning() -> None:
           <div id="ini-uib-send" class="ini-uib-btn" title="Send">➤</div>
         </div>
         <div id="ini-uib-hint">
-          <span>• <b id="ini-uib-mode">Deep (default)</b></span>
-          <span>Enter or ➤ to send • Icons toggle mode</span>
+          <div>• <b id="ini-uib-mode">Deep (default)</b></div>
+          <div>Enter or Send to submit • Icons toggle mode</div>
         </div>
       `;
       doc.body.appendChild(wrap);
@@ -900,7 +934,10 @@ def page_my_new_learning() -> None:
         url.searchParams.set("uib_send", "1");
         url.searchParams.set("uib_text", value);
         url.searchParams.set("uib_mode", mode);
-        P.location.href = url.toString();
+        url.searchParams.set("uib_nonce", String(Date.now()));
+
+        // Force navigation (more reliable than setting href property)
+        P.location.assign(url.toString());
       }
 
       doc.getElementById("ini-uib-over").addEventListener("click", toggleOver);
