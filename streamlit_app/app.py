@@ -461,6 +461,10 @@ if "uib_text" not in st.session_state:
 if "uib_mode" not in st.session_state:
     st.session_state.uib_mode = "deep"  # deep|high|quiz
 
+# IMPORTANT: Streamlit-safe clear flag
+if "_uib_clear_next" not in st.session_state:
+    st.session_state._uib_clear_next = False
+
 
 def ensure_learning_session() -> str:
     if st.session_state.learning_active_id and st.session_state.learning_active_id in st.session_state.learning_sessions:
@@ -773,10 +777,14 @@ def page_my_new_learning() -> None:
     # Render chat so far
     render_learning_messages(sess)
 
+    # ===== Streamlit-safe clear of uib_text (BEFORE widget is created) =====
+    if st.session_state._uib_clear_next:
+        st.session_state.uib_text = ""
+        st.session_state._uib_clear_next = False
+
     # -------------------------
     # UIB (stable Streamlit)
     # -------------------------
-    # Lit class wrapper
     lit_over = (st.session_state.uib_mode == "high")
     lit_quiz = (st.session_state.uib_mode == "quiz")
     wrap_classes = "ini_uib_wrap"
@@ -832,9 +840,6 @@ def page_my_new_learning() -> None:
     # -------------------------
     # Mode toggles (no send)
     # -------------------------
-    # IMPORTANT: When icons are clicked, Streamlit will submit the form.
-    # We interpret "◎" and "?" as toggles only IF user didn't intend to send.
-    # Rule: if over/quiz clicked -> toggle mode and rerun without calling API.
     if over_clicked:
         st.session_state.uib_mode = "deep" if st.session_state.uib_mode == "high" else "high"
         st.rerun()
@@ -896,8 +901,8 @@ def page_my_new_learning() -> None:
                     }
                 )
 
-            # Reset input text after sending; keep mode as selected (stable)
-            st.session_state.uib_text = ""
+            # Streamlit-safe clear next run
+            st.session_state._uib_clear_next = True
             st.rerun()
 
 
