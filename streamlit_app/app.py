@@ -6,8 +6,6 @@ from typing import Any, Dict, Optional
 
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
-import urllib.parse
 
 # Try autorefresh (for live clock). If not installed, app still runs.
 try:
@@ -40,6 +38,9 @@ CSS = """
 
   --bubbleUser:#eef2ff;
   --bubbleAsst:#ffffff;
+
+  --litOver:#e0e7ff;
+  --litQuiz:#ede9fe;
 }
 
 /* Fonts */
@@ -54,7 +55,7 @@ button, input, textarea, select, label, p, div, span{
 .main .block-container{
   max-width: 980px;
   padding-top: 1.25rem;
-  padding-bottom: 6.2rem; /* room for fixed injected UIB */
+  padding-bottom: 2.5rem;
 }
 
 /* --- Sidebar clock tile (keep as-is; do not break sidebar) --- */
@@ -140,7 +141,7 @@ button, input, textarea, select, label, p, div, span{
   margin-top: 4px;
 }
 
-/* Mode hint block (under user bubble, left aligned) */
+/* Mode hint block (under user bubble, left aligned, vertical) */
 .mode_hint_left{
   font-size: 11px;
   color: var(--muted);
@@ -243,6 +244,59 @@ a.sesslink:hover{
 
 div[data-testid="stSidebar"] .block-container{
   padding-top: 1rem;
+}
+
+/* Prevent Continue wrapping into Con / tinu / e */
+button[kind="secondary"]{
+  min-width: 110px !important;
+}
+
+/* UIB capsule */
+.ini_uib_wrap{
+  margin-top: 18px;
+}
+.ini_uib_capsule{
+  border: 1px solid var(--stroke);
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 10px;
+}
+.ini_hint{
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  padding-left: 10px;
+  display:flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  line-height: 1.2;
+}
+.ini_hint b{ color: var(--ink); }
+
+.ini_icon_btn button{
+  border-radius: 999px !important;
+  width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  border: 1px solid var(--stroke) !important;
+  background: #fff !important;
+  font-weight: 800 !important;
+}
+
+/* Lit states applied by adding class to parent container */
+.ini_lit_over .ini_icon_btn_over button{
+  background: var(--litOver) !important;
+  border-color: #c7d2fe !important;
+}
+.ini_lit_quiz .ini_icon_btn_quiz button{
+  background: var(--litQuiz) !important;
+  border-color: #ddd6fe !important;
+}
+
+/* Make the text input feel like the capsule */
+div[data-testid="stTextInput"] input{
+  border-radius: 999px !important;
 }
 </style>
 """
@@ -401,9 +455,11 @@ if "_continue_msg_id" not in st.session_state:
 if "_last_page_param" not in st.session_state:
     st.session_state._last_page_param = None
 
-# Prevent processing the same URL-submit twice across reruns/autorefresh
-if "_last_uib_nonce" not in st.session_state:
-    st.session_state._last_uib_nonce = None
+# UIB state (stable)
+if "uib_text" not in st.session_state:
+    st.session_state.uib_text = ""
+if "uib_mode" not in st.session_state:
+    st.session_state.uib_mode = "deep"  # deep|high|quiz
 
 
 def ensure_learning_session() -> str:
@@ -679,6 +735,15 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
     m["ts"] = now_label()
 
 
+def _mode_hint_text(mode: str) -> str:
+    m = (mode or "deep").lower()
+    if m == "high":
+        return "Overview"
+    if m == "quiz":
+        return "Quiz"
+    return "Deep (default)"
+
+
 def page_my_new_learning() -> None:
     st.markdown('<div class="bigtitle">My New Learning</div>', unsafe_allow_html=True)
     st.caption("Interactive AI tutor (v0): AI topics only. Deep is default; use Overview/Quiz when needed.")
@@ -705,257 +770,135 @@ def page_my_new_learning() -> None:
             )
         st.rerun()
 
-    # =========================
-    # UIB submit handler (via query params)
-    # =========================
-    uib_send = st.query_params.get("uib_send")
-    uib_text = st.query_params.get("uib_text")
-    uib_mode = st.query_params.get("uib_mode")
-    uib_nonce = st.query_params.get("uib_nonce")
-
-    should_process = (uib_send == "1" and bool(uib_text))
-    if should_process:
-        # Process-once guard (prevents autorefresh/fragment reruns from double-processing)
-        if uib_nonce is None:
-            # no nonce = still process, but store a fallback signature
-            nonce_sig = f"sig:{uib_send}:{uib_mode}:{uib_text}"
-        else:
-            nonce_sig = str(uib_nonce)
-
-        if st.session_state._last_uib_nonce != nonce_sig:
-            st.session_state._last_uib_nonce = nonce_sig
-
-            prompt = urllib.parse.unquote_plus(str(uib_text)).strip()
-            mode = (str(uib_mode) if uib_mode else "deep").strip().lower()
-
-            # Clear params so refresh doesn't resend
-            for k in ["uib_send", "uib_text", "uib_mode", "uib_nonce"]:
-                try:
-                    if k in st.query_params:
-                        del st.query_params[k]
-                except Exception:
-                    pass
-
-            if prompt:
-                sess["messages"].append(
-                    {
-                        "id": f"u-{int(time.time())}",
-                        "role": "user",
-                        "text": prompt,
-                        "ts": now_label(),
-                        "mode_label": mode_label(mode),
-                    }
-                )
-                sess["last_prompt"] = prompt
-
-                try:
-                    resp = fetch_study(prompt, mode=mode)
-                    answer = normalize_whitespace_for_readability(
-                        normalize_mojibake(resp.get("answer", "") or "")
-                    ) or "No answer generated."
-
-                    sess["messages"].append(
-                        {
-                            "id": f"a-{int(time.time())}",
-                            "role": "assistant",
-                            "text": answer,
-                            "ts": now_label(),
-                            "incomplete": bool(resp.get("incomplete")),
-                            "stop_reason": resp.get("stop_reason") or None,
-                            "prompt": prompt,
-                            "mode": mode,
-                            "response_id": resp.get("response_id"),
-                            "continue_token": resp.get("continue_token"),
-                        }
-                    )
-                except Exception as e:
-                    sess["messages"].append(
-                        {
-                            "id": f"e-{int(time.time())}",
-                            "role": "assistant",
-                            "text": f"Error calling API: {e}",
-                            "ts": now_label(),
-                            "incomplete": False,
-                            "stop_reason": None,
-                        }
-                    )
-
-                st.rerun()
-
     # Render chat so far
     render_learning_messages(sess)
 
-    # =========================
-    # UIB (fixed bottom capsule) — injected HTML
-    # Fixes:
-    # - vertical hints
-    # - responsive shrink on small screens
-    # - remove "circle around arrow" in hint text
-    # - nonce param to guarantee submit reaches Python
-    # =========================
-    capsule_html = r'''
-    <script>
-    (function () {
-      const P = window.parent;
-      const doc = P.document;
+    # -------------------------
+    # UIB (stable Streamlit)
+    # -------------------------
+    # Lit class wrapper
+    lit_over = (st.session_state.uib_mode == "high")
+    lit_quiz = (st.session_state.uib_mode == "quiz")
+    wrap_classes = "ini_uib_wrap"
+    if lit_over:
+        wrap_classes += " ini_lit_over"
+    if lit_quiz:
+        wrap_classes += " ini_lit_quiz"
 
-      // Remove any older injected capsules to avoid duplicates
-      const old = doc.getElementById("ini-uib-capsule");
-      if (old) old.remove();
-      const oldStyle = doc.getElementById("ini-uib-style");
-      if (oldStyle) oldStyle.remove();
+    st.markdown(f'<div class="{wrap_classes}">', unsafe_allow_html=True)
+    st.markdown('<div class="ini_uib_capsule">', unsafe_allow_html=True)
 
-      const style = doc.createElement("style");
-      style.id = "ini-uib-style";
-      style.textContent = `
-        :root{
-          --iniStroke:#e5e7eb;
-          --iniInk:#0f172a;
-          --iniMuted:#6b7280;
-          --iniBlueSoft:#e0e7ff;
-          --iniPurpleSoft:#ede9fe;
-          --iniMax: 820px;
-        }
+    # Form: Enter submits reliably.
+    with st.form("ini_uib_form", clear_on_submit=False):
+        cols = st.columns([8.0, 0.9, 0.9, 0.9], gap="small")
 
-        #ini-uib-capsule{
-          position: fixed;
-          left: 50%;
-          transform: translateX(-50%);
-          bottom: 18px;
-          width: min(var(--iniMax), calc(100vw - 32px));
-          z-index: 999999;
-          font-family: "Aptos","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
-        }
+        with cols[0]:
+            st.text_input(
+                "uib",
+                key="uib_text",
+                label_visibility="collapsed",
+                placeholder="Type your topic/question...",
+            )
 
-        #ini-uib-row{
-          height: 52px;
-          border: 1px solid var(--iniStroke);
-          background: #ffffff;
-          border-radius: 999px;
-          display:flex;
-          align-items:center;
-          gap: 10px;
-          padding: 6px 10px;
-          box-shadow: 0 1px 0 rgba(0,0,0,0.02);
-        }
+        with cols[1]:
+            st.markdown('<div class="ini_icon_btn ini_icon_btn_over">', unsafe_allow_html=True)
+            over_clicked = st.form_submit_button("◎")
+            st.markdown("</div>", unsafe_allow_html=True)
 
-        #ini-uib-input{
-          flex: 1 1 auto;
-          min-width: 0;
-          border: none;
-          outline: none;
-          background: transparent;
-          font-size: 14px;
-          padding: 10px 10px;
-          color: var(--iniInk);
-        }
+        with cols[2]:
+            st.markdown('<div class="ini_icon_btn ini_icon_btn_quiz">', unsafe_allow_html=True)
+            quiz_clicked = st.form_submit_button("?")
+            st.markdown("</div>", unsafe_allow_html=True)
 
-        .ini-uib-btn{
-          width: 36px;
-          height: 36px;
-          border-radius: 999px;
-          border: 1px solid var(--iniStroke);
-          background: #fff;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          cursor:pointer;
-          user-select:none;
-          font-weight: 800;
-          font-size: 16px;
-          color: var(--iniInk);
-        }
-        .ini-uib-btn:hover{ border-color:#cbd5e1; }
-        .ini-uib-btn.lit-overview{ background: var(--iniBlueSoft); border-color:#c7d2fe; }
-        .ini-uib-btn.lit-quiz{ background: var(--iniPurpleSoft); border-color:#ddd6fe; }
+        with cols[3]:
+            st.markdown('<div class="ini_icon_btn">', unsafe_allow_html=True)
+            send_clicked = st.form_submit_button("➤")
+            st.markdown("</div>", unsafe_allow_html=True)
 
-        #ini-uib-hint{
-          margin-top: 6px;
-          font-size: 11px;
-          color: var(--iniMuted);
-          padding-left: 10px;
-          display:flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 2px;
-          line-height: 1.2;
-        }
-        #ini-uib-hint b{ color: var(--iniInk); }
+    st.markdown("</div>", unsafe_allow_html=True)  # capsule end
 
-        /* Extra safety on very small screens */
-        @media (max-width: 520px){
-          #ini-uib-row{ gap: 8px; }
-          .ini-uib-btn{ width: 34px; height: 34px; font-size: 15px; }
-        }
-      `;
-      doc.head.appendChild(style);
-
-      const wrap = doc.createElement("div");
-      wrap.id = "ini-uib-capsule";
-      wrap.innerHTML = `
-        <div id="ini-uib-row">
-          <input id="ini-uib-input" type="text" placeholder="Type your topic/question..." />
-          <div id="ini-uib-over" class="ini-uib-btn" title="Overview (toggle)">◎</div>
-          <div id="ini-uib-quiz" class="ini-uib-btn" title="Quiz (toggle)">?</div>
-          <div id="ini-uib-send" class="ini-uib-btn" title="Send">➤</div>
-        </div>
-        <div id="ini-uib-hint">
-          <div>• <b id="ini-uib-mode">Deep (default)</b></div>
+    # Hint (vertical; left aligned)
+    st.markdown(
+        f"""
+        <div class="ini_hint">
+          <div>• <b>{_mode_hint_text(st.session_state.uib_mode)}</b></div>
           <div>Enter or Send to submit • Icons toggle mode</div>
         </div>
-      `;
-      doc.body.appendChild(wrap);
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown("</div>", unsafe_allow_html=True)  # wrapper end
 
-      let mode = "deep"; // deep | high | quiz
+    # -------------------------
+    # Mode toggles (no send)
+    # -------------------------
+    # IMPORTANT: When icons are clicked, Streamlit will submit the form.
+    # We interpret "◎" and "?" as toggles only IF user didn't intend to send.
+    # Rule: if over/quiz clicked -> toggle mode and rerun without calling API.
+    if over_clicked:
+        st.session_state.uib_mode = "deep" if st.session_state.uib_mode == "high" else "high"
+        st.rerun()
 
-      function setMode(next){
-        mode = next;
-        const over = doc.getElementById("ini-uib-over");
-        const quiz = doc.getElementById("ini-uib-quiz");
-        const modeEl = doc.getElementById("ini-uib-mode");
+    if quiz_clicked:
+        st.session_state.uib_mode = "deep" if st.session_state.uib_mode == "quiz" else "quiz"
+        st.rerun()
 
-        over.classList.toggle("lit-overview", mode === "high");
-        quiz.classList.toggle("lit-quiz", mode === "quiz");
+    # -------------------------
+    # Send (API call)
+    # -------------------------
+    if send_clicked:
+        prompt = (st.session_state.uib_text or "").strip()
+        mode = (st.session_state.uib_mode or "deep").strip().lower()
+        if mode not in {"deep", "high", "quiz"}:
+            mode = "deep"
 
-        if (mode === "high") modeEl.textContent = "Overview";
-        else if (mode === "quiz") modeEl.textContent = "Quiz";
-        else modeEl.textContent = "Deep (default)";
-      }
+        if prompt:
+            sess["messages"].append(
+                {
+                    "id": f"u-{int(time.time())}",
+                    "role": "user",
+                    "text": prompt,
+                    "ts": now_label(),
+                    "mode_label": mode_label(mode),
+                }
+            )
+            sess["last_prompt"] = prompt
 
-      function toggleOver(){ setMode(mode === "high" ? "deep" : "high"); }
-      function toggleQuiz(){ setMode(mode === "quiz" ? "deep" : "quiz"); }
+            try:
+                resp = fetch_study(prompt, mode=mode)
+                answer = normalize_whitespace_for_readability(
+                    normalize_mojibake(resp.get("answer", "") or "")
+                ) or "No answer generated."
 
-      function submit(){
-        const input = doc.getElementById("ini-uib-input");
-        const value = (input.value || "").trim();
-        if (!value) return;
+                sess["messages"].append(
+                    {
+                        "id": f"a-{int(time.time())}",
+                        "role": "assistant",
+                        "text": answer,
+                        "ts": now_label(),
+                        "incomplete": bool(resp.get("incomplete")),
+                        "stop_reason": resp.get("stop_reason") or None,
+                        "prompt": prompt,
+                        "mode": mode,
+                        "response_id": resp.get("response_id"),
+                        "continue_token": resp.get("continue_token"),
+                    }
+                )
+            except Exception as e:
+                sess["messages"].append(
+                    {
+                        "id": f"e-{int(time.time())}",
+                        "role": "assistant",
+                        "text": f"Error calling API: {e}",
+                        "ts": now_label(),
+                        "incomplete": False,
+                        "stop_reason": None,
+                    }
+                )
 
-        const url = new URL(P.location.href);
-        url.searchParams.set("uib_send", "1");
-        url.searchParams.set("uib_text", value);
-        url.searchParams.set("uib_mode", mode);
-        url.searchParams.set("uib_nonce", String(Date.now()));
-
-        // Force navigation (more reliable than setting href property)
-        P.location.assign(url.toString());
-      }
-
-      doc.getElementById("ini-uib-over").addEventListener("click", toggleOver);
-      doc.getElementById("ini-uib-quiz").addEventListener("click", toggleQuiz);
-      doc.getElementById("ini-uib-send").addEventListener("click", submit);
-
-      doc.getElementById("ini-uib-input").addEventListener("keydown", function(e){
-        if (e.key === "Enter"){
-          e.preventDefault();
-          submit();
-        }
-      });
-
-      setMode("deep");
-    })();
-    </script>
-    '''
-    components.html(capsule_html, height=0)
+            # Reset input text after sending; keep mode as selected (stable)
+            st.session_state.uib_text = ""
+            st.rerun()
 
 
 def page_new_project() -> None:
