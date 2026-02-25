@@ -1,6 +1,5 @@
 from fastapi import FastAPI
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel
 
 from api.interrogate import interrogate
 from api.illustrate import illustrate as illustrate_logic
@@ -13,16 +12,6 @@ app = FastAPI()
 
 class TopicIn(BaseModel):
     topic: str
-
-
-class StudyAIIn(BaseModel):
-    # v0 inputs
-    topic: str = Field(..., description="User question/topic for the AI tutor")
-    mode: str = Field("deep", description="deep | high | quiz")
-
-    # v0 continuation (optional; UI may wire later)
-    continue_mode: bool = Field(False, description="If true, continue from previous_answer")
-    previous_answer: Optional[str] = Field(None, description="Prior assistant answer to continue from")
 
 
 @app.get("/")
@@ -57,6 +46,6 @@ def health():
 
 
 @app.post("/study/ai")
-def study_ai_route(payload: StudyAIIn):
-    # Pass dict so study_ai can read mode + continuation fields
-    return study_ai(payload.model_dump())
+def study_ai_route(payload: TopicIn):
+    # payload.topic is re-used as “user_message” for simplicity in v0
+    return study_ai(payload.topic)

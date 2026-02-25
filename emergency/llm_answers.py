@@ -1,0 +1,447 @@
+import os
+from pathlib import Path
+from typing import Optional, Dict, Any, Tuple, List
+
+import requests
+
+
+# ============================================================
+# Load .env from repo root (works no matter where uvicorn starts)
+# ============================================================
+try:
+    from dotenv import load_dotenv  # type: ignore
+
+    # api/llm_answers.py -> repo_root/.env
+    REPO_ROOT = Path(__file__).resolve().parents[1]
+    DOTENV_PATH = REPO_ROOT / ".env"
+    load_dotenv(dotenv_path=DOTENV_PATH, override=True)
+except Exception:
+    # If python-dotenv isn't installed, rely on OS env vars
+    pass
+
+
+# ============================================================
+# ENV / CONFIG
+# ============================================================
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+
+# Responses-compatible model
+DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-5-mini-2025-08-07").strip()
+
+# Responses API uses max_output_tokens
+INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "3000"))
+
+# If True, keep extra debug info in returned dict (not appended to answer text)
+INI_LLM_DEBUG = os.getenv("INI_LLM_DEBUG", "0").lower() in ("1", "true", "yes")
+
+
+def llm_enabled() -> bool:
+    return bool(OPENAI_API_KEY)
+
+
+# ============================================================
+# TEXT CLEANUP (fix mojibake / weird characters)
+# ============================================================
+
+def _normalize_text(s: str) -> str:
+    """
+    Fix common mojibake sequences we keep seeing in Windows/PS/Streamlit renders.
+    Example: “â€”” -> “—”, “â€™” -> “’”.
+    """
+    if not s:
+        return ""
+
+    # Fast path: only run replacements if we detect telltale mojibake markers
+    if "â" not in s and "Â" not in s and "Ã" not in s:
+        return s
+
+    repl = {
+        # dashes / ellipsis
+        "â€”": "—",
+        "â€“": "–",
+        "â€•": "―",
+        "â€¦": "…",
+
+        # quotes
+        "â€œ": "“",
+        "â€�": "”",
+        "â€˜": "‘",
+        "â€™": "’",
+        "â„¢": "™",
+
+        # bullets / middots
+        "â€¢": "•",
+        "Â·": "·",
+
+        # spaces / nbsp artifacts
+        "Â ": " ",
+
+        # common multi-byte artifacts (seen occasionally)
+        "Ã¢â‚¬â„¢": "’",
+        "Ã¢â‚¬â€œ": "–",
+        "Ã¢â‚¬â€�": "—",
+        "Ã¢â‚¬Â¦": "…",
+        "Ã¢â‚¬Å“": "“",
+        "Ã¢â‚¬Â": "”",
+    }
+
+    for k, v in repl.items():
+        s = s.replace(k, v)
+
+    return s
+
+
+# ============================================================
+# CONTEXT HELPERS
+# ============================================================
+
+def _era_hints(topic: str) -> str:
+    t = (topic or "").lower()
+    if "artificial intelligence" in t or t == "ai":
+        return (
+            "Cover: Classical AI → Machine Learning → Deep Learning → "
+            "Foundation Models → Generative AI / LLMs → Tool use → Agentic AI."
+        )
+    if "machine learning" in t or t == "ml":
+        return (
+            "Cover: supervised vs unsupervised, features, training, "
+            "evaluation, overfitting, deployment."
+        )
+    return ""
+
+
+def _collect_text_from_content(content: Any) -> str:
+    """
+    Normalize different content shapes into a single concatenated text.
+
+    Expected content items may look like:
+      {"type":"output_text","text":"..."}
+      {"type":"text","text":"..."}   (rare variants)
+      {"type":"output_text","text":{"value":"..."}} (older/variant)
+    """
+    parts: List[str] = []
+
+    if isinstance(content, list):
+        for c in content:
+            if not isinstance(c, dict):
+                continue
+            ctype = (c.get("type") or "").strip()
+            txt = c.get("text")
+
+            # Standard: output_text
+            if ctype == "output_text" and isinstance(txt, str) and txt.strip():
+                parts.append(txt)
+                continue
+
+            # Variant: type=text
+            if ctype == "text":
+                if isinstance(txt, str) and txt.strip():
+                    parts.append(txt)
+                    continue
+                if isinstance(txt, dict) and isinstance(txt.get("value"), str) and txt["value"].strip():
+                    parts.append(txt["value"])
+                    continue
+
+            # Variant: output_text with dict payload
+            if ctype == "output_text" and isinstance(txt, dict) and isinstance(txt.get("value"), str) and txt["value"].strip():
+                parts.append(txt["value"])
+                continue
+
+    return "\n".join([p for p in parts if p is not None]).strip()
+
+
+def _extract_output_text(data: Dict[str, Any]) -> str:
+    """
+    Extract best-effort assistant text from Responses API output.
+
+    Handles:
+      - Standard Responses API: output -> message -> content -> output_text
+      - Variants where message.content contains type "text"
+      - Rare cases where text appears under output item "text"
+      - Top-level content variants (rare)
+
+    If nothing found, returns "".
+    """
+    output = data.get("output") or []
+    if isinstance(output, list):
+        # Prefer message items first
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") == "message":
+                text = _collect_text_from_content(item.get("content"))
+                if text:
+                    return text
+
+        # Fallback: sometimes content-like blocks appear in other output items
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+
+            text = _collect_text_from_content(item.get("content"))
+            if text:
+                return text
+
+            if isinstance(item.get("text"), str) and item["text"].strip():
+                return str(item["text"]).strip()
+
+            if isinstance(item.get("text"), dict) and isinstance(item["text"].get("value"), str) and item["text"]["value"].strip():
+                return str(item["text"]["value"]).strip()
+
+    # Top-level variants (rare)
+    top_content = data.get("content")
+    text = _collect_text_from_content(top_content)
+    if text:
+        return text
+
+    # Last resort
+    if isinstance(data.get("output_text"), str) and data["output_text"].strip():
+        return str(data["output_text"]).strip()
+
+    return ""
+
+
+def _is_incomplete(data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+    """
+    Detect "incomplete" responses (most often max_output_tokens).
+    Returns (incomplete, reason).
+    """
+    status = str(data.get("status", "")).lower().strip()
+    if status == "incomplete":
+        inc = data.get("incomplete_details") or {}
+        reason = inc.get("reason")
+        return True, str(reason) if reason else "unknown"
+
+    inc = data.get("incomplete_details") or {}
+    if inc:
+        reason = inc.get("reason")
+        return True, str(reason) if reason else "unknown"
+
+    return False, None
+
+
+# ============================================================
+# CORE LLM CALL (RESPONSES API)
+# ============================================================
+
+def generate_dynamic_answer_result(
+    *,
+    topic: str,
+    topic_type: str,
+    archetype: str,
+    question: str,
+    meta: Optional[Dict[str, Any]] = None,
+    timeout_s: int = 120,
+    previous_response_id: Optional[str] = None,
+    **_ignored: Any,
+) -> Dict[str, Any]:
+    """
+    Returns a structured result:
+      {
+        "answer": "<text or ''>",
+        "incomplete": <bool>,
+        "stop_reason": "<reason or None>",
+        "status": "<responses status string or None>",
+        "response_id": "<responses id or None>",
+        "usage": <usage dict or None>,
+        "model": "<model>",
+        "http_status": <int or None>,
+        "error": "<string or None>",
+        "raw": <full response json only when INI_LLM_DEBUG=1 else None>
+      }
+    """
+    if not llm_enabled():
+        return {
+            "answer": "",
+            "incomplete": False,
+            "stop_reason": None,
+            "status": None,
+            "response_id": None,
+            "usage": None,
+            "model": DEFAULT_MODEL,
+            "http_status": None,
+            "error": "llm_disabled_or_missing_key",
+            "raw": None,
+        }
+
+    expects_json = False
+    if isinstance(meta, dict):
+        expects = str(meta.get("expects", "")).lower().strip()
+        expects_json = expects in ("json", "json_object", "strict_json")
+
+    # ============================================================
+    # SYSTEM PROMPT (Deep Technical Drive, research-level)
+    # ============================================================
+    system_prompt = (
+        "You are InI.ai — a teaching-first AI mentor and deep technical tutor.\n"
+        "Your job is to make the learner genuinely understand, not just read text.\n\n"
+        "Hard rules:\n"
+        "- Be technically correct and specific. Prefer concrete mechanisms over vague claims.\n"
+        "- Do NOT be generic or motivational. No filler, no clichés.\n"
+        "- Do NOT artificially shorten. If the topic is deep, write a deep answer.\n"
+        "- Aim for research-notes depth: include enough detail that a serious learner can implement or verify.\n"
+        "- When helpful, include light pseudocode / equations / concrete parameter examples (but keep it readable).\n"
+        "- Use crisp structure with headings and bullets. Preserve indentation.\n"
+        "- Use definitions + intuition + mechanics + examples + failure modes.\n"
+        "- If you make an assumption, state it.\n"
+        "- Prefer: precise terms, clear boundaries, and “where it breaks”.\n\n"
+        "STRUCTURE POLICY:\n"
+        "- Use the following structure internally, but DO NOT print the template text literally.\n"
+        "- Only include sections that fit the question.\n"
+        "Suggested sections:\n"
+        "• Definition\n"
+        "• Why it matters / when you use it\n"
+        "• Core mechanism (step-by-step)\n"
+        "• Concrete worked example(s)\n"
+        "• Failure modes + mitigations\n"
+        "• Practical checklist / sanity checks\n"
+        "• Next steps (only if archetype == NEXT)\n\n"
+        "Archetype rules:\n"
+        "- ORIENT: build foundations and a correct mental model.\n"
+        "- RISK: include misconceptions, failure modes, and how to detect them.\n"
+        "- APPLY: include where it works AND where it fails, with examples.\n"
+        "- NEXT: include a short actionable learning plan + exercises.\n\n"
+        "Continuation rule:\n"
+        "- If you hit output limits, stop cleanly mid-section without concluding.\n"
+        "- Only continue when asked. Do NOT add a 'Continue' label unless you truly have more content.\n"
+    )
+
+    if expects_json:
+        system_prompt += (
+            "\nOUTPUT RULE (STRICT): Return ONE valid JSON object only. "
+            "No markdown, no commentary, no code fences.\n"
+        )
+
+    era_hint = _era_hints(topic)
+
+    meta_txt = ""
+    if isinstance(meta, dict) and meta:
+        meta_txt = "Meta context: " + ", ".join(
+            f"{k}={meta.get(k)}" for k in list(meta.keys())[:8]
+        )
+
+    user_prompt = (
+        f"Topic: {topic}\n"
+        f"Topic type: {topic_type}\n"
+        f"Archetype: {archetype}\n"
+        f"{meta_txt}\n"
+        f"Era hints (if relevant): {era_hint}\n\n"
+        f"User question / instruction:\n{question}\n"
+    )
+
+    url = "https://api.openai.com/v1/responses"
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload: Dict[str, Any] = {
+        "model": DEFAULT_MODEL,
+        "input": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "max_output_tokens": INI_LLM_MAX_TOKENS,
+        "text": {"format": {"type": "text"}},
+    }
+
+    if expects_json:
+        payload["text"] = {"format": {"type": "json_object"}}
+
+    if previous_response_id:
+        payload["previous_response_id"] = previous_response_id
+
+    try:
+        resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
+
+        if resp.status_code != 200:
+            return {
+                "answer": "",
+                "incomplete": False,
+                "stop_reason": None,
+                "status": None,
+                "response_id": None,
+                "usage": None,
+                "model": DEFAULT_MODEL,
+                "http_status": resp.status_code,
+                "error": resp.text[:1200],
+                "raw": None,
+            }
+
+        data = resp.json()
+
+        # Normalize immediately (first pass)
+        text = _normalize_text(_extract_output_text(data).strip())
+
+        incomplete, reason = _is_incomplete(data)
+
+        # If we got incomplete but no text (rare: reasoning-only output), return debug-safe error
+        if incomplete and not text:
+            return {
+                "answer": "",
+                "incomplete": True,
+                "stop_reason": reason,
+                "status": data.get("status"),
+                "response_id": data.get("id"),
+                "usage": data.get("usage"),
+                "model": str(data.get("model") or DEFAULT_MODEL),
+                "http_status": 200,
+                "error": "incomplete_no_text",
+                "raw": data if INI_LLM_DEBUG else None,
+            }
+
+        # Normalize again at the end (second pass, prevents regressions)
+        text = _normalize_text(text)
+
+        return {
+            "answer": text,
+            "incomplete": bool(incomplete),
+            "stop_reason": reason,
+            "status": data.get("status"),
+            "response_id": data.get("id"),
+            "usage": data.get("usage"),
+            "model": str(data.get("model") or DEFAULT_MODEL),
+            "http_status": 200,
+            "error": None,
+            "raw": data if INI_LLM_DEBUG else None,
+        }
+
+    except Exception as e:
+        return {
+            "answer": "",
+            "incomplete": False,
+            "stop_reason": None,
+            "status": None,
+            "response_id": None,
+            "usage": None,
+            "model": DEFAULT_MODEL,
+            "http_status": None,
+            "error": f"{type(e).__name__}: {e}",
+            "raw": None,
+        }
+
+
+def generate_dynamic_answer(
+    *,
+    topic: str,
+    topic_type: str,
+    archetype: str,
+    question: str,
+    meta: Optional[Dict[str, Any]] = None,
+    **kwargs: Any,
+) -> Optional[str]:
+    """
+    Backward-compatible wrapper used by existing code:
+    returns ONLY the answer text (no debug leakage).
+    """
+    res = generate_dynamic_answer_result(
+        topic=topic,
+        topic_type=topic_type,
+        archetype=archetype,
+        question=question,
+        meta=meta,
+        **kwargs,
+    )
+    ans = (res.get("answer") or "").strip()
+    return ans if ans else None

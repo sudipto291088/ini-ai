@@ -1,5 +1,5 @@
 # api/study_ai.py
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple, Optional, Union
 import re
 
 from api.llm_answers import llm_enabled, generate_dynamic_answer_result
@@ -23,7 +23,7 @@ def _parse_llm_debug_error(text: str) -> Tuple[Optional[int], str]:
     return None, "unknown"
 
 
-def _fallback_ai_lesson(user_message: str, level: str, goal: str, time_per_day: str) -> str:
+def _fallback_ai_lesson(user_message: str, level: str) -> str:
     # Simple fallback (only used if LLM is disabled).
     return (
         "# AI Tutor (Fallback)\n\n"
@@ -33,48 +33,146 @@ def _fallback_ai_lesson(user_message: str, level: str, goal: str, time_per_day: 
     )
 
 
-def study_ai(user_message: str) -> Dict[str, Any]:
+def _normalize_mode(raw: Optional[str]) -> str:
+    """
+    Supported:
+      - deep (default)
+      - high (overview)
+      - quiz
+    Accept common aliases.
+    """
+    if not raw:
+        return "deep"
+    m = str(raw).strip().lower()
+
+    alias = {
+        "deep": "deep",
+        "default": "deep",
+        "d": "deep",
+        "research": "deep",
+        "apply": "deep",
+        "overview": "high",
+        "high": "high",
+        "summary": "high",
+        "brief": "high",
+        "quiz": "quiz",
+        "q": "quiz",
+        "questions": "quiz",
+        "test": "quiz",
+    }
+    return alias.get(m, "deep")
+
+
+def _build_instruction(mode: str) -> str:
+    """
+    Build the *style contract* for the tutor. This is where we make
+    'high' and 'quiz' visibly different from 'deep'.
+    """
+    if mode == "high":
+        return (
+            "You are InI, a clean and helpful AI tutor.\n"
+            "Produce a HIGH-LEVEL overview.\n"
+            "- Keep it short and crisp (8–12 bullets max).\n"
+            "- Avoid deep dives; focus on the big picture.\n"
+            "- Use bold headings.\n"
+            "- End with 2 suggested follow-up questions.\n"
+        )
+
+    if mode == "quiz":
+        return (
+            "You are InI, an interactive AI tutor.\n"
+            "Generate a QUIZ only (no answers unless user asks).\n"
+            "- 7 questions total.\n"
+            "- Mix: 3 conceptual, 2 scenario-based, 2 short definition.\n"
+            "- Include difficulty tags: (Easy/Med/Hard).\n"
+            "- Keep questions tight and unambiguous.\n"
+            "- End with: 'Reply with your answers and I will grade you.'\n"
+        )
+
+    # deep (default)
+    return (
+        "You are InI, a deep technical AI tutor.\n"
+        "Write a research-grade, well-structured answer.\n"
+        "- Use bold headings, bullets, and concrete examples.\n"
+        "- Add intuitions, failure modes, and practical trade-offs.\n"
+        "- Be specific, cohesive, and avoid filler.\n"
+        "- Do NOT ask meta-questions unless required.\n"
+    )
+
+
+def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
     """
     v0 Study mode:
     - ONLY AI topic uses LLM.
-    - Returns a stable schema so Streamlit can reliably detect truncation:
-        { mode, topic, status, llm, answer, incomplete, stop_reason }
+    - Accepts:
+        1) str: user prompt
+        2) dict: {"topic": "...", "mode": "deep|high|quiz", "continue_mode": bool, "previous_answer": str}
+    - Returns stable schema:
+        { mode, topic, domain, status, llm, answer, incomplete, stop_reason }
     """
-    topic = "Artificial Intelligence"
+    domain = "Artificial Intelligence"
 
-    # Default knobs (you can later make these UI controls)
-    level = "DEEP"
-    goal = "learn"
-    time_per_day = "30-60 min"
+    # ---- Parse input safely (string or dict) ----
+    if isinstance(payload, dict):
+        user_topic = (payload.get("topic") or payload.get("user_message") or "").strip()
+        mode = _normalize_mode(payload.get("mode"))
+        continue_mode = bool(payload.get("continue_mode", False))
+        previous_answer = (payload.get("previous_answer") or "").strip()
+    else:
+        user_topic = str(payload).strip()
+        mode = "deep"
+        continue_mode = False
+        previous_answer = ""
 
+    if not user_topic:
+        user_topic = "Explain Artificial Intelligence."
+
+    # ---- LLM disabled fallback ----
     if not llm_enabled():
         return {
-            "mode": "study",
-            "topic": topic,
+            "mode": mode,
+            "topic": user_topic,
+            "domain": domain,
             "status": "ok",
             "llm": {"enabled": False, "reason": "no_api_key"},
-            "answer": _fallback_ai_lesson(user_message, level, goal, time_per_day),
+            "answer": _fallback_ai_lesson(user_topic, mode.upper()),
             "incomplete": False,
             "stop_reason": None,
         }
 
-    # IMPORTANT: Do NOT force “continue” unless the model actually truncates.
-    # We request a deep answer; truncation is detected by the Responses API status fields.
-    question = (
-        "You are a deep technical AI tutor.\n"
-        "Write a research-grade, well-structured answer.\n"
-        "Use headings, bullets, and examples.\n"
-        "Be specific, non-repetitive, and avoid filler.\n"
-        "Do NOT ask the user meta-questions unless required.\n\n"
-        f"User prompt: {user_message}\n"
-    )
+    # ---- Build prompt ----
+    instruction = _build_instruction(mode)
 
+    if continue_mode and previous_answer:
+        question = (
+            f"{instruction}\n"
+            "Continuation rules:\n"
+            "- Continue EXACTLY from where you left off.\n"
+            "- Do NOT repeat earlier sections.\n"
+            "- Do NOT restart the structure.\n"
+            "- Start with the very next sentence.\n\n"
+            "Previous answer (for continuity):\n"
+            f"{previous_answer}\n\n"
+            f"User prompt: {user_topic}\n"
+        )
+    else:
+        question = (
+            f"{instruction}\n"
+            f"User prompt: {user_topic}\n"
+        )
+
+    # ---- Call core LLM engine ----
     result = generate_dynamic_answer_result(
-        topic=topic,
+        topic=domain,
         topic_type="concept",
         archetype="APPLY",
         question=question,
-        meta={"mode": "study_ai", "expects": "text"},
+        meta={
+            "mode": "study_ai",
+            "level": mode,
+            "expects": "text",
+            "continue_mode": continue_mode,
+        },
         timeout_s=120,
     )
 
@@ -84,12 +182,12 @@ def study_ai(user_message: str) -> Dict[str, Any]:
 
     # If the LLM returned no text (rare), expose a stable response
     if not ans:
-        # If the LLM errored, preserve that in llm.reason
         err = result.get("error")
         http_status = result.get("http_status")
         return {
-            "mode": "study",
-            "topic": topic,
+            "mode": mode,
+            "topic": user_topic,
+            "domain": domain,
             "status": "ok",
             "llm": {
                 "enabled": True,
@@ -106,8 +204,9 @@ def study_ai(user_message: str) -> Dict[str, Any]:
     http_code, dbg_reason = _parse_llm_debug_error(ans)
     if dbg_reason in ("http_error", "debug"):
         return {
-            "mode": "study",
-            "topic": topic,
+            "mode": mode,
+            "topic": user_topic,
+            "domain": domain,
             "status": "ok",
             "llm": {"enabled": True, "reason": dbg_reason, "http_status": http_code},
             "answer": "No answer generated.",
@@ -116,8 +215,9 @@ def study_ai(user_message: str) -> Dict[str, Any]:
         }
 
     return {
-        "mode": "study",
-        "topic": topic,
+        "mode": mode,
+        "topic": user_topic,
+        "domain": domain,
         "status": "ok",
         "llm": {"enabled": True, "reason": "ok"},
         "answer": ans,
