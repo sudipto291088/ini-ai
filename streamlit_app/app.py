@@ -393,14 +393,23 @@ def post_json(path: str, payload: Dict[str, Any], timeout: int = 120) -> Dict[st
 def fetch_study(
     topic: str,
     mode: str = "deep",
-    previous_response_id: Optional[str] = None,
-    continue_token: Optional[str] = None,
+    continue_mode: bool = False,
+    previous_answer: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """
+    Backend contract (v0):
+      - topic: str
+      - mode: deep|high|quiz
+      - optional continuation:
+          continue_mode: bool
+          previous_answer: str
+    """
     payload: Dict[str, Any] = {"topic": topic, "mode": mode}
-    if previous_response_id:
-        payload["previous_response_id"] = previous_response_id
-    if continue_token:
-        payload["continue_token"] = continue_token
+
+    if continue_mode and previous_answer:
+        payload["continue_mode"] = True
+        payload["previous_answer"] = previous_answer
+
     return post_json("/study/ai", payload, timeout=180)
 
 
@@ -527,15 +536,20 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
 
     prompt = (m.get("prompt") or "").strip()
     mode = (m.get("mode") or "deep").strip()
-    prev_id = m.get("response_id") or None
-    legacy_token = m.get("continue_token") or None
 
     if not prompt:
         m["incomplete"] = False
         m["stop_reason"] = None
         return
 
-    resp = fetch_study(prompt, mode=mode, previous_response_id=prev_id, continue_token=legacy_token)
+    # New backend continuation contract:
+    # send continue_mode + previous_answer (the current assistant text)
+    resp = fetch_study(
+        topic=prompt,
+        mode=mode,
+        continue_mode=True,
+        previous_answer=m.get("text") or "",
+    )
 
     chunk_raw = normalize_mojibake(resp.get("answer", "") or "")
     chunk = normalize_whitespace_for_readability(chunk_raw)
@@ -546,12 +560,6 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
 
     m["incomplete"] = bool(resp.get("incomplete"))
     m["stop_reason"] = resp.get("stop_reason") or None
-
-    if resp.get("response_id"):
-        m["response_id"] = resp.get("response_id")
-    if resp.get("continue_token"):
-        m["continue_token"] = resp.get("continue_token")
-
     m["ts"] = now_label()
 
 
@@ -595,6 +603,7 @@ def _process_send(sess: Dict[str, Any]) -> None:
                 "stop_reason": resp.get("stop_reason") or None,
                 "prompt": prompt,
                 "mode": mode,
+                # legacy fields retained (backend may not return them now, but keeping won't break session data)
                 "response_id": resp.get("response_id"),
                 "continue_token": resp.get("continue_token"),
             }
