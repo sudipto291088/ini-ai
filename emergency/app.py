@@ -304,25 +304,91 @@ def _strip_duplicate_chunk_prefix(chunk: str) -> str:
     return "\n".join(lines).strip()
 
 
-def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 1800) -> str:
-    existing = existing or ""
-    chunk = chunk or ""
+# (ALL YOUR IMPORTS AND CSS REMAIN EXACTLY AS THEY ARE ABOVE — unchanged)
+
+# --- KEEP EVERYTHING ABOVE EXACTLY THE SAME ---
+# I am only replacing the overlap logic block.
+
+def _strip_duplicate_chunk_prefix(chunk: str) -> str:
+    if not chunk:
+        return chunk
+
+    lines = chunk.splitlines()
+
+    # Remove leading empty lines
+    while lines and not lines[0].strip():
+        lines.pop(0)
+
+    # Remove common repeated structural headers
+    bad_first_lines = {
+        "definition",
+        "definition —",
+        "definition -",
+        "overview",
+        "introduction",
+        "core mechanism",
+        "why rag matters",
+        "next steps",
+    }
+
+    changed = True
+    while changed and lines:
+        changed = False
+        first = lines[0].strip().strip(":").lower()
+        for bad in bad_first_lines:
+            if first.startswith(bad):
+                lines.pop(0)
+                changed = True
+                break
+        while lines and not lines[0].strip():
+            lines.pop(0)
+
+    return "\n".join(lines).strip()
+
+
+def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 2500) -> str:
+    """
+    Improved append logic:
+    - Stronger overlap detection
+    - Prevents duplicate numbered headings
+    - Enforces clean spacing
+    """
+
+    if not existing:
+        return chunk.strip()
+
     if not chunk.strip():
-        return existing
+        return existing.strip()
+
     ex = existing.rstrip()
     ch = _strip_duplicate_chunk_prefix(chunk).lstrip()
+
     if not ch:
         return ex
+
+    # Detect longest suffix-prefix overlap
     tail = ex[-max_window:]
     head = ch[:max_window]
-    best = 0
+
+    best_overlap = 0
     max_k = min(len(tail), len(head))
-    for k in range(80, max_k + 1):
+
+    for k in range(120, max_k + 1):  # higher threshold for stability
         if tail[-k:] == head[:k]:
-            best = k
-    if best > 0:
-        ch = ch[best:].lstrip()
-    return (ex + "\n\n" + ch).strip() if ex else ch.strip()
+            best_overlap = k
+
+    if best_overlap > 0:
+        ch = ch[best_overlap:].lstrip()
+
+    # Remove repeated numbered headings like "1." restart
+    last_lines = ex.splitlines()[-10:]
+    for line in last_lines:
+        clean = line.strip()
+        if re.match(r"^\d+\.\s", clean):
+            if ch.strip().startswith(clean):
+                ch = ch[len(clean):].lstrip()
+
+    return (ex + "\n\n" + ch).strip()
 
 
 # =========================
@@ -393,14 +459,23 @@ def post_json(path: str, payload: Dict[str, Any], timeout: int = 120) -> Dict[st
 def fetch_study(
     topic: str,
     mode: str = "deep",
-    previous_response_id: Optional[str] = None,
-    continue_token: Optional[str] = None,
+    continue_mode: bool = False,
+    previous_answer: Optional[str] = None,
 ) -> Dict[str, Any]:
+    """
+    Backend contract (v0):
+      - topic: str
+      - mode: deep|high|quiz
+      - optional continuation:
+          continue_mode: bool
+          previous_answer: str
+    """
     payload: Dict[str, Any] = {"topic": topic, "mode": mode}
-    if previous_response_id:
-        payload["previous_response_id"] = previous_response_id
-    if continue_token:
-        payload["continue_token"] = continue_token
+
+    if continue_mode and previous_answer:
+        payload["continue_mode"] = True
+        payload["previous_answer"] = previous_answer
+
     return post_json("/study/ai", payload, timeout=180)
 
 
@@ -527,15 +602,20 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
 
     prompt = (m.get("prompt") or "").strip()
     mode = (m.get("mode") or "deep").strip()
-    prev_id = m.get("response_id") or None
-    legacy_token = m.get("continue_token") or None
 
     if not prompt:
         m["incomplete"] = False
         m["stop_reason"] = None
         return
 
-    resp = fetch_study(prompt, mode=mode, previous_response_id=prev_id, continue_token=legacy_token)
+    # New backend continuation contract:
+    # send continue_mode + previous_answer (the current assistant text)
+    resp = fetch_study(
+        topic=prompt,
+        mode=mode,
+        continue_mode=True,
+        previous_answer=m.get("text") or "",
+    )
 
     chunk_raw = normalize_mojibake(resp.get("answer", "") or "")
     chunk = normalize_whitespace_for_readability(chunk_raw)
@@ -546,12 +626,6 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
 
     m["incomplete"] = bool(resp.get("incomplete"))
     m["stop_reason"] = resp.get("stop_reason") or None
-
-    if resp.get("response_id"):
-        m["response_id"] = resp.get("response_id")
-    if resp.get("continue_token"):
-        m["continue_token"] = resp.get("continue_token")
-
     m["ts"] = now_label()
 
 
@@ -595,6 +669,7 @@ def _process_send(sess: Dict[str, Any]) -> None:
                 "stop_reason": resp.get("stop_reason") or None,
                 "prompt": prompt,
                 "mode": mode,
+                # legacy fields retained (backend may not return them now, but keeping won't break session data)
                 "response_id": resp.get("response_id"),
                 "continue_token": resp.get("continue_token"),
             }
@@ -739,3 +814,8 @@ elif st.session_state.page == "My New Learning":
     page_my_new_learning()
 else:
     page_new_project()
+
+
+
+
+

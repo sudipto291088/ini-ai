@@ -89,15 +89,27 @@ def _build_instruction(mode: str) -> str:
             "- End with: 'Reply with your answers and I will grade you.'\n"
         )
 
+      
     # deep (default)
     return (
-        "You are InI, a deep technical AI tutor.\n"
-        "Write a research-grade, well-structured answer.\n"
-        "- Use bold headings, bullets, and concrete examples.\n"
-        "- Add intuitions, failure modes, and practical trade-offs.\n"
-        "- Be specific, cohesive, and avoid filler.\n"
-        "- Do NOT ask meta-questions unless required.\n"
-    )
+    "You are InI, a deep technical AI tutor.\n"
+    "Write a research-grade, well-structured answer.\n"
+    "- Use bold headings, bullets, and concrete examples.\n"
+    "- Maintain consistent hierarchy throughout the document.\n"
+    "- Do NOT introduce abrupt top-level headings mid-answer.\n"
+    "- Do NOT output standalone pseudo-code lines as headings.\n"
+    "- Keep formatting clean and proportional (no oversized structural resets).\n"
+    "- Add intuitions, failure modes, and practical trade-offs.\n"
+    "- Be specific, cohesive, and avoid filler.\n"
+    "- Do NOT ask meta-questions unless required.\n"
+)
+
+
+
+
+
+
+
 
 
 def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
@@ -144,17 +156,22 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
     instruction = _build_instruction(mode)
 
     if continue_mode and previous_answer:
+
+    # --- STRICT TOKEN CONTINUATION ---
+    # Only send the tail of the previous answer
+        tail = previous_answer[-1500:]
+
         question = (
-            f"{instruction}\n"
-            "Continuation rules:\n"
-            "- Continue EXACTLY from where you left off.\n"
-            "- Do NOT repeat earlier sections.\n"
-            "- Do NOT restart the structure.\n"
-            "- Start with the very next sentence.\n\n"
-            "Previous answer (for continuity):\n"
-            f"{previous_answer}\n\n"
-            f"User prompt: {user_topic}\n"
-        )
+        f"{instruction}\n"
+        "STRICT CONTINUATION MODE:\n"
+        "- Continue the text exactly from where it stopped.\n"
+        "- Do NOT restart the topic.\n"
+        "- Do NOT introduce new section headers.\n"
+        "- Do NOT repeat earlier content.\n"
+        "- Output ONLY the next portion of the same document.\n\n"
+        "Text so far (ending segment only):\n"
+        f"{tail}\n"
+    )
     else:
         question = (
             f"{instruction}\n"

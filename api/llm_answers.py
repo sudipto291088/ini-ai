@@ -1,3 +1,4 @@
+import re
 import os
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple, List
@@ -378,8 +379,9 @@ def generate_dynamic_answer_result(
 
         # If we got incomplete but no text (rare: reasoning-only output), return debug-safe error
         if incomplete and not text:
+            
             return {
-                "answer": "",
+                "answer": " ",
                 "incomplete": True,
                 "stop_reason": reason,
                 "status": data.get("status"),
@@ -393,6 +395,14 @@ def generate_dynamic_answer_result(
 
         # Normalize again at the end (second pass, prevents regressions)
         text = _normalize_text(text)
+
+        # ---- collapse duplicated consecutive tokens (e.g., systemsystem) ----
+
+
+        text = re.sub(r'\b(\w+)\1\b', r'\1', text)
+
+        # ---- collapse accidental double words separated by space ----
+        text = re.sub(r'\b(\w+)\s+\1\b', r'\1', text)
 
         return {
             "answer": text,
