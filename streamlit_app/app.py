@@ -280,30 +280,6 @@ def mode_label(mode: str) -> str:
     return "Deep"
 
 
-def _strip_duplicate_chunk_prefix(chunk: str) -> str:
-    lines = chunk.splitlines()
-    while lines and not lines[0].strip():
-        lines.pop(0)
-    bad_first_lines = {
-        "definition",
-        "definition / quick intuition",
-        "overview",
-        "quick intuition",
-        "why rag matters / when to use it",
-        "next steps",
-    }
-    changed = True
-    while changed and lines:
-        changed = False
-        first = lines[0].strip().strip(":").lower()
-        if first in bad_first_lines:
-            lines.pop(0)
-            changed = True
-            while lines and not lines[0].strip():
-                lines.pop(0)
-    return "\n".join(lines).strip()
-
-
 # (ALL YOUR IMPORTS AND CSS REMAIN EXACTLY AS THEY ARE ABOVE — unchanged)
 
 # --- KEEP EVERYTHING ABOVE EXACTLY THE SAME ---
@@ -506,28 +482,28 @@ def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 2500) ->
 
 
     # ---------- phase 4: word-fragment stitching ----------
+
     ex_last_line = (ex.splitlines()[-1] if ex.splitlines() else "")
     ch_lines = ch.splitlines()
 
     if ex_last_line and ch_lines:
         first_line = ch_lines[0]
 
-    # Case 1: hyphenated split (retrieval-aug + mented)
+        # Case 1: hyphenated split (retrieval-aug + mented)
         if ex_last_line.rstrip().endswith("-"):
             ch_lines[0] = ex_last_line.rstrip() + first_line.lstrip()
-            return "\n".join(ch_lines).strip()
+            ch = "\n".join(ch_lines).strip()
 
-    # Case 2: plain word split without hyphen
-        if (
-        ex_last_line
-        and first_line
-        and ex_last_line[-1].isalnum()
-        and first_line[0].isalnum()
-    ):
-                     # merge directly without newline
-                     merged = ex_last_line + first_line
-                     remaining = ch_lines[1:]
-                     return ( "\n".join(ex.splitlines()[:-1]) + "\n" + merged + "\n" + "\n".join(remaining) ).strip()
+        # Case 2: plain word split without hyphen
+        elif (
+            ex_last_line[-1].isalnum()
+            and first_line
+            and first_line[0].isalnum()
+        ):
+            merged = ex_last_line + first_line
+            remaining = ch_lines[1:]
+            ch = ("\n".join(ex.splitlines()[:-1]) + "\n" + merged + ("\n" + "\n".join(remaining) if remaining else "")).strip()
+   
 
     
     
@@ -818,6 +794,44 @@ def _request_send() -> None:
     st.session_state._uib_send_requested = True
 
 
+
+def _is_typed_continue_intent(user_text: str) -> bool:
+    """
+    Detects ultra-short "continue" intents like:
+    'go ahead', 'continue', 'yes', 'ok', 'sure', 'more', 'next', etc.
+    This is ONLY used when there is an incomplete assistant message.
+    """
+    t = (user_text or "").strip().lower()
+    if not t:
+        return False
+    # normalize multiple spaces
+    t = re.sub(r"\s+", " ", t)
+
+    intents = {
+        "continue", "cont", "go ahead", "go on", "carry on", "next", "more",
+        "yes", "y", "yeah", "yep", "ok", "okay", "sure", "pls continue",
+        "please continue", "see more", "show more"
+    }
+    return t in intents
+
+
+def _find_last_incomplete_assistant_id(sess: Dict[str, Any]) -> Optional[str]:
+    """Return the most recent assistant msg id that still needs continuation."""
+    for m in reversed(sess.get("messages", [])):
+        if m.get("role") == "assistant" and needs_continue_flag(m):
+            return m.get("id")
+    return None
+
+
+def _typed_continue_should_fire(sess: Dict[str, Any], user_text: str) -> bool:
+    """
+    Only treat 'go ahead' etc. as continuation if there is an actual incomplete assistant msg.
+    """
+    if not _is_typed_continue_intent(user_text):
+        return False
+    return _find_last_incomplete_assistant_id(sess) is not None
+
+
 def _process_send(sess: Dict[str, Any]) -> None:
     prompt = (st.session_state.uib_text or "").strip()
     mode = (st.session_state.uib_mode or "deep").strip().lower()
@@ -827,6 +841,27 @@ def _process_send(sess: Dict[str, Any]) -> None:
     if not prompt:
         return
 
+    # 1) If user typed "go ahead" / "continue" AND there is an incomplete assistant msg,
+    # treat this as Continue, not a new question.
+    if _typed_continue_should_fire(sess, prompt):
+        # record the user's message (so chat history shows what user typed)
+        sess["messages"].append(
+            {"id": f"u-{int(time.time())}", "role": "user", "text": prompt, "ts": now_label(), "mode_label": mode_label(mode)}
+        )
+
+        target_id = _find_last_incomplete_assistant_id(sess)
+        if target_id:
+            try:
+                _continue_one_chunk(sess, target_id)
+            except Exception as e:
+                sess["messages"].append(
+                    {"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error continuing: {e}", "ts": now_label()}
+                )
+
+        st.session_state._uib_clear_next = True
+        st.rerun()
+
+    # 2) Normal path: treat as a new question
     sess["messages"].append(
         {"id": f"u-{int(time.time())}", "role": "user", "text": prompt, "ts": now_label(), "mode_label": mode_label(mode)}
     )
@@ -845,7 +880,6 @@ def _process_send(sess: Dict[str, Any]) -> None:
                 "stop_reason": resp.get("stop_reason") or None,
                 "prompt": prompt,
                 "mode": mode,
-                # legacy fields retained (backend may not return them now, but keeping won't break session data)
                 "response_id": resp.get("response_id"),
                 "continue_token": resp.get("continue_token"),
             }
