@@ -92,6 +92,54 @@ def _normalize_text(s: str) -> str:
 
     return s
 
+# ============================================================
+# POST-PROCESS CLEANUP (remove meta "continue" markers, stray markdown)
+# ============================================================
+
+def _postprocess_text(t: str) -> str:
+    if not t:
+        return ""
+
+    # Normalize newlines (safe)
+    t = t.replace("\r\n", "\n").replace("\r", "\n")
+
+    cleaned_lines = []
+    for ln in t.splitlines():
+        s = ln.strip()
+
+        # Drop standalone markdown marker lines
+        if s in {"**", "****", "__", "___"}:
+            continue
+
+        # Drop standalone continuation markers
+        if re.fullmatch(r"\(?(continued|to be continued)\)?\.?", s, flags=re.I):
+            continue
+        if re.fullmatch(r"\(?(continue|see more)\)?\.{0,3}", s, flags=re.I):
+            continue
+
+        # Drop parenthetical meta lines mentioning continue/see more
+        if s.startswith("(") and re.search(r"\b(continue|see more)\b", s, flags=re.I):
+            continue
+
+        # Drop instruction-like lines that tell user to continue
+        if re.search(r"\breply\b.*\bcontinue\b", s, flags=re.I):
+            continue
+        if re.search(r"\b(click|press)\b.*\bcontinue\b", s, flags=re.I):
+            continue
+
+        cleaned_lines.append(ln)
+
+    t = "\n".join(cleaned_lines)
+
+    # Collapse duplicate words that got split by a newline (e.g., "Verification\nVerification")
+    t = re.sub(r"\b(\w+)\s*\n\s*\1\b", r"\1", t)
+
+    # Reduce excessive blank lines
+    t = re.sub(r"\n{3,}", "\n\n", t)
+
+    return t.strip()
+
+
 
 # ============================================================
 # CONTEXT HELPERS
@@ -403,6 +451,8 @@ def generate_dynamic_answer_result(
 
         # ---- collapse accidental double words separated by space ----
         text = re.sub(r'\b(\w+)\s+\1\b', r'\1', text)
+
+        text = _postprocess_text(text)
 
         return {
             "answer": text,
