@@ -1,3 +1,5 @@
+print("APP VERSION: TEST_00107")
+
 import os
 import time
 import re
@@ -472,37 +474,49 @@ def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 2500) ->
 
     if ex_last_n and ch_first_n:
         if ch_first_n.startswith(ex_last_n) and len(ex_last_n) >= 12:
-            # drop that prefix from first line
-            ch = ch[len(ch_first) - len(ch_first.lstrip()):]  # keep left trim state
-            ch = ch[len(ex_last):].lstrip()
+            # drop the repeated prefix from the FIRST LINE only (preserve indentation)
+            ch_lines = ch.splitlines()
+            if ch_lines:
+                first_raw = ch_lines[0]
+                indent = first_raw[: len(first_raw) - len(first_raw.lstrip())]
+                content = first_raw.lstrip()
+
+                ex_last_clean = ex_last.strip()
+            if content.lower().startswith(ex_last_clean.lower()):
+                content = content[len(ex_last_clean):].lstrip()
+                ch_lines[0] = indent + content
+                ch = "\n".join(ch_lines).lstrip()
+
+            
         elif ex_last_n.startswith(ch_first_n) and len(ch_first_n) >= 12:
             # chunk repeats a shorter fragment; drop first line entirely
             ch_lines = ch.splitlines()
             ch = "\n".join(ch_lines[1:]).lstrip()
 
 
-    # ---------- phase 4: word-fragment stitching ----------
+ 
 
-    ex_last_line = (ex.splitlines()[-1] if ex.splitlines() else "")
+    
+    # ---------- phase 4: word-fragment stitching ----------
+    ex_lines = ex.splitlines()
+    ex_last_line = (ex_lines[-1] if ex_lines else "")
     ch_lines = ch.splitlines()
 
     if ex_last_line and ch_lines:
         first_line = ch_lines[0]
+        rest = ch_lines[1:]
 
         # Case 1: hyphenated split (retrieval-aug + mented)
         if ex_last_line.rstrip().endswith("-"):
-            ch_lines[0] = ex_last_line.rstrip() + first_line.lstrip()
-            ch = "\n".join(ch_lines).strip()
+            stitched_last = ex_last_line.rstrip() + first_line.lstrip()
+            ex = ("\n".join(ex_lines[:-1]) + "\n" + stitched_last).rstrip()
+            ch = "\n".join(rest).lstrip()
 
         # Case 2: plain word split without hyphen
-        elif (
-            ex_last_line[-1].isalnum()
-            and first_line
-            and first_line[0].isalnum()
-        ):
-            merged = ex_last_line + first_line
-            remaining = ch_lines[1:]
-            ch = ("\n".join(ex.splitlines()[:-1]) + "\n" + merged + ("\n" + "\n".join(remaining) if remaining else "")).strip()
+        elif ex_last_line[-1].isalnum() and first_line and first_line[0].isalnum():
+            stitched_last = ex_last_line + first_line
+            ex = ("\n".join(ex_lines[:-1]) + "\n" + stitched_last).rstrip()
+            ch = "\n".join(rest).lstrip()
    
 
     
@@ -515,12 +529,22 @@ def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 2500) ->
     cleaned = []
     for ln in lines:
         stripped = ln.strip()
+
+        # drop punctuation-only lines
         if stripped in {",", ".", ";"}:
             continue
-        # Remove leading ", " if previous line was merged
+
+        # remove a leading ", " but KEEP indentation
         if stripped.startswith(", "):
-            stripped = stripped[2:]
-        cleaned.append(stripped)
+            # preserve the original leading whitespace
+            indent = ln[: len(ln) - len(ln.lstrip())]
+            content = ln.lstrip()
+            if content.startswith(", "):
+                content = content[2:]
+            ln = indent + content
+
+        # IMPORTANT: keep original ln (indentation preserved)
+        cleaned.append(ln)
 
     ch = "\n".join(cleaned).lstrip()
 
@@ -739,7 +763,9 @@ def page_new_chat() -> None:
     st.info("Interrogate + Illustrate UI can be polished after My New Learning is solid.", icon="ℹ️")
 
 
+
 def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
+    # Find the message being continued
     idx = None
     for i, m in enumerate(sess["messages"]):
         if m.get("id") == msg_id:
@@ -755,13 +781,13 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
     prompt = (m.get("prompt") or "").strip()
     mode = (m.get("mode") or "deep").strip()
 
+    # If we somehow don't have prompt metadata, stop continuation for this message
     if not prompt:
         m["incomplete"] = False
         m["stop_reason"] = None
         return
 
-    # New backend continuation contract:
-    # send continue_mode + previous_answer (the current assistant text)
+    # Ask backend for continuation using the CURRENT text as context
     resp = fetch_study(
         topic=prompt,
         mode=mode,
@@ -770,15 +796,49 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
     )
 
     chunk_raw = normalize_mojibake(resp.get("answer", "") or "")
-    chunk = normalize_whitespace_for_readability(chunk_raw)
+    chunk = normalize_whitespace_for_readability(chunk_raw).strip()
 
-    if chunk.strip():
-        existing = (m.get("text") or "")
-        m["text"] = _overlap_dedupe_append(existing, chunk)
+    # If backend returned nothing, don't create a new part
+    if not chunk:
+        m["incomplete"] = False
+        m["stop_reason"] = None
+        m["ts"] = now_label()
+        return
 
-    m["incomplete"] = bool(resp.get("incomplete"))
-    m["stop_reason"] = resp.get("stop_reason") or None
+    # ---- OPTION A: append a NEW message instead of mutating the original ----
+    root_id = m.get("continued_root") or m.get("id")
+    # Count existing parts (original + any continuations)
+    parts = 1
+    for mm in sess["messages"]:
+        if mm.get("role") == "assistant" and (mm.get("continued_root") or mm.get("id")) == root_id:
+            if mm.get("continued_part"):
+                parts = max(parts, int(mm["continued_part"]))
+
+    next_part = parts + 1
+    labeled = f"**Continued (Part {next_part})**\n\n{chunk}"
+
+    # Mark the previous message as complete so ONLY the latest part shows "Continue"
+    m["incomplete"] = False
+    m["stop_reason"] = None
     m["ts"] = now_label()
+
+    # Append the new assistant chunk as a new bubble
+    sess["messages"].append(
+        {
+            "id": f"a-{int(time.time())}",
+            "role": "assistant",
+            "text": labeled,
+            "ts": now_label(),
+            "incomplete": bool(resp.get("incomplete")),
+            "stop_reason": resp.get("stop_reason") or None,
+            "prompt": prompt,
+            "mode": mode,
+            "continued_root": root_id,
+            "continued_part": next_part,
+        }
+    )
+
+
 
 
 def _mode_hint_text(mode: str) -> str:
