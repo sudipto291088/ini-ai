@@ -482,10 +482,10 @@ def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 2500) ->
                 content = first_raw.lstrip()
 
                 ex_last_clean = ex_last.strip()
-            if content.lower().startswith(ex_last_clean.lower()):
-                content = content[len(ex_last_clean):].lstrip()
-                ch_lines[0] = indent + content
-                ch = "\n".join(ch_lines).lstrip()
+                if content.lower().startswith(ex_last_clean.lower()):
+                    content = content[len(ex_last_clean):].lstrip()
+                    ch_lines[0] = indent + content
+                    ch = "\n".join(ch_lines).lstrip()
 
             
         elif ex_last_n.startswith(ch_first_n) and len(ch_first_n) >= 12:
@@ -984,6 +984,13 @@ def page_my_new_learning() -> None:
             sess["messages"].append({"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error continuing: {e}", "ts": now_label()})
         st.rerun()
 
+    # Show "Continue" only for the most recent incomplete assistant message
+    last_incomplete_id = None
+    for mm in reversed(sess.get("messages", [])):
+        if mm.get("role") == "assistant" and needs_continue_flag(mm):
+            last_incomplete_id = mm.get("id")
+            break
+
     # Render chat using Streamlit-native chat (stable)
     for msg in sess["messages"]:
         role = msg.get("role", "assistant")
@@ -997,13 +1004,21 @@ def page_my_new_learning() -> None:
                 st.markdown(f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>", unsafe_allow_html=True)
         else:
             with st.chat_message("assistant"):
+                # Divider for threaded tutor parts
+                if (msg.get("text") or "").lstrip().startswith("**Continued (Part "):
+                    st.markdown("---")
+
                 st.markdown(text)
                 st.markdown(f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>", unsafe_allow_html=True)
 
-                if needs_continue_flag(msg):
+                # Only the latest incomplete assistant message gets the Continue button
+                if needs_continue_flag(msg) and (msg.get("id") == last_incomplete_id):
                     if st.button("Continue", key=f"cont-{msg.get('id')}"):
                         st.session_state._continue_msg_id = msg.get("id")
                         st.rerun()
+
+                
+            
 
     # Clear input BEFORE widget is created (Streamlit-safe)
     if st.session_state._uib_clear_next:

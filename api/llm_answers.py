@@ -104,8 +104,17 @@ def _postprocess_text(t: str) -> str:
     t = t.replace("\r\n", "\n").replace("\r", "\n")
 
     cleaned_lines = []
+    in_fence = False
+
     for ln in t.splitlines():
         s = ln.strip()
+        s_l = ln.lstrip()
+
+        # Track fenced code blocks so we don't "fix" code inside them
+        if s_l.startswith("```"):
+            in_fence = not in_fence
+            cleaned_lines.append(ln)
+            continue
 
         # Drop standalone markdown marker lines
         if s in {"**", "****", "__", "___"}:
@@ -115,6 +124,14 @@ def _postprocess_text(t: str) -> str:
         if re.fullmatch(r"\(?(continued|to be continued)\)?\.?", s, flags=re.I):
             continue
         if re.fullmatch(r"\(?(continue|see more)\)?\.{0,3}", s, flags=re.I):
+            continue
+
+        # Drop standalone "Continue?" / "Continue:" / "Continue →" style UI-like lines
+        if re.fullmatch(
+            r"(?:\(?\s*)continue(?:\s*\)?)\s*[\?\:\.\!…→\-]{0,3}\s*",
+            s,
+            flags=re.I,
+        ):
             continue
 
         # Drop parenthetical meta lines mentioning continue/see more
@@ -127,7 +144,22 @@ def _postprocess_text(t: str) -> str:
         if re.search(r"\b(click|press)\b.*\bcontinue\b", s, flags=re.I):
             continue
 
+        # If the model outputs "python code in a single long line", wrap it.
+        # This fixes cases like: "Example: ... from math import ... def foo(...): ..."
+        if not in_fence:
+            looks_like_py = (
+                re.search(r"\bdef\s+\w+\s*\(", ln) is not None
+                or re.search(r"\bclass\s+\w+\s*[\(:]", ln) is not None
+                or re.match(r"\s*(from|import)\s+\w", ln) is not None
+            )
+            if looks_like_py and len(ln) >= 60:
+                cleaned_lines.append("```python")
+                cleaned_lines.append(ln)
+                cleaned_lines.append("```")
+                continue
+
         cleaned_lines.append(ln)
+
 
     t = "\n".join(cleaned_lines)
 
@@ -353,7 +385,14 @@ def generate_dynamic_answer_result(
         "- NEXT: include a short actionable learning plan + exercises.\n\n"
         "Continuation rule:\n"
         "- If you hit output limits, stop cleanly mid-section without concluding.\n"
-        "- Only continue when asked. Do NOT add a 'Continue' label unless you truly have more content.\n"
+        "- Only continue when asked.\n"
+        "- Do NOT output UI-control text like 'Continue', 'Continue?', '(continued)', 'to be continued', or instructions like 'click continue'.\n"
+        "- If you want to ask permission to proceed, ask naturally without the word 'continue' (e.g., 'Want me to go deeper into X?' or 'Should I give an example next?').\n"
+        "- CODE FORMATTING:\n"
+        "  - Any code (Python/SQL/etc.) MUST be in fenced blocks with triple backticks.\n"
+        "  - Never put code inline inside a sentence (no '... Example: def foo(): ...').\n"
+        "  - For one-liners, still use a fenced block if it contains 'def', 'class', 'import', or multiple statements.\n"
+        
     )
 
     if expects_json:
