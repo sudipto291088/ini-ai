@@ -61,3 +61,13 @@ def delete_session(session_id: str) -> None:
     with _conn() as c:
         c.execute("DELETE FROM learning_sessions WHERE session_id=?", (session_id,))
         c.commit()
+
+
+def cleanup_empty_sessions() -> None:
+    with _conn() as c:
+        c.execute("""
+            DELETE FROM learning_sessions
+            WHERE (title IS NULL OR title='' OR title='Learning Session')
+              AND (messages_json IS NULL OR messages_json='[]')
+        """)
+        c.commit()

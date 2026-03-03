@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 import requests
 import streamlit as st
-from storage_sqlite import init_db, save_session, list_sessions, load_session, delete_session
+from storage_sqlite import cleanup_empty_sessions, init_db, save_session, list_sessions, load_session, delete_session
 
 
 
@@ -228,6 +228,10 @@ button[kind="secondary"]{
 """
 
 init_db()
+# cleanup_empty_sessions()
+
+
+
 st.markdown(CSS, unsafe_allow_html=True)
 
 
@@ -615,21 +619,40 @@ if "_uib_send_requested" not in st.session_state:
 
 
 def ensure_learning_session() -> str:
-    if st.session_state.learning_active_id and st.session_state.learning_active_id in st.session_state.learning_sessions:
+    # 1) If we already have a valid active session in memory, keep it
+    if (
+        st.session_state.learning_active_id
+        and st.session_state.learning_active_id in st.session_state.learning_sessions
+    ):
         return st.session_state.learning_active_id
 
+    # 2) Otherwise, try to load the most recently-updated session from DB
+    rows = list_sessions(limit=1)  # [(sid,title,created,updated)]
+    if rows:
+        sid, title, created_at, updated_at = rows[0]
+        loaded = load_session(sid)
+        if loaded:
+            st.session_state.learning_active_id = sid
+            st.session_state.learning_sessions[sid] = {
+                "created": loaded.get("created") or datetime.now().strftime("%b %d.%Y"),
+                "messages": loaded.get("messages") or [],
+                "last_prompt": "",
+                "title": (loaded.get("title") or "Learning Session"),
+                "_title_set": (loaded.get("title") or "").strip() not in {"", "Learning Session", "Session", "New Session"},
+            }
+            return sid
+
+    # 3) If nothing exists yet, create a new one (ONLY once)
     sid = f"learn-{int(time.time())}"
     st.session_state.learning_sessions[sid] = {
         "created": datetime.now().strftime("%b %d.%Y"),
         "messages": [],
         "last_prompt": "",
         "title": "Learning Session",
+        "_title_set": False,
     }
     st.session_state.learning_active_id = sid
-
-    # NEW: persist immediately
     _persist_learning_session(sid, st.session_state.learning_sessions[sid])
-
     return sid
 
 
@@ -652,23 +675,37 @@ def start_new_learning_session() -> str:
 
 
 def _persist_learning_session(sid: str, sess: Dict[str, Any]) -> None:
-    # Title should be SET ONCE (first meaningful prompt), then never auto-change again
-    current_title = (sess.get("title") or "").strip()
     created = sess.get("created") or datetime.now().strftime("%b %d.%Y")
 
-    # Only set a title once, when we have the first real prompt
+    default_titles = {"", "Learning Session", "Session", "New Session"}
+
+    # Pick the FIRST user message as the session title seed (best behavior for tutors)
+    first_user_prompt = ""
+    for m in sess.get("messages", []):
+        if m.get("role") == "user":
+            t = (m.get("text") or "").strip()
+            if t:
+                first_user_prompt = t
+                break
+
+    current_title = (sess.get("title") or "").strip()
+
+    # Lock title ONLY once, when we have a real first prompt
     if not sess.get("_title_set", False):
-        first_prompt = (sess.get("last_prompt") or "").strip()
-        if (not current_title) or (current_title == "Learning Session"):
-            if first_prompt:
-                current_title = first_prompt
-                sess["title"] = current_title
-        sess["_title_set"] = True
+        if (current_title in default_titles) and first_user_prompt:
+            sess["title"] = first_user_prompt
+            sess["_title_set"] = True
+        elif current_title and (current_title not in default_titles):
+            sess["_title_set"] = True
 
-    title = (current_title or "Learning Session").strip()
-    save_session(session_id=sid, title=title, created_at=created, messages=sess.get("messages", []))
+    title_to_save = (sess.get("title") or "Learning Session").strip()
 
-
+    save_session(
+        session_id=sid,
+        title=title_to_save,
+        created_at=created,
+        messages=sess.get("messages", []),
+    )
 
 # =========================
 # API calls
@@ -728,9 +765,9 @@ if learn_sid:
         st.session_state.learning_sessions[learn_sid] = {
             "created": loaded.get("created") or datetime.now().strftime("%b %d.%Y"),
             "messages": loaded.get("messages") or [],
-            "last_prompt": (loaded.get("title") or ""),
-            "title": (loaded.get("title") or ""),
-            "_title_set": True,
+            "title": (loaded.get("title") or "Learning Session"),
+            "last_prompt": "",
+            "_title_set": (loaded.get("title") or "").strip() not in {"", "Learning Session", "Session", "New Session"},
         }
 
 
