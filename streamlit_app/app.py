@@ -1,4 +1,4 @@
-print("APP VERSION: TEST_00107")
+
 
 import os
 import time
@@ -8,6 +8,12 @@ from typing import Any, Dict, Optional
 
 import requests
 import streamlit as st
+from storage_sqlite import init_db, save_session, list_sessions, load_session, delete_session
+
+
+
+
+
 
 # Try autorefresh (for live clock). If not installed, app still runs.
 try:
@@ -220,6 +226,8 @@ button[kind="secondary"]{
 }
 </style>
 """
+
+init_db()
 st.markdown(CSS, unsafe_allow_html=True)
 
 
@@ -325,236 +333,236 @@ def _strip_duplicate_chunk_prefix(chunk: str) -> str:
 
 
 
-def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 2500) -> str:
-    """
-    Stronger append logic for Continue:
-    - Detects short + mid-line overlaps (not only long exact matches)
-    - Normalizes whitespace for overlap comparison
-    - Removes repeated headers/bullets that restart the same section
-    - Keeps formatting of the final appended text readable
-    """
-    if not existing:
-        return (chunk or "").strip()
+# def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 2500) -> str:
+#     """
+#     Stronger append logic for Continue:
+#     - Detects short + mid-line overlaps (not only long exact matches)
+#     - Normalizes whitespace for overlap comparison
+#     - Removes repeated headers/bullets that restart the same section
+#     - Keeps formatting of the final appended text readable
+#     """
+#     if not existing:
+#         return (chunk or "").strip()
 
-    if not (chunk or "").strip():
-        return existing.strip()
+#     if not (chunk or "").strip():
+#         return existing.strip()
 
-    ex = (existing or "").rstrip()
-    ch_raw = _strip_duplicate_chunk_prefix(chunk or "").lstrip()
+#     ex = (existing or "").rstrip()
+#     ch_raw = _strip_duplicate_chunk_prefix(chunk or "").lstrip()
 
-    if not ch_raw.strip():
-        return ex
+#     if not ch_raw.strip():
+#         return ex
 
-    # ---------- helpers ----------
-    def _norm(s: str) -> str:
-        # normalize for overlap matching only (do NOT return this to UI)
-        s = s.replace("\r\n", "\n").replace("\r", "\n")
-        s = s.replace("\t", " ")
-        s = re.sub(r"[ ]{2,}", " ", s)
-        s = re.sub(r"\n{3,}", "\n\n", s)
-        return s.strip()
+#     # ---------- helpers ----------
+#     def _norm(s: str) -> str:
+#         # normalize for overlap matching only (do NOT return this to UI)
+#         s = s.replace("\r\n", "\n").replace("\r", "\n")
+#         s = s.replace("\t", " ")
+#         s = re.sub(r"[ ]{2,}", " ", s)
+#         s = re.sub(r"\n{3,}", "\n\n", s)
+#         return s.strip()
 
-    def _is_header_line(line: str) -> bool:
-        t = (line or "").strip()
-        if not t:
-            return False
-        # markdown headers or "Title:" style
-        if t.startswith("#"):
-            return True
-        if t.endswith(":") and len(t) <= 80:
-            return True
-        # very short title-ish lines
-        if len(t) <= 60 and t.lower() == t and t.isalpha():
-            return True
-        return False
+#     def _is_header_line(line: str) -> bool:
+#         t = (line or "").strip()
+#         if not t:
+#             return False
+#         # markdown headers or "Title:" style
+#         if t.startswith("#"):
+#             return True
+#         if t.endswith(":") and len(t) <= 80:
+#             return True
+#         # very short title-ish lines
+#         if len(t) <= 60 and t.lower() == t and t.isalpha():
+#             return True
+#         return False
 
-    def _strip_replayed_opening_lines(ex_text: str, ch_text: str) -> str:
-        """
-        If the new chunk starts by replaying the last few lines (headers/bullets),
-        drop those opening lines from the chunk.
-        """
-        ex_lines = [ln.rstrip() for ln in ex_text.splitlines() if ln.strip()]
-        ch_lines = [ln.rstrip() for ln in ch_text.splitlines()]
+#     def _strip_replayed_opening_lines(ex_text: str, ch_text: str) -> str:
+#         """
+#         If the new chunk starts by replaying the last few lines (headers/bullets),
+#         drop those opening lines from the chunk.
+#         """
+#         ex_lines = [ln.rstrip() for ln in ex_text.splitlines() if ln.strip()]
+#         ch_lines = [ln.rstrip() for ln in ch_text.splitlines()]
 
-        # Compare against last N meaningful lines of existing
-        last = ex_lines[-12:] if len(ex_lines) >= 12 else ex_lines
+#         # Compare against last N meaningful lines of existing
+#         last = ex_lines[-12:] if len(ex_lines) >= 12 else ex_lines
 
-        # Remove leading empties first
-        while ch_lines and not ch_lines[0].strip():
-            ch_lines.pop(0)
+#         # Remove leading empties first
+#         while ch_lines and not ch_lines[0].strip():
+#             ch_lines.pop(0)
 
-        # Try removing up to 6 opening lines if they match (or are near-match) to recent lines
-        removed_any = True
-        tries = 0
-        while removed_any and ch_lines and tries < 6:
-            removed_any = False
-            first = ch_lines[0].strip()
-            if not first:
-                ch_lines.pop(0)
-                removed_any = True
-                tries += 1
-                continue
+#         # Try removing up to 6 opening lines if they match (or are near-match) to recent lines
+#         removed_any = True
+#         tries = 0
+#         while removed_any and ch_lines and tries < 6:
+#             removed_any = False
+#             first = ch_lines[0].strip()
+#             if not first:
+#                 ch_lines.pop(0)
+#                 removed_any = True
+#                 tries += 1
+#                 continue
 
-            # Exact match with any of last lines
-            if first in last:
-                ch_lines.pop(0)
-                removed_any = True
-                tries += 1
-                continue
+#             # Exact match with any of last lines
+#             if first in last:
+#                 ch_lines.pop(0)
+#                 removed_any = True
+#                 tries += 1
+#                 continue
 
-            # Header replay: chunk starts with same header-ish text
-            if _is_header_line(first):
-                for ln in last[::-1]:
-                    if _is_header_line(ln) and _norm(ln).lower() == _norm(first).lower():
-                        ch_lines.pop(0)
-                        removed_any = True
-                        tries += 1
-                        break
-                if removed_any:
-                    continue
+#             # Header replay: chunk starts with same header-ish text
+#             if _is_header_line(first):
+#                 for ln in last[::-1]:
+#                     if _is_header_line(ln) and _norm(ln).lower() == _norm(first).lower():
+#                         ch_lines.pop(0)
+#                         removed_any = True
+#                         tries += 1
+#                         break
+#                 if removed_any:
+#                     continue
 
-            # Bullet replay: "- X" vs "• X" vs "X" (same stem)
-            stem = re.sub(r"^[-*•\u2022]+\s*", "", first).strip()
-            if stem and len(stem) >= 18:
-                for ln in last[::-1]:
-                    ln_stem = re.sub(r"^[-*•\u2022]+\s*", "", ln).strip()
-                    if _norm(ln_stem).lower().startswith(_norm(stem).lower()) or _norm(stem).lower().startswith(_norm(ln_stem).lower()):
-                        ch_lines.pop(0)
-                        removed_any = True
-                        tries += 1
-                        break
+#             # Bullet replay: "- X" vs "• X" vs "X" (same stem)
+#             stem = re.sub(r"^[-*•\u2022]+\s*", "", first).strip()
+#             if stem and len(stem) >= 18:
+#                 for ln in last[::-1]:
+#                     ln_stem = re.sub(r"^[-*•\u2022]+\s*", "", ln).strip()
+#                     if _norm(ln_stem).lower().startswith(_norm(stem).lower()) or _norm(stem).lower().startswith(_norm(ln_stem).lower()):
+#                         ch_lines.pop(0)
+#                         removed_any = True
+#                         tries += 1
+#                         break
 
-        return "\n".join(ch_lines).lstrip()
+#         return "\n".join(ch_lines).lstrip()
 
-    # ---------- phase 1: strip obvious replay lines ----------
-    ch = _strip_replayed_opening_lines(ex, ch_raw)
-    if not ch.strip():
-        return ex
+#     # ---------- phase 1: strip obvious replay lines ----------
+#     ch = _strip_replayed_opening_lines(ex, ch_raw)
+#     if not ch.strip():
+#         return ex
 
-    # ---------- phase 2: overlap match (supports shorter overlaps + mid-line) ----------
-    tail = ex[-max_window:]
-    head = ch[:max_window]
+#     # ---------- phase 2: overlap match (supports shorter overlaps + mid-line) ----------
+#     tail = ex[-max_window:]
+#     head = ch[:max_window]
 
-    tail_n = _norm(tail)
-    head_n = _norm(head)
+#     tail_n = _norm(tail)
+#     head_n = _norm(head)
 
-    # Find the longest suffix(prefix) overlap on normalized strings
-    best = 0
-    max_k = min(len(tail_n), len(head_n))
+#     # Find the longest suffix(prefix) overlap on normalized strings
+#     best = 0
+#     max_k = min(len(tail_n), len(head_n))
 
-    # Allow short overlaps (mid-line splits) — start from ~40 chars
-    min_k = 40 if max_k >= 200 else 20
+#     # Allow short overlaps (mid-line splits) — start from ~40 chars
+#     min_k = 40 if max_k >= 200 else 20
 
-    # scan increasing to get best (simple + stable)
-    for k in range(min_k, max_k + 1):
-        if tail_n[-k:] == head_n[:k]:
-            best = k
+#     # scan increasing to get best (simple + stable)
+#     for k in range(min_k, max_k + 1):
+#         if tail_n[-k:] == head_n[:k]:
+#             best = k
 
-    if best > 0:
-        # Map normalized overlap back to raw by trimming head using a safer heuristic:
-        # remove the first raw characters until normalized(head_raw_prefix) reaches the overlap.
-        target = head_n[:best]
-        cut = 0
-        acc = ""
-        for i, c in enumerate(head):
-            acc = _norm(head[: i + 1])
-            if acc.startswith(target) and len(acc) >= len(target):
-                cut = i + 1
-                break
-        if cut > 0:
-            ch = ch[cut:].lstrip()
+#     if best > 0:
+#         # Map normalized overlap back to raw by trimming head using a safer heuristic:
+#         # remove the first raw characters until normalized(head_raw_prefix) reaches the overlap.
+#         target = head_n[:best]
+#         cut = 0
+#         acc = ""
+#         for i, c in enumerate(head):
+#             acc = _norm(head[: i + 1])
+#             if acc.startswith(target) and len(acc) >= len(target):
+#                 cut = i + 1
+#                 break
+#         if cut > 0:
+#             ch = ch[cut:].lstrip()
 
-    # ---------- phase 3: last-line / first-line partial overlap ----------
-    # If last line of existing is a prefix of first line of chunk (or vice versa), trim it.
-    ex_last = (ex.splitlines()[-1] if ex.splitlines() else "").rstrip()
-    ch_first = (ch.splitlines()[0] if ch.splitlines() else "").lstrip()
+#     # ---------- phase 3: last-line / first-line partial overlap ----------
+#     # If last line of existing is a prefix of first line of chunk (or vice versa), trim it.
+#     ex_last = (ex.splitlines()[-1] if ex.splitlines() else "").rstrip()
+#     ch_first = (ch.splitlines()[0] if ch.splitlines() else "").lstrip()
 
-    ex_last_n = _norm(ex_last).lower()
-    ch_first_n = _norm(ch_first).lower()
+#     ex_last_n = _norm(ex_last).lower()
+#     ch_first_n = _norm(ch_first).lower()
 
-    if ex_last_n and ch_first_n:
-        if ch_first_n.startswith(ex_last_n) and len(ex_last_n) >= 12:
-            # drop the repeated prefix from the FIRST LINE only (preserve indentation)
-            ch_lines = ch.splitlines()
-            if ch_lines:
-                first_raw = ch_lines[0]
-                indent = first_raw[: len(first_raw) - len(first_raw.lstrip())]
-                content = first_raw.lstrip()
+#     if ex_last_n and ch_first_n:
+#         if ch_first_n.startswith(ex_last_n) and len(ex_last_n) >= 12:
+#             # drop the repeated prefix from the FIRST LINE only (preserve indentation)
+#             ch_lines = ch.splitlines()
+#             if ch_lines:
+#                 first_raw = ch_lines[0]
+#                 indent = first_raw[: len(first_raw) - len(first_raw.lstrip())]
+#                 content = first_raw.lstrip()
 
-                ex_last_clean = ex_last.strip()
-                if content.lower().startswith(ex_last_clean.lower()):
-                    content = content[len(ex_last_clean):].lstrip()
-                    ch_lines[0] = indent + content
-                    ch = "\n".join(ch_lines).lstrip()
+#                 ex_last_clean = ex_last.strip()
+#                 if content.lower().startswith(ex_last_clean.lower()):
+#                     content = content[len(ex_last_clean):].lstrip()
+#                     ch_lines[0] = indent + content
+#                     ch = "\n".join(ch_lines).lstrip()
 
             
-        elif ex_last_n.startswith(ch_first_n) and len(ch_first_n) >= 12:
-            # chunk repeats a shorter fragment; drop first line entirely
-            ch_lines = ch.splitlines()
-            ch = "\n".join(ch_lines[1:]).lstrip()
+#         elif ex_last_n.startswith(ch_first_n) and len(ch_first_n) >= 12:
+#             # chunk repeats a shorter fragment; drop first line entirely
+#             ch_lines = ch.splitlines()
+#             ch = "\n".join(ch_lines[1:]).lstrip()
 
 
  
 
     
-    # ---------- phase 4: word-fragment stitching ----------
-    ex_lines = ex.splitlines()
-    ex_last_line = (ex_lines[-1] if ex_lines else "")
-    ch_lines = ch.splitlines()
+#     # ---------- phase 4: word-fragment stitching ----------
+#     ex_lines = ex.splitlines()
+#     ex_last_line = (ex_lines[-1] if ex_lines else "")
+#     ch_lines = ch.splitlines()
 
-    if ex_last_line and ch_lines:
-        first_line = ch_lines[0]
-        rest = ch_lines[1:]
+#     if ex_last_line and ch_lines:
+#         first_line = ch_lines[0]
+#         rest = ch_lines[1:]
 
-        # Case 1: hyphenated split (retrieval-aug + mented)
-        if ex_last_line.rstrip().endswith("-"):
-            stitched_last = ex_last_line.rstrip() + first_line.lstrip()
-            ex = ("\n".join(ex_lines[:-1]) + "\n" + stitched_last).rstrip()
-            ch = "\n".join(rest).lstrip()
+#         # Case 1: hyphenated split (retrieval-aug + mented)
+#         if ex_last_line.rstrip().endswith("-"):
+#             stitched_last = ex_last_line.rstrip() + first_line.lstrip()
+#             ex = ("\n".join(ex_lines[:-1]) + "\n" + stitched_last).rstrip()
+#             ch = "\n".join(rest).lstrip()
 
-        # Case 2: plain word split without hyphen
-        elif ex_last_line[-1].isalnum() and first_line and first_line[0].isalnum():
-            stitched_last = ex_last_line + first_line
-            ex = ("\n".join(ex_lines[:-1]) + "\n" + stitched_last).rstrip()
-            ch = "\n".join(rest).lstrip()
+#         # Case 2: plain word split without hyphen
+#         elif ex_last_line[-1].isalnum() and first_line and first_line[0].isalnum():
+#             stitched_last = ex_last_line + first_line
+#             ex = ("\n".join(ex_lines[:-1]) + "\n" + stitched_last).rstrip()
+#             ch = "\n".join(rest).lstrip()
    
 
     
     
     
-    # ---------- phase 5: punctuation + header cleanup ----------
-    lines = ch.splitlines()
+#     # ---------- phase 5: punctuation + header cleanup ----------
+#     lines = ch.splitlines()
 
-    # Remove lines that are just punctuation or leading comma fragments
-    cleaned = []
-    for ln in lines:
-        stripped = ln.strip()
+#     # Remove lines that are just punctuation or leading comma fragments
+#     cleaned = []
+#     for ln in lines:
+#         stripped = ln.strip()
 
-        # drop punctuation-only lines
-        if stripped in {",", ".", ";"}:
-            continue
+#         # drop punctuation-only lines
+#         if stripped in {",", ".", ";"}:
+#             continue
 
-        # remove a leading ", " but KEEP indentation
-        if stripped.startswith(", "):
-            # preserve the original leading whitespace
-            indent = ln[: len(ln) - len(ln.lstrip())]
-            content = ln.lstrip()
-            if content.startswith(", "):
-                content = content[2:]
-            ln = indent + content
+#         # remove a leading ", " but KEEP indentation
+#         if stripped.startswith(", "):
+#             # preserve the original leading whitespace
+#             indent = ln[: len(ln) - len(ln.lstrip())]
+#             content = ln.lstrip()
+#             if content.startswith(", "):
+#                 content = content[2:]
+#             ln = indent + content
 
-        # IMPORTANT: keep original ln (indentation preserved)
-        cleaned.append(ln)
+#         # IMPORTANT: keep original ln (indentation preserved)
+#         cleaned.append(ln)
 
-    ch = "\n".join(cleaned).lstrip()
+#     ch = "\n".join(cleaned).lstrip()
 
-    # Remove duplicated header variants (case-insensitive)
-    ex_tail_lines = [l.strip().lower() for l in ex.splitlines()[-8:] if l.strip()]
-    ch_lines = ch.splitlines()
-    if ch_lines:
-        first = ch_lines[0].strip().lower()
-        if any(first.startswith(t) for t in ex_tail_lines):
-            ch = "\n".join(ch_lines[1:]).lstrip()
+#     # Remove duplicated header variants (case-insensitive)
+#     ex_tail_lines = [l.strip().lower() for l in ex.splitlines()[-8:] if l.strip()]
+#     ch_lines = ch.splitlines()
+#     if ch_lines:
+#         first = ch_lines[0].strip().lower()
+#         if any(first.startswith(t) for t in ex_tail_lines):
+#             ch = "\n".join(ch_lines[1:]).lstrip()
     
     
     
@@ -564,8 +572,8 @@ def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 2500) ->
     
     
     
-    # Final join with clean spacing
-    return (ex.rstrip() + "\n\n" + ch.lstrip()).strip()
+#     # Final join with clean spacing
+#     return (ex.rstrip() + "\n\n" + ch.lstrip()).strip()
 
 # =========================
 # Session State
@@ -609,17 +617,57 @@ if "_uib_send_requested" not in st.session_state:
 def ensure_learning_session() -> str:
     if st.session_state.learning_active_id and st.session_state.learning_active_id in st.session_state.learning_sessions:
         return st.session_state.learning_active_id
+
     sid = f"learn-{int(time.time())}"
-    st.session_state.learning_sessions[sid] = {"created": datetime.now().strftime("%b %d.%Y"), "messages": [], "last_prompt": ""}
+    st.session_state.learning_sessions[sid] = {
+        "created": datetime.now().strftime("%b %d.%Y"),
+        "messages": [],
+        "last_prompt": "",
+        "title": "Learning Session",
+    }
     st.session_state.learning_active_id = sid
+
+    # NEW: persist immediately
+    _persist_learning_session(sid, st.session_state.learning_sessions[sid])
+
     return sid
 
 
 def start_new_learning_session() -> str:
     sid = f"learn-{int(time.time())}"
-    st.session_state.learning_sessions[sid] = {"created": datetime.now().strftime("%b %d.%Y"), "messages": [], "last_prompt": ""}
+    st.session_state.learning_sessions[sid] = {
+        "created": datetime.now().strftime("%b %d.%Y"),
+        "messages": [],
+        "last_prompt": "",
+        "title": "Learning Session",
+    }
     st.session_state.learning_active_id = sid
+
+    # NEW: persist immediately so it appears in sidebar even before first message
+    _persist_learning_session(sid, st.session_state.learning_sessions[sid])
+
     return sid
+
+
+
+
+def _persist_learning_session(sid: str, sess: Dict[str, Any]) -> None:
+    # Title should be SET ONCE (first meaningful prompt), then never auto-change again
+    current_title = (sess.get("title") or "").strip()
+    created = sess.get("created") or datetime.now().strftime("%b %d.%Y")
+
+    # Only set a title once, when we have the first real prompt
+    if not sess.get("_title_set", False):
+        first_prompt = (sess.get("last_prompt") or "").strip()
+        if (not current_title) or (current_title == "Learning Session"):
+            if first_prompt:
+                current_title = first_prompt
+                sess["title"] = current_title
+        sess["_title_set"] = True
+
+    title = (current_title or "Learning Session").strip()
+    save_session(session_id=sid, title=title, created_at=created, messages=sess.get("messages", []))
+
 
 
 # =========================
@@ -664,17 +712,26 @@ learn_sid = qp.get("learn_sid")
 
 param_to_page = {"chat": "New Chat", "learn": "My New Learning", "proj": "New Project"}
 
+
 if page_param in param_to_page:
     new_page = param_to_page[page_param]
-    if new_page == "My New Learning":
-        if (st.session_state._last_page_param != "learn") and (learn_sid is None):
-            start_new_learning_session()
     st.session_state.page = new_page
+
 
 st.session_state._last_page_param = page_param
 
-if learn_sid and learn_sid in st.session_state.learning_sessions:
-    st.session_state.learning_active_id = learn_sid
+
+if learn_sid:
+    loaded = load_session(learn_sid)
+    if loaded:
+        st.session_state.learning_active_id = learn_sid
+        st.session_state.learning_sessions[learn_sid] = {
+            "created": loaded.get("created") or datetime.now().strftime("%b %d.%Y"),
+            "messages": loaded.get("messages") or [],
+            "last_prompt": (loaded.get("title") or ""),
+            "title": (loaded.get("title") or ""),
+            "_title_set": True,
+        }
 
 
 # =========================
@@ -738,15 +795,27 @@ with st.sidebar:
         st.markdown("<hr/>", unsafe_allow_html=True)
         st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Learning</div>', unsafe_allow_html=True)
 
-        sessions_items = list(st.session_state.learning_sessions.items())[::-1]
-        if sessions_items:
-            for sid, sess in sessions_items:
-                label = session_title_for_sidebar(sess)
+        
+        rows = list_sessions(limit=30)  # [(sid,title,created,updated),...]
+        if rows:
+            for sid, title, created_at, updated_at in rows:
                 active = (sid == st.session_state.learning_active_id)
                 dot = "🔵" if active else "⚪"
+                label = (title or "Session").strip()
                 st.markdown(f"- {dot} [{label}](?page=learn&learn_sid={sid})")
         else:
             st.markdown('<div class="small" style="color:var(--muted);">No sessions yet.</div>', unsafe_allow_html=True)
+
+    
+        if st.button("🗑️ Delete this session"):
+            sid = st.session_state.learning_active_id
+            if sid:
+                delete_session(sid)
+                # reset local state
+                st.session_state.learning_sessions.pop(sid, None)
+                st.session_state.learning_active_id = None
+                start_new_learning_session()
+                st.rerun()
 
 
 # =========================
@@ -837,6 +906,8 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
             "continued_part": next_part,
         }
     )
+
+    _persist_learning_session(st.session_state.learning_active_id, sess)
 
 
 
@@ -948,6 +1019,7 @@ def _process_send(sess: Dict[str, Any]) -> None:
         sess["messages"].append({"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error calling API: {e}", "ts": now_label()})
 
     st.session_state._uib_clear_next = True
+    _persist_learning_session(st.session_state.learning_active_id, sess)
     st.rerun()
 
 
