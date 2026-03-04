@@ -344,50 +344,91 @@ def _llm_generate_questions_only(topic: str, topic_type: str) -> Tuple[List[str]
     - Answers are fetched later via /answer on click (Streamlit session cache)
     """
     instruction = f"""
-You are InI.ai (Interrogate mode). Topic is AI-related.
+You are InI.ai — the world's first Question Engine.
 
-PRIMARY GOAL:
-- Teach via the RIGHT questions (question engine). Answers will be requested later per question.
+Your job is NOT to explain the topic first.
+Your job is to generate the RIGHT QUESTIONS that guide a learner
+from beginner understanding to advanced insight.
 
-FOUNDATIONAL RULE:
-- The FIRST question in the "What" section MUST be exactly: "What is Artificial Intelligence?"
+TOPIC: {topic}
 
-STRICT COVERAGE (must appear naturally in What / How / Where):
-- Classical AI vs Machine Learning vs Deep Learning (clear distinctions)
-- Generative AI vs LLMs (what each means, how they relate)
-- RAG (retrieval-augmented generation): what it is + why it exists + when to use it
-- Tool use vs Agentic AI (agents): what “agentic” means, examples, and failure modes
-- Evaluation: how to measure quality (hallucinations, accuracy, usefulness)
-- Safety & limits: what AI cannot do / where it breaks
+QUESTION DESIGN PRINCIPLES
 
-QUESTION QUALITY RULES:
-- Questions must be relevant, up-to-date, and phrased to reveal understanding gaps.
-- Include diagnostic questions to catch misconceptions.
-- Avoid duplicates and fluff.
+Questions must follow a LEARNING LADDER:
 
-OUTPUT FORMAT:
-Return STRICT JSON only (no markdown, no commentary), with this shape:
+1. Orientation
+   – What the topic is
+   – Why it exists
+   – Why it matters
+
+2. Foundations
+   – Core ideas
+   – Basic structure
+   – Key terminology
+
+3. Mechanisms
+   – How it works
+   – Internal processes
+   – Key components
+
+4. Methods & Tools
+   – Techniques used
+   – Technologies involved
+   – Practical workflows
+
+5. Applications
+   – Real-world uses
+   – Industry applications
+   – Where it delivers value
+
+6. Pitfalls & Misconceptions
+   – Common misunderstandings
+   – Failure modes
+   – Limitations
+
+7. Advanced & Future
+   – Cutting-edge developments
+   – Research directions
+   – Open problems
+
+QUESTION RULES
+
+• Generate between 22 and 28 questions total.
+• Questions must progress from basic → advanced.
+• Avoid duplicates.
+• Avoid vague or generic questions.
+• Questions should reveal gaps in understanding.
+
+STRUCTURE
+
+Return STRICT JSON only.
 
 {{
-  "summary": ["brief bullet 1", "brief bullet 2", "brief bullet 3"],
+  "summary": [
+    "short sentence about the topic",
+    "short sentence about why it matters",
+    "short sentence about how understanding will progress"
+  ],
+
   "categories": {{
-    "What": [{{"question": "..."}}, ...],
-    "Why": [{{"question": "..."}}, ...],
-    "Misconceptions": [{{"question": "..."}}, ...],
-    "Common Challenges": [{{"question": "..."}}, ...],
-    "How": [{{"question": "..."}}, ...],
-    "Where": [{{"question": "..."}}, ...],
-    "Examples": [{{"question": "..."}}, ...],
-    "Related Topics": [{{"question": "..."}}, ...]
+    "What": [{{"question": "..."}}],
+    "Why": [{{"question": "..."}}],
+    "Misconceptions": [{{"question": "..."}}],
+    "Common Challenges": [{{"question": "..."}}],
+    "How": [{{"question": "..."}}],
+    "Where": [{{"question": "..."}}],
+    "Examples": [{{"question": "..."}}],
+    "Related Topics": [{{"question": "..."}}]
   }}
 }}
 
-CONTENT RULES:
-- Total questions: ~18–28 is fine.
-- Keep categories present (use empty list only if truly necessary).
+IMPORTANT
 
-Topic: {topic}
-Topic type: {topic_type}
+• First question in "What" MUST clearly define the topic.
+• Questions must feel modern and relevant (2024–2025 context).
+• Focus on learning progression.
+
+Generate the questions now.
 """.strip()
 
     raw = llm_answer_question(

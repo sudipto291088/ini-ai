@@ -11,7 +11,7 @@ import streamlit as st
 from storage_sqlite import cleanup_empty_sessions, init_db, save_session, list_sessions, load_session, delete_session
 
 
-
+st.write("RUNNING FILE:", __file__)
 
 
 
@@ -49,6 +49,14 @@ CSS = """
   --litOver:#e0e7ff;
   --litQuiz:#ede9fe;
 }
+
+@import url("https://fonts.googleapis.com/icon?family=Material+Icons");
+.material-icons, [class*="material-icons"]{
+  font-family: "Material Icons" !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+}
+
 
 html, body, [class*="css"]{
   font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
@@ -223,6 +231,29 @@ button[kind="secondary"]{
   .ini_uib_capsule [data-testid="column"]:nth-child(4){
     flex: 0 0 auto !important;
   }
+}
+
+/* --- Fix Streamlit expander arrows showing as text --- */
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200");
+@import url("https://fonts.googleapis.com/icon?family=Material+Icons");
+
+/* Streamlit uses Material Symbols in many builds */
+.material-symbols-rounded,
+.material-symbols-outlined,
+.material-symbols-sharp {
+  font-family: "Material Symbols Rounded" !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  display: inline-block !important;
+  white-space: nowrap !important;
+  direction: ltr !important;
+}
+
+/* Some components still use Material Icons */
+.material-icons, [class*="material-icons"] {
+  font-family: "Material Icons" !important;
 }
 </style>
 """
@@ -740,6 +771,10 @@ def fetch_study(
     return post_json("/study/ai", payload, timeout=180)
 
 
+def fetch_interrogate(topic: str) -> Dict[str, Any]:
+    return post_json("/interrogate", {"topic": topic}, timeout=120)
+
+
 # =========================
 # URL / Query routing
 # =========================
@@ -860,13 +895,44 @@ with st.sidebar:
 # =========================
 def page_new_chat() -> None:
     st.markdown('<div class="bigtitle">New Chat</div>', unsafe_allow_html=True)
-    st.session_state.chat["topic"] = st.text_input(
+    st.caption("InI Question Engine (v0): Interrogate generates a progressive question ladder. Answers will be on-click in the next step.")
+
+    topic = st.text_input(
         "Topic",
         value=st.session_state.chat.get("topic", ""),
-        placeholder="Interrogate / Illustrate topic...",
+        placeholder="Type a topic (e.g., Artificial Intelligence, Data Science)...",
         key="chat_topic_input",
     )
-    st.info("Interrogate + Illustrate UI can be polished after My New Learning is solid.", icon="ℹ️")
+    st.session_state.chat["topic"] = topic
+
+    colA, colB = st.columns([1, 5])
+    with colA:
+        run = st.button("Interrogate")
+    with colB:
+        st.caption("Tip: backend must be running (FastAPI).")
+
+    if run and topic.strip():
+        try:
+            data = fetch_interrogate(topic.strip())
+            st.session_state.chat["interrogate"] = data
+        except Exception as e:
+            st.error(f"Error calling /interrogate: {e}")
+
+    data = st.session_state.chat.get("interrogate")
+    if isinstance(data, dict) and data.get("categories"):
+        st.markdown("### Question Map")
+        st.caption("Orientation → Foundations → Mechanisms → Methods/Tools → Applications → Pitfalls → Advanced/Future")
+
+        # Show questions grouped by category (for now)
+        cats = data.get("categories") or {}
+        for cat, items in cats.items():
+            if not items:
+                continue
+            with st.expander(cat, expanded=(cat in {"What", "Why"})):
+                for it in items:
+                    q = it.get("question", "").strip()
+                    if q:
+                        st.markdown(f"- {q}")
 
 
 
