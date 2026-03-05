@@ -11,7 +11,7 @@ import streamlit as st
 from storage_sqlite import cleanup_empty_sessions, init_db, save_session, list_sessions, load_session, delete_session
 
 
-st.write("RUNNING FILE:", __file__)
+
 
 
 
@@ -58,11 +58,11 @@ CSS = """
 }
 
 
-html, body, [class*="css"]{
+html, body{
   font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
   color: var(--ink);
 }
-button, input, textarea, select, label, p, div, span{
+button, input, textarea, select, label, p{
   font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
 }
 
@@ -255,6 +255,50 @@ button[kind="secondary"]{
 .material-icons, [class*="material-icons"] {
   font-family: "Material Icons" !important;
 }
+
+
+/* Force icon fonts for Streamlit chevrons/arrows */
+span[class*="material-symbols"], i[class*="material-icons"]{
+  font-family: "Material Symbols Rounded","Material Icons" !important;
+}
+
+
+/* --- Permanent fix: remove Material Icons text and use our own arrows --- */
+
+/* Hide the Material Icons text inside expanders */
+.stExpander summary span.material-icons,
+.stExpander summary span.material-symbols-rounded,
+.stExpander summary span.material-symbols-outlined,
+.stExpander summary span.material-symbols-sharp {
+  display: none !important;
+}
+
+
+/* Hide any icon-text spans Streamlit uses in expander summary */
+.stExpander summary span {
+  font-family: inherit;
+}
+.stExpander summary span.material-icons,
+.stExpander summary span[class*="material"],
+.stExpander summary i[class*="material"]{
+  display: none !important;
+}
+
+
+/* Add our own arrow */
+.stExpander summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* When expanded, show down arrow */
+.stExpander details[open] > summary::before {
+  content: "▾";
+}
+
 </style>
 """
 
@@ -895,7 +939,10 @@ with st.sidebar:
 # =========================
 def page_new_chat() -> None:
     st.markdown('<div class="bigtitle">New Chat</div>', unsafe_allow_html=True)
-    st.caption("InI Question Engine (v0): Interrogate generates a progressive question ladder. Answers will be on-click in the next step.")
+    st.caption(
+        "InI Question Engine (v0): Interrogate generates a progressive question ladder. "
+        "Answers will be on-click in the next step."
+    )
 
     topic = st.text_input(
         "Topic",
@@ -923,16 +970,34 @@ def page_new_chat() -> None:
         st.markdown("### Question Map")
         st.caption("Orientation → Foundations → Mechanisms → Methods/Tools → Applications → Pitfalls → Advanced/Future")
 
-        # Show questions grouped by category (for now)
         cats = data.get("categories") or {}
-        for cat, items in cats.items():
-            if not items:
-                continue
-            with st.expander(cat, expanded=(cat in {"What", "Why"})):
+
+        # Learning Ladder (maps your existing categories into an Intro→Advanced path)
+        ladder = [
+            ("Orientation", ["What", "Why"]),
+            ("Mechanisms", ["How"]),
+            ("Applications", ["Where", "Examples"]),
+            ("Pitfalls", ["Misconceptions", "Common Challenges"]),
+            ("Advanced / Future", ["Related Topics"]),
+        ]
+
+        # Build and show ladder sections
+        for section, cat_keys in ladder:
+            qs: List[str] = []
+
+            for ck in cat_keys:
+                items = cats.get(ck) or []
                 for it in items:
-                    q = it.get("question", "").strip()
-                    if q:
-                        st.markdown(f"- {q}")
+                    q = (it.get("question") or "").strip()
+                    if q and q not in qs:
+                        qs.append(q)
+
+            if not qs:
+                continue
+
+            with st.expander(section, expanded=(section in {"Orientation", "Foundations"})):
+                for q in qs:
+                    st.markdown(f"- {q}")
 
 
 
