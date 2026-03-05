@@ -62,7 +62,7 @@ html, body{
   font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
   color: var(--ink);
 }
-button, input, textarea, select, label, p{
+button, input, textarea, select, label, p, div{
   font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
 }
 
@@ -298,6 +298,16 @@ span[class*="material-symbols"], i[class*="material-icons"]{
 .stExpander details[open] > summary::before {
   content: "▾";
 }
+
+/* Hide ONLY the icon span, not the expander label text */
+.stExpander summary span.material-icons,
+.stExpander summary span[class*="material-symbols"],
+.stExpander summary i[class*="material-icons"]{
+  display: none !important;
+}
+
+.material-icons{ font-family: "Material Icons" !important; }
+[class*="material-symbols"]{ font-family: "Material Symbols Rounded" !important; }
 
 </style>
 """
@@ -971,6 +981,7 @@ def page_new_chat() -> None:
         st.caption("Orientation → Foundations → Mechanisms → Methods/Tools → Applications → Pitfalls → Advanced/Future")
 
         cats = data.get("categories") or {}
+        st.write("cats keys:", list(cats.keys()))
 
         # Learning Ladder (maps your existing categories into an Intro→Advanced path)
         ladder = [
