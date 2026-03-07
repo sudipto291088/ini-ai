@@ -978,12 +978,10 @@ def page_new_chat() -> None:
     data = st.session_state.chat.get("interrogate")
     if isinstance(data, dict) and data.get("categories"):
         st.markdown("### Question Map")
-        st.caption("Orientation → Foundations → Mechanisms → Methods/Tools → Applications → Pitfalls → Advanced/Future")
+        st.caption("Orientation → Mechanisms → Applications → Pitfalls → Advanced/Future")
 
         cats = data.get("categories") or {}
-        st.write("cats keys:", list(cats.keys()))
 
-        # Learning Ladder (maps your existing categories into an Intro→Advanced path)
         ladder = [
             ("Orientation", ["What", "Why"]),
             ("Mechanisms", ["How"]),
@@ -992,9 +990,8 @@ def page_new_chat() -> None:
             ("Advanced / Future", ["Related Topics"]),
         ]
 
-        # Build and show ladder sections
         for section, cat_keys in ladder:
-            qs: List[str] = []
+            qs = []
 
             for ck in cat_keys:
                 items = cats.get(ck) or []
@@ -1006,7 +1003,13 @@ def page_new_chat() -> None:
             if not qs:
                 continue
 
-            with st.expander(section, expanded=(section in {"Orientation", "Foundations"})):
+            open_section = st.toggle(
+                section,
+                value=(section == "Orientation"),
+                key=f"sec_{section}"
+            )
+
+            if open_section:
                 for q in qs:
                     st.markdown(f"- {q}")
 
