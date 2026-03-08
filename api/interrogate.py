@@ -425,6 +425,21 @@ Return STRICT JSON only.
 
 IMPORTANT
 
+• You MUST return EXACTLY these category keys and no others:
+  - What
+  - Why
+  - Misconceptions
+  - Common Challenges
+  - How
+  - Where
+  - Examples
+  - Related Topics
+
+• Do NOT rename categories.
+• Do NOT add extra categories.
+• Do NOT omit categories. If a category has fewer questions, return an empty list.
+• The JSON schema must match exactly.
+
 • First question in "What" MUST clearly define the topic.
 • Questions must feel modern and relevant (2024–2025 context).
 • Focus on learning progression.
@@ -464,6 +479,9 @@ Generate the questions now.
 
     summary = data.get("summary") if isinstance(data.get("summary"), list) else []
     cats = data.get("categories") if isinstance(data.get("categories"), dict) else {}
+    
+    # Force exact category schema so UI always stays stable
+    cats = {key: cats.get(key, []) for key in CATEGORY_ORDER}
 
     categories_out: Dict[str, List[Dict[str, Any]]] = {}
     global_count = 0
