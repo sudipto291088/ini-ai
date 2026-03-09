@@ -1011,7 +1011,18 @@ def page_new_chat() -> None:
 
             if open_section:
                 for q in qs:
-                    st.markdown(f"- {q}")
+                    if st.button(q, key=f"q_{section}_{q}"):
+                        try:
+                            resp = fetch_study(q, mode="deep")
+                            answer = normalize_whitespace_for_readability(
+                    normalize_mojibake(resp.get("answer", "") or "")
+                )
+
+                            st.markdown("#### Answer")
+                            st.markdown(answer)
+
+                        except Exception as e:
+                            st.error(f"Error calling /study/ai: {e}")
 
 
 
