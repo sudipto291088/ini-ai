@@ -951,8 +951,20 @@ def page_new_chat() -> None:
     st.markdown('<div class="bigtitle">New Chat</div>', unsafe_allow_html=True)
     st.caption(
         "InI Question Engine (v0): Interrogate generates a progressive question ladder. "
-        "Answers will be on-click in the next step."
+        "Click a question to open or hide its answer."
     )
+
+    # -------------------------
+    # State for persistent Q&A
+    # -------------------------
+    if "chat_answers" not in st.session_state:
+        st.session_state.chat_answers = {}   # q -> answer text
+    if "chat_open_questions" not in st.session_state:
+        st.session_state.chat_open_questions = set()   # visible answers
+    if "chat_visited_questions" not in st.session_state:
+        st.session_state.chat_visited_questions = set()   # ever clicked
+    if "chat_intro" not in st.session_state:
+        st.session_state.chat_intro = ""
 
     topic = st.text_input(
         "Topic",
@@ -962,21 +974,49 @@ def page_new_chat() -> None:
     )
     st.session_state.chat["topic"] = topic
 
-    colA, colB = st.columns([1, 5])
+    colA, colB, colC = st.columns([1, 2, 5])
+
     with colA:
         run = st.button("Interrogate")
+
     with colB:
+        hide_all = st.button("Hide All Answers")
+
+    with colC:
         st.caption("Tip: backend must be running (FastAPI).")
+
+    if hide_all:
+        st.session_state.chat_open_questions = set()
+        st.rerun()
 
     if run and topic.strip():
         try:
             data = fetch_interrogate(topic.strip())
             st.session_state.chat["interrogate"] = data
+
+            # --- Generate intro paragraph ---
+            intro_resp = fetch_study(topic.strip(), mode="high")
+            intro = normalize_whitespace_for_readability(
+            normalize_mojibake(intro_resp.get("answer", "") or "")
+        )
+
+            st.session_state.chat_intro = intro
+
+            # Reset topic state
+            st.session_state.chat_answers = {}
+            st.session_state.chat_open_questions = set()
+            st.session_state.chat_visited_questions = set()
+
         except Exception as e:
             st.error(f"Error calling /interrogate: {e}")
 
     data = st.session_state.chat.get("interrogate")
     if isinstance(data, dict) and data.get("categories"):
+        intro = st.session_state.chat_intro
+        if intro:
+            st.markdown("### Introduction")
+            st.markdown(intro)
+
         st.markdown("### Question Map")
         st.caption("Orientation → Mechanisms → Applications → Pitfalls → Advanced/Future")
 
@@ -1011,19 +1051,51 @@ def page_new_chat() -> None:
 
             if open_section:
                 for q in qs:
-                    if st.button(q, key=f"q_{section}_{q}"):
+                    visited = q in st.session_state.chat_visited_questions
+                    is_open = q in st.session_state.chat_open_questions
+
+                    if visited:
+                        button_label = f"✓ {q}"
+                        btn_type = "secondary"
+                    else:
+                        button_label = q
+                        btn_type = "primary"
+
+                    if st.button(button_label, key=f"q_{section}_{q}", type=btn_type):
+                        # Mark as visited forever
+                        st.session_state.chat_visited_questions.add(q)
+
+                        # Toggle closed if already open
+                        if is_open:
+                            st.session_state.chat_open_questions.discard(q)
+                            st.rerun()
+
+                        # Open if cached already
+                        if q in st.session_state.chat_answers:
+                            st.session_state.chat_open_questions.add(q)
+                            st.rerun()
+
+                        # Otherwise fetch answer, cache it, and open it
                         try:
                             resp = fetch_study(q, mode="deep")
                             answer = normalize_whitespace_for_readability(
-                    normalize_mojibake(resp.get("answer", "") or "")
-                )
+                                normalize_mojibake(resp.get("answer", "") or "")
+                            ) or "No answer generated."
 
-                            st.markdown("#### Answer")
-                            st.markdown(answer)
+                            st.session_state.chat_answers[q] = answer
+                            st.session_state.chat_open_questions.add(q)
+                            st.rerun()
 
                         except Exception as e:
                             st.error(f"Error calling /study/ai: {e}")
 
+                    # Persistently show answer if open
+                    if q in st.session_state.chat_open_questions:
+                        answer = st.session_state.chat_answers.get(q, "").strip()
+                        if answer:
+                            st.markdown("#### Answer")
+                            st.markdown(answer)
+                            st.markdown("---")
 
 
 def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
