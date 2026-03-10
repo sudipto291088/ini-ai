@@ -837,7 +837,43 @@ def fetch_study(
 
 def fetch_interrogate(topic: str) -> Dict[str, Any]:
     return post_json("/interrogate", {"topic": topic}, timeout=120)
+    
 
+def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dict[str, Any]:
+    """
+    Fetches a study answer and automatically continues if the backend marks it incomplete.
+    Mirrors the continuation pattern already used in My New Learning.
+    """
+    resp = fetch_study(topic, mode=mode)
+    answer = normalize_whitespace_for_readability(
+        normalize_mojibake(resp.get("answer", "") or "")
+    )
+
+    rounds = 0
+    while rounds < max_rounds and (
+        resp.get("incomplete") is True or (resp.get("stop_reason") or "").strip().lower() == "max_output_tokens"
+    ):
+        resp = fetch_study(
+            topic,
+            mode=mode,
+            continue_mode=True,
+            previous_answer=answer,
+        )
+        chunk = normalize_whitespace_for_readability(
+            normalize_mojibake(resp.get("answer", "") or "")
+        ).strip()
+
+        if not chunk:
+            break
+
+        answer = (answer.rstrip() + "\n\n" + chunk).strip()
+        rounds += 1
+
+    return {
+        "answer": answer,
+        "incomplete": resp.get("incomplete"),
+        "stop_reason": resp.get("stop_reason"),
+    }
 
 # =========================
 # URL / Query routing
@@ -1002,9 +1038,7 @@ def page_new_chat() -> None:
     with colB:
         st.caption("Tip: backend must be running (FastAPI).")
 
-    if hide_all:
-        st.session_state.chat_open_questions = set()
-        st.rerun()
+   
 
     if run and topic.strip():
         try:
@@ -1012,10 +1046,9 @@ def page_new_chat() -> None:
             st.session_state.chat["interrogate"] = data
 
             # --- Generate intro paragraph ---
-            intro_resp = fetch_study(topic.strip(), mode="high")
-            intro = normalize_whitespace_for_readability(
-            normalize_mojibake(intro_resp.get("answer", "") or "")
-        )
+            intro_resp = fetch_study_full(topic.strip(), mode="high")
+            intro = intro_resp.get("answer", "").strip()
+        
 
             st.session_state.chat_intro = intro
 
@@ -1039,6 +1072,9 @@ def page_new_chat() -> None:
 
         
         hide_all = st.button("Hide All Answers", key="hide_all_answers_newchat")
+        if hide_all:
+            st.session_state.chat_open_questions = set()
+            st.rerun()
        
 
         cats = data.get("categories") or {}
@@ -1096,10 +1132,9 @@ def page_new_chat() -> None:
 
                         # Otherwise fetch answer, cache it, and open it
                         try:
-                            resp = fetch_study(q, mode="deep")
-                            answer = normalize_whitespace_for_readability(
-                                normalize_mojibake(resp.get("answer", "") or "")
-                            ) or "No answer generated."
+                            resp = fetch_study_full(q, mode="deep")
+                            answer = (resp.get("answer") or "").strip() or "No answer generated."
+                            
 
                             st.session_state.chat_answers[q] = answer
                             st.session_state.chat_open_questions.add(q)
