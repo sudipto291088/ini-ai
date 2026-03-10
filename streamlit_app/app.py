@@ -309,6 +309,16 @@ span[class*="material-symbols"], i[class*="material-icons"]{
 .material-icons{ font-family: "Material Icons" !important; }
 [class*="material-symbols"]{ font-family: "Material Symbols Rounded" !important; }
 
+/* New Chat question buttons: plain white and left-aligned */
+div.stButton > button {
+  text-align: left !important;
+  justify-content: flex-start !important;
+  white-space: normal !important;
+  height: auto !important;
+  line-height: 1.45 !important;
+  padding: 0.7rem 0.9rem !important;
+}
+
 </style>
 """
 
@@ -917,6 +927,16 @@ with st.sidebar:
         with st.expander("API Settings (dev)", expanded=False):
             st.session_state.api_base = st.text_input("API base", st.session_state.api_base)
 
+    if st.session_state.page == "New Chat":
+        st.markdown("<hr/>", unsafe_allow_html=True)
+        st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Chat</div>', unsafe_allow_html=True)
+
+        current_topic = (st.session_state.chat.get("topic") or "").strip()
+        if current_topic:
+            st.markdown(f"- 💬 {current_topic}")
+        else:
+            st.markdown('<div class="small" style="color:var(--muted);">No chat yet.</div>', unsafe_allow_html=True)
+
     if st.session_state.page == "My New Learning":
         st.markdown("<hr/>", unsafe_allow_html=True)
         st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Learning</div>', unsafe_allow_html=True)
@@ -974,15 +994,12 @@ def page_new_chat() -> None:
     )
     st.session_state.chat["topic"] = topic
 
-    colA, colB, colC = st.columns([1, 2, 5])
+    colA, colB = st.columns([1, 5])
 
     with colA:
         run = st.button("Interrogate")
 
     with colB:
-        hide_all = st.button("Hide All Answers")
-
-    with colC:
         st.caption("Tip: backend must be running (FastAPI).")
 
     if hide_all:
@@ -1020,6 +1037,10 @@ def page_new_chat() -> None:
         st.markdown("### Question Map")
         st.caption("Orientation → Mechanisms → Applications → Pitfalls → Advanced/Future")
 
+        
+        hide_all = st.button("Hide All Answers", key="hide_all_answers_newchat")
+       
+
         cats = data.get("categories") or {}
 
         ladder = [
@@ -1056,12 +1077,10 @@ def page_new_chat() -> None:
 
                     if visited:
                         button_label = f"✓ {q}"
-                        btn_type = "secondary"
                     else:
                         button_label = q
-                        btn_type = "primary"
 
-                    if st.button(button_label, key=f"q_{section}_{q}", type=btn_type):
+                    if st.button(button_label, key=f"q_{section}_{q}", type="secondary"):
                         # Mark as visited forever
                         st.session_state.chat_visited_questions.add(q)
 
