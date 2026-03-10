@@ -588,7 +588,14 @@ def interrogate(text: str) -> Dict[str, Any]:
     use_llm = _llm_is_enabled() and _is_llm_topic(clean_topic) and (llm_answer_question is not None)
 
     if use_llm:
-        summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
+        summary, llm_categories = [], {}
+
+        for _ in range(3):
+            summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
+            if llm_categories and any(llm_categories.get(c) for c in llm_categories):
+                break        
+
+
         if llm_categories:
             return {
                 "topic": clean_topic,
