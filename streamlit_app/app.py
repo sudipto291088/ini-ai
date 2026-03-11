@@ -5,6 +5,9 @@ import time
 import re
 from datetime import datetime
 from typing import Any, Dict, Optional
+from urllib.parse import quote
+
+
 
 import requests
 import streamlit as st
@@ -873,7 +876,15 @@ def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dic
         "answer": answer,
         "incomplete": resp.get("incomplete"),
         "stop_reason": resp.get("stop_reason"),
+        "followups": resp.get("followups") or [],
     }
+
+
+def fuq_href(page: str, question: str) -> str:
+    q = quote(question, safe="")
+    if page == "learn":
+        return f"?page=learn&learn_q={q}"
+    return f"?page=chat&chat_q={q}"
 
 # =========================
 # URL / Query routing
@@ -881,6 +892,9 @@ def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dic
 qp = st.query_params
 page_param = (qp.get("page") or "chat").lower()
 learn_sid = qp.get("learn_sid")
+chat_q = (qp.get("chat_q") or "").strip()
+learn_q = (qp.get("learn_q") or "").strip()
+
 
 param_to_page = {"chat": "New Chat", "learn": "My New Learning", "proj": "New Project"}
 
@@ -1021,7 +1035,14 @@ def page_new_chat() -> None:
         st.session_state.chat_visited_questions = set()   # ever clicked
     if "chat_intro" not in st.session_state:
         st.session_state.chat_intro = ""
+    if "chat_followups" not in st.session_state:
+        st.session_state.chat_followups = {}   # q -> list[str]
+    if "chat_seed_done" not in st.session_state:
+        st.session_state.chat_seed_done = ""
 
+    
+    
+    
     topic = st.text_input(
         "Topic",
         value=st.session_state.chat.get("topic", ""),
@@ -1029,6 +1050,30 @@ def page_new_chat() -> None:
         key="chat_topic_input",
     )
     st.session_state.chat["topic"] = topic
+
+
+    # Auto-run FUQ opened in a new tab for New Chat
+    if chat_q and st.session_state.chat_seed_done != chat_q:
+        st.session_state.chat["topic"] = chat_q
+        topic = chat_q
+        try:
+            data = fetch_interrogate(chat_q)
+            st.session_state.chat["interrogate"] = data
+
+            intro_resp = fetch_study_full(chat_q, mode="high")
+            st.session_state.chat_intro = (intro_resp.get("answer") or "").strip()
+
+            st.session_state.chat_answers = {}
+            st.session_state.chat_followups = {}
+            st.session_state.chat_open_questions = set()
+            st.session_state.chat_visited_questions = set()
+            st.session_state.chat_seed_done = chat_q
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error auto-running chat FUQ: {e}")
+
+
+
 
     colA, colB = st.columns([1, 5])
 
@@ -1134,11 +1179,13 @@ def page_new_chat() -> None:
                         try:
                             resp = fetch_study_full(q, mode="deep")
                             answer = (resp.get("answer") or "").strip() or "No answer generated."
-                            
+                            followups = resp.get("followups") or []
 
                             st.session_state.chat_answers[q] = answer
+                            st.session_state.chat_followups[q] = followups
                             st.session_state.chat_open_questions.add(q)
                             st.rerun()
+                            
 
                         except Exception as e:
                             st.error(f"Error calling /study/ai: {e}")
@@ -1149,7 +1196,19 @@ def page_new_chat() -> None:
                         if answer:
                             st.markdown("#### Answer")
                             st.markdown(answer)
+
+                            followups = st.session_state.chat_followups.get(q, [])
+                            if followups:
+                                st.markdown("#### Suggested follow-ups")
+                                for fu in followups:
+                                    href = fuq_href("chat", fu)
+                                    st.markdown(
+                                        f'<a href="{href}" target="_blank" style="text-decoration:none;">• {fu}</a>',
+                                        unsafe_allow_html=True,
+                                    )
+
                             st.markdown("---")
+                    
 
 
 def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
@@ -1211,20 +1270,22 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
     m["ts"] = now_label()
 
     # Append the new assistant chunk as a new bubble
+    followups = resp.get("followups") or []
     sess["messages"].append(
-        {
-            "id": f"a-{int(time.time())}",
-            "role": "assistant",
-            "text": labeled,
-            "ts": now_label(),
-            "incomplete": bool(resp.get("incomplete")),
-            "stop_reason": resp.get("stop_reason") or None,
-            "prompt": prompt,
-            "mode": mode,
-            "continued_root": root_id,
-            "continued_part": next_part,
-        }
-    )
+            {
+                "id": f"a-{int(time.time())}",
+                "role": "assistant",
+                "text": answer,
+                "ts": now_label(),
+                "incomplete": bool(resp.get("incomplete")),
+                "stop_reason": resp.get("stop_reason") or None,
+                "prompt": prompt,
+                "mode": mode,
+                "response_id": resp.get("response_id"),
+                "continue_token": resp.get("continue_token"),
+                "followups": followups,
+            }
+        )
 
     _persist_learning_session(st.session_state.learning_active_id, sess)
 
@@ -1365,6 +1426,39 @@ def page_my_new_learning() -> None:
     sid = ensure_learning_session()
     sess = st.session_state.learning_sessions[sid]
 
+    if "learn_seed_done" not in st.session_state:
+        st.session_state.learn_seed_done = ""
+
+    # Auto-run FUQ opened in a new tab for My New Learning
+    if learn_q and st.session_state.learn_seed_done != learn_q:
+        try:
+            sess["messages"].append(
+                {"id": f"u-{int(time.time())}", "role": "user", "text": learn_q, "ts": now_label(), "mode_label": "Deep"}
+            )
+
+            resp = fetch_study_full(learn_q, mode="deep")
+            answer = (resp.get("answer") or "").strip() or "No answer generated."
+            followups = resp.get("followups") or []
+
+            sess["messages"].append(
+                {
+                    "id": f"a-{int(time.time())}",
+                    "role": "assistant",
+                    "text": answer,
+                    "ts": now_label(),
+                    "followups": followups,
+                }
+            )
+
+            sess["last_prompt"] = learn_q
+            _persist_learning_session(st.session_state.learning_active_id, sess)
+            st.session_state.learn_seed_done = learn_q
+            st.rerun()
+        except Exception as e:
+            sess["messages"].append(
+                {"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error auto-running learning FUQ: {e}", "ts": now_label()}
+            )
+
     # Handle Continue
     if st.session_state._continue_msg_id:
         msg_id = st.session_state._continue_msg_id
@@ -1401,6 +1495,16 @@ def page_my_new_learning() -> None:
 
                 st.markdown(text)
                 st.markdown(f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>", unsafe_allow_html=True)
+
+                followups = msg.get("followups") or []
+                if followups:
+                    st.markdown("#### Suggested follow-ups")
+                    for fu in followups:
+                        href = fuq_href("learn", fu)
+                        st.markdown(
+                            f'<a href="{href}" target="_blank" style="text-decoration:none;">• {fu}</a>',
+                            unsafe_allow_html=True,
+                        )
 
                 # Only the latest incomplete assistant message gets the Continue button
                 if needs_continue_flag(msg) and (msg.get("id") == last_incomplete_id):
