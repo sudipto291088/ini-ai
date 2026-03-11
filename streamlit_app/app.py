@@ -886,6 +886,44 @@ def fuq_href(page: str, question: str) -> str:
         return f"?page=learn&learn_q={q}"
     return f"?page=chat&chat_q={q}"
 
+def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
+    """
+    Keep the answer body as-is, but extract the visible follow-up lines
+    under a 'Suggested follow-ups:' section so we can render those same
+    lines as clickable links.
+    """
+    if not text:
+        return "", []
+
+    lines = text.splitlines()
+    marker_idx = None
+
+    for i, ln in enumerate(lines):
+        if (ln or "").strip().lower().startswith("suggested follow-ups"):
+            marker_idx = i
+            break
+
+    if marker_idx is None:
+        return text.strip(), []
+
+    body_lines = lines[:marker_idx]
+    fu_lines = lines[marker_idx + 1 :]
+
+    followups: list[str] = []
+    for ln in fu_lines:
+        s = (ln or "").strip()
+        if not s:
+            continue
+
+        # Remove numbering / bullets but keep the wording exactly
+        s = re.sub(r"^\d+\.\s*", "", s)
+        s = re.sub(r"^[-•*]\s*", "", s).strip()
+
+        if s:
+            followups.append(s)
+
+    return "\n".join(body_lines).strip(), followups
+
 # =========================
 # URL / Query routing
 # =========================
@@ -1192,12 +1230,14 @@ def page_new_chat() -> None:
 
                     # Persistently show answer if open
                     if q in st.session_state.chat_open_questions:
-                        answer = st.session_state.chat_answers.get(q, "").strip()
-                        if answer:
-                            st.markdown("#### Answer")
-                            st.markdown(answer)
+                        raw_answer = st.session_state.chat_answers.get(q, "").strip()
+                        if raw_answer:
+                            clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
 
-                            followups = st.session_state.chat_followups.get(q, [])
+                            st.markdown("#### Answer")
+                            st.markdown(clean_answer or raw_answer)
+
+                            followups = embedded_followups or st.session_state.chat_followups.get(q, [])
                             if followups:
                                 st.markdown("#### Suggested follow-ups")
                                 for fu in followups:
@@ -1208,6 +1248,7 @@ def page_new_chat() -> None:
                                     )
 
                             st.markdown("---")
+                    
                     
 
 
@@ -1272,20 +1313,25 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
     # Append the new assistant chunk as a new bubble
     followups = resp.get("followups") or []
     sess["messages"].append(
-            {
-                "id": f"a-{int(time.time())}",
-                "role": "assistant",
-                "text": answer,
-                "ts": now_label(),
-                "incomplete": bool(resp.get("incomplete")),
-                "stop_reason": resp.get("stop_reason") or None,
-                "prompt": prompt,
-                "mode": mode,
-                "response_id": resp.get("response_id"),
-                "continue_token": resp.get("continue_token"),
-                "followups": followups,
-            }
-        )
+        {
+            "id": f"a-{int(time.time())}",
+            "role": "assistant",
+            "text": labeled,
+            "ts": now_label(),
+            "incomplete": bool(resp.get("incomplete")),
+            "stop_reason": resp.get("stop_reason") or None,
+            "prompt": prompt,
+            "mode": mode,
+            "continued_root": root_id,
+            "continued_part": next_part,
+            "followups": followups,
+        }
+    )
+
+
+
+
+    
 
     _persist_learning_session(st.session_state.learning_active_id, sess)
 
@@ -1381,6 +1427,7 @@ def _process_send(sess: Dict[str, Any]) -> None:
     try:
         resp = fetch_study(prompt, mode=mode)
         answer = normalize_whitespace_for_readability(normalize_mojibake(resp.get("answer", "") or "")) or "No answer generated."
+        followups = resp.get("followups") or []
         sess["messages"].append(
             {
                 "id": f"a-{int(time.time())}",
@@ -1393,6 +1440,7 @@ def _process_send(sess: Dict[str, Any]) -> None:
                 "mode": mode,
                 "response_id": resp.get("response_id"),
                 "continue_token": resp.get("continue_token"),
+                "followups": followups,
             }
         )
     except Exception as e:
@@ -1493,10 +1541,12 @@ def page_my_new_learning() -> None:
                 if (msg.get("text") or "").lstrip().startswith("**Continued (Part "):
                     st.markdown("---")
 
-                st.markdown(text)
+                clean_answer, embedded_followups = split_answer_and_embedded_followups(text)
+
+                st.markdown(clean_answer or text)
                 st.markdown(f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>", unsafe_allow_html=True)
 
-                followups = msg.get("followups") or []
+                followups = embedded_followups or (msg.get("followups") or [])
                 if followups:
                     st.markdown("#### Suggested follow-ups")
                     for fu in followups:
