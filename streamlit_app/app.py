@@ -886,43 +886,69 @@ def fuq_href(page: str, question: str) -> str:
         return f"?page=learn&learn_q={q}"
     return f"?page=chat&chat_q={q}"
 
+
 def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
     """
-    Keep the answer body as-is, but extract the visible follow-up lines
-    under a 'Suggested follow-ups:' section so we can render those same
-    lines as clickable links.
+    Extract follow-up prompts that are already visible inside the answer text.
+    Supports both:
+    - explicit sections like 'Suggested follow-ups:'
+    - CTA lines like 'If you want, I can...', 'Next I can...', etc.
     """
     if not text:
         return "", []
 
     lines = text.splitlines()
-    marker_idx = None
 
+    marker_patterns = [
+        r"^suggested follow-ups?:?$",
+        r"^suggested follow-up questions:?$",
+    ]
+    cta_patterns = [
+        r"^if you want,?\s+i can\b",
+        r"^next i can\b",
+        r"^would you like\b",
+        r"^do you want me to\b",
+        r"^want a\b",
+        r"^which part should i expand on\b",
+        r"^should i\b",
+    ]
+
+    marker_idx = None
     for i, ln in enumerate(lines):
-        if (ln or "").strip().lower().startswith("suggested follow-ups"):
+        s = (ln or "").strip().lower()
+        if any(re.match(p, s) for p in marker_patterns):
             marker_idx = i
             break
 
-    if marker_idx is None:
-        return text.strip(), []
-
-    body_lines = lines[:marker_idx]
-    fu_lines = lines[marker_idx + 1 :]
-
     followups: list[str] = []
-    for ln in fu_lines:
-        s = (ln or "").strip()
-        if not s:
-            continue
+    body_lines: list[str] = []
 
-        # Remove numbering / bullets but keep the wording exactly
-        s = re.sub(r"^\d+\.\s*", "", s)
-        s = re.sub(r"^[-•*]\s*", "", s).strip()
+    if marker_idx is not None:
+        body_lines = lines[:marker_idx]
+        fu_lines = lines[marker_idx + 1 :]
 
-        if s:
-            followups.append(s)
+        for ln in fu_lines:
+            s = (ln or "").strip()
+            if not s:
+                continue
+
+            s = re.sub(r"^\d+\.\s*", "", s)
+            s = re.sub(r"^[-•*o]\s*", "", s).strip()
+
+            if s:
+                followups.append(s)
+    else:
+        for ln in lines:
+            s = (ln or "").strip()
+            low = s.lower()
+
+            if any(re.match(p, low) for p in cta_patterns):
+                followups.append(s)
+            else:
+                body_lines.append(ln)
 
     return "\n".join(body_lines).strip(), followups
+
 
 # =========================
 # URL / Query routing
@@ -1137,6 +1163,7 @@ def page_new_chat() -> None:
 
             # Reset topic state
             st.session_state.chat_answers = {}
+            st.session_state.chat_followups = {}
             st.session_state.chat_open_questions = set()
             st.session_state.chat_visited_questions = set()
 
@@ -1147,8 +1174,20 @@ def page_new_chat() -> None:
     if isinstance(data, dict) and data.get("categories"):
         intro = st.session_state.chat_intro
         if intro:
+            clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
+
             st.markdown("### Introduction")
-            st.markdown(intro)
+            st.markdown(clean_intro or intro)
+
+            if intro_followups:
+                st.markdown("#### Suggested follow-ups")
+                for fu in intro_followups:
+                    href = fuq_href("chat", fu)
+                    st.markdown(
+                        f'<a href="{href}" target="_blank" style="text-decoration:none;">• {fu}</a>',
+                        unsafe_allow_html=True,
+                    )
+        
 
         st.markdown("### Question Map")
         st.caption("Orientation → Mechanisms → Applications → Pitfalls → Advanced/Future")
