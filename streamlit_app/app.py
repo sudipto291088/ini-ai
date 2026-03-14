@@ -1119,6 +1119,7 @@ def page_new_chat() -> None:
     # Auto-run FUQ opened in a new tab for New Chat
     if chat_q and st.session_state.chat_seed_done != chat_q:
         st.session_state.chat["topic"] = chat_q
+        st.session_state.chat_topic_input = chat_q 
         topic = chat_q
         try:
             data = fetch_interrogate(chat_q)
