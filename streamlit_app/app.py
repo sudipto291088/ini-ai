@@ -1106,21 +1106,9 @@ def page_new_chat() -> None:
 
     
     
-    
-    topic = st.text_input(
-        "Topic",
-        value=st.session_state.chat.get("topic", ""),
-        placeholder="Type a topic (e.g., Artificial Intelligence, Data Science)...",
-        key="chat_topic_input",
-    )
-    st.session_state.chat["topic"] = topic
-
-
     # Auto-run FUQ opened in a new tab for New Chat
     if chat_q and st.session_state.chat_seed_done != chat_q:
         st.session_state.chat["topic"] = chat_q
-        st.session_state.chat_topic_input = chat_q 
-        topic = chat_q
         try:
             data = fetch_interrogate(chat_q)
             st.session_state.chat["interrogate"] = data
@@ -1136,6 +1124,17 @@ def page_new_chat() -> None:
             st.rerun()
         except Exception as e:
             st.error(f"Error auto-running chat FUQ: {e}")
+
+    
+
+    topic = st.text_input(
+    "Topic",
+    value=st.session_state.chat.get("topic", ""),
+    placeholder="Type a topic (e.g., Artificial Intelligence, Data Science)...",
+)
+    st.session_state.chat["topic"] = topic
+    
+
 
 
 
