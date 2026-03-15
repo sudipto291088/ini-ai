@@ -1260,15 +1260,15 @@ def page_new_chat() -> None:
 
                         # Otherwise fetch answer, cache it, and open it
                         try:
-                            resp = fetch_study_full(q, mode="deep")
-                            answer = (resp.get("answer") or "").strip() or "No answer generated."
-                            followups = resp.get("followups") or []
+                            with st.spinner("Generating answer... may take some time."):
+                                resp = fetch_study_full(q, mode="deep")
+                                answer = (resp.get("answer") or "").strip() or "No answer generated."
+                                followups = resp.get("followups") or []
 
-                            st.session_state.chat_answers[q] = answer
-                            st.session_state.chat_followups[q] = followups
-                            st.session_state.chat_open_questions.add(q)
+                                st.session_state.chat_answers[q] = answer
+                                st.session_state.chat_followups[q] = followups
+                                st.session_state.chat_open_questions.add(q)
                             st.rerun()
-                            
 
                         except Exception as e:
                             st.error(f"Error calling /study/ai: {e}")
@@ -1454,7 +1454,8 @@ def _process_send(sess: Dict[str, Any]) -> None:
         target_id = _find_last_incomplete_assistant_id(sess)
         if target_id:
             try:
-                _continue_one_chunk(sess, target_id)
+                with st.spinner("Generating answer... may take some time."):
+                    _continue_one_chunk(sess, target_id)
             except Exception as e:
                 sess["messages"].append(
                     {"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error continuing: {e}", "ts": now_label()}
@@ -1470,24 +1471,25 @@ def _process_send(sess: Dict[str, Any]) -> None:
     sess["last_prompt"] = prompt
 
     try:
-        resp = fetch_study(prompt, mode=mode)
-        answer = normalize_whitespace_for_readability(normalize_mojibake(resp.get("answer", "") or "")) or "No answer generated."
-        followups = resp.get("followups") or []
-        sess["messages"].append(
-            {
-                "id": f"a-{int(time.time())}",
-                "role": "assistant",
-                "text": answer,
-                "ts": now_label(),
-                "incomplete": bool(resp.get("incomplete")),
-                "stop_reason": resp.get("stop_reason") or None,
-                "prompt": prompt,
-                "mode": mode,
-                "response_id": resp.get("response_id"),
-                "continue_token": resp.get("continue_token"),
-                "followups": followups,
-            }
-        )
+        with st.spinner("Generating answer... may take some time."):
+            resp = fetch_study(prompt, mode=mode)
+            answer = normalize_whitespace_for_readability(normalize_mojibake(resp.get("answer", "") or "")) or "No answer generated."
+            followups = resp.get("followups") or []
+            sess["messages"].append(
+                {
+                    "id": f"a-{int(time.time())}",
+                    "role": "assistant",
+                    "text": answer,
+                    "ts": now_label(),
+                    "incomplete": bool(resp.get("incomplete")),
+                    "stop_reason": resp.get("stop_reason") or None,
+                    "prompt": prompt,
+                    "mode": mode,
+                    "response_id": resp.get("response_id"),
+                    "continue_token": resp.get("continue_token"),
+                    "followups": followups,
+                }
+            )
     except Exception as e:
         sess["messages"].append({"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error calling API: {e}", "ts": now_label()})
 
@@ -1522,6 +1524,8 @@ def page_my_new_learning() -> None:
     if "learn_seed_done" not in st.session_state:
         st.session_state.learn_seed_done = ""
 
+    
+
     # Auto-run FUQ opened in a new tab for My New Learning
     if learn_q and st.session_state.learn_seed_done != learn_q:
         try:
@@ -1529,23 +1533,24 @@ def page_my_new_learning() -> None:
                 {"id": f"u-{int(time.time())}", "role": "user", "text": learn_q, "ts": now_label(), "mode_label": "Deep"}
             )
 
-            resp = fetch_study_full(learn_q, mode="deep")
-            answer = (resp.get("answer") or "").strip() or "No answer generated."
-            followups = resp.get("followups") or []
+            with st.spinner("Generating answer... may take some time."):
+                resp = fetch_study_full(learn_q, mode="deep")
+                answer = (resp.get("answer") or "").strip() or "No answer generated."
+                followups = resp.get("followups") or []
 
-            sess["messages"].append(
-                {
-                    "id": f"a-{int(time.time())}",
-                    "role": "assistant",
-                    "text": answer,
-                    "ts": now_label(),
-                    "followups": followups,
-                }
-            )
+                sess["messages"].append(
+                    {
+                        "id": f"a-{int(time.time())}",
+                        "role": "assistant",
+                        "text": answer,
+                        "ts": now_label(),
+                        "followups": followups,
+                    }
+                )
 
-            sess["last_prompt"] = learn_q
-            _persist_learning_session(st.session_state.learning_active_id, sess)
-            st.session_state.learn_seed_done = learn_q
+                sess["last_prompt"] = learn_q
+                _persist_learning_session(st.session_state.learning_active_id, sess)
+                st.session_state.learn_seed_done = learn_q
             st.rerun()
         except Exception as e:
             sess["messages"].append(
@@ -1557,7 +1562,8 @@ def page_my_new_learning() -> None:
         msg_id = st.session_state._continue_msg_id
         st.session_state._continue_msg_id = None
         try:
-            _continue_one_chunk(sess, msg_id)
+            with st.spinner("Generating answer... may take some time."):
+                _continue_one_chunk(sess, msg_id)
         except Exception as e:
             sess["messages"].append({"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error continuing: {e}", "ts": now_label()})
         st.rerun()
