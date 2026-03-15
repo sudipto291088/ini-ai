@@ -1106,24 +1106,27 @@ def page_new_chat() -> None:
 
     
     
+    
     # Auto-run FUQ opened in a new tab for New Chat
     if chat_q and st.session_state.chat_seed_done != chat_q:
         st.session_state.chat["topic"] = chat_q
         try:
-            data = fetch_interrogate(chat_q)
-            st.session_state.chat["interrogate"] = data
+            with st.spinner("Generating questions... may take some time."):
+                data = fetch_interrogate(chat_q)
+                st.session_state.chat["interrogate"] = data
 
-            intro_resp = fetch_study_full(chat_q, mode="high")
-            st.session_state.chat_intro = (intro_resp.get("answer") or "").strip()
+                intro_resp = fetch_study_full(chat_q, mode="high")
+                st.session_state.chat_intro = (intro_resp.get("answer") or "").strip()
 
-            st.session_state.chat_answers = {}
-            st.session_state.chat_followups = {}
-            st.session_state.chat_open_questions = set()
-            st.session_state.chat_visited_questions = set()
-            st.session_state.chat_seed_done = chat_q
+                st.session_state.chat_answers = {}
+                st.session_state.chat_followups = {}
+                st.session_state.chat_open_questions = set()
+                st.session_state.chat_visited_questions = set()
+                st.session_state.chat_seed_done = chat_q
             st.rerun()
         except Exception as e:
             st.error(f"Error auto-running chat FUQ: {e}")
+
 
     
 
@@ -1151,24 +1154,27 @@ def page_new_chat() -> None:
 
     if run and topic.strip():
         try:
-            data = fetch_interrogate(topic.strip())
-            st.session_state.chat["interrogate"] = data
+            with st.spinner("Generating question map... may take some time."):
+                data = fetch_interrogate(topic.strip())
+                st.session_state.chat["interrogate"] = data
 
             # --- Generate intro paragraph ---
-            intro_resp = fetch_study_full(topic.strip(), mode="high")
-            intro = intro_resp.get("answer", "").strip()
-        
+                intro_resp = fetch_study_full(topic.strip(), mode="high")
+                intro = intro_resp.get("answer", "").strip()
 
-            st.session_state.chat_intro = intro
+                st.session_state.chat_intro = intro
 
             # Reset topic state
-            st.session_state.chat_answers = {}
-            st.session_state.chat_followups = {}
-            st.session_state.chat_open_questions = set()
-            st.session_state.chat_visited_questions = set()
+                st.session_state.chat_answers = {}
+                st.session_state.chat_followups = {}
+                st.session_state.chat_open_questions = set()
+                st.session_state.chat_visited_questions = set()
 
         except Exception as e:
             st.error(f"Error calling /interrogate: {e}")
+
+
+
 
     data = st.session_state.chat.get("interrogate")
     if isinstance(data, dict) and data.get("categories"):
