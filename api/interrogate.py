@@ -612,22 +612,26 @@ def interrogate(text: str) -> Dict[str, Any]:
                 "llm_used": True,
             }
 
-        # AI should NOT fall back to templates (avoid "meh" answers)
-        empty_cats = {c: [] for c in CATEGORY_ORDER}
+        # AI fallback: if LLM question generation fails, still return usable questions
+        fallback_categories = build_categories(clean_topic, topic_type)
+        fallback_qa = attach_answers(fallback_categories, clean_topic, topic_type)
+
         return {
-            "topic": clean_topic,
-            "topic_type": topic_type,
-            "categories": empty_cats,
-            "summary": build_summary(clean_topic, topic_type, confidence),
-            "confidence": confidence,
-            "notes": [
-                "v0: interrogation engine",
-                "v0: AI LLM questions-only failed to parse; no template fallback for AI",
-            ],
-            "llm_used": False,
-            "needs_clarification": True,
-            "clarifying_question": "AI question generation failed. Please retry the same topic.",
-        }
+    "topic": clean_topic,
+    "topic_type": topic_type,
+    "categories": fallback_qa,
+    "summary": build_summary(clean_topic, topic_type, confidence),
+    "confidence": confidence,
+    "notes": [
+        "v0: interrogation engine",
+        "v0: AI LLM questions-only failed to parse; template fallback used",
+    ],
+    "llm_used": False,
+    "needs_clarification": False,
+}
+
+
+       
 
     # Non-AI topics: templates
     categories = build_categories(clean_topic, topic_type)
