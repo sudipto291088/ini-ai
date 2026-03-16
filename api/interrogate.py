@@ -522,6 +522,111 @@ Generate the questions now.
     return (summary, categories_out)
 
 
+def _llm_generate_questions_only_rescue(topic: str, topic_type: str) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
+    """
+    Smaller rescue pass for AI/ML topics when the main JSON question-map fails.
+    Keeps LLM-generated questions, but with a lighter prompt.
+    """
+    instruction = f"""
+Return STRICT JSON only.
+
+Topic: {topic}
+
+Use EXACTLY these category keys:
+- What
+- Why
+- Misconceptions
+- Common Challenges
+- How
+- Where
+- Examples
+- Related Topics
+
+Rules:
+- No prose outside JSON
+- No markdown
+- No code fences
+- 2 to 4 questions per category
+- Questions must be specific and modern
+- First question in "What" must define the topic clearly
+
+JSON shape:
+{{
+  "summary": [
+    "short sentence about the topic",
+    "short sentence about why it matters",
+    "short sentence about how understanding will progress"
+  ],
+  "categories": {{
+    "What": [{{"question": "..."}}],
+    "Why": [{{"question": "..."}}],
+    "Misconceptions": [{{"question": "..."}}],
+    "Common Challenges": [{{"question": "..."}}],
+    "How": [{{"question": "..."}}],
+    "Where": [{{"question": "..."}}],
+    "Examples": [{{"question": "..."}}],
+    "Related Topics": [{{"question": "..."}}]
+  }}
+}}
+""".strip()
+
+    raw = llm_answer_question(
+        topic=topic,
+        topic_type=topic_type,
+        archetype="ORIENT",
+        question=instruction,
+        meta={"mode": "interrogate_questions_rescue", "expects": "json"},
+    )
+
+    data = _extract_json_object(raw or "")
+    if not isinstance(data, dict):
+        return (build_summary(topic, topic_type, 0.67), {})
+
+    summary = data.get("summary") if isinstance(data.get("summary"), list) else []
+    cats = data.get("categories") if isinstance(data.get("categories"), dict) else {}
+    cats = {key: cats.get(key, []) for key in CATEGORY_ORDER}
+
+    categories_out: Dict[str, List[Dict[str, Any]]] = {}
+    global_count = 0
+
+    for cat in CATEGORY_ORDER:
+        items = cats.get(cat, [])
+        if not isinstance(items, list):
+            items = []
+
+        archetype = ARCHETYPE_MAP.get(cat, "ORIENT")
+        out_items: List[Dict[str, Any]] = []
+
+        for idx, it in enumerate(items, start=1):
+            if not isinstance(it, dict):
+                continue
+
+            q = (it.get("question") or "").strip()
+            if not q:
+                continue
+
+            global_count += 1
+            out_items.append(
+                {
+                    "id": f"{cat.lower().replace(' ', '_')}_{idx}",
+                    "archetype": archetype,
+                    "question": q,
+                    "answer": "",
+                    "collapsed": True,
+                    "visible": global_count <= 8,
+                }
+            )
+
+        categories_out[cat] = out_items
+
+    if not any(categories_out.get(c) for c in categories_out):
+        return (build_summary(topic, topic_type, 0.67), {})
+
+    return (summary, categories_out)
+
+
+
+
 def attach_answers(categories: Dict[str, List[str]], topic: str, topic_type: str) -> Dict[str, List[Dict[str, Any]]]:
     """
     Non-AI topics: template questions + template answers.
@@ -587,16 +692,14 @@ def interrogate(text: str) -> Dict[str, Any]:
     # AI topic: LLM questions-only (answers on click via /answer)
     use_llm = _llm_is_enabled() and _is_llm_topic(clean_topic) and (llm_answer_question is not None)
 
+    
     if use_llm:
-        summary, llm_categories = [], {}
+        summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
 
-        for _ in range(3):
-            summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
-            if llm_categories and any(llm_categories.get(c) for c in llm_categories):
-                break        
+        if not (llm_categories and any(llm_categories.get(c) for c in llm_categories)):
+            summary, llm_categories = _llm_generate_questions_only_rescue(clean_topic, topic_type)
 
-
-        if llm_categories:
+        if llm_categories and any(llm_categories.get(c) for c in llm_categories):
             return {
                 "topic": clean_topic,
                 "topic_type": topic_type,
@@ -605,30 +708,31 @@ def interrogate(text: str) -> Dict[str, Any]:
                 "confidence": confidence,
                 "notes": [
                     "v0: interrogation engine",
-                    "v0: AI uses LLM for questions (fast)",
+                    "v0: AI uses LLM for questions",
                     "v0: answers fetched on click via /answer (LLM)",
                     "v0: UI reveals answers on click (progressive disclosure)",
                 ],
                 "llm_used": True,
             }
 
-        # AI fallback: if LLM question generation fails, still return usable questions
+        # AI fallback: only after main LLM pass + rescue pass both fail
         fallback_categories = build_categories(clean_topic, topic_type)
         fallback_qa = attach_answers(fallback_categories, clean_topic, topic_type)
 
         return {
-    "topic": clean_topic,
-    "topic_type": topic_type,
-    "categories": fallback_qa,
-    "summary": build_summary(clean_topic, topic_type, confidence),
-    "confidence": confidence,
-    "notes": [
-        "v0: interrogation engine",
-        "v0: AI LLM questions-only failed to parse; template fallback used",
-    ],
-    "llm_used": False,
-    "needs_clarification": False,
-}
+            "topic": clean_topic,
+            "topic_type": topic_type,
+            "categories": fallback_qa,
+            "summary": build_summary(clean_topic, topic_type, confidence),
+            "confidence": confidence,
+            "notes": [
+                "v0: interrogation engine",
+                "v0: AI LLM question-map failed twice; template fallback used",
+            ],
+            "llm_used": False,
+            "needs_clarification": False,
+        }
+
 
 
        
