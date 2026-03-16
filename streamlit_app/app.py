@@ -701,6 +701,9 @@ if "_continue_msg_id" not in st.session_state:
 if "_last_page_param" not in st.session_state:
     st.session_state._last_page_param = None
 
+if "_nc_continue_q" not in st.session_state:
+    st.session_state._nc_continue_q = None
+
 # UIB state
 if "uib_text" not in st.session_state:
     st.session_state.uib_text = ""
@@ -839,7 +842,7 @@ def fetch_study(
 
 
 def fetch_interrogate(topic: str) -> Dict[str, Any]:
-    return post_json("/interrogate", {"topic": topic}, timeout=120)
+    return post_json("/interrogate", {"topic": topic}, timeout=240)
     
 
 def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dict[str, Any]:
@@ -889,10 +892,11 @@ def fuq_href(page: str, question: str) -> str:
 
 def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
     """
-    Extract follow-up prompts that are already visible inside the answer text.
-    Supports both:
+    Extract follow-up prompts already visible inside the answer text.
+
+    Supports:
     - explicit sections like 'Suggested follow-ups:'
-    - CTA lines like 'If you want, I can...', 'Next I can...', etc.
+    - CTA headers like 'If you want, I can now:' followed by bullets
     """
     if not text:
         return "", []
@@ -903,15 +907,21 @@ def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
         r"^suggested follow-ups?:?$",
         r"^suggested follow-up questions:?$",
     ]
-    cta_patterns = [
-        r"^if you want,?\s+i can\b",
-        r"^next i can\b",
-        r"^would you like\b",
-        r"^do you want me to\b",
-        r"^want a\b",
-        r"^which part should i expand on\b",
-        r"^should i\b",
+
+    cta_header_patterns = [
+        r"^if you want,?\s+i can\b.*:?\s*$",
+        r"^if you'd like,?\s+i can\b.*:?\s*$",
+        r"^next i can\b.*:?\s*$",
+        r"^would you like\b.*:?\s*$",
+        r"^do you want me to\b.*:?\s*$",
+        r"^which part should i expand on\b.*:?\s*$",
+        r"^should i\b.*:?\s*$",
     ]
+
+    def _clean_fu_line(s: str) -> str:
+        s = re.sub(r"^\d+\.\s*", "", s)
+        s = re.sub(r"^[-•*o]\s*", "", s).strip()
+        return s.strip()
 
     marker_idx = None
     for i, ln in enumerate(lines):
@@ -925,29 +935,64 @@ def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
 
     if marker_idx is not None:
         body_lines = lines[:marker_idx]
-        fu_lines = lines[marker_idx + 1 :]
+        fu_lines = lines[marker_idx + 1:]
 
         for ln in fu_lines:
-            s = (ln or "").strip()
-            if not s:
-                continue
-
-            s = re.sub(r"^\d+\.\s*", "", s)
-            s = re.sub(r"^[-•*o]\s*", "", s).strip()
-
+            s = _clean_fu_line((ln or "").strip())
             if s:
                 followups.append(s)
-    else:
-        for ln in lines:
-            s = (ln or "").strip()
-            low = s.lower()
 
-            if any(re.match(p, low) for p in cta_patterns):
-                followups.append(s)
-            else:
-                body_lines.append(ln)
+        return "\n".join(body_lines).strip(), followups
 
-    return "\n".join(body_lines).strip(), followups
+    i = 0
+    while i < len(lines):
+        raw = lines[i]
+        s = (raw or "").strip()
+        low = s.lower()
+
+        if any(re.match(p, low) for p in cta_header_patterns):
+            body_lines.append("")  # keeps spacing where CTA block was
+            i += 1
+
+            while i < len(lines):
+                next_raw = lines[i]
+                next_s = (next_raw or "").strip()
+
+                # stop CTA collection on blank line
+                if not next_s:
+                    break
+
+                cleaned = _clean_fu_line(next_s)
+
+                # ignore nested CTA headers accidentally echoed by model
+                if any(re.match(p, cleaned.lower()) for p in cta_header_patterns):
+                    i += 1
+                    continue
+
+                # only collect real actionable follow-up lines
+                if cleaned and len(cleaned) >= 8 and not cleaned.endswith(":"):
+                    followups.append(cleaned)
+
+                i += 1
+
+            # skip the blank line that ended the CTA block
+            while i < len(lines) and not (lines[i] or "").strip():
+                i += 1
+            continue
+
+        body_lines.append(raw)
+        i += 1
+
+    # de-duplicate while preserving order
+    seen = set()
+    deduped = []
+    for fu in followups:
+        key = fu.strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            deduped.append(fu)
+
+    return "\n".join(body_lines).strip(), deduped
 
 
 # =========================
@@ -1104,6 +1149,56 @@ def page_new_chat() -> None:
     if "chat_seed_done" not in st.session_state:
         st.session_state.chat_seed_done = ""
 
+
+    
+    # Handle Continue for New Chat answers
+    if st.session_state._nc_continue_q:
+        cont_q = st.session_state._nc_continue_q
+        st.session_state._nc_continue_q = None
+
+        answer_obj = st.session_state.chat_answers.get(cont_q, {})
+        if isinstance(answer_obj, dict):
+            previous_text = (answer_obj.get("text") or "").strip()
+            mode = (answer_obj.get("mode") or "deep").strip()
+        else:
+            previous_text = str(answer_obj or "").strip()
+            mode = "deep"
+
+        if previous_text:
+            try:
+                with st.spinner("Generating answer... may take some time."):
+                    resp = fetch_study(
+                        topic=cont_q,
+                        mode=mode,
+                        continue_mode=True,
+                        previous_answer=previous_text,
+                    )
+
+                    chunk = normalize_whitespace_for_readability(
+                        normalize_mojibake(resp.get("answer", "") or "")
+                    ).strip()
+
+                    if chunk:
+                        combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
+                    else:
+                        combined = previous_text
+
+                    st.session_state.chat_answers[cont_q] = {
+                        "text": combined,
+                        "incomplete": bool(resp.get("incomplete")),
+                        "stop_reason": resp.get("stop_reason") or None,
+                        "prompt": cont_q,
+                        "mode": mode,
+                    }
+
+                    if resp.get("followups"):
+                        st.session_state.chat_followups[cont_q] = resp.get("followups") or []
+
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"Error continuing answer: {e}")
+
     
     
     
@@ -1258,14 +1353,24 @@ def page_new_chat() -> None:
                             st.session_state.chat_open_questions.add(q)
                             st.rerun()
 
-                        # Otherwise fetch answer, cache it, and open it
+                        
+                        # Otherwise fetch first answer chunk, cache it, and open it
                         try:
-                            with st.spinner("Generating answer... may take some time."):
-                                resp = fetch_study_full(q, mode="deep")
-                                answer = (resp.get("answer") or "").strip() or "No answer generated."
+                            with st.spinner("Generating details... please wait."):
+                                resp = fetch_study(q, mode="deep")
+                                answer = normalize_whitespace_for_readability(
+                                    normalize_mojibake(resp.get("answer", "") or "")
+                                ).strip() or "No answer generated."
+
                                 followups = resp.get("followups") or []
 
-                                st.session_state.chat_answers[q] = answer
+                                st.session_state.chat_answers[q] = {
+                                    "text": answer,
+                                    "incomplete": bool(resp.get("incomplete")),
+                                    "stop_reason": resp.get("stop_reason") or None,
+                                    "prompt": q,
+                                    "mode": "deep",
+                                }
                                 st.session_state.chat_followups[q] = followups
                                 st.session_state.chat_open_questions.add(q)
                             st.rerun()
@@ -1273,9 +1378,17 @@ def page_new_chat() -> None:
                         except Exception as e:
                             st.error(f"Error calling /study/ai: {e}")
 
+                    
                     # Persistently show answer if open
                     if q in st.session_state.chat_open_questions:
-                        raw_answer = st.session_state.chat_answers.get(q, "").strip()
+                        answer_obj = st.session_state.chat_answers.get(q, {})
+                        raw_answer = ""
+
+                        if isinstance(answer_obj, dict):
+                            raw_answer = (answer_obj.get("text") or "").strip()
+                        else:
+                            raw_answer = str(answer_obj or "").strip()
+
                         if raw_answer:
                             clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
 
@@ -1292,8 +1405,19 @@ def page_new_chat() -> None:
                                         unsafe_allow_html=True,
                                     )
 
+                            # New Chat Continue button
+                            is_incomplete = False
+                            if isinstance(answer_obj, dict):
+                                is_incomplete = bool(answer_obj.get("incomplete")) or (
+                                    (answer_obj.get("stop_reason") or "").strip().lower() == "max_output_tokens"
+                                )
+
+                            if is_incomplete:
+                                if st.button("Continue", key=f"nc_cont_{section}_{q}"):
+                                    st.session_state._nc_continue_q = q
+                                    st.rerun()
+
                             st.markdown("---")
-                    
                     
 
 
