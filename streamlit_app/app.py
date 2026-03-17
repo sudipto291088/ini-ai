@@ -704,6 +704,14 @@ if "_last_page_param" not in st.session_state:
 if "_nc_continue_q" not in st.session_state:
     st.session_state._nc_continue_q = None
 
+if "_nc_continue_loading_q" not in st.session_state:
+    st.session_state._nc_continue_loading_q = None
+
+if "_mnl_continue_loading_id" not in st.session_state:
+    st.session_state._mnl_continue_loading_id = None
+
+
+
 # UIB state
 if "uib_text" not in st.session_state:
     st.session_state.uib_text = ""
@@ -1151,53 +1159,53 @@ def page_new_chat() -> None:
 
 
     
-    # Handle Continue for New Chat answers
-    if st.session_state._nc_continue_q:
-        cont_q = st.session_state._nc_continue_q
-        st.session_state._nc_continue_q = None
+    # # Handle Continue for New Chat answers
+    # if st.session_state._nc_continue_q:
+    #     cont_q = st.session_state._nc_continue_q
+    #     st.session_state._nc_continue_q = None
 
-        answer_obj = st.session_state.chat_answers.get(cont_q, {})
-        if isinstance(answer_obj, dict):
-            previous_text = (answer_obj.get("text") or "").strip()
-            mode = (answer_obj.get("mode") or "deep").strip()
-        else:
-            previous_text = str(answer_obj or "").strip()
-            mode = "deep"
+    #     answer_obj = st.session_state.chat_answers.get(cont_q, {})
+    #     if isinstance(answer_obj, dict):
+    #         previous_text = (answer_obj.get("text") or "").strip()
+    #         mode = (answer_obj.get("mode") or "deep").strip()
+    #     else:
+    #         previous_text = str(answer_obj or "").strip()
+    #         mode = "deep"
 
-        if previous_text:
-            try:
-                with st.spinner("Generating answer... may take some time."):
-                    resp = fetch_study(
-                        topic=cont_q,
-                        mode=mode,
-                        continue_mode=True,
-                        previous_answer=previous_text,
-                    )
+    #     if previous_text:
+    #         try:
+    #             with st.spinner("Generating answer... may take some time."):
+    #                 resp = fetch_study(
+    #                     topic=cont_q,
+    #                     mode=mode,
+    #                     continue_mode=True,
+    #                     previous_answer=previous_text,
+    #                 )
 
-                    chunk = normalize_whitespace_for_readability(
-                        normalize_mojibake(resp.get("answer", "") or "")
-                    ).strip()
+    #                 chunk = normalize_whitespace_for_readability(
+    #                     normalize_mojibake(resp.get("answer", "") or "")
+    #                 ).strip()
 
-                    if chunk:
-                        combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
-                    else:
-                        combined = previous_text
+    #                 if chunk:
+    #                     combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
+    #                 else:
+    #                     combined = previous_text
 
-                    st.session_state.chat_answers[cont_q] = {
-                        "text": combined,
-                        "incomplete": bool(resp.get("incomplete")),
-                        "stop_reason": resp.get("stop_reason") or None,
-                        "prompt": cont_q,
-                        "mode": mode,
-                    }
+    #                 st.session_state.chat_answers[cont_q] = {
+    #                     "text": combined,
+    #                     "incomplete": bool(resp.get("incomplete")),
+    #                     "stop_reason": resp.get("stop_reason") or None,
+    #                     "prompt": cont_q,
+    #                     "mode": mode,
+    #                 }
 
-                    if resp.get("followups"):
-                        st.session_state.chat_followups[cont_q] = resp.get("followups") or []
+    #                 if resp.get("followups"):
+    #                     st.session_state.chat_followups[cont_q] = resp.get("followups") or []
 
-                st.rerun()
+    #             st.rerun()
 
-            except Exception as e:
-                st.error(f"Error continuing answer: {e}")
+    #         except Exception as e:
+    #             st.error(f"Error continuing answer: {e}")
 
     
     
@@ -1412,10 +1420,58 @@ def page_new_chat() -> None:
                                     (answer_obj.get("stop_reason") or "").strip().lower() == "max_output_tokens"
                                 )
 
+                            
                             if is_incomplete:
                                 if st.button("Continue", key=f"nc_cont_{section}_{q}"):
-                                    st.session_state._nc_continue_q = q
+                                    st.session_state._nc_continue_loading_q = q
                                     st.rerun()
+
+                                if st.session_state._nc_continue_loading_q == q:
+                                    st.markdown("⏳ **Continuing...**")
+
+                                    answer_obj = st.session_state.chat_answers.get(q, {})
+                                    if isinstance(answer_obj, dict):
+                                        previous_text = (answer_obj.get("text") or "").strip()
+                                        mode = (answer_obj.get("mode") or "deep").strip()
+                                    else:
+                                        previous_text = str(answer_obj or "").strip()
+                                        mode = "deep"
+
+                                    if previous_text:
+                                        try:
+                                            resp = fetch_study(
+                                                topic=q,
+                                                mode=mode,
+                                                continue_mode=True,
+                                                previous_answer=previous_text,
+                                            )
+
+                                            chunk = normalize_whitespace_for_readability(
+                                                normalize_mojibake(resp.get("answer", "") or "")
+                                            ).strip()
+
+                                            if chunk:
+                                                combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
+                                            else:
+                                                combined = previous_text
+
+                                            st.session_state.chat_answers[q] = {
+                                                "text": combined,
+                                                "incomplete": bool(resp.get("incomplete")),
+                                                "stop_reason": resp.get("stop_reason") or None,
+                                                "prompt": q,
+                                                "mode": mode,
+                                            }
+
+                                            if resp.get("followups"):
+                                                st.session_state.chat_followups[q] = resp.get("followups") or []
+
+                                        except Exception as e:
+                                            st.error(f"Error continuing answer: {e}")
+                                        finally:
+                                            st.session_state._nc_continue_loading_q = None
+
+                                        st.rerun()
 
                             st.markdown("---")
                     
@@ -1577,13 +1633,7 @@ def _process_send(sess: Dict[str, Any]) -> None:
 
         target_id = _find_last_incomplete_assistant_id(sess)
         if target_id:
-            try:
-                with st.spinner("Generating answer... may take some time."):
-                    _continue_one_chunk(sess, target_id)
-            except Exception as e:
-                sess["messages"].append(
-                    {"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error continuing: {e}", "ts": now_label()}
-                )
+            st.session_state._mnl_continue_loading_id = target_id
 
         st.session_state._uib_clear_next = True
         st.rerun()
@@ -1681,16 +1731,16 @@ def page_my_new_learning() -> None:
                 {"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error auto-running learning FUQ: {e}", "ts": now_label()}
             )
 
-    # Handle Continue
-    if st.session_state._continue_msg_id:
-        msg_id = st.session_state._continue_msg_id
-        st.session_state._continue_msg_id = None
-        try:
-            with st.spinner("Generating answer... may take some time."):
-                _continue_one_chunk(sess, msg_id)
-        except Exception as e:
-            sess["messages"].append({"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error continuing: {e}", "ts": now_label()})
-        st.rerun()
+    # # Handle Continue
+    # if st.session_state._continue_msg_id:
+    #     msg_id = st.session_state._continue_msg_id
+    #     st.session_state._continue_msg_id = None
+    #     try:
+    #         with st.spinner("Generating answer... may take some time."):
+    #             _continue_one_chunk(sess, msg_id)
+    #     except Exception as e:
+    #         sess["messages"].append({"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error continuing: {e}", "ts": now_label()})
+    #     st.rerun()
 
     # Show "Continue" only for the most recent incomplete assistant message
     last_incomplete_id = None
@@ -1731,10 +1781,25 @@ def page_my_new_learning() -> None:
                             unsafe_allow_html=True,
                         )
 
-                # Only the latest incomplete assistant message gets the Continue button
+                 # Only the latest incomplete assistant message gets the Continue button
                 if needs_continue_flag(msg) and (msg.get("id") == last_incomplete_id):
-                    if st.button("Continue", key=f"cont-{msg.get('id')}"):
-                        st.session_state._continue_msg_id = msg.get("id")
+                    msg_id = msg.get("id")
+
+                    if st.button("Continue", key=f"cont-{msg_id}"):
+                        st.session_state._mnl_continue_loading_id = msg_id
+                        st.rerun()
+
+                    if st.session_state._mnl_continue_loading_id == msg_id:
+                        st.markdown("⏳ **Continuing...**")
+                        try:
+                            _continue_one_chunk(sess, msg_id)
+                        except Exception as e:
+                            sess["messages"].append(
+                                {"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error continuing: {e}", "ts": now_label()}
+                            )
+                        finally:
+                            st.session_state._mnl_continue_loading_id = None
+
                         st.rerun()
 
                 
