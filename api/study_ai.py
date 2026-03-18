@@ -39,6 +39,7 @@ def _normalize_mode(raw: Optional[str]) -> str:
       - deep (default)
       - high (overview)
       - quiz
+      - focused (FUQ-style direct deep bullets)
     Accept common aliases.
     """
     if not raw:
@@ -51,22 +52,31 @@ def _normalize_mode(raw: Optional[str]) -> str:
         "d": "deep",
         "research": "deep",
         "apply": "deep",
+
         "overview": "high",
         "high": "high",
         "summary": "high",
         "brief": "high",
+
         "quiz": "quiz",
         "q": "quiz",
         "questions": "quiz",
         "test": "quiz",
+
+        "focused": "focused",
+        "focus": "focused",
+        "fuq": "focused",
+        "bullet": "focused",
+        "bullets": "focused",
     }
     return alias.get(m, "deep")
+
 
 
 def _build_instruction(mode: str) -> str:
     """
     Build the *style contract* for the tutor. This is where we make
-    'high' and 'quiz' visibly different from 'deep'.
+    'high', 'quiz', and 'focused' visibly different from 'deep'.
     """
     if mode == "high":
         return (
@@ -89,22 +99,35 @@ def _build_instruction(mode: str) -> str:
             "- End with: 'Reply with your answers and I will grade you.'\n"
         )
 
-      
+    if mode == "focused":
+        return (
+            "You are InI, a deep technical AI tutor.\n"
+            "Answer the user's question directly using descriptive bullet points.\n"
+            "- Do NOT include an Introduction section.\n"
+            "- Do NOT produce a Question Map.\n"
+            "- Provide 15–20 bullet points.\n"
+            "- Each bullet must be descriptive, substantive, and self-contained.\n"
+            "- Each bullet may use 2–7 sentences if needed.\n"
+            "- Maintain research-level depth, technical correctness, and practical clarity.\n"
+            "- Organize the bullets from foundations to mechanisms to implications.\n"
+            "- Use examples, trade-offs, and failure modes where useful.\n"
+            "- Avoid filler and avoid generic motivational language.\n"
+            "- Do NOT ask meta-questions unless required.\n"
+        )
+
     # deep (default)
     return (
-    "You are InI, a deep technical AI tutor.\n"
-    "Write a research-grade, well-structured answer.\n"
-    "- Use bold headings, bullets, and concrete examples.\n"
-    "- Maintain consistent hierarchy throughout the document.\n"
-    "- Do NOT introduce abrupt top-level headings mid-answer.\n"
-    "- Do NOT output standalone pseudo-code lines as headings.\n"
-    "- Keep formatting clean and proportional (no oversized structural resets).\n"
-    "- Add intuitions, failure modes, and practical trade-offs.\n"
-    "- Be specific, cohesive, and avoid filler.\n"
-    "- Do NOT ask meta-questions unless required.\n"
-)
-
-
+        "You are InI, a deep technical AI tutor.\n"
+        "Write a research-grade, well-structured answer.\n"
+        "- Use bold headings, bullets, and concrete examples.\n"
+        "- Maintain consistent hierarchy throughout the document.\n"
+        "- Do NOT introduce abrupt top-level headings mid-answer.\n"
+        "- Do NOT output standalone pseudo-code lines as headings.\n"
+        "- Keep formatting clean and proportional (no oversized structural resets).\n"
+        "- Add intuitions, failure modes, and practical trade-offs.\n"
+        "- Be specific, cohesive, and avoid filler.\n"
+        "- Do NOT ask meta-questions unless required.\n"
+    )
 
 
 

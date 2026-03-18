@@ -710,6 +710,9 @@ if "_nc_continue_loading_q" not in st.session_state:
 if "_mnl_continue_loading_id" not in st.session_state:
     st.session_state._mnl_continue_loading_id = None
 
+if "chat_direct_answer" not in st.session_state:
+    st.session_state.chat_direct_answer = None
+
 
 
 # UIB state
@@ -1214,13 +1217,25 @@ def page_new_chat() -> None:
     if chat_q and st.session_state.chat_seed_done != chat_q:
         st.session_state.chat["topic"] = chat_q
         try:
-            with st.spinner("Generating questions... may take some time."):
-                data = fetch_interrogate(chat_q)
-                st.session_state.chat["interrogate"] = data
+            with st.spinner("Generating details... please wait."):
+                resp = fetch_study(chat_q, mode="focused")
+                answer = normalize_whitespace_for_readability(
+                    normalize_mojibake(resp.get("answer", "") or "")
+                ).strip() or "No answer generated."
 
-                intro_resp = fetch_study_full(chat_q, mode="high")
-                st.session_state.chat_intro = (intro_resp.get("answer") or "").strip()
+                followups = resp.get("followups") or []
 
+                st.session_state.chat_direct_answer = {
+                    "prompt": chat_q,
+                    "text": answer,
+                    "incomplete": bool(resp.get("incomplete")),
+                    "stop_reason": resp.get("stop_reason") or None,
+                    "mode": "focused",
+                    "followups": followups,
+                }
+
+                st.session_state.chat["interrogate"] = None
+                st.session_state.chat_intro = ""
                 st.session_state.chat_answers = {}
                 st.session_state.chat_followups = {}
                 st.session_state.chat_open_questions = set()
@@ -1268,6 +1283,7 @@ def page_new_chat() -> None:
                 st.session_state.chat_intro = intro
 
             # Reset topic state
+                st.session_state.chat_direct_answer = None
                 st.session_state.chat_answers = {}
                 st.session_state.chat_followups = {}
                 st.session_state.chat_open_questions = set()
@@ -1277,7 +1293,78 @@ def page_new_chat() -> None:
             st.error(f"Error calling /interrogate: {e}")
 
 
+    direct_answer = st.session_state.chat_direct_answer
+    if isinstance(direct_answer, dict) and (direct_answer.get("text") or "").strip():
+        raw_answer = (direct_answer.get("text") or "").strip()
+        clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
 
+        st.markdown("### Answer")
+        st.markdown(clean_answer or raw_answer)
+
+        followups = embedded_followups or (direct_answer.get("followups") or [])
+        if followups:
+            st.markdown("#### Suggested follow-ups")
+            for fu in followups:
+                href = fuq_href("chat", fu)
+                st.markdown(
+                    f'<a href="{href}" target="_blank" style="text-decoration:none;">• {fu}</a>',
+                    unsafe_allow_html=True,
+                )
+
+        is_incomplete = bool(direct_answer.get("incomplete")) or (
+            (direct_answer.get("stop_reason") or "").strip().lower() == "max_output_tokens"
+        )
+
+        if is_incomplete:
+            direct_key = "__chat_direct_answer__"
+
+            if st.button("Continue", key="nc_cont_direct_answer"):
+                st.session_state._nc_continue_loading_q = direct_key
+                st.rerun()
+
+            if st.session_state._nc_continue_loading_q == direct_key:
+                st.markdown("⏳ **Continuing...**")
+
+                previous_text = (direct_answer.get("text") or "").strip()
+                mode = (direct_answer.get("mode") or "focused").strip()
+                prompt = (direct_answer.get("prompt") or "").strip()
+
+                if previous_text and prompt:
+                    try:
+                        resp = fetch_study(
+                            topic=prompt,
+                            mode=mode,
+                            continue_mode=True,
+                            previous_answer=previous_text,
+                        )
+
+                        chunk = normalize_whitespace_for_readability(
+                            normalize_mojibake(resp.get("answer", "") or "")
+                        ).strip()
+
+                        if chunk:
+                            combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
+                        else:
+                            combined = previous_text
+
+                        st.session_state.chat_direct_answer = {
+                            "prompt": prompt,
+                            "text": combined,
+                            "incomplete": bool(resp.get("incomplete")),
+                            "stop_reason": resp.get("stop_reason") or None,
+                            "mode": mode,
+                            "followups": resp.get("followups") or direct_answer.get("followups") or [],
+                        }
+
+                    except Exception as e:
+                        st.error(f"Error continuing answer: {e}")
+                    finally:
+                        st.session_state._nc_continue_loading_q = None
+
+                    st.rerun()
+
+        st.markdown("---")
+        return
 
     data = st.session_state.chat.get("interrogate")
     if isinstance(data, dict) and data.get("categories"):
