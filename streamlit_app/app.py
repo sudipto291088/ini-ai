@@ -435,247 +435,7 @@ def _strip_duplicate_chunk_prefix(chunk: str) -> str:
 
 
 
-# def _overlap_dedupe_append(existing: str, chunk: str, max_window: int = 2500) -> str:
-#     """
-#     Stronger append logic for Continue:
-#     - Detects short + mid-line overlaps (not only long exact matches)
-#     - Normalizes whitespace for overlap comparison
-#     - Removes repeated headers/bullets that restart the same section
-#     - Keeps formatting of the final appended text readable
-#     """
-#     if not existing:
-#         return (chunk or "").strip()
 
-#     if not (chunk or "").strip():
-#         return existing.strip()
-
-#     ex = (existing or "").rstrip()
-#     ch_raw = _strip_duplicate_chunk_prefix(chunk or "").lstrip()
-
-#     if not ch_raw.strip():
-#         return ex
-
-#     # ---------- helpers ----------
-#     def _norm(s: str) -> str:
-#         # normalize for overlap matching only (do NOT return this to UI)
-#         s = s.replace("\r\n", "\n").replace("\r", "\n")
-#         s = s.replace("\t", " ")
-#         s = re.sub(r"[ ]{2,}", " ", s)
-#         s = re.sub(r"\n{3,}", "\n\n", s)
-#         return s.strip()
-
-#     def _is_header_line(line: str) -> bool:
-#         t = (line or "").strip()
-#         if not t:
-#             return False
-#         # markdown headers or "Title:" style
-#         if t.startswith("#"):
-#             return True
-#         if t.endswith(":") and len(t) <= 80:
-#             return True
-#         # very short title-ish lines
-#         if len(t) <= 60 and t.lower() == t and t.isalpha():
-#             return True
-#         return False
-
-#     def _strip_replayed_opening_lines(ex_text: str, ch_text: str) -> str:
-#         """
-#         If the new chunk starts by replaying the last few lines (headers/bullets),
-#         drop those opening lines from the chunk.
-#         """
-#         ex_lines = [ln.rstrip() for ln in ex_text.splitlines() if ln.strip()]
-#         ch_lines = [ln.rstrip() for ln in ch_text.splitlines()]
-
-#         # Compare against last N meaningful lines of existing
-#         last = ex_lines[-12:] if len(ex_lines) >= 12 else ex_lines
-
-#         # Remove leading empties first
-#         while ch_lines and not ch_lines[0].strip():
-#             ch_lines.pop(0)
-
-#         # Try removing up to 6 opening lines if they match (or are near-match) to recent lines
-#         removed_any = True
-#         tries = 0
-#         while removed_any and ch_lines and tries < 6:
-#             removed_any = False
-#             first = ch_lines[0].strip()
-#             if not first:
-#                 ch_lines.pop(0)
-#                 removed_any = True
-#                 tries += 1
-#                 continue
-
-#             # Exact match with any of last lines
-#             if first in last:
-#                 ch_lines.pop(0)
-#                 removed_any = True
-#                 tries += 1
-#                 continue
-
-#             # Header replay: chunk starts with same header-ish text
-#             if _is_header_line(first):
-#                 for ln in last[::-1]:
-#                     if _is_header_line(ln) and _norm(ln).lower() == _norm(first).lower():
-#                         ch_lines.pop(0)
-#                         removed_any = True
-#                         tries += 1
-#                         break
-#                 if removed_any:
-#                     continue
-
-#             # Bullet replay: "- X" vs "• X" vs "X" (same stem)
-#             stem = re.sub(r"^[-*•\u2022]+\s*", "", first).strip()
-#             if stem and len(stem) >= 18:
-#                 for ln in last[::-1]:
-#                     ln_stem = re.sub(r"^[-*•\u2022]+\s*", "", ln).strip()
-#                     if _norm(ln_stem).lower().startswith(_norm(stem).lower()) or _norm(stem).lower().startswith(_norm(ln_stem).lower()):
-#                         ch_lines.pop(0)
-#                         removed_any = True
-#                         tries += 1
-#                         break
-
-#         return "\n".join(ch_lines).lstrip()
-
-#     # ---------- phase 1: strip obvious replay lines ----------
-#     ch = _strip_replayed_opening_lines(ex, ch_raw)
-#     if not ch.strip():
-#         return ex
-
-#     # ---------- phase 2: overlap match (supports shorter overlaps + mid-line) ----------
-#     tail = ex[-max_window:]
-#     head = ch[:max_window]
-
-#     tail_n = _norm(tail)
-#     head_n = _norm(head)
-
-#     # Find the longest suffix(prefix) overlap on normalized strings
-#     best = 0
-#     max_k = min(len(tail_n), len(head_n))
-
-#     # Allow short overlaps (mid-line splits) — start from ~40 chars
-#     min_k = 40 if max_k >= 200 else 20
-
-#     # scan increasing to get best (simple + stable)
-#     for k in range(min_k, max_k + 1):
-#         if tail_n[-k:] == head_n[:k]:
-#             best = k
-
-#     if best > 0:
-#         # Map normalized overlap back to raw by trimming head using a safer heuristic:
-#         # remove the first raw characters until normalized(head_raw_prefix) reaches the overlap.
-#         target = head_n[:best]
-#         cut = 0
-#         acc = ""
-#         for i, c in enumerate(head):
-#             acc = _norm(head[: i + 1])
-#             if acc.startswith(target) and len(acc) >= len(target):
-#                 cut = i + 1
-#                 break
-#         if cut > 0:
-#             ch = ch[cut:].lstrip()
-
-#     # ---------- phase 3: last-line / first-line partial overlap ----------
-#     # If last line of existing is a prefix of first line of chunk (or vice versa), trim it.
-#     ex_last = (ex.splitlines()[-1] if ex.splitlines() else "").rstrip()
-#     ch_first = (ch.splitlines()[0] if ch.splitlines() else "").lstrip()
-
-#     ex_last_n = _norm(ex_last).lower()
-#     ch_first_n = _norm(ch_first).lower()
-
-#     if ex_last_n and ch_first_n:
-#         if ch_first_n.startswith(ex_last_n) and len(ex_last_n) >= 12:
-#             # drop the repeated prefix from the FIRST LINE only (preserve indentation)
-#             ch_lines = ch.splitlines()
-#             if ch_lines:
-#                 first_raw = ch_lines[0]
-#                 indent = first_raw[: len(first_raw) - len(first_raw.lstrip())]
-#                 content = first_raw.lstrip()
-
-#                 ex_last_clean = ex_last.strip()
-#                 if content.lower().startswith(ex_last_clean.lower()):
-#                     content = content[len(ex_last_clean):].lstrip()
-#                     ch_lines[0] = indent + content
-#                     ch = "\n".join(ch_lines).lstrip()
-
-            
-#         elif ex_last_n.startswith(ch_first_n) and len(ch_first_n) >= 12:
-#             # chunk repeats a shorter fragment; drop first line entirely
-#             ch_lines = ch.splitlines()
-#             ch = "\n".join(ch_lines[1:]).lstrip()
-
-
- 
-
-    
-#     # ---------- phase 4: word-fragment stitching ----------
-#     ex_lines = ex.splitlines()
-#     ex_last_line = (ex_lines[-1] if ex_lines else "")
-#     ch_lines = ch.splitlines()
-
-#     if ex_last_line and ch_lines:
-#         first_line = ch_lines[0]
-#         rest = ch_lines[1:]
-
-#         # Case 1: hyphenated split (retrieval-aug + mented)
-#         if ex_last_line.rstrip().endswith("-"):
-#             stitched_last = ex_last_line.rstrip() + first_line.lstrip()
-#             ex = ("\n".join(ex_lines[:-1]) + "\n" + stitched_last).rstrip()
-#             ch = "\n".join(rest).lstrip()
-
-#         # Case 2: plain word split without hyphen
-#         elif ex_last_line[-1].isalnum() and first_line and first_line[0].isalnum():
-#             stitched_last = ex_last_line + first_line
-#             ex = ("\n".join(ex_lines[:-1]) + "\n" + stitched_last).rstrip()
-#             ch = "\n".join(rest).lstrip()
-   
-
-    
-    
-    
-#     # ---------- phase 5: punctuation + header cleanup ----------
-#     lines = ch.splitlines()
-
-#     # Remove lines that are just punctuation or leading comma fragments
-#     cleaned = []
-#     for ln in lines:
-#         stripped = ln.strip()
-
-#         # drop punctuation-only lines
-#         if stripped in {",", ".", ";"}:
-#             continue
-
-#         # remove a leading ", " but KEEP indentation
-#         if stripped.startswith(", "):
-#             # preserve the original leading whitespace
-#             indent = ln[: len(ln) - len(ln.lstrip())]
-#             content = ln.lstrip()
-#             if content.startswith(", "):
-#                 content = content[2:]
-#             ln = indent + content
-
-#         # IMPORTANT: keep original ln (indentation preserved)
-#         cleaned.append(ln)
-
-#     ch = "\n".join(cleaned).lstrip()
-
-#     # Remove duplicated header variants (case-insensitive)
-#     ex_tail_lines = [l.strip().lower() for l in ex.splitlines()[-8:] if l.strip()]
-#     ch_lines = ch.splitlines()
-#     if ch_lines:
-#         first = ch_lines[0].strip().lower()
-#         if any(first.startswith(t) for t in ex_tail_lines):
-#             ch = "\n".join(ch_lines[1:]).lstrip()
-    
-    
-    
-    
-    
-    
-    
-    
-    
-#     # Final join with clean spacing
-#     return (ex.rstrip() + "\n\n" + ch.lstrip()).strip()
 
 # =========================
 # Session State
@@ -1162,55 +922,7 @@ def page_new_chat() -> None:
 
 
     
-    # # Handle Continue for New Chat answers
-    # if st.session_state._nc_continue_q:
-    #     cont_q = st.session_state._nc_continue_q
-    #     st.session_state._nc_continue_q = None
-
-    #     answer_obj = st.session_state.chat_answers.get(cont_q, {})
-    #     if isinstance(answer_obj, dict):
-    #         previous_text = (answer_obj.get("text") or "").strip()
-    #         mode = (answer_obj.get("mode") or "deep").strip()
-    #     else:
-    #         previous_text = str(answer_obj or "").strip()
-    #         mode = "deep"
-
-    #     if previous_text:
-    #         try:
-    #             with st.spinner("Generating answer... may take some time."):
-    #                 resp = fetch_study(
-    #                     topic=cont_q,
-    #                     mode=mode,
-    #                     continue_mode=True,
-    #                     previous_answer=previous_text,
-    #                 )
-
-    #                 chunk = normalize_whitespace_for_readability(
-    #                     normalize_mojibake(resp.get("answer", "") or "")
-    #                 ).strip()
-
-    #                 if chunk:
-    #                     combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
-    #                 else:
-    #                     combined = previous_text
-
-    #                 st.session_state.chat_answers[cont_q] = {
-    #                     "text": combined,
-    #                     "incomplete": bool(resp.get("incomplete")),
-    #                     "stop_reason": resp.get("stop_reason") or None,
-    #                     "prompt": cont_q,
-    #                     "mode": mode,
-    #                 }
-
-    #                 if resp.get("followups"):
-    #                     st.session_state.chat_followups[cont_q] = resp.get("followups") or []
-
-    #             st.rerun()
-
-    #         except Exception as e:
-    #             st.error(f"Error continuing answer: {e}")
-
-    
+      
     
     
     # Auto-run FUQ opened in a new tab for New Chat
@@ -1386,7 +1098,7 @@ def page_new_chat() -> None:
         
 
         st.markdown("### Question Map")
-        st.caption("Orientation → Mechanisms → Applications → Pitfalls → Advanced/Future")
+        st.caption("Orientation → Foundations → Mechanisms → Methods & Tools → Applications → Pitfalls → Advanced / Future")
 
         
         hide_all = st.button("Hide All Answers", key="hide_all_answers_newchat")
@@ -1398,11 +1110,13 @@ def page_new_chat() -> None:
         cats = data.get("categories") or {}
 
         ladder = [
-            ("Orientation", ["What", "Why"]),
-            ("Mechanisms", ["How"]),
-            ("Applications", ["Where", "Examples"]),
-            ("Pitfalls", ["Misconceptions", "Common Challenges"]),
-            ("Advanced / Future", ["Related Topics"]),
+            ("Orientation", ["Orientation"]),
+            ("Foundations", ["Foundations"]),
+            ("Mechanisms", ["Mechanisms"]),
+            ("Methods & Tools", ["Methods & Tools"]),
+            ("Applications", ["Applications"]),
+            ("Pitfalls", ["Pitfalls"]),
+            ("Advanced / Future", ["Advanced / Future"]),
         ]
 
         for section, cat_keys in ladder:

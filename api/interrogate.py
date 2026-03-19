@@ -39,6 +39,8 @@ def _llm_is_enabled() -> bool:
 # ------------------------------------------------------------
 PREFIX_PATTERNS = [
     r"^can you\s+",
+    r"^could you please\s+",
+    r"^could you explain\s+",
     r"^could you\s+",
     r"^would you\s+",
     r"^please\s+",
@@ -122,30 +124,28 @@ def detect_topic_type(topic: str) -> Tuple[str, float]:
 # ------------------------------------------------------------
 # Archetypes + category ordering
 # ------------------------------------------------------------
+
 ARCHETYPE_MAP = {
-    "What": "ORIENT",
-    "Why": "ORIENT",
-
-    # RISK immediately after ORIENT
-    "Misconceptions": "RISK",
-    "Common Challenges": "RISK",
-
-    "How": "MECHANISM",
-    "Where": "APPLY",
-    "Examples": "APPLY",
-    "Related Topics": "NEXT",
+    "Orientation": "ORIENT",
+    "Foundations": "ORIENT",
+    "Mechanisms": "MECHANISM",
+    "Methods & Tools": "MECHANISM",
+    "Applications": "APPLY",
+    "Pitfalls": "RISK",
+    "Advanced / Future": "NEXT",
 }
 
 CATEGORY_ORDER = [
-    "What",
-    "Why",
-    "Misconceptions",
-    "Common Challenges",
-    "How",
-    "Where",
-    "Examples",
-    "Related Topics",
+    "Orientation",
+    "Foundations",
+    "Mechanisms",
+    "Methods & Tools",
+    "Applications",
+    "Pitfalls",
+    "Advanced / Future"
 ]
+   
+
 
 
 def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
@@ -153,43 +153,49 @@ def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
     T = topic
     categories: Dict[str, List[str]] = {}
 
-    categories["What"] = [
+    categories["Orientation"] = [
         f"What is {T} in plain language?",
-        f"What problem does {T} exist to solve?",
-        f"What are the main benefits of {T}?",
-        f"What are the limitations of {T}?",
-    ]
-
-    categories["Why"] = [
+        f"What is {T} for?",
+        f"What problems does {T} solve?",
+        f"What benefits does {T} provide?",
+        f"What are the main classifications or types within {T}?",
+        f"Why does {T} exist?",
         f"Why does {T} matter?",
-        f"Why do people get confused about {T}?",
     ]
 
-    categories["Misconceptions"] = [
-        f"What is a common misconception about {T}?",
+    categories["Foundations"] = [
+        f"What core ideas support {T}?",
+        f"What terminology do I need before understanding {T} well?",
+        f"What assumptions or principles sit underneath {T}?",
     ]
 
-    categories["Common Challenges"] = [
-        f"What pitfalls should I avoid when learning or using {T}?",
+    categories["Mechanisms"] = [
+        f"How does {T} work internally?",
+        f"What are the key components inside {T}?",
+        f"What internal process makes {T} effective?",
     ]
 
-    categories["How"] = [
-        f"How does {T} work at a high level?",
-        f"How can I tell if I truly understand {T}?",
+    categories["Methods & Tools"] = [
+        f"What methods are commonly used to build or apply {T}?",
+        f"What tools, frameworks, or technologies are associated with {T}?",
+        f"What practical workflow do practitioners follow when working with {T}?",
     ]
 
-    categories["Where"] = [
+    categories["Applications"] = [
         f"Where is {T} used in real life?",
+        f"What are important real-world examples of {T}?",
+        f"In which industries or workflows does {T} deliver value?",
+    ]
+
+    categories["Pitfalls"] = [
+        f"What are common misconceptions about {T}?",
+        f"What common challenges appear when learning or applying {T}?",
         f"Where does {T} usually fail or break in practice?",
     ]
 
-    categories["Examples"] = [
-        f"What is a simple example of {T}?",
-        f"What are real-world examples of {T}?",
-    ]
-
-    categories["Related Topics"] = [
-        f"What topics are closely related to {T}?",
+    categories["Advanced / Future"] = [
+        f"What advanced topics are closely related to {T}?",
+        f"What future developments or open problems matter for {T}?",
     ]
 
     return categories
@@ -359,6 +365,10 @@ Questions must follow a LEARNING LADDER:
 
 1. Orientation
    – What the topic is
+   – What the topic is for
+   – What problems it solves
+   – What benefits it provides
+   – What are the main classifications or types within the topic
    – Why it exists
    – Why it matters
 
@@ -411,36 +421,34 @@ Return STRICT JSON only.
     "short sentence about how understanding will progress"
   ],
 
-  "categories": {{
-    "What": [{{"question": "..."}}],
-    "Why": [{{"question": "..."}}],
-    "Misconceptions": [{{"question": "..."}}],
-    "Common Challenges": [{{"question": "..."}}],
-    "How": [{{"question": "..."}}],
-    "Where": [{{"question": "..."}}],
-    "Examples": [{{"question": "..."}}],
-    "Related Topics": [{{"question": "..."}}]
+    "categories": {{
+    "Orientation": [{{"question": "..."}}],
+    "Foundations": [{{"question": "..."}}],
+    "Mechanisms": [{{"question": "..."}}],
+    "Methods & Tools": [{{"question": "..."}}],
+    "Applications": [{{"question": "..."}}],
+    "Pitfalls": [{{"question": "..."}}],
+    "Advanced / Future": [{{"question": "..."}}]
   }}
 }}
 
 IMPORTANT
 
 • You MUST return EXACTLY these category keys and no others:
-  - What
-  - Why
-  - Misconceptions
-  - Common Challenges
-  - How
-  - Where
-  - Examples
-  - Related Topics
+  - Orientation
+  - Foundations
+  - Mechanisms
+  - Methods & Tools
+  - Applications
+  - Pitfalls
+  - Advanced / Future
 
 • Do NOT rename categories.
 • Do NOT add extra categories.
 • Do NOT omit categories. If a category has fewer questions, return an empty list.
 • The JSON schema must match exactly.
 
-• First question in "What" MUST clearly define the topic.
+• First question in "Orientation" MUST clearly define the topic.
 • Questions must feel modern and relevant (2024–2025 context).
 • Focus on learning progression.
 
@@ -533,14 +541,13 @@ Return STRICT JSON only.
 Topic: {topic}
 
 Use EXACTLY these category keys:
-- What
-- Why
-- Misconceptions
-- Common Challenges
-- How
-- Where
-- Examples
-- Related Topics
+- Orientation
+- Foundations
+- Mechanisms
+- Methods & Tools
+- Applications
+- Pitfalls
+- Advanced / Future
 
 Rules:
 - No prose outside JSON
@@ -557,15 +564,14 @@ JSON shape:
     "short sentence about why it matters",
     "short sentence about how understanding will progress"
   ],
-  "categories": {{
-    "What": [{{"question": "..."}}],
-    "Why": [{{"question": "..."}}],
-    "Misconceptions": [{{"question": "..."}}],
-    "Common Challenges": [{{"question": "..."}}],
-    "How": [{{"question": "..."}}],
-    "Where": [{{"question": "..."}}],
-    "Examples": [{{"question": "..."}}],
-    "Related Topics": [{{"question": "..."}}]
+"categories": {{
+    "Orientation": [{{"question": "..."}}],
+    "Foundations": [{{"question": "..."}}],
+    "Mechanisms": [{{"question": "..."}}],
+    "Methods & Tools": [{{"question": "..."}}],
+    "Applications": [{{"question": "..."}}],
+    "Pitfalls": [{{"question": "..."}}],
+    "Advanced / Future": [{{"question": "..."}}]
   }}
 }}
 """.strip()
