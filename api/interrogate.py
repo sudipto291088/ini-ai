@@ -404,7 +404,7 @@ Questions must follow a LEARNING LADDER:
 
 QUESTION RULES
 
-• Generate between 22 and 28 questions total.
+• Generate between 28 to 32 questions total.
 • Questions must progress from basic → advanced.
 • Avoid duplicates.
 • Avoid vague or generic questions.
