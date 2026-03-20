@@ -144,6 +144,29 @@ CATEGORY_ORDER = [
     "Pitfalls",
     "Advanced / Future"
 ]
+
+SECTION_MIN_COUNTS = {
+    "Orientation": 7,
+    "Foundations": 4,
+    "Mechanisms": 4,
+    "Methods & Tools": 4,
+    "Applications": 3,
+    "Pitfalls": 3,
+    "Advanced / Future": 3,
+}
+
+MIN_TOTAL_QUESTIONS = 28
+MAX_TOTAL_QUESTIONS = 32
+
+
+def _question_map_counts_ok(categories: Dict[str, List[Dict[str, Any]]]) -> bool:
+    total = 0
+    for cat in CATEGORY_ORDER:
+        items = categories.get(cat, []) or []
+        total += len(items)
+        if len(items) < SECTION_MIN_COUNTS.get(cat, 0):
+            return False
+    return MIN_TOTAL_QUESTIONS <= total <= MAX_TOTAL_QUESTIONS
    
 
 
@@ -404,11 +427,20 @@ Questions must follow a LEARNING LADDER:
 
 QUESTION RULES
 
-• Generate between 28 to 32 questions total.
+• Generate between 28 and 32 questions total.
+• Respect these section minimums:
+  - Orientation: 7 to 9 questions
+  - Foundations: 4 to 5 questions
+  - Mechanisms: 4 to 5 questions
+  - Methods & Tools: 4 to 5 questions
+  - Applications: 3 to 4 questions
+  - Pitfalls: 3 to 4 questions
+  - Advanced / Future: 3 to 4 questions
 • Questions must progress from basic → advanced.
 • Avoid duplicates.
 • Avoid vague or generic questions.
 • Questions should reveal gaps in understanding.
+• Do NOT collapse Orientation into fewer than 7 questions.
 
 STRUCTURE
 
@@ -445,7 +477,9 @@ IMPORTANT
 
 • Do NOT rename categories.
 • Do NOT add extra categories.
-• Do NOT omit categories. If a category has fewer questions, return an empty list.
+• Do NOT omit categories.
+• Every category must contain questions.
+• You must satisfy the section minimums listed above.
 • The JSON schema must match exactly.
 
 • First question in "Orientation" MUST clearly define the topic.
@@ -553,9 +587,18 @@ Rules:
 - No prose outside JSON
 - No markdown
 - No code fences
-- 2 to 4 questions per category
+- Generate between 28 and 32 questions total
+- Respect these section minimums:
+  - Orientation: 7 to 9 questions
+  - Foundations: 4 to 5 questions
+  - Mechanisms: 4 to 5 questions
+  - Methods & Tools: 4 to 5 questions
+  - Applications: 3 to 4 questions
+  - Pitfalls: 3 to 4 questions
+  - Advanced / Future: 3 to 4 questions
 - Questions must be specific and modern
-- First question in "What" must define the topic clearly
+- First question in "Orientation" must define the topic clearly
+- Do not leave any category empty
 
 JSON shape:
 {{
@@ -702,10 +745,10 @@ def interrogate(text: str) -> Dict[str, Any]:
     if use_llm:
         summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
 
-        if not (llm_categories and any(llm_categories.get(c) for c in llm_categories)):
+        if not _question_map_counts_ok(llm_categories):
             summary, llm_categories = _llm_generate_questions_only_rescue(clean_topic, topic_type)
 
-        if llm_categories and any(llm_categories.get(c) for c in llm_categories):
+        if _question_map_counts_ok(llm_categories):
             return {
                 "topic": clean_topic,
                 "topic_type": topic_type,
@@ -717,6 +760,7 @@ def interrogate(text: str) -> Dict[str, Any]:
                     "v0: AI uses LLM for questions",
                     "v0: answers fetched on click via /answer (LLM)",
                     "v0: UI reveals answers on click (progressive disclosure)",
+                    "v0: validated for section minimums and total question count",
                 ],
                 "llm_used": True,
             }
