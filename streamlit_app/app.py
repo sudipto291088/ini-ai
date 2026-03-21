@@ -614,6 +614,10 @@ def fetch_study(
 
 def fetch_interrogate(topic: str) -> Dict[str, Any]:
     return post_json("/interrogate", {"topic": topic}, timeout=240)
+
+
+def fetch_illustrate(topic: str) -> Dict[str, Any]:
+    return post_json("/illustrate", {"topic": topic}, timeout=240)
     
 
 def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dict[str, Any]:
@@ -972,12 +976,15 @@ def page_new_chat() -> None:
 
 
 
-    colA, colB = st.columns([1, 5])
+    colA, colB, colC = st.columns([1, 1, 4])
 
     with colA:
         run = st.button("Interrogate")
 
     with colB:
+        illustrate_run = st.button("Illustrate")
+
+    with colC:
         st.caption("Tip: backend must be running (FastAPI).")
 
    
@@ -995,6 +1002,7 @@ def page_new_chat() -> None:
                 st.session_state.chat_intro = intro
 
             # Reset topic state
+                st.session_state.chat["illustrate"] = None
                 st.session_state.chat_direct_answer = None
                 st.session_state.chat_answers = {}
                 st.session_state.chat_followups = {}
@@ -1004,6 +1012,30 @@ def page_new_chat() -> None:
         except Exception as e:
             st.error(f"Error calling /interrogate: {e}")
 
+    if illustrate_run and topic.strip():
+        try:
+            with st.spinner("Generating illustrations... please wait."):
+                data = fetch_illustrate(topic.strip())
+                st.session_state.chat["illustrate"] = data
+
+                # Clear other New Chat views
+                st.session_state.chat["interrogate"] = None
+                st.session_state.chat_intro = ""
+                st.session_state.chat_direct_answer = None
+                st.session_state.chat_answers = {}
+                st.session_state.chat_followups = {}
+                st.session_state.chat_open_questions = set()
+                st.session_state.chat_visited_questions = set()
+
+        except Exception as e:
+            st.error(f"Error calling /illustrate: {e}")
+
+    illustrate_data = st.session_state.chat.get("illustrate")
+    if isinstance(illustrate_data, dict) and (illustrate_data.get("illustration_text") or "").strip():
+        st.markdown("### Illustrations")
+        st.markdown(illustrate_data.get("illustration_text") or "")
+        st.markdown("---")
+        return
 
     direct_answer = st.session_state.chat_direct_answer
     if isinstance(direct_answer, dict) and (direct_answer.get("text") or "").strip():
