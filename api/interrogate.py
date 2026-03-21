@@ -168,7 +168,68 @@ def _question_map_counts_ok(categories: Dict[str, List[Dict[str, Any]]]) -> bool
             return False
     return MIN_TOTAL_QUESTIONS <= total <= MAX_TOTAL_QUESTIONS
    
+def _top_up_question_map(
+    categories: Dict[str, List[Dict[str, Any]]],
+    topic: str,
+    topic_type: str,
+) -> Dict[str, List[Dict[str, Any]]]:
+    """
+    Preserve LLM-generated questions, but top up missing/underfilled sections
+    from template questions so we avoid falling back to a fully templated map.
+    """
+    template_bank = build_categories(topic, topic_type)
 
+    topped: Dict[str, List[Dict[str, Any]]] = {}
+    for cat in CATEGORY_ORDER:
+        topped[cat] = list(categories.get(cat, []) or [])
+
+    # Fill missing questions per section
+    for cat in CATEGORY_ORDER:
+        existing_items = topped.get(cat, [])
+        existing_qs = {
+            ((it.get("question") or "").strip().lower())
+            for it in existing_items
+            if isinstance(it, dict)
+        }
+
+        archetype = ARCHETYPE_MAP.get(cat, "ORIENT")
+        next_idx = len(existing_items) + 1
+
+        for tq in template_bank.get(cat, []):
+            if len(existing_items) >= SECTION_MIN_COUNTS.get(cat, 0):
+                break
+
+            key = tq.strip().lower()
+            if not key or key in existing_qs:
+                continue
+
+            existing_items.append(
+                {
+                    "id": f"{cat.lower().replace(' ', '_')}_{next_idx}",
+                    "archetype": archetype,
+                    "question": tq,
+                    "answer": "",
+                    "collapsed": True,
+                    "visible": False,
+                }
+            )
+            existing_qs.add(key)
+            next_idx += 1
+
+        topped[cat] = existing_items
+
+    # Recompute top-8 visible flags cleanly
+    global_count = 0
+    for cat in CATEGORY_ORDER:
+        new_items: List[Dict[str, Any]] = []
+        for it in topped.get(cat, []):
+            global_count += 1
+            it = dict(it)
+            it["visible"] = global_count <= 8
+            new_items.append(it)
+        topped[cat] = new_items
+
+    return topped
 
 
 def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
@@ -190,18 +251,21 @@ def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
         f"What core ideas support {T}?",
         f"What terminology do I need before understanding {T} well?",
         f"What assumptions or principles sit underneath {T}?",
+        f"What background knowledge makes {T} easier to understand?",
     ]
 
     categories["Mechanisms"] = [
         f"How does {T} work internally?",
         f"What are the key components inside {T}?",
         f"What internal process makes {T} effective?",
+        f"How do the main parts of {T} interact with each other?",
     ]
 
     categories["Methods & Tools"] = [
         f"What methods are commonly used to build or apply {T}?",
         f"What tools, frameworks, or technologies are associated with {T}?",
         f"What practical workflow do practitioners follow when working with {T}?",
+        f"What techniques are most useful when using {T} in practice?",
     ]
 
     categories["Applications"] = [
@@ -219,6 +283,7 @@ def build_categories(topic: str, topic_type: str) -> Dict[str, List[str]]:
     categories["Advanced / Future"] = [
         f"What advanced topics are closely related to {T}?",
         f"What future developments or open problems matter for {T}?",
+        f"What frontier questions are researchers or practitioners still exploring in {T}?",
     ]
 
     return categories
@@ -718,6 +783,7 @@ def attach_answers(categories: Dict[str, List[str]], topic: str, topic_type: str
     return out
 
 
+
 # ------------------------------------------------------------
 # Main entry
 # ------------------------------------------------------------
@@ -745,10 +811,12 @@ def interrogate(text: str) -> Dict[str, Any]:
     if use_llm:
         summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
 
-        if not _question_map_counts_ok(llm_categories):
+        if not (llm_categories and any(llm_categories.get(c) for c in llm_categories)):
             summary, llm_categories = _llm_generate_questions_only_rescue(clean_topic, topic_type)
 
-        if _question_map_counts_ok(llm_categories):
+        if llm_categories and any(llm_categories.get(c) for c in llm_categories):
+            llm_categories = _top_up_question_map(llm_categories, clean_topic, topic_type)
+
             return {
                 "topic": clean_topic,
                 "topic_type": topic_type,
@@ -760,12 +828,12 @@ def interrogate(text: str) -> Dict[str, Any]:
                     "v0: AI uses LLM for questions",
                     "v0: answers fetched on click via /answer (LLM)",
                     "v0: UI reveals answers on click (progressive disclosure)",
-                    "v0: validated for section minimums and total question count",
+                    "v0: underfilled sections are topped up from templates when needed",
                 ],
                 "llm_used": True,
             }
 
-        # AI fallback: only after main LLM pass + rescue pass both fail
+        # AI fallback: only if both LLM passes return no usable categories
         fallback_categories = build_categories(clean_topic, topic_type)
         fallback_qa = attach_answers(fallback_categories, clean_topic, topic_type)
 
