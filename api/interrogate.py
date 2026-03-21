@@ -462,6 +462,7 @@ Questions must follow a LEARNING LADDER:
 
 2. Foundations
    – Core ideas
+   – Full definitions of each of the subtypes of the topic
    – Basic structure
    – Key terminology
 
@@ -585,7 +586,9 @@ Generate the questions now.
         return (build_summary(topic, topic_type, 0.67), {})
 
     summary = data.get("summary") if isinstance(data.get("summary"), list) else []
-    cats = data.get("categories") if isinstance(data.get("categories"), dict) else {}
+    cats = _normalize_category_keys(
+    data.get("categories") if isinstance(data.get("categories"), dict) else {}
+)
     
     # Force exact category schema so UI always stays stable
     cats = {key: cats.get(key, []) for key in CATEGORY_ORDER}
@@ -627,6 +630,41 @@ Generate the questions now.
         return (build_summary(topic, topic_type, 0.67), {})
 
     return (summary, categories_out)
+
+
+def _normalize_category_keys(cats: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Accept small variations from the LLM and map them to the
+    canonical CATEGORY_ORDER keys.
+    """
+    if not isinstance(cats, dict):
+        return {}
+
+    mapping = {
+        "orientation": "Orientation",
+        "foundations": "Foundations",
+        "mechanisms": "Mechanisms",
+        "methods and tools": "Methods & Tools",
+        "methods & tools": "Methods & Tools",
+        "methods/tools": "Methods & Tools",
+        "applications": "Applications",
+        "pitfalls": "Pitfalls",
+        "pitfalls & misconceptions": "Pitfalls",
+        "advanced": "Advanced / Future",
+        "advanced & future": "Advanced / Future",
+        "advanced/future": "Advanced / Future",
+        "advanced / future": "Advanced / Future",
+    }
+
+    out = {k: [] for k in CATEGORY_ORDER}
+
+    for key, val in cats.items():
+        k = (key or "").strip().lower()
+        mapped = mapping.get(k)
+        if mapped:
+            out[mapped] = val
+
+    return out
 
 
 def _llm_generate_questions_only_rescue(topic: str, topic_type: str) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
@@ -697,7 +735,9 @@ JSON shape:
         return (build_summary(topic, topic_type, 0.67), {})
 
     summary = data.get("summary") if isinstance(data.get("summary"), list) else []
-    cats = data.get("categories") if isinstance(data.get("categories"), dict) else {}
+    cats = _normalize_category_keys(
+    data.get("categories") if isinstance(data.get("categories"), dict) else {}
+)
     cats = {key: cats.get(key, []) for key in CATEGORY_ORDER}
 
     categories_out: Dict[str, List[Dict[str, Any]]] = {}
