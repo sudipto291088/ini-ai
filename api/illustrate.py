@@ -52,6 +52,7 @@ def _normalize_examples(text: str) -> str:
             out.append(title)
             continue
 
+        ln = re.sub(r"^(?:\t| {4,})", "", ln)    
         out.append(ln.rstrip())
 
     s = "\n".join(out).strip()

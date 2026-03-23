@@ -157,6 +157,7 @@ SECTION_MIN_COUNTS = {
 
 MIN_TOTAL_QUESTIONS = 28
 MAX_TOTAL_QUESTIONS = 32
+MAIN_LLM_ATTEMPTS = 2
 
 
 def _question_map_counts_ok(categories: Dict[str, List[Dict[str, Any]]]) -> bool:
@@ -849,8 +850,15 @@ def interrogate(text: str) -> Dict[str, Any]:
 
     
     if use_llm:
-        summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
+        summary, llm_categories = [], {}
 
+        # Main strict pass: give cold start one extra chance
+        for _ in range(MAIN_LLM_ATTEMPTS):
+            summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
+            if llm_categories and any(llm_categories.get(c) for c in llm_categories):
+                break
+
+        # Lighter rescue pass only if main strict pass still gave nothing usable
         if not (llm_categories and any(llm_categories.get(c) for c in llm_categories)):
             summary, llm_categories = _llm_generate_questions_only_rescue(clean_topic, topic_type)
 
@@ -869,9 +877,28 @@ def interrogate(text: str) -> Dict[str, Any]:
                     "v0: answers fetched on click via /answer (LLM)",
                     "v0: UI reveals answers on click (progressive disclosure)",
                     "v0: underfilled sections are topped up from templates when needed",
+                    "v0: cold start gets one extra strict retry before rescue",
                 ],
                 "llm_used": True,
             }
+
+        # AI fallback: only if main attempts + rescue return no usable categories
+        fallback_categories = build_categories(clean_topic, topic_type)
+        fallback_qa = attach_answers(fallback_categories, clean_topic, topic_type)
+
+        return {
+            "topic": clean_topic,
+            "topic_type": topic_type,
+            "categories": fallback_qa,
+            "summary": build_summary(clean_topic, topic_type, confidence),
+            "confidence": confidence,
+            "notes": [
+                "v0: interrogation engine",
+                "v0: AI LLM question-map failed after retries; template fallback used",
+            ],
+            "llm_used": False,
+            "needs_clarification": False,
+        }
 
         # AI fallback: only if both LLM passes return no usable categories
         fallback_categories = build_categories(clean_topic, topic_type)
