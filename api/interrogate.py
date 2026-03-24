@@ -852,15 +852,15 @@ def interrogate(text: str) -> Dict[str, Any]:
     if use_llm:
         summary, llm_categories = [], {}
 
-        # Main strict pass: give cold start one extra chance
-        for _ in range(MAIN_LLM_ATTEMPTS):
-            summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
-            if llm_categories and any(llm_categories.get(c) for c in llm_categories):
-                break
+        # Cold start is more stable with the lighter rescue prompt first
+        summary, llm_categories = _llm_generate_questions_only_rescue(clean_topic, topic_type)
 
-        # Lighter rescue pass only if main strict pass still gave nothing usable
+        # If rescue still gives nothing usable, try the full strict prompt
         if not (llm_categories and any(llm_categories.get(c) for c in llm_categories)):
-            summary, llm_categories = _llm_generate_questions_only_rescue(clean_topic, topic_type)
+            for _ in range(MAIN_LLM_ATTEMPTS):
+                summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
+                if llm_categories and any(llm_categories.get(c) for c in llm_categories):
+                    break
 
         if llm_categories and any(llm_categories.get(c) for c in llm_categories):
             llm_categories = _top_up_question_map(llm_categories, clean_topic, topic_type)
@@ -877,12 +877,11 @@ def interrogate(text: str) -> Dict[str, Any]:
                     "v0: answers fetched on click via /answer (LLM)",
                     "v0: UI reveals answers on click (progressive disclosure)",
                     "v0: underfilled sections are topped up from templates when needed",
-                    "v0: cold start gets one extra strict retry before rescue",
                 ],
                 "llm_used": True,
             }
 
-        # AI fallback: only if main attempts + rescue return no usable categories
+        # AI fallback: only if rescue + main attempts both return no usable categories
         fallback_categories = build_categories(clean_topic, topic_type)
         fallback_qa = attach_answers(fallback_categories, clean_topic, topic_type)
 
@@ -899,27 +898,6 @@ def interrogate(text: str) -> Dict[str, Any]:
             "llm_used": False,
             "needs_clarification": False,
         }
-
-        # AI fallback: only if both LLM passes return no usable categories
-        fallback_categories = build_categories(clean_topic, topic_type)
-        fallback_qa = attach_answers(fallback_categories, clean_topic, topic_type)
-
-        return {
-            "topic": clean_topic,
-            "topic_type": topic_type,
-            "categories": fallback_qa,
-            "summary": build_summary(clean_topic, topic_type, confidence),
-            "confidence": confidence,
-            "notes": [
-                "v0: interrogation engine",
-                "v0: AI LLM question-map failed twice; template fallback used",
-            ],
-            "llm_used": False,
-            "needs_clarification": False,
-        }
-
-
-
        
 
     # Non-AI topics: templates

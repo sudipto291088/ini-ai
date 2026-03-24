@@ -7,6 +7,7 @@ from api.illustrate import illustrate as illustrate_logic
 from api.resume import resume as resume_logic
 from api.llm_answers import llm_enabled
 from api.study_ai import study_ai
+import threading
 
 app = FastAPI()
 
@@ -24,6 +25,18 @@ class StudyAIIn(BaseModel):
     continue_mode: bool = Field(False, description="If true, continue from previous_answer")
     previous_answer: Optional[str] = Field(None, description="Prior assistant answer to continue from")
 
+
+def _warm_up_in_background() -> None:
+    try:
+        interrogate_logic("Artificial Intelligence")
+    except Exception:
+        pass
+
+
+
+@app.on_event("startup")
+def startup_warmup() -> None:
+    threading.Thread(target=_warm_up_in_background, daemon=True).start()
 
 @app.get("/")
 def root():
