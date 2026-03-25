@@ -508,7 +508,7 @@ def ensure_learning_session() -> str:
         return st.session_state.learning_active_id
 
     # 2) Otherwise, try to load the most recently-updated session from DB
-    rows = list_sessions(limit=1)  # [(sid,title,created,updated)]
+    rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("learn-")]  # [(sid,title,created,updated)]
     if rows:
         sid, title, created_at, updated_at = rows[0]
         loaded = load_session(sid)
@@ -1040,23 +1040,20 @@ with st.sidebar:
         st.markdown("<hr/>", unsafe_allow_html=True)
         st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Learning</div>', unsafe_allow_html=True)
 
-        
         rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("learn-")]
         if rows:
             for sid, title, created_at, updated_at in rows:
-            active = (sid == st.session_state.learning_active_id)
-            dot = "🔵" if active else "⚪"
-            label = (title or "Session").strip()
-            st.markdown(f"- {dot} [{label}](?page=learn&learn_sid={sid})")
+                active = (sid == st.session_state.learning_active_id)
+                dot = "🔵" if active else "⚪"
+                label = (title or "Learning Session").strip()
+                st.markdown(f"- {dot} [{label}](?page=learn&learn_sid={sid})")
         else:
-            st.markdown('<div class="small" style="color:var(--muted);">No sessions yet.</div>', unsafe_allow_html=True)
+            st.markdown('<div class="small" style="color:var(--muted);">No learning sessions yet.</div>', unsafe_allow_html=True)
 
-    
         if st.button("🗑️ Delete this session"):
             sid = st.session_state.learning_active_id
             if sid:
                 delete_session(sid)
-                # reset local state
                 st.session_state.learning_sessions.pop(sid, None)
                 st.session_state.learning_active_id = None
                 start_new_learning_session()
