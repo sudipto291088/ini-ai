@@ -473,6 +473,15 @@ if "_mnl_continue_loading_id" not in st.session_state:
 if "chat_direct_answer" not in st.session_state:
     st.session_state.chat_direct_answer = None
 
+if "chat_sessions" not in st.session_state:
+    st.session_state.chat_sessions: Dict[str, Dict[str, Any]] = {}
+
+if "chat_active_id" not in st.session_state:
+    st.session_state.chat_active_id = None
+
+if "chat_loaded_sid" not in st.session_state:
+    st.session_state.chat_loaded_sid = None
+
 
 
 # UIB state
@@ -578,6 +587,140 @@ def _persist_learning_session(sid: str, sess: Dict[str, Any]) -> None:
         created_at=created,
         messages=sess.get("messages", []),
     )
+
+def _empty_new_chat_state() -> Dict[str, Any]:
+    return {
+        "topic": "",
+        "interrogate": None,
+        "illustrate": None,
+        "chat_intro": "",
+        "chat_answers": {},
+        "chat_followups": {},
+        "chat_open_questions": [],
+        "chat_visited_questions": [],
+        "chat_direct_answer": None,
+        "chat_seed_done": "",
+    }
+
+
+def _reset_new_chat_state() -> None:
+    st.session_state.chat = {"topic": "", "interrogate": None, "illustrate": None}
+    st.session_state.chat_intro = ""
+    st.session_state.chat_answers = {}
+    st.session_state.chat_followups = {}
+    st.session_state.chat_open_questions = set()
+    st.session_state.chat_visited_questions = set()
+    st.session_state.chat_direct_answer = None
+    st.session_state.chat_seed_done = ""
+
+
+def _current_new_chat_payload() -> Dict[str, Any]:
+    return {
+        "topic": (st.session_state.chat.get("topic") or "").strip(),
+        "interrogate": st.session_state.chat.get("interrogate"),
+        "illustrate": st.session_state.chat.get("illustrate"),
+        "chat_intro": st.session_state.chat_intro,
+        "chat_answers": st.session_state.chat_answers,
+        "chat_followups": st.session_state.chat_followups,
+        "chat_open_questions": sorted(list(st.session_state.chat_open_questions)),
+        "chat_visited_questions": sorted(list(st.session_state.chat_visited_questions)),
+        "chat_direct_answer": st.session_state.chat_direct_answer,
+        "chat_seed_done": st.session_state.chat_seed_done,
+    }
+
+
+def _new_chat_title_from_payload(payload: Dict[str, Any]) -> str:
+    topic = (payload.get("topic") or "").strip()
+    if topic:
+        return topic
+
+    direct = payload.get("chat_direct_answer") or {}
+    prompt = (direct.get("prompt") or "").strip() if isinstance(direct, dict) else ""
+    if prompt:
+        return prompt
+
+    visited = payload.get("chat_visited_questions") or []
+    if visited:
+        return str(visited[0]).strip()
+
+    return "New Chat Session"
+
+
+def _persist_new_chat_session(sid: Optional[str] = None) -> str:
+    payload = _current_new_chat_payload()
+
+    has_meaningful_content = any([
+        payload.get("topic"),
+        payload.get("interrogate"),
+        payload.get("illustrate"),
+        payload.get("chat_intro"),
+        payload.get("chat_answers"),
+        payload.get("chat_direct_answer"),
+    ])
+
+    if not has_meaningful_content:
+        return st.session_state.chat_active_id or ""
+
+    if not sid:
+        sid = st.session_state.chat_active_id
+
+    if not sid:
+        sid = f"chat-{int(time.time())}"
+        st.session_state.chat_active_id = sid
+
+    created = datetime.now().strftime("%b %d.%Y")
+    existing = st.session_state.chat_sessions.get(sid, {})
+    if existing.get("created"):
+        created = existing["created"]
+
+    title = _new_chat_title_from_payload(payload)
+
+    st.session_state.chat_sessions[sid] = {
+        "created": created,
+        "title": title,
+        "payload": payload,
+    }
+
+    save_session(
+        session_id=sid,
+        title=title,
+        created_at=created,
+        messages=payload,
+    )
+    return sid
+
+
+def _load_new_chat_session(sid: str) -> bool:
+    loaded = load_session(sid)
+    if not loaded:
+        return False
+
+    payload = loaded.get("messages") or {}
+    if not isinstance(payload, dict):
+        return False
+
+    st.session_state.chat_active_id = sid
+    st.session_state.chat_loaded_sid = sid
+    st.session_state.chat_sessions[sid] = {
+        "created": loaded.get("created") or datetime.now().strftime("%b %d.%Y"),
+        "title": (loaded.get("title") or "New Chat Session"),
+        "payload": payload,
+    }
+
+    st.session_state.chat = {
+        "topic": payload.get("topic") or "",
+        "interrogate": payload.get("interrogate"),
+        "illustrate": payload.get("illustrate"),
+    }
+    st.session_state.chat_intro = payload.get("chat_intro") or ""
+    st.session_state.chat_answers = payload.get("chat_answers") or {}
+    st.session_state.chat_followups = payload.get("chat_followups") or {}
+    st.session_state.chat_open_questions = set(payload.get("chat_open_questions") or [])
+    st.session_state.chat_visited_questions = set(payload.get("chat_visited_questions") or [])
+    st.session_state.chat_direct_answer = payload.get("chat_direct_answer")
+    st.session_state.chat_seed_done = payload.get("chat_seed_done") or ""
+
+    return True
 
 # =========================
 # API calls
@@ -776,6 +919,7 @@ def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
 qp = st.query_params
 page_param = (qp.get("page") or "chat").lower()
 learn_sid = qp.get("learn_sid")
+chat_sid = qp.get("chat_sid")
 chat_q = (qp.get("chat_q") or "").strip()
 learn_q = (qp.get("learn_q") or "").strip()
 
@@ -802,6 +946,9 @@ if learn_sid:
             "last_prompt": "",
             "_title_set": (loaded.get("title") or "").strip() not in {"", "Learning Session", "Session", "New Session"},
         }
+
+if chat_sid and st.session_state.chat_loaded_sid != chat_sid:
+    _load_new_chat_session(chat_sid)
 
 
 # =========================
@@ -865,24 +1012,42 @@ with st.sidebar:
         st.markdown("<hr/>", unsafe_allow_html=True)
         st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Chat</div>', unsafe_allow_html=True)
 
-        current_topic = (st.session_state.chat.get("topic") or "").strip()
-        if current_topic:
-            st.markdown(f"- 💬 {current_topic}")
+        chat_rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("chat-")]
+
+        if chat_rows:
+            for sid, title, created_at, updated_at in chat_rows:
+                active = (sid == st.session_state.chat_active_id)
+                dot = "🔵" if active else "⚪"
+                label = (title or "New Chat Session").strip()
+                st.markdown(f"- {dot} [{label}](?page=chat&chat_sid={sid})")
         else:
-            st.markdown('<div class="small" style="color:var(--muted);">No chat yet.</div>', unsafe_allow_html=True)
+            current_topic = (st.session_state.chat.get("topic") or "").strip()
+            if current_topic:
+                st.markdown(f"- 💬 {current_topic}")
+            else:
+                st.markdown('<div class="small" style="color:var(--muted);">No chat yet.</div>', unsafe_allow_html=True)
+
+        if st.session_state.chat_active_id and st.button("🗑️ Delete this chat"):
+            sid = st.session_state.chat_active_id
+            delete_session(sid)
+            st.session_state.chat_sessions.pop(sid, None)
+            st.session_state.chat_active_id = None
+            st.session_state.chat_loaded_sid = None
+            _reset_new_chat_state()
+            st.rerun()
 
     if st.session_state.page == "My New Learning":
         st.markdown("<hr/>", unsafe_allow_html=True)
         st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Learning</div>', unsafe_allow_html=True)
 
         
-        rows = list_sessions(limit=30)  # [(sid,title,created,updated),...]
+        rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("learn-")]
         if rows:
             for sid, title, created_at, updated_at in rows:
-                active = (sid == st.session_state.learning_active_id)
-                dot = "🔵" if active else "⚪"
-                label = (title or "Session").strip()
-                st.markdown(f"- {dot} [{label}](?page=learn&learn_sid={sid})")
+            active = (sid == st.session_state.learning_active_id)
+            dot = "🔵" if active else "⚪"
+            label = (title or "Session").strip()
+            st.markdown(f"- {dot} [{label}](?page=learn&learn_sid={sid})")
         else:
             st.markdown('<div class="small" style="color:var(--muted);">No sessions yet.</div>', unsafe_allow_html=True)
 
@@ -923,6 +1088,26 @@ def page_new_chat() -> None:
         st.session_state.chat_followups = {}   # q -> list[str]
     if "chat_seed_done" not in st.session_state:
         st.session_state.chat_seed_done = ""
+    if st.session_state.chat_active_id:
+        with st.expander("Saved Chat Snapshot", expanded=False):
+            payload = _current_new_chat_payload()
+            snap_topic = (payload.get("topic") or "").strip()
+            if snap_topic:
+                st.markdown(f"**Topic:** {snap_topic}")
+
+            direct = payload.get("chat_direct_answer") or {}
+            if isinstance(direct, dict) and (direct.get("prompt") or "").strip():
+                st.markdown(f"**Direct FUQ / CTA Prompt:** {(direct.get('prompt') or '').strip()}")
+
+            visited = payload.get("chat_visited_questions") or []
+            if visited:
+                st.markdown("**Clicked Questions / FUQs:**")
+                for item in visited:
+                    st.markdown(f"- {item}")
+
+            answers = payload.get("chat_answers") or {}
+            if answers:
+                st.markdown(f"**Saved Answer Blocks:** {len(answers)}")
 
 
     
@@ -957,6 +1142,7 @@ def page_new_chat() -> None:
                 st.session_state.chat_open_questions = set()
                 st.session_state.chat_visited_questions = set()
                 st.session_state.chat_seed_done = chat_q
+                _persist_new_chat_session()  # save the seeded FUQ state immediately
             st.rerun()
         except Exception as e:
             st.error(f"Error auto-running chat FUQ: {e}")
@@ -1008,6 +1194,7 @@ def page_new_chat() -> None:
                 st.session_state.chat_followups = {}
                 st.session_state.chat_open_questions = set()
                 st.session_state.chat_visited_questions = set()
+                _persist_new_chat_session()  # save state immediately after generation
 
         except Exception as e:
             st.error(f"Error calling /interrogate: {e}")
@@ -1026,6 +1213,7 @@ def page_new_chat() -> None:
                 st.session_state.chat_followups = {}
                 st.session_state.chat_open_questions = set()
                 st.session_state.chat_visited_questions = set()
+                _persist_new_chat_session()
 
         except Exception as e:
             st.error(f"Error calling /illustrate: {e}")
@@ -1099,6 +1287,7 @@ def page_new_chat() -> None:
                             "mode": mode,
                             "followups": resp.get("followups") or direct_answer.get("followups") or [],
                         }
+                        _persist_new_chat_session()
 
                     except Exception as e:
                         st.error(f"Error continuing answer: {e}")
@@ -1136,6 +1325,7 @@ def page_new_chat() -> None:
         hide_all = st.button("Hide All Answers", key="hide_all_answers_newchat")
         if hide_all:
             st.session_state.chat_open_questions = set()
+            _persist_new_chat_session()
             st.rerun()
        
 
@@ -1187,11 +1377,13 @@ def page_new_chat() -> None:
                         # Toggle closed if already open
                         if is_open:
                             st.session_state.chat_open_questions.discard(q)
+                            _persist_new_chat_session()  # save state immediately after toggling
                             st.rerun()
 
                         # Open if cached already
                         if q in st.session_state.chat_answers:
                             st.session_state.chat_open_questions.add(q)
+                            _persist_new_chat_session()  # save state immediately after opening
                             st.rerun()
 
                         
@@ -1214,6 +1406,7 @@ def page_new_chat() -> None:
                                 }
                                 st.session_state.chat_followups[q] = followups
                                 st.session_state.chat_open_questions.add(q)
+                                _persist_new_chat_session()  # save state immediately after fetching answer
                             st.rerun()
 
                         except Exception as e:
@@ -1298,6 +1491,7 @@ def page_new_chat() -> None:
 
                                             if resp.get("followups"):
                                                 st.session_state.chat_followups[q] = resp.get("followups") or []
+                                            _persist_new_chat_session()
 
                                         except Exception as e:
                                             st.error(f"Error continuing answer: {e}")

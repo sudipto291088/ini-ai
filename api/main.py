@@ -7,9 +7,9 @@ from api.illustrate import illustrate as illustrate_logic
 from api.resume import resume as resume_logic
 from api.llm_answers import llm_enabled
 from api.study_ai import study_ai
+from contextlib import asynccontextmanager
 import threading
-
-app = FastAPI()
+from fastapi import FastAPI
 
 
 class TopicIn(BaseModel):
@@ -26,17 +26,26 @@ class StudyAIIn(BaseModel):
     previous_answer: Optional[str] = Field(None, description="Prior assistant answer to continue from")
 
 
+from api.llm_answers import generate_dynamic_answer
+
 def _warm_up_in_background() -> None:
     try:
-        interrogate_logic("Artificial Intelligence")
+        generate_dynamic_answer(
+            topic="Artificial Intelligence",
+            topic_type="concept",
+            archetype="ORIENT",
+            question="Warm up the model.",
+            meta={"mode": "warmup"},
+        )
     except Exception:
         pass
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _warm_up_in_background()
+    yield
 
-
-@app.on_event("startup")
-def startup_warmup() -> None:
-    threading.Thread(target=_warm_up_in_background, daemon=True).start()
+app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 def root():
