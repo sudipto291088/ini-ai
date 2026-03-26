@@ -1016,10 +1016,8 @@ with st.sidebar:
 
         if chat_rows:
             for sid, title, created_at, updated_at in chat_rows:
-                active = (sid == st.session_state.chat_active_id)
-                dot = "🔵" if active else "⚪"
                 label = (title or "New Chat Session").strip()
-                st.markdown(f"- {dot} [{label}](?page=chat&chat_sid={sid})")
+                st.markdown(f"- [{label}](?page=chat&chat_sid={sid})")
         else:
             current_topic = (st.session_state.chat.get("topic") or "").strip()
             if current_topic:
@@ -1027,14 +1025,7 @@ with st.sidebar:
             else:
                 st.markdown('<div class="small" style="color:var(--muted);">No chat yet.</div>', unsafe_allow_html=True)
 
-        if st.session_state.chat_active_id and st.button("🗑️ Delete this chat"):
-            sid = st.session_state.chat_active_id
-            delete_session(sid)
-            st.session_state.chat_sessions.pop(sid, None)
-            st.session_state.chat_active_id = None
-            st.session_state.chat_loaded_sid = None
-            _reset_new_chat_state()
-            st.rerun()
+        
 
     if st.session_state.page == "My New Learning":
         st.markdown("<hr/>", unsafe_allow_html=True)
@@ -1046,7 +1037,7 @@ with st.sidebar:
                 active = (sid == st.session_state.learning_active_id)
                 dot = "🔵" if active else "⚪"
                 label = (title or "Learning Session").strip()
-                st.markdown(f"- {dot} [{label}](?page=learn&learn_sid={sid})")
+                st.markdown(f"- [{label}](?page=learn&learn_sid={sid})")
         else:
             st.markdown('<div class="small" style="color:var(--muted);">No learning sessions yet.</div>', unsafe_allow_html=True)
 
@@ -1085,26 +1076,7 @@ def page_new_chat() -> None:
         st.session_state.chat_followups = {}   # q -> list[str]
     if "chat_seed_done" not in st.session_state:
         st.session_state.chat_seed_done = ""
-    if st.session_state.chat_active_id:
-        with st.expander("Saved Chat Snapshot", expanded=False):
-            payload = _current_new_chat_payload()
-            snap_topic = (payload.get("topic") or "").strip()
-            if snap_topic:
-                st.markdown(f"**Topic:** {snap_topic}")
-
-            direct = payload.get("chat_direct_answer") or {}
-            if isinstance(direct, dict) and (direct.get("prompt") or "").strip():
-                st.markdown(f"**Direct FUQ / CTA Prompt:** {(direct.get('prompt') or '').strip()}")
-
-            visited = payload.get("chat_visited_questions") or []
-            if visited:
-                st.markdown("**Clicked Questions / FUQs:**")
-                for item in visited:
-                    st.markdown(f"- {item}")
-
-            answers = payload.get("chat_answers") or {}
-            if answers:
-                st.markdown(f"**Saved Answer Blocks:** {len(answers)}")
+    
 
 
     
@@ -1113,7 +1085,6 @@ def page_new_chat() -> None:
     
     # Auto-run FUQ opened in a new tab for New Chat
     if chat_q and st.session_state.chat_seed_done != chat_q:
-        st.session_state.chat["topic"] = chat_q
         try:
             with st.spinner("Generating details... please wait."):
                 resp = fetch_study(chat_q, mode="focused")
