@@ -482,6 +482,12 @@ if "chat_active_id" not in st.session_state:
 if "chat_loaded_sid" not in st.session_state:
     st.session_state.chat_loaded_sid = None
 
+if "chat_branch_history" not in st.session_state:
+    st.session_state.chat_branch_history = []
+
+if "chat_popup_sid" not in st.session_state:
+    st.session_state.chat_popup_sid = None
+
 
 
 # UIB state
@@ -600,6 +606,7 @@ def _empty_new_chat_state() -> Dict[str, Any]:
         "chat_visited_questions": [],
         "chat_direct_answer": None,
         "chat_seed_done": "",
+        "chat_branch_history": [],
     }
 
 
@@ -612,6 +619,7 @@ def _reset_new_chat_state() -> None:
     st.session_state.chat_visited_questions = set()
     st.session_state.chat_direct_answer = None
     st.session_state.chat_seed_done = ""
+    st.session_state.chat_branch_history = []
 
 
 def _current_new_chat_payload() -> Dict[str, Any]:
@@ -626,6 +634,7 @@ def _current_new_chat_payload() -> Dict[str, Any]:
         "chat_visited_questions": sorted(list(st.session_state.chat_visited_questions)),
         "chat_direct_answer": st.session_state.chat_direct_answer,
         "chat_seed_done": st.session_state.chat_seed_done,
+        "chat_branch_history": st.session_state.chat_branch_history,
     }
 
 
@@ -719,8 +728,178 @@ def _load_new_chat_session(sid: str) -> bool:
     st.session_state.chat_visited_questions = set(payload.get("chat_visited_questions") or [])
     st.session_state.chat_direct_answer = payload.get("chat_direct_answer")
     st.session_state.chat_seed_done = payload.get("chat_seed_done") or ""
+    st.session_state.chat_branch_history = payload.get("chat_branch_history") or []
 
     return True
+
+
+
+def _format_short_mmdd(created_at: str) -> str:
+    s = (created_at or "").strip()
+    if not s:
+        return ""
+
+    for fmt in ("%b %d.%Y", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+        try:
+            dt = datetime.strptime(s, fmt)
+            return dt.strftime("%m/%d")
+        except Exception:
+            pass
+
+    return ""
+
+
+def _append_chat_branch(prompt: str, kind: str) -> None:
+    p = (prompt or "").strip()
+    k = (kind or "").strip().lower()
+    if not p or k not in {"fuq", "cta"}:
+        return
+
+    existing = st.session_state.chat_branch_history or []
+    key = (p.lower(), k)
+    seen = {(str(x.get("prompt", "")).strip().lower(), str(x.get("kind", "")).strip().lower()) for x in existing if isinstance(x, dict)}
+
+    if key not in seen:
+        existing.append({"prompt": p, "kind": k})
+        st.session_state.chat_branch_history = existing
+
+
+def _open_chat_root_session(sid: str) -> None:
+    if _load_new_chat_session(sid):
+        st.session_state.chat_popup_sid = None
+        st.session_state.page = "New Chat"
+        st.rerun()
+
+
+def _open_chat_branch(prompt: str, kind: str) -> None:
+    branch_prompt = (prompt or "").strip()
+    branch_kind = (kind or "fuq").strip().lower()
+    if not branch_prompt:
+        return
+
+    _append_chat_branch(branch_prompt, branch_kind)
+
+    try:
+        with st.spinner("Generating details... please wait."):
+            resp = fetch_study(branch_prompt, mode="focused")
+            answer = normalize_whitespace_for_readability(
+                normalize_mojibake(resp.get("answer", "") or "")
+            ).strip() or "No answer generated."
+
+            followups = resp.get("followups") or []
+
+            st.session_state.chat_direct_answer = {
+                "prompt": branch_prompt,
+                "text": answer,
+                "incomplete": bool(resp.get("incomplete")),
+                "stop_reason": resp.get("stop_reason") or None,
+                "mode": "focused",
+                "followups": followups,
+            }
+
+            st.session_state.chat["interrogate"] = None
+            st.session_state.chat_intro = ""
+            st.session_state.chat_answers = {}
+            st.session_state.chat_followups = {}
+            st.session_state.chat_open_questions = set()
+            st.session_state.chat_visited_questions = set()
+            st.session_state.chat_seed_done = branch_prompt
+            st.session_state.chat_popup_sid = None
+
+            _persist_new_chat_session()
+        st.rerun()
+    except Exception as e:
+        st.error(f"Error opening branch: {e}")
+
+
+def _collect_chat_popup_data(payload: Dict[str, Any]) -> Dict[str, Any]:
+    root_topic = (payload.get("topic") or "").strip() or "Root Topic"
+    history = payload.get("chat_branch_history") or []
+
+    fuqs = []
+    ctas = []
+
+    for item in history:
+        if not isinstance(item, dict):
+            continue
+        prompt = (item.get("prompt") or "").strip()
+        kind = (item.get("kind") or "").strip().lower()
+        if not prompt:
+            continue
+        if kind == "cta":
+            ctas.append(prompt)
+        elif kind == "fuq":
+            fuqs.append(prompt)
+
+    def _dedupe(seq: list[str]) -> list[str]:
+        out = []
+        seen = set()
+        for x in seq:
+            k = x.strip().lower()
+            if k and k not in seen:
+                seen.add(k)
+                out.append(x)
+        return out
+
+    return {
+        "root_topic": root_topic,
+        "fuqs": _dedupe(fuqs),
+        "ctas": _dedupe(ctas),
+    }
+
+
+@st.dialog("Session Branches")
+def _render_chat_session_popup() -> None:
+    sid = st.session_state.chat_popup_sid
+    if not sid:
+        return
+
+    loaded = load_session(sid)
+    if not loaded:
+        st.warning("Session could not be loaded.")
+        return
+
+    payload = loaded.get("messages") or {}
+    if not isinstance(payload, dict):
+        st.warning("Session payload is invalid.")
+        return
+
+    data = _collect_chat_popup_data(payload)
+    root_topic = data["root_topic"]
+    fuqs = data["fuqs"]
+    ctas = data["ctas"]
+
+    st.markdown(f"### {root_topic}")
+
+    if st.button(root_topic, key=f"popup_root_{sid}", use_container_width=True):
+        _open_chat_root_session(sid)
+
+    st.markdown("---")
+
+    st.markdown("#### FUQs")
+    if fuqs:
+        for i, item in enumerate(fuqs, start=1):
+            if st.button(item, key=f"popup_fuq_{sid}_{i}", use_container_width=True):
+                _load_new_chat_session(sid)
+                _open_chat_branch(item, "fuq")
+    else:
+        st.caption("No FUQs saved yet.")
+
+    st.markdown("#### CTAs")
+    if ctas:
+        for i, item in enumerate(ctas, start=1):
+            if st.button(item, key=f"popup_cta_{sid}_{i}", use_container_width=True):
+                _load_new_chat_session(sid)
+                _open_chat_branch(item, "cta")
+    else:
+        st.caption("No CTAs saved yet.")
+
+
+
+
+
+
+
 
 # =========================
 # API calls
@@ -973,6 +1152,8 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
+    
+
     if hasattr(st, "fragment"):
         @st.fragment(run_every="1s")  # type: ignore[arg-type]
         def _clock_fragment():
@@ -1008,47 +1189,48 @@ with st.sidebar:
         with st.expander("API Settings (dev)", expanded=False):
             st.session_state.api_base = st.text_input("API base", st.session_state.api_base)
 
-    if st.session_state.page == "New Chat":
-        st.markdown("<hr/>", unsafe_allow_html=True)
-        st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Chat</div>', unsafe_allow_html=True)
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Chat</div>', unsafe_allow_html=True)
 
-        chat_rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("chat-")]
+    chat_rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("chat-")]
+    if chat_rows:
+        for sid, title, created_at, updated_at in chat_rows:
+            label = (title or "New Chat Session").strip()
+            mmdd = _format_short_mmdd(created_at or "")
+            display = f"{label} {mmdd}".strip()
 
-        if chat_rows:
-            for sid, title, created_at, updated_at in chat_rows:
-                label = (title or "New Chat Session").strip()
-                st.markdown(f"- [{label}](?page=chat&chat_sid={sid})")
-        else:
-            current_topic = (st.session_state.chat.get("topic") or "").strip()
-            if current_topic:
-                st.markdown(f"- 💬 {current_topic}")
-            else:
-                st.markdown('<div class="small" style="color:var(--muted);">No chat yet.</div>', unsafe_allow_html=True)
-
-        
-
-    if st.session_state.page == "My New Learning":
-        st.markdown("<hr/>", unsafe_allow_html=True)
-        st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Learning</div>', unsafe_allow_html=True)
-
-        rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("learn-")]
-        if rows:
-            for sid, title, created_at, updated_at in rows:
-                active = (sid == st.session_state.learning_active_id)
-                dot = "🔵" if active else "⚪"
-                label = (title or "Learning Session").strip()
-                st.markdown(f"- [{label}](?page=learn&learn_sid={sid})")
-        else:
-            st.markdown('<div class="small" style="color:var(--muted);">No learning sessions yet.</div>', unsafe_allow_html=True)
-
-        if st.button("🗑️ Delete this session"):
-            sid = st.session_state.learning_active_id
-            if sid:
-                delete_session(sid)
-                st.session_state.learning_sessions.pop(sid, None)
-                st.session_state.learning_active_id = None
-                start_new_learning_session()
+            if st.button(display, key=f"yc_btn_{sid}", use_container_width=True):
+                st.session_state.chat_popup_sid = sid
                 st.rerun()
+    else:
+        st.markdown('<div class="small" style="color:var(--muted);">No chat sessions yet.</div>', unsafe_allow_html=True)
+
+    st.markdown("<hr/>", unsafe_allow_html=True)
+    st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Learning</div>', unsafe_allow_html=True)
+
+    rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("learn-")]
+    if rows:
+        for sid, title, created_at, updated_at in rows:
+            label = (title or "Learning Session").strip()
+            if st.button(label, key=f"yl_btn_{sid}", use_container_width=True):
+                loaded = load_session(sid)
+                if loaded:
+                    st.session_state.learning_active_id = sid
+                    st.session_state.learning_sessions[sid] = {
+                        "created": loaded.get("created") or datetime.now().strftime("%b %d.%Y"),
+                        "messages": loaded.get("messages") or [],
+                        "title": (loaded.get("title") or "Learning Session"),
+                        "last_prompt": "",
+                        "_title_set": (loaded.get("title") or "").strip() not in {"", "Learning Session", "Session", "New Session"},
+                    }
+                    st.session_state.page = "My New Learning"
+                    st.rerun()
+    else:
+        st.markdown('<div class="small" style="color:var(--muted);">No learning sessions yet.</div>', unsafe_allow_html=True)
+
+
+if st.session_state.chat_popup_sid:
+    _render_chat_session_popup()
 
 
 # =========================
@@ -1093,6 +1275,7 @@ def page_new_chat() -> None:
                 ).strip() or "No answer generated."
 
                 followups = resp.get("followups") or []
+                _append_chat_branch(chat_q, "fuq")
 
                 st.session_state.chat_direct_answer = {
                     "prompt": chat_q,
@@ -1116,19 +1299,27 @@ def page_new_chat() -> None:
             st.error(f"Error auto-running chat FUQ: {e}")
 
 
-    
-
-    topic = st.text_input(
-    "Topic",
-    value=st.session_state.chat.get("topic", ""),
-    placeholder="Type a topic (e.g., Artificial Intelligence, Data Science)...",
-)
-    st.session_state.chat["topic"] = topic
-    
 
 
 
 
+
+    show_top_uib = not any([
+        st.session_state.chat.get("interrogate"),
+        st.session_state.chat.get("illustrate"),
+        st.session_state.chat_direct_answer,
+        bool(st.session_state.chat_answers),
+    ])
+
+    if show_top_uib:
+        topic = st.text_input(
+            "Topic",
+            value=st.session_state.chat.get("topic", ""),
+            placeholder="Type a topic (e.g., Artificial Intelligence, Data Science)...",
+        )
+        st.session_state.chat["topic"] = topic
+    else:
+        topic = (st.session_state.chat.get("topic") or "").strip()
 
     colA, colB, colC = st.columns([1, 1, 4])
 
@@ -1204,12 +1395,9 @@ def page_new_chat() -> None:
         followups = embedded_followups or (direct_answer.get("followups") or [])
         if followups:
             st.markdown("#### Suggested follow-ups")
-            for fu in followups:
-                href = fuq_href("chat", fu)
-                st.markdown(
-                    f'<a href="{href}" target="_blank" style="text-decoration:none;">• {fu}</a>',
-                    unsafe_allow_html=True,
-                )
+            for i, fu in enumerate(followups, start=1):
+                if st.button(fu, key=f"direct_fuq_{i}", use_container_width=True):
+                    _open_chat_branch(fu, "fuq")
 
         is_incomplete = bool(direct_answer.get("incomplete")) or (
             (direct_answer.get("stop_reason") or "").strip().lower() == "max_output_tokens"
@@ -1278,12 +1466,9 @@ def page_new_chat() -> None:
 
             if intro_followups:
                 st.markdown("#### Suggested follow-ups")
-                for fu in intro_followups:
-                    href = fuq_href("chat", fu)
-                    st.markdown(
-                        f'<a href="{href}" target="_blank" style="text-decoration:none;">• {fu}</a>',
-                        unsafe_allow_html=True,
-                    )
+                for i, fu in enumerate(intro_followups, start=1):
+                    if st.button(fu, key=f"intro_cta_{i}", use_container_width=True):
+                        _open_chat_branch(fu, "cta")
         
 
         st.markdown("### Question Map")
@@ -1400,12 +1585,13 @@ def page_new_chat() -> None:
                             followups = embedded_followups or st.session_state.chat_followups.get(q, [])
                             if followups:
                                 st.markdown("#### Suggested follow-ups")
-                                for fu in followups:
-                                    href = fuq_href("chat", fu)
-                                    st.markdown(
-                                        f'<a href="{href}" target="_blank" style="text-decoration:none;">• {fu}</a>',
-                                        unsafe_allow_html=True,
-                                    )
+                                for i, fu in enumerate(followups, start=1):
+                                    if st.button(
+                                        fu,
+                                        key=f"ans_fuq_{section}_{q}_{i}",
+                                        use_container_width=True,
+                                    ):
+                                        _open_chat_branch(fu, "fuq")
 
                             # New Chat Continue button
                             is_incomplete = False
@@ -1769,12 +1955,12 @@ def page_my_new_learning() -> None:
                 followups = embedded_followups or (msg.get("followups") or [])
                 if followups:
                     st.markdown("#### Suggested follow-ups")
-                    for fu in followups:
-                        href = fuq_href("learn", fu)
-                        st.markdown(
-                            f'<a href="{href}" target="_blank" style="text-decoration:none;">• {fu}</a>',
-                            unsafe_allow_html=True,
-                        )
+                    for i, fu in enumerate(followups, start=1):
+                        if st.button(fu, key=f"learn_fuq_{msg.get('id')}_{i}", use_container_width=True):
+                            st.session_state.learn_seed_done = ""
+                            st.query_params["page"] = "learn"
+                            st.query_params["learn_q"] = fu
+                            st.rerun()
 
                  # Only the latest incomplete assistant message gets the Continue button
                 if needs_continue_flag(msg) and (msg.get("id") == last_incomplete_id):
