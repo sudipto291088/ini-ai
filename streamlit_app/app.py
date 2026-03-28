@@ -205,8 +205,13 @@ button[kind="secondary"]{
   text-decoration:none !important;
   color: var(--ink) !important;
   text-align:left !important;
-  margin: 3px 0;
-  line-height: 1.45;
+  margin: 6px 0;
+  line-height: 1.55;
+  border:none !important;
+  outline:none !important;
+  background:transparent !important;
+  padding:0 !important;
+  font-size: 0.95rem;
 }
 .ini_plain_link:hover{
   text-decoration:none !important;
@@ -853,11 +858,10 @@ def _render_chat_session_popup() -> None:
     fuqs = data["fuqs"]
     ctas = data["ctas"]
 
-    st.markdown(f"### {root_topic}")
     st.markdown(
-        f'<a class="ini_plain_link" href="{_chat_root_href(sid)}" target="_self">{root_topic}</a>',
-        unsafe_allow_html=True,
-    )
+    f'<a class="ini_plain_link" href="{_chat_root_href(sid)}" target="_self"><b>{root_topic}</b></a>',
+    unsafe_allow_html=True,
+)
 
     st.markdown("---")
 
