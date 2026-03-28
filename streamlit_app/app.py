@@ -444,6 +444,10 @@ def _chat_popup_href(sid: str) -> str:
 def _chat_root_href(sid: str) -> str:
     return f"?page=chat&chat_sid={quote(sid, safe='')}"
 
+def _chat_root_view_href(sid: str) -> str:
+    return f"?page=chat&chat_sid={quote(sid, safe='')}&chat_root=1"
+
+
 
 def _chat_branch_href(sid: Optional[str], question: str) -> str:
     q = quote(question, safe="")
@@ -546,6 +550,33 @@ if "chat_top_topic_input" not in st.session_state:
 
 if "chat_bottom_topic_input" not in st.session_state:
     st.session_state.chat_bottom_topic_input = ""
+
+if "chat_root_interrogate" not in st.session_state:
+    st.session_state.chat_root_interrogate = None
+
+if "chat_root_illustrate" not in st.session_state:
+    st.session_state.chat_root_illustrate = None
+
+if "chat_root_intro" not in st.session_state:
+    st.session_state.chat_root_intro = ""
+
+if "chat_root_answers" not in st.session_state:
+    st.session_state.chat_root_answers = {}
+
+if "chat_root_followups" not in st.session_state:
+    st.session_state.chat_root_followups = {}
+
+if "chat_root_open_questions" not in st.session_state:
+    st.session_state.chat_root_open_questions = set()
+
+if "chat_root_visited_questions" not in st.session_state:
+    st.session_state.chat_root_visited_questions = set()
+
+if "chat_top_enter_submit" not in st.session_state:
+    st.session_state.chat_top_enter_submit = False
+
+if "chat_bottom_enter_submit" not in st.session_state:
+    st.session_state.chat_bottom_enter_submit = False
 
 # UIB state
 if "uib_text" not in st.session_state:
@@ -669,6 +700,13 @@ def _reset_new_chat_state() -> None:
     st.session_state.chat_top_topic_input = ""
     st.session_state.chat_bottom_topic_input = ""
 
+    st.session_state.chat_root_interrogate = None
+    st.session_state.chat_root_illustrate = None
+    st.session_state.chat_root_intro = ""
+    st.session_state.chat_root_answers = {}
+    st.session_state.chat_root_followups = {}
+    st.session_state.chat_root_open_questions = set()
+    st.session_state.chat_root_visited_questions = set()
 
 def _current_new_chat_payload() -> Dict[str, Any]:
     return {
@@ -683,6 +721,14 @@ def _current_new_chat_payload() -> Dict[str, Any]:
         "chat_direct_answer": st.session_state.chat_direct_answer,
         "chat_seed_done": st.session_state.chat_seed_done,
         "chat_branch_history": st.session_state.chat_branch_history,
+
+        "chat_root_interrogate": st.session_state.chat_root_interrogate,
+        "chat_root_illustrate": st.session_state.chat_root_illustrate,
+        "chat_root_intro": st.session_state.chat_root_intro,
+        "chat_root_answers": st.session_state.chat_root_answers,
+        "chat_root_followups": st.session_state.chat_root_followups,
+        "chat_root_open_questions": sorted(list(st.session_state.chat_root_open_questions)),
+        "chat_root_visited_questions": sorted(list(st.session_state.chat_root_visited_questions)),
     }
 
 
@@ -779,7 +825,36 @@ def _load_new_chat_session(sid: str) -> bool:
     st.session_state.chat_branch_history = payload.get("chat_branch_history") or []
     st.session_state.chat_top_topic_input = payload.get("topic") or ""
     st.session_state.chat_bottom_topic_input = ""
+    st.session_state.chat_root_interrogate = payload.get("chat_root_interrogate")
+    st.session_state.chat_root_illustrate = payload.get("chat_root_illustrate")
+    st.session_state.chat_root_intro = payload.get("chat_root_intro") or ""
+    st.session_state.chat_root_answers = payload.get("chat_root_answers") or {}
+    st.session_state.chat_root_followups = payload.get("chat_root_followups") or {}
+    st.session_state.chat_root_open_questions = set(payload.get("chat_root_open_questions") or [])
+    st.session_state.chat_root_visited_questions = set(payload.get("chat_root_visited_questions") or [])
     return True
+
+
+def _activate_root_view_from_loaded_session() -> None:
+    st.session_state.chat["interrogate"] = st.session_state.chat_root_interrogate
+    st.session_state.chat["illustrate"] = st.session_state.chat_root_illustrate
+    st.session_state.chat_intro = st.session_state.chat_root_intro or ""
+    st.session_state.chat_answers = dict(st.session_state.chat_root_answers or {})
+    st.session_state.chat_followups = dict(st.session_state.chat_root_followups or {})
+    st.session_state.chat_open_questions = set(st.session_state.chat_root_open_questions or [])
+    st.session_state.chat_visited_questions = set(st.session_state.chat_root_visited_questions or [])
+    st.session_state.chat_direct_answer = None
+    st.session_state.chat_seed_done = ""
+
+def _sync_chat_root_snapshot() -> None:
+    st.session_state.chat_root_interrogate = st.session_state.chat.get("interrogate")
+    st.session_state.chat_root_illustrate = st.session_state.chat.get("illustrate")
+    st.session_state.chat_root_intro = st.session_state.chat_intro or ""
+    st.session_state.chat_root_answers = dict(st.session_state.chat_answers or {})
+    st.session_state.chat_root_followups = dict(st.session_state.chat_followups or {})
+    st.session_state.chat_root_open_questions = set(st.session_state.chat_open_questions or [])
+    st.session_state.chat_root_visited_questions = set(st.session_state.chat_visited_questions or [])
+
 
 
 def _append_chat_branch(prompt: str, kind: str) -> None:
@@ -859,9 +934,9 @@ def _render_chat_session_popup() -> None:
     ctas = data["ctas"]
 
     st.markdown(
-    f'<a class="ini_plain_link" href="{_chat_root_href(sid)}" target="_self"><b>{root_topic}</b></a>',
-    unsafe_allow_html=True,
-)
+        f'<a class="ini_plain_link" href="{_chat_root_view_href(sid)}" target="_self"><b>↠ {root_topic}</b></a>',
+        unsafe_allow_html=True,
+    )
 
     st.markdown("---")
 
@@ -870,7 +945,7 @@ def _render_chat_session_popup() -> None:
         html = ['<div class="ini_popup_section">']
         for item in fuqs:
             href = _chat_branch_href(sid, item)
-            html.append(f'<a class="ini_plain_link" href="{href}" target="_self">{item}</a>')
+            html.append(f'<a class="ini_plain_link" href="{href}" target="_blank">{item}</a>')
         html.append("</div>")
         st.markdown("\n".join(html), unsafe_allow_html=True)
     else:
@@ -881,7 +956,7 @@ def _render_chat_session_popup() -> None:
         html = ['<div class="ini_popup_section">']
         for item in ctas:
             href = _chat_branch_href(sid, item)
-            html.append(f'<a class="ini_plain_link" href="{href}" target="_self">{item}</a>')
+            html.append(f'<a class="ini_plain_link" href="{href}" target="_blank">{item}</a>')
         html.append("</div>")
         st.markdown("\n".join(html), unsafe_allow_html=True)
     else:
@@ -984,7 +1059,7 @@ def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
 
     marker_idx = None
     for i, ln in enumerate(lines):
-        s = (ln or "").strip().lower()
+        s = re.sub(r"[*_`]+", "", (ln or "").strip()).lower()
         if any(re.match(p, s) for p in marker_patterns):
             marker_idx = i
             break
@@ -1057,6 +1132,7 @@ page_param = (qp.get("page") or "chat").lower()
 learn_sid = (qp.get("learn_sid") or "").strip()
 chat_sid = (qp.get("chat_sid") or "").strip()
 popup_chat_sid = (qp.get("popup_chat_sid") or "").strip()
+chat_root = (qp.get("chat_root") or "").strip()
 chat_q = (qp.get("chat_q") or "").strip()
 learn_q = (qp.get("learn_q") or "").strip()
 
@@ -1087,6 +1163,9 @@ if learn_sid:
 
 if chat_sid and st.session_state.chat_loaded_sid != chat_sid:
     _load_new_chat_session(chat_sid)
+
+if chat_sid and chat_root == "1":
+    _activate_root_view_from_loaded_session()
 
 
 # =========================
@@ -1211,6 +1290,12 @@ def page_new_chat() -> None:
         if not topic_text.strip():
             return
         try:
+            st.session_state.chat_active_id = None
+            st.session_state.chat_loaded_sid = None
+            st.session_state.chat_popup_sid = None
+            st.query_params.clear()
+            st.query_params["page"] = "chat"
+
             with st.spinner("Generating question map... may take some time."):
                 data = fetch_interrogate(topic_text.strip())
                 st.session_state.chat["topic"] = topic_text.strip()
@@ -1228,6 +1313,15 @@ def page_new_chat() -> None:
                 st.session_state.chat_followups = {}
                 st.session_state.chat_open_questions = set()
                 st.session_state.chat_visited_questions = set()
+
+                st.session_state.chat_root_interrogate = data
+                st.session_state.chat_root_illustrate = None
+                st.session_state.chat_root_intro = intro
+                st.session_state.chat_root_answers = {}
+                st.session_state.chat_root_followups = {}
+                st.session_state.chat_root_open_questions = set()
+                st.session_state.chat_root_visited_questions = set()
+
                 _persist_new_chat_session()
             st.rerun()
         except Exception as e:
@@ -1237,6 +1331,12 @@ def page_new_chat() -> None:
         if not topic_text.strip():
             return
         try:
+            st.session_state.chat_active_id = None
+            st.session_state.chat_loaded_sid = None
+            st.session_state.chat_popup_sid = None
+            st.query_params.clear()
+            st.query_params["page"] = "chat"
+
             with st.spinner("Generating illustrations... please wait."):
                 data = fetch_illustrate(topic_text.strip())
                 st.session_state.chat["topic"] = topic_text.strip()
@@ -1250,6 +1350,15 @@ def page_new_chat() -> None:
                 st.session_state.chat_followups = {}
                 st.session_state.chat_open_questions = set()
                 st.session_state.chat_visited_questions = set()
+
+                st.session_state.chat_root_interrogate = None
+                st.session_state.chat_root_illustrate = data
+                st.session_state.chat_root_intro = ""
+                st.session_state.chat_root_answers = {}
+                st.session_state.chat_root_followups = {}
+                st.session_state.chat_root_open_questions = set()
+                st.session_state.chat_root_visited_questions = set()
+
                 _persist_new_chat_session()
             st.rerun()
         except Exception as e:
@@ -1260,6 +1369,8 @@ def page_new_chat() -> None:
             "Topic",
             value=st.session_state.chat_top_topic_input or st.session_state.chat.get("topic", ""),
             placeholder="Type a topic (e.g., Artificial Intelligence, Data Science)...",
+            key="chat_top_topic_widget",
+            on_change=_request_chat_top_enter_submit,
         )
 
         colA, colB, colC = st.columns([1, 1, 4])
@@ -1269,6 +1380,10 @@ def page_new_chat() -> None:
             illustrate_run = st.button("Illustrate", key="nc_top_illustrate")
         with colC:
             st.caption("Tip: backend must be running (FastAPI).")
+
+        if st.session_state.chat_top_enter_submit:
+            st.session_state.chat_top_enter_submit = False
+            _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
 
         if run:
             _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
@@ -1283,6 +1398,7 @@ def page_new_chat() -> None:
             value=st.session_state.chat_bottom_topic_input,
             label_visibility="collapsed",
             placeholder="Type another topic...",
+            on_change=_request_chat_bottom_enter_submit,
         )
 
         colA, colB, colC = st.columns([1, 1, 4])
@@ -1292,6 +1408,10 @@ def page_new_chat() -> None:
             illustrate_run = st.button("Illustrate", key="nc_bottom_illustrate")
         with colC:
             st.caption("Type a new topic above to continue exploring.")
+
+        if st.session_state.chat_bottom_enter_submit:
+            st.session_state.chat_bottom_enter_submit = False
+            _run_new_chat_interrogate(st.session_state.chat_bottom_topic_input)
 
         if run:
             _run_new_chat_interrogate(st.session_state.chat_bottom_topic_input)
@@ -1439,6 +1559,7 @@ def page_new_chat() -> None:
         hide_all = st.button("Hide All Answers", key="hide_all_answers_newchat")
         if hide_all:
             st.session_state.chat_open_questions = set()
+            _sync_chat_root_snapshot()
             _persist_new_chat_session()
             st.rerun()
 
@@ -1485,11 +1606,13 @@ def page_new_chat() -> None:
 
                         if is_open:
                             st.session_state.chat_open_questions.discard(q)
+                            _sync_chat_root_snapshot()
                             _persist_new_chat_session()
                             st.rerun()
 
                         if q in st.session_state.chat_answers:
                             st.session_state.chat_open_questions.add(q)
+                            _sync_chat_root_snapshot()
                             _persist_new_chat_session()
                             st.rerun()
 
@@ -1511,7 +1634,8 @@ def page_new_chat() -> None:
                                 }
                                 st.session_state.chat_followups[q] = followups
                                 st.session_state.chat_open_questions.add(q)
-                                _persist_new_chat_session()
+                                _sync_chat_root_snapshot()
+                                _persist_new_chat_session() 
                             st.rerun()
 
                         except Exception as e:
@@ -1587,6 +1711,7 @@ def page_new_chat() -> None:
 
                                             if resp.get("followups"):
                                                 st.session_state.chat_followups[q] = resp.get("followups") or []
+                                            _sync_chat_root_snapshot()
                                             _persist_new_chat_session()
 
                                         except Exception as e:
@@ -1684,6 +1809,12 @@ def _mode_hint_text(mode: str) -> str:
 
 def _request_send() -> None:
     st.session_state._uib_send_requested = True
+
+def _request_chat_top_enter_submit() -> None:
+    st.session_state.chat_top_enter_submit = True
+
+def _request_chat_bottom_enter_submit() -> None:
+    st.session_state.chat_bottom_enter_submit = True
 
 
 def _is_typed_continue_intent(user_text: str) -> bool:
