@@ -44,12 +44,7 @@ CSS = """
   --litQuiz:#ede9fe;
 }
 
-@import url("https://fonts.googleapis.com/icon?family=Material+Icons");
-.material-icons, [class*="material-icons"]{
-  font-family: "Material Icons" !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-}
+/* Material icons removed to prevent stray keyboard_double_arrow_right text rendering */
 
 html, body{
   font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
@@ -249,59 +244,32 @@ button[kind="secondary"]{
   }
 }
 
-/* --- Fix Streamlit expander arrows showing as text --- */
-@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200");
-@import url("https://fonts.googleapis.com/icon?family=Material+Icons");
+/* --- Kill leaked Material icon text everywhere --- */
+span.material-symbols,
+span.material-symbols-rounded,
+span.material-symbols-outlined,
+span.material-symbols-sharp,
+i.material-icons,
+span.material-icons,
+[class*="material-symbol"]{
+  font-size: 0 !important;
+  line-height: 0 !important;
+  visibility: hidden !important;
+}
 
-.material-symbols-rounded,
-.material-symbols-outlined,
-.material-symbols-sharp {
-  font-family: "Material Symbols Rounded" !important;
-  font-weight: normal !important;
-  font-style: normal !important;
-  letter-spacing: normal !important;
-  text-transform: none !important;
-  display: inline-block !important;
-  white-space: nowrap !important;
-  direction: ltr !important;
-}
-.material-icons, [class*="material-icons"] {
-  font-family: "Material Icons" !important;
-}
-span[class*="material-symbols"], i[class*="material-icons"]{
-  font-family: "Material Symbols Rounded","Material Icons" !important;
-}
-.stExpander summary span.material-icons,
-.stExpander summary span.material-symbols-rounded,
-.stExpander summary span.material-symbols-outlined,
-.stExpander summary span.material-symbols-sharp {
-  display: none !important;
-}
-.stExpander summary span {
-  font-family: inherit;
-}
-.stExpander summary span.material-icons,
-.stExpander summary span[class*="material"],
-.stExpander summary i[class*="material"]{
-  display: none !important;
-}
+/* Keep custom expander arrows */
 .stExpander summary::before {
-  content: "▸";
+  content: "➤";
   display: inline-block;
-  margin-right: 8px;
-  font-size: 16px;
-  line-height: 1;
+  margin-right: 6px;
+  font-size: 15px;
 }
+
 .stExpander details[open] > summary::before {
-  content: "▾";
+  content: "▼";
 }
-.stExpander summary span.material-icons,
-.stExpander summary span[class*="material-symbols"],
-.stExpander summary i[class*="material-icons"]{
-  display: none !important;
-}
-.material-icons{ font-family: "Material Icons" !important; }
-[class*="material-symbols"]{ font-family: "Material Symbols Rounded" !important; }
+
+
 
 /* Question buttons */
 div.stButton > button {
@@ -934,9 +902,9 @@ def _render_chat_session_popup() -> None:
     ctas = data["ctas"]
 
     st.markdown(
-        f'<a class="ini_plain_link" href="{_chat_root_view_href(sid)}" target="_self"><b>↠ {root_topic}</b></a>',
-        unsafe_allow_html=True,
-    )
+    f'<a class="ini_plain_link" href="{_chat_root_view_href(sid)}" target="_self"><b>↠ {root_topic}</b></a>',
+    unsafe_allow_html=True,
+)
 
     st.markdown("---")
 
@@ -1161,11 +1129,25 @@ if learn_sid:
             "_title_set": (loaded.get("title") or "").strip() not in {"", "Learning Session", "Session", "New Session"},
         }
 
-if chat_sid and st.session_state.chat_loaded_sid != chat_sid:
-    _load_new_chat_session(chat_sid)
+if chat_sid:
+    if st.session_state.chat_loaded_sid != chat_sid:
+        _load_new_chat_session(chat_sid)
+    elif not st.session_state.chat.get("topic"):
+        _load_new_chat_session(chat_sid)
 
 if chat_sid and chat_root == "1":
+    if st.session_state.chat_loaded_sid != chat_sid or (
+        not st.session_state.chat_root_interrogate
+        and not st.session_state.chat_root_illustrate
+        and not st.session_state.chat_root_intro
+        and not st.session_state.chat_root_answers
+    ):
+        _load_new_chat_session(chat_sid)
     _activate_root_view_from_loaded_session()
+
+
+
+
 
 
 # =========================
@@ -1299,8 +1281,8 @@ def page_new_chat() -> None:
             with st.spinner("Generating question map... may take some time."):
                 data = fetch_interrogate(topic_text.strip())
                 st.session_state.chat["topic"] = topic_text.strip()
-                st.session_state.chat_top_topic_input = topic_text.strip()
-                st.session_state.chat_bottom_topic_input = ""
+                if "chat_bottom_topic_input" in st.session_state:
+                    del st.session_state["chat_bottom_topic_input"]
                 st.session_state.chat["interrogate"] = data
 
                 intro_resp = fetch_study_full(topic_text.strip(), mode="high")
@@ -1339,9 +1321,9 @@ def page_new_chat() -> None:
 
             with st.spinner("Generating illustrations... please wait."):
                 data = fetch_illustrate(topic_text.strip())
-                st.session_state.chat["topic"] = topic_text.strip()
-                st.session_state.chat_top_topic_input = topic_text.strip()
-                st.session_state.chat_bottom_topic_input = ""
+                st.session_state.chat["topic"] = topic_text.strip()                
+                if "chat_bottom_topic_input" in st.session_state:
+                    del st.session_state["chat_bottom_topic_input"]
                 st.session_state.chat["illustrate"] = data
                 st.session_state.chat["interrogate"] = None
                 st.session_state.chat_intro = ""
@@ -1365,13 +1347,15 @@ def page_new_chat() -> None:
             st.error(f"Error calling /illustrate: {e}")
 
     def _render_new_chat_top_uib() -> None:
-        st.session_state.chat_top_topic_input = st.text_input(
-            "Topic",
-            value=st.session_state.chat_top_topic_input or st.session_state.chat.get("topic", ""),
-            placeholder="Type a topic (e.g., Artificial Intelligence, Data Science)...",
-            key="chat_top_topic_widget",
-            on_change=_request_chat_top_enter_submit,
-        )
+        if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
+            st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
+
+        st.text_input(
+        "Topic",
+        placeholder="Type a topic (e.g., Artificial Intelligence, Data Science)...",
+        key="chat_top_topic_input",
+        on_change=_request_chat_top_enter_submit,
+)
 
         colA, colB, colC = st.columns([1, 1, 4])
         with colA:
@@ -1382,8 +1366,8 @@ def page_new_chat() -> None:
             st.caption("Tip: backend must be running (FastAPI).")
 
         if st.session_state.chat_top_enter_submit:
-            st.session_state.chat_top_enter_submit = False
-            _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
+           st.session_state.chat_top_enter_submit = False
+           _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
 
         if run:
             _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
@@ -1392,14 +1376,13 @@ def page_new_chat() -> None:
 
     def _render_new_chat_bottom_uib() -> None:
         st.markdown("---")
-        st.session_state.chat_bottom_topic_input = st.text_input(
+        st.text_input(
             "Topic",
-            key="chat_bottom_topic_widget",
-            value=st.session_state.chat_bottom_topic_input,
+            key="chat_bottom_topic_input",
             label_visibility="collapsed",
             placeholder="Type another topic...",
             on_change=_request_chat_bottom_enter_submit,
-        )
+)
 
         colA, colB, colC = st.columns([1, 1, 4])
         with colA:
