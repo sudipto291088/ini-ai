@@ -9,6 +9,9 @@ import requests
 import streamlit as st
 from storage_sqlite import cleanup_empty_sessions, init_db, save_session, list_sessions, load_session, delete_session
 
+
+
+
 # Try autorefresh (for live clock). If not installed, app still runs.
 try:
     from streamlit_autorefresh import st_autorefresh  # type: ignore
@@ -26,7 +29,7 @@ DEV_MODE = os.environ.get("INI_DEV_MODE", "0") == "1"
 # =========================
 # Page Setup
 # =========================
-st.set_page_config(page_title="InI.ai", layout="wide")
+st.set_page_config(page_title="InI.ai", layout="wide", initial_sidebar_state="expanded")
 
 CSS = """
 <style>
@@ -50,7 +53,11 @@ html, body{
   font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
   color: var(--ink);
 }
-button, input, textarea, select, label, p, div, a, span{
+button, input, textarea, select, label, p, div, a{
+  font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+span:not(.material-symbols):not(.material-symbols-rounded):not(.material-symbols-outlined):not(.material-symbols-sharp):not(.material-icons){
   font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
 }
 
@@ -185,6 +192,68 @@ button[kind="secondary"]{
 }
 .ini_hint b{ color: var(--ink); }
 
+.ini_session_row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin: 2px 0 6px 0;
+}
+
+.ini_session_menu{
+  position:relative;
+  min-width:18px;
+  text-align:right;
+  opacity:0;
+  transition:opacity 0.15s ease;
+}
+
+.ini_session_row:hover .ini_session_menu{
+  opacity:1;
+}
+
+.ini_session_menu details{
+  position:relative;
+}
+
+.ini_session_menu summary{
+  list-style:none;
+  cursor:pointer;
+  color:#9aa0a6;
+  font-size:18px;
+  line-height:1;
+  user-select:none;
+}
+
+.ini_session_menu summary::-webkit-details-marker{
+  display:none;
+}
+
+.ini_session_dropdown{
+  position:absolute;
+  right:0;
+  top:20px;
+  min-width:90px;
+  background:#fff;
+  border:1px solid var(--stroke);
+  border-radius:10px;
+  box-shadow:0 8px 24px rgba(15,23,42,0.08);
+  padding:6px 0;
+  z-index:999;
+}
+
+.ini_session_dropdown a{
+  display:block;
+  padding:7px 10px;
+  text-decoration:none !important;
+  color:var(--ink) !important;
+  font-size:13px;
+}
+
+.ini_session_dropdown a:hover{
+  background:#f8fafc;
+}
+
 /* Make chat look cleaner */
 .stChatMessage{
   padding-top: 0.25rem !important;
@@ -244,18 +313,7 @@ button[kind="secondary"]{
   }
 }
 
-/* --- Kill leaked Material icon text everywhere --- */
-span.material-symbols,
-span.material-symbols-rounded,
-span.material-symbols-outlined,
-span.material-symbols-sharp,
-i.material-icons,
-span.material-icons,
-[class*="material-symbol"]{
-  font-size: 0 !important;
-  line-height: 0 !important;
-  visibility: hidden !important;
-}
+/* Preserve Streamlit material icon fonts */
 
 /* Keep custom expander arrows */
 .stExpander summary::before {
@@ -287,6 +345,8 @@ init_db()
 # cleanup_empty_sessions()
 
 st.markdown(CSS, unsafe_allow_html=True)
+
+
 
 
 # =========================
@@ -1212,35 +1272,59 @@ with st.sidebar:
 
     chat_rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("chat-")]
     if chat_rows:
-        html = ['<div style="text-align:left;">']
+        html = []
         for sid, title, created_at, updated_at in chat_rows:
             label = truncate_session_text((title or "New Chat Session").strip(), max_chars=28)
             mmdd = _format_short_mmdd(created_at or "")
             display = f"{label} {mmdd}".strip()
-            html.append(
-                f'<a class="ini_sidebar_link" href="{_chat_popup_href(sid)}" target="_self">{display}</a>'
-            )
-        html.append("</div>")
+
+            html.append(f"""
+            <div class="ini_session_row">
+              <a class="ini_sidebar_link" href="{_chat_popup_href(sid)}" target="_self">{display}</a>
+              <div class="ini_session_menu">
+                <details>
+                  <summary>⋯</summary>
+                  <div class="ini_session_dropdown">
+                    <a href="#">Rename</a>
+                    <a href="#">Delete</a>
+                  </div>
+                </details>
+              </div>
+            </div>
+            """)
+
         st.markdown("\n".join(html), unsafe_allow_html=True)
     else:
         st.markdown('<div class="small" style="color:var(--muted);">No chat sessions yet.</div>', unsafe_allow_html=True)
+
 
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Learning</div>', unsafe_allow_html=True)
 
     rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("learn-")]
     if rows:
-        html = ['<div style="text-align:left;">']
+        html = []
         for sid, title, created_at, updated_at in rows:
             label = truncate_session_text((title or "Learning Session").strip(), max_chars=28)
-            html.append(
-                f'<a class="ini_sidebar_link" href="{_learn_session_href(sid)}" target="_self">{label}</a>'
-            )
-        html.append("</div>")
+
+            html.append(f"""
+            <div class="ini_session_row">
+              <a class="ini_sidebar_link" href="{_learn_session_href(sid)}" target="_self">{label}</a>
+              <div class="ini_session_menu">
+                <details>
+                  <summary>⋯</summary>
+                  <div class="ini_session_dropdown">
+                    <a href="#">Rename</a>
+                    <a href="#">Delete</a>
+                  </div>
+                </details>
+              </div>
+            </div>
+            """)
+
         st.markdown("\n".join(html), unsafe_allow_html=True)
     else:
         st.markdown('<div class="small" style="color:var(--muted);">No learning sessions yet.</div>', unsafe_allow_html=True)
-
 if st.session_state.chat_popup_sid:
     _render_chat_session_popup()
 
@@ -1272,8 +1356,9 @@ def page_new_chat() -> None:
         if not topic_text.strip():
             return
         try:
-            st.session_state.chat_active_id = None
-            st.session_state.chat_loaded_sid = None
+            current_sid = st.session_state.chat_active_id
+            current_loaded_sid = st.session_state.chat_loaded_sid
+
             st.session_state.chat_popup_sid = None
             st.query_params.clear()
             st.query_params["page"] = "chat"
@@ -1304,7 +1389,12 @@ def page_new_chat() -> None:
                 st.session_state.chat_root_open_questions = set()
                 st.session_state.chat_root_visited_questions = set()
 
-                _persist_new_chat_session()
+                if current_sid:
+                    st.session_state.chat_active_id = current_sid
+                if current_loaded_sid:
+                    st.session_state.chat_loaded_sid = current_loaded_sid
+
+                _persist_new_chat_session(current_sid)
             st.rerun()
         except Exception as e:
             st.error(f"Error calling /interrogate: {e}")
@@ -1313,15 +1403,16 @@ def page_new_chat() -> None:
         if not topic_text.strip():
             return
         try:
-            st.session_state.chat_active_id = None
-            st.session_state.chat_loaded_sid = None
+            current_sid = st.session_state.chat_active_id
+            current_loaded_sid = st.session_state.chat_loaded_sid
+
             st.session_state.chat_popup_sid = None
             st.query_params.clear()
             st.query_params["page"] = "chat"
 
             with st.spinner("Generating illustrations... please wait."):
                 data = fetch_illustrate(topic_text.strip())
-                st.session_state.chat["topic"] = topic_text.strip()                
+                st.session_state.chat["topic"] = topic_text.strip()
                 if "chat_bottom_topic_input" in st.session_state:
                     del st.session_state["chat_bottom_topic_input"]
                 st.session_state.chat["illustrate"] = data
@@ -1341,7 +1432,12 @@ def page_new_chat() -> None:
                 st.session_state.chat_root_open_questions = set()
                 st.session_state.chat_root_visited_questions = set()
 
-                _persist_new_chat_session()
+                if current_sid:
+                    st.session_state.chat_active_id = current_sid
+                if current_loaded_sid:
+                    st.session_state.chat_loaded_sid = current_loaded_sid
+
+                _persist_new_chat_session(current_sid)
             st.rerun()
         except Exception as e:
             st.error(f"Error calling /illustrate: {e}")
