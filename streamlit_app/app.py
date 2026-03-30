@@ -7,8 +7,15 @@ from urllib.parse import quote
 
 import requests
 import streamlit as st
-from storage_sqlite import cleanup_empty_sessions, init_db, save_session, list_sessions, load_session, delete_session
-
+from storage_sqlite import (
+    cleanup_empty_sessions,
+    init_db,
+    save_session,
+    list_sessions,
+    load_session,
+    delete_session,
+    rename_session,
+)
 
 
 
@@ -495,6 +502,22 @@ def _learn_branch_href(sid: Optional[str], question: str) -> str:
     return f"?page=learn&learn_q={q}"
 
 
+def _chat_rename_href(sid: str) -> str:
+    return f"?page=chat&session_action=rename&session_sid={quote(sid, safe='')}"
+
+
+def _chat_delete_href(sid: str) -> str:
+    return f"?page=chat&session_action=delete&session_sid={quote(sid, safe='')}"
+
+
+def _learn_rename_href(sid: str) -> str:
+    return f"?page=learn&session_action=rename&session_sid={quote(sid, safe='')}"
+
+
+def _learn_delete_href(sid: str) -> str:
+    return f"?page=learn&session_action=delete&session_sid={quote(sid, safe='')}"
+
+
 def render_followup_links(page: str, followups: list[str], sid: Optional[str] = None) -> None:
     cleaned: list[str] = []
     seen = set()
@@ -617,6 +640,12 @@ if "_uib_clear_next" not in st.session_state:
 
 if "_uib_send_requested" not in st.session_state:
     st.session_state._uib_send_requested = False
+
+if "rename_session_sid" not in st.session_state:
+    st.session_state.rename_session_sid = None
+
+if "rename_session_page" not in st.session_state:
+    st.session_state.rename_session_page = None
 
 
 def ensure_learning_session() -> str:
@@ -1163,6 +1192,8 @@ popup_chat_sid = (qp.get("popup_chat_sid") or "").strip()
 chat_root = (qp.get("chat_root") or "").strip()
 chat_q = (qp.get("chat_q") or "").strip()
 learn_q = (qp.get("learn_q") or "").strip()
+session_action = (qp.get("session_action") or "").strip().lower()
+session_sid = (qp.get("session_sid") or "").strip()
 
 param_to_page = {"chat": "New Chat", "learn": "My New Learning", "proj": "New Project"}
 
@@ -1204,6 +1235,27 @@ if chat_sid and chat_root == "1":
     ):
         _load_new_chat_session(chat_sid)
     _activate_root_view_from_loaded_session()
+
+if session_action and session_sid:
+    if session_action == "delete":
+        delete_session(session_sid)
+
+        if st.session_state.chat_active_id == session_sid:
+            st.session_state.chat_active_id = None
+            st.session_state.chat_loaded_sid = None
+
+        if st.session_state.learning_active_id == session_sid:
+            st.session_state.learning_active_id = None
+
+        st.query_params.clear()
+        st.query_params["page"] = page_param
+        st.rerun()
+
+    elif session_action == "rename":
+        st.session_state.rename_session_sid = session_sid
+        st.session_state.rename_session_page = page_param
+        st.query_params.clear()
+        st.query_params["page"] = page_param
 
 
 
@@ -1285,8 +1337,8 @@ with st.sidebar:
                 <details>
                   <summary>⋯</summary>
                   <div class="ini_session_dropdown">
-                    <a href="#">Rename</a>
-                    <a href="#">Delete</a>
+                    <a href="{_chat_rename_href(sid)}" target="_self">Rename</a>
+                    <a href="{_chat_delete_href(sid)}" target="_self">Delete</a>
                   </div>
                 </details>
               </div>
@@ -1296,7 +1348,6 @@ with st.sidebar:
         st.markdown("\n".join(html), unsafe_allow_html=True)
     else:
         st.markdown('<div class="small" style="color:var(--muted);">No chat sessions yet.</div>', unsafe_allow_html=True)
-
 
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Learning</div>', unsafe_allow_html=True)
@@ -1314,8 +1365,8 @@ with st.sidebar:
                 <details>
                   <summary>⋯</summary>
                   <div class="ini_session_dropdown">
-                    <a href="#">Rename</a>
-                    <a href="#">Delete</a>
+                    <a href="{_learn_rename_href(sid)}" target="_self">Rename</a>
+                    <a href="{_learn_delete_href(sid)}" target="_self">Delete</a>
                   </div>
                 </details>
               </div>
@@ -1325,8 +1376,42 @@ with st.sidebar:
         st.markdown("\n".join(html), unsafe_allow_html=True)
     else:
         st.markdown('<div class="small" style="color:var(--muted);">No learning sessions yet.</div>', unsafe_allow_html=True)
+@st.dialog("Rename Session")
+def _render_rename_session_dialog() -> None:
+    sid = st.session_state.rename_session_sid
+    if not sid:
+        return
+
+    loaded = load_session(sid)
+    current_title = ""
+    if loaded:
+        current_title = (loaded.get("title") or "").strip()
+
+    new_title = st.text_input("Session name", value=current_title, key="rename_session_input")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Save", key="rename_session_save_btn"):
+            rename_session(sid, new_title.strip())
+            st.session_state.rename_session_sid = None
+            st.session_state.rename_session_page = None
+            st.rerun()
+    with c2:
+        if st.button("Cancel", key="rename_session_cancel_btn"):
+            st.session_state.rename_session_sid = None
+            st.session_state.rename_session_page = None
+            st.rerun()
+
 if st.session_state.chat_popup_sid:
     _render_chat_session_popup()
+
+if st.session_state.rename_session_sid:
+    _render_rename_session_dialog()
+
+
+
+
+
 
 
 # =========================
