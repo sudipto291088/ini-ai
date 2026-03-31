@@ -134,6 +134,11 @@ div[data-testid="stSidebar"] .block-container{
   padding-top: 1rem;
 }
 
+/* Hide Streamlit sidebar header/collapse control to remove stray keyboard_double_arrow_right text */
+section[data-testid="stSidebar"] div[data-testid="stSidebarHeader"]{
+  display:none !important;
+}
+
 /* Prevent Continue wrapping */
 button[kind="secondary"]{
   min-width: 110px !important;
@@ -629,6 +634,9 @@ if "chat_top_enter_submit" not in st.session_state:
 if "chat_bottom_enter_submit" not in st.session_state:
     st.session_state.chat_bottom_enter_submit = False
 
+if "chat_branch_answers" not in st.session_state:
+    st.session_state.chat_branch_answers = []
+
 # UIB state
 if "uib_text" not in st.session_state:
     st.session_state.uib_text = ""
@@ -741,6 +749,7 @@ def _empty_new_chat_state() -> Dict[str, Any]:
         "chat_direct_answer": None,
         "chat_seed_done": "",
         "chat_branch_history": [],
+        "chat_branch_answers": [],
     }
 
 
@@ -754,6 +763,7 @@ def _reset_new_chat_state() -> None:
     st.session_state.chat_direct_answer = None
     st.session_state.chat_seed_done = ""
     st.session_state.chat_branch_history = []
+    st.session_state.chat_branch_answers = []
     st.session_state.chat_top_topic_input = ""
     st.session_state.chat_bottom_topic_input = ""
 
@@ -778,6 +788,7 @@ def _current_new_chat_payload() -> Dict[str, Any]:
         "chat_direct_answer": st.session_state.chat_direct_answer,
         "chat_seed_done": st.session_state.chat_seed_done,
         "chat_branch_history": st.session_state.chat_branch_history,
+        "chat_branch_answers": st.session_state.chat_branch_answers,
 
         "chat_root_interrogate": st.session_state.chat_root_interrogate,
         "chat_root_illustrate": st.session_state.chat_root_illustrate,
@@ -819,14 +830,16 @@ def _persist_new_chat_session(sid: Optional[str] = None) -> str:
     ])
 
     if not has_meaningful_content:
-        return st.session_state.chat_active_id or ""
+        return st.session_state.chat_active_id or st.session_state.chat_loaded_sid or ""
 
     if not sid:
-        sid = st.session_state.chat_active_id
+        sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
 
     if not sid:
         sid = f"chat-{int(time.time())}"
-        st.session_state.chat_active_id = sid
+
+    st.session_state.chat_active_id = sid
+    st.session_state.chat_loaded_sid = sid
 
     created = datetime.now().strftime("%b %d.%Y")
     existing = st.session_state.chat_sessions.get(sid, {})
@@ -880,6 +893,7 @@ def _load_new_chat_session(sid: str) -> bool:
     st.session_state.chat_direct_answer = payload.get("chat_direct_answer")
     st.session_state.chat_seed_done = payload.get("chat_seed_done") or ""
     st.session_state.chat_branch_history = payload.get("chat_branch_history") or []
+    st.session_state.chat_branch_answers = payload.get("chat_branch_answers") or []
     st.session_state.chat_top_topic_input = payload.get("topic") or ""
     st.session_state.chat_bottom_topic_input = ""
     st.session_state.chat_root_interrogate = payload.get("chat_root_interrogate")
@@ -1437,12 +1451,226 @@ def page_new_chat() -> None:
     if "chat_seed_done" not in st.session_state:
         st.session_state.chat_seed_done = ""
 
+    if "chat_branch_answers" not in st.session_state:
+        st.session_state.chat_branch_answers = []
+
+    def _session_has_existing_root() -> bool:
+        return any([
+            st.session_state.chat_root_interrogate,
+            st.session_state.chat_root_illustrate,
+            st.session_state.chat_root_intro,
+            st.session_state.chat_root_answers,
+        ])
+
+    def _append_interrogate_branch(topic_text: str, data: Dict[str, Any], intro: str) -> None:
+        st.session_state.chat_branch_answers.append(
+            {
+                "kind": "interrogate",
+                "topic": topic_text,
+                "interrogate": data,
+                "intro": intro,
+                "answers": {},
+                "followups": {},
+                "open_questions": [],
+                "visited_questions": [],
+                "ts": now_label(),
+            }
+        )
+        _append_chat_branch(topic_text, "fuq")
+
+    def _append_illustrate_branch(topic_text: str, data: Dict[str, Any]) -> None:
+        st.session_state.chat_branch_answers.append(
+            {
+                "kind": "illustrate",
+                "topic": topic_text,
+                "illustrate": data,
+                "ts": now_label(),
+            }
+        )
+        _append_chat_branch(topic_text, "fuq")
+
+    def _run_new_chat_branch_interrogate(topic_text: str) -> None:
+        if not topic_text.strip():
+            return
+
+        current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
+
+        with st.spinner("Generating question map... may take some time."):
+            data = fetch_interrogate(topic_text.strip())
+            intro_resp = fetch_study_full(topic_text.strip(), mode="high")
+            intro = intro_resp.get("answer", "").strip()
+            _append_interrogate_branch(topic_text.strip(), data, intro)
+            _persist_new_chat_session(current_sid)
+
+    def _run_new_chat_branch_illustrate(topic_text: str) -> None:
+        if not topic_text.strip():
+            return
+
+        current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
+
+        with st.spinner("Generating illustrations... please wait."):
+            data = fetch_illustrate(topic_text.strip())
+            _append_illustrate_branch(topic_text.strip(), data)
+            _persist_new_chat_session(current_sid)
+
+    def _render_branch_question_map(branch_idx: int, branch: Dict[str, Any]) -> None:
+        data = branch.get("interrogate") or {}
+        if not isinstance(data, dict) or not data.get("categories"):
+            return
+
+        intro = (branch.get("intro") or "").strip()
+        if intro:
+            clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
+            st.markdown("##### Introduction")
+            st.markdown(clean_intro or intro)
+            if intro_followups:
+                st.markdown("##### Suggested follow-ups")
+                render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
+
+        st.markdown("##### Question Map")
+        cats = data.get("categories") or {}
+        branch_answers = branch.setdefault("answers", {})
+        branch_followups = branch.setdefault("followups", {})
+        branch_open_questions = set(branch.get("open_questions") or [])
+        branch_visited_questions = set(branch.get("visited_questions") or [])
+
+        ladder = [
+            ("Orientation", ["Orientation"]),
+            ("Foundations", ["Foundations"]),
+            ("Mechanisms", ["Mechanisms"]),
+            ("Methods & Tools", ["Methods & Tools"]),
+            ("Applications", ["Applications"]),
+            ("Pitfalls", ["Pitfalls"]),
+            ("Advanced / Future", ["Advanced / Future"]),
+        ]
+
+        for section, cat_keys in ladder:
+            qs = []
+            for ck in cat_keys:
+                items = cats.get(ck) or []
+                for it in items:
+                    q = (it.get("question") or "").strip()
+                    if q and q not in qs:
+                        qs.append(q)
+
+            if not qs:
+                continue
+
+            open_section = st.toggle(section, value=(section == "Orientation"), key=f"branch_{branch_idx}_sec_{section}")
+
+            if open_section:
+                for q in qs:
+                    visited = q in branch_visited_questions
+                    is_open = q in branch_open_questions
+                    button_label = f"✓ {q}" if visited else q
+
+                    if st.button(button_label, key=f"branch_{branch_idx}_q_{section}_{q}", type="secondary"):
+                        branch_visited_questions.add(q)
+
+                        if is_open:
+                            branch_open_questions.discard(q)
+                            branch["open_questions"] = sorted(list(branch_open_questions))
+                            branch["visited_questions"] = sorted(list(branch_visited_questions))
+                            st.session_state.chat_branch_answers[branch_idx] = branch
+                            _persist_new_chat_session()
+                            st.rerun()
+
+                        if q in branch_answers:
+                            branch_open_questions.add(q)
+                            branch["open_questions"] = sorted(list(branch_open_questions))
+                            branch["visited_questions"] = sorted(list(branch_visited_questions))
+                            st.session_state.chat_branch_answers[branch_idx] = branch
+                            _persist_new_chat_session()
+                            st.rerun()
+
+                        try:
+                            with st.spinner("Generating details... please wait."):
+                                resp = fetch_study(q, mode="deep")
+                                answer = normalize_whitespace_for_readability(normalize_mojibake(resp.get("answer", "") or "")).strip() or "No answer generated."
+                                branch_answers[q] = {
+                                    "text": answer,
+                                    "incomplete": bool(resp.get("incomplete")),
+                                    "stop_reason": resp.get("stop_reason") or None,
+                                    "prompt": q,
+                                    "mode": "deep",
+                                }
+                                branch_followups[q] = resp.get("followups") or []
+                                branch_open_questions.add(q)
+                                branch["answers"] = branch_answers
+                                branch["followups"] = branch_followups
+                                branch["open_questions"] = sorted(list(branch_open_questions))
+                                branch["visited_questions"] = sorted(list(branch_visited_questions))
+                                st.session_state.chat_branch_answers[branch_idx] = branch
+                                _persist_new_chat_session()
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error calling /study/ai: {e}")
+
+                    if q in branch_open_questions:
+                        answer_obj = branch_answers.get(q, {})
+                        raw_answer = (answer_obj.get("text") or "").strip() if isinstance(answer_obj, dict) else str(answer_obj or "").strip()
+
+                        if raw_answer:
+                            clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
+                            st.markdown("##### Answer")
+                            st.markdown(clean_answer or raw_answer)
+
+                            followups = embedded_followups or branch_followups.get(q, [])
+                            if followups:
+                                st.markdown("##### Suggested follow-ups")
+                                render_followup_links("chat", followups, st.session_state.chat_active_id)
+
+                            is_incomplete = False
+                            if isinstance(answer_obj, dict):
+                                is_incomplete = bool(answer_obj.get("incomplete")) or ((answer_obj.get("stop_reason") or "").strip().lower() == "max_output_tokens")
+
+                            if is_incomplete:
+                                branch_continue_key = f"branch::{branch_idx}::{q}"
+                                if st.button("Continue", key=f"branch_{branch_idx}_cont_{section}_{q}"):
+                                    st.session_state._nc_continue_loading_q = branch_continue_key
+                                    st.rerun()
+
+                                if st.session_state._nc_continue_loading_q == branch_continue_key:
+                                    st.markdown("⏳ **Continuing...**")
+                                    previous_text = (answer_obj.get("text") or "").strip()
+                                    mode = (answer_obj.get("mode") or "deep").strip()
+
+                                    if previous_text:
+                                        try:
+                                            resp = fetch_study(topic=q, mode=mode, continue_mode=True, previous_answer=previous_text)
+                                            chunk = normalize_whitespace_for_readability(normalize_mojibake(resp.get("answer", "") or "")).strip()
+                                            combined = (previous_text.rstrip() + "\n\n" + chunk).strip() if chunk else previous_text
+                                            branch_answers[q] = {
+                                                "text": combined,
+                                                "incomplete": bool(resp.get("incomplete")),
+                                                "stop_reason": resp.get("stop_reason") or None,
+                                                "prompt": q,
+                                                "mode": mode,
+                                            }
+                                            if resp.get("followups"):
+                                                branch_followups[q] = resp.get("followups") or []
+                                            branch["answers"] = branch_answers
+                                            branch["followups"] = branch_followups
+                                            st.session_state.chat_branch_answers[branch_idx] = branch
+                                            _persist_new_chat_session()
+                                        except Exception as e:
+                                            st.error(f"Error continuing answer: {e}")
+                                        finally:
+                                            st.session_state._nc_continue_loading_q = None
+                                        st.rerun()
+
+                            st.markdown("---")
+
     def _run_new_chat_interrogate(topic_text: str) -> None:
         if not topic_text.strip():
             return
         try:
-            current_sid = st.session_state.chat_active_id
-            current_loaded_sid = st.session_state.chat_loaded_sid
+            current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
+
+            if current_sid and st.session_state.chat_loaded_sid == current_sid and _session_has_existing_root():
+                _run_new_chat_branch_interrogate(topic_text.strip())
+                st.rerun()
+                return
 
             st.session_state.chat_popup_sid = None
             st.query_params.clear()
@@ -1474,11 +1702,6 @@ def page_new_chat() -> None:
                 st.session_state.chat_root_open_questions = set()
                 st.session_state.chat_root_visited_questions = set()
 
-                if current_sid:
-                    st.session_state.chat_active_id = current_sid
-                if current_loaded_sid:
-                    st.session_state.chat_loaded_sid = current_loaded_sid
-
                 _persist_new_chat_session(current_sid)
             st.rerun()
         except Exception as e:
@@ -1488,8 +1711,12 @@ def page_new_chat() -> None:
         if not topic_text.strip():
             return
         try:
-            current_sid = st.session_state.chat_active_id
-            current_loaded_sid = st.session_state.chat_loaded_sid
+            current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
+
+            if current_sid and st.session_state.chat_loaded_sid == current_sid and _session_has_existing_root():
+                _run_new_chat_branch_illustrate(topic_text.strip())
+                st.rerun()
+                return
 
             st.session_state.chat_popup_sid = None
             st.query_params.clear()
@@ -1516,11 +1743,6 @@ def page_new_chat() -> None:
                 st.session_state.chat_root_followups = {}
                 st.session_state.chat_root_open_questions = set()
                 st.session_state.chat_root_visited_questions = set()
-
-                if current_sid:
-                    st.session_state.chat_active_id = current_sid
-                if current_loaded_sid:
-                    st.session_state.chat_loaded_sid = current_loaded_sid
 
                 _persist_new_chat_session(current_sid)
             st.rerun()
@@ -1613,7 +1835,7 @@ def page_new_chat() -> None:
                 st.session_state.chat_open_questions = set()
                 st.session_state.chat_visited_questions = set()
                 st.session_state.chat_seed_done = chat_q
-                _persist_new_chat_session()
+                _persist_new_chat_session(st.session_state.chat_active_id or st.session_state.chat_loaded_sid)
             st.rerun()
         except Exception as e:
             st.error(f"Error auto-running chat FUQ: {e}")
@@ -1886,6 +2108,31 @@ def page_new_chat() -> None:
                                         st.rerun()
 
                             st.markdown("---")
+
+        if st.session_state.chat_branch_answers:
+            st.markdown("---")
+            st.markdown("### Continued in this session")
+
+            for idx, item in enumerate(st.session_state.chat_branch_answers, start=1):
+                kind = (item.get("kind") or "interrogate").strip().lower()
+                topic = (item.get("topic") or item.get("prompt") or f"Continued topic {idx}").strip()
+
+                st.markdown(f"#### {idx}. {topic}")
+
+                if kind == "illustrate":
+                    illustrate_payload = item.get("illustrate") or {}
+                    illustration_text = ""
+                    if isinstance(illustrate_payload, dict):
+                        illustration_text = (illustrate_payload.get("illustration_text") or "").strip()
+
+                    if illustration_text:
+                        st.markdown(illustration_text)
+                    else:
+                        st.caption("No illustration generated.")
+                else:
+                    _render_branch_question_map(idx - 1, item)
+
+                st.markdown("---")
 
         _render_new_chat_bottom_uib()
         return
