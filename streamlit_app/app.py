@@ -38,12 +38,6 @@ DEV_MODE = os.environ.get("INI_DEV_MODE", "0") == "1"
 # =========================
 st.set_page_config(page_title="InI.ai", layout="wide", initial_sidebar_state="expanded")
 
-st.markdown("""
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:FILL@0;wght@400;GRAD@0;opsz@24" />
-""", unsafe_allow_html=True)
-
-
-
 CSS = """
 <style>
 :root{
@@ -70,26 +64,34 @@ button, input, textarea, select, label, p, div, a{
   font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
 }
 
-span:not(.material-symbols):not(.material-symbols-rounded):not(.material-symbols-outlined):not(.material-symbols-sharp):not(.material-icons):not(.material){
-  font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
+span{
+  font-family: inherit;
 }
 
-/* Restore Streamlit header/sidebar material icon ligatures */
-span.material,
-[data-testid="stIconMaterial"],
-[data-testid="stSidebarCollapseButton"] span{
-  font-family: "Material Symbols Rounded" !important;
-  font-weight: 400 !important;
-  font-style: normal !important;
+/* Sidebar collapse icon: replace broken ligature text with a clean arrow */
+[data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"]{
+  font-size: 0 !important;
   line-height: 1 !important;
-  letter-spacing: normal !important;
-  text-transform: none !important;
+  color: transparent !important;
+  position: relative !important;
   display: inline-block !important;
-  white-space: nowrap !important;
-  word-wrap: normal !important;
-  direction: ltr !important;
-  -webkit-font-smoothing: antialiased !important;
-  font-feature-settings: "liga" !important;
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+}
+
+[data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"]::before{
+  content: "❮" !important;
+  font-size: 1.15rem !important;
+  line-height: 1.5rem !important;
+  color: rgba(49, 51, 63, 0.6) !important;
+  position: absolute !important;
+  inset: 0 !important;
+  text-align: center !important;
+}
+
+[data-testid="stSidebarCollapseButton"]{
+  min-width: 2rem !important;
+  min-height: 2rem !important;
 }
 
 .main .block-container{
