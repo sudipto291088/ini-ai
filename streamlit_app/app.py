@@ -38,6 +38,12 @@ DEV_MODE = os.environ.get("INI_DEV_MODE", "0") == "1"
 # =========================
 st.set_page_config(page_title="InI.ai", layout="wide", initial_sidebar_state="expanded")
 
+st.markdown("""
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:FILL@0;wght@400;GRAD@0;opsz@24" />
+""", unsafe_allow_html=True)
+
+
+
 CSS = """
 <style>
 :root{
@@ -64,8 +70,26 @@ button, input, textarea, select, label, p, div, a{
   font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
 }
 
-span:not(.material-symbols):not(.material-symbols-rounded):not(.material-symbols-outlined):not(.material-symbols-sharp):not(.material-icons){
+span:not(.material-symbols):not(.material-symbols-rounded):not(.material-symbols-outlined):not(.material-symbols-sharp):not(.material-icons):not(.material){
   font-family: "Aptos", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
+}
+
+/* Restore Streamlit header/sidebar material icon ligatures */
+span.material,
+[data-testid="stIconMaterial"],
+[data-testid="stSidebarCollapseButton"] span{
+  font-family: "Material Symbols Rounded" !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+  line-height: 1 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  display: inline-block !important;
+  white-space: nowrap !important;
+  word-wrap: normal !important;
+  direction: ltr !important;
+  -webkit-font-smoothing: antialiased !important;
+  font-feature-settings: "liga" !important;
 }
 
 .main .block-container{
@@ -132,11 +156,6 @@ span:not(.material-symbols):not(.material-symbols-rounded):not(.material-symbols
 
 div[data-testid="stSidebar"] .block-container{
   padding-top: 1rem;
-}
-
-/* Hide Streamlit sidebar header/collapse control to remove stray keyboard_double_arrow_right text */
-section[data-testid="stSidebar"] div[data-testid="stSidebarHeader"]{
-  display:none !important;
 }
 
 /* Prevent Continue wrapping */
