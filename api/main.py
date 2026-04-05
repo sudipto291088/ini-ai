@@ -1,15 +1,15 @@
+from contextlib import asynccontextmanager
+from typing import Optional
+
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
-from typing import Optional
 
 from api.interrogate import interrogate
 from api.illustrate import illustrate as illustrate_logic
 from api.resume import resume as resume_logic
-from api.llm_answers import llm_enabled
+from api.llm_answers import llm_enabled, generate_dynamic_answer
 from api.study_ai import study_ai
-from contextlib import asynccontextmanager
-import threading
-from fastapi import FastAPI
+from api.intent_layer import detect_intent
 
 
 class TopicIn(BaseModel):
@@ -26,8 +26,6 @@ class StudyAIIn(BaseModel):
     previous_answer: Optional[str] = Field(None, description="Prior assistant answer to continue from")
 
 
-from api.llm_answers import generate_dynamic_answer
-
 def _warm_up_in_background() -> None:
     try:
         generate_dynamic_answer(
@@ -40,12 +38,15 @@ def _warm_up_in_background() -> None:
     except Exception:
         pass
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _warm_up_in_background()
     yield
 
+
 app = FastAPI(lifespan=lifespan)
+
 
 @app.get("/")
 def root():
@@ -54,7 +55,25 @@ def root():
 
 @app.post("/interrogate")
 def interrogate_route(payload: TopicIn):
-    return interrogate(payload.topic)
+    topic = (payload.topic or "").strip()
+    intent = detect_intent(topic)
+
+    if not intent.get("should_interrogate", True):
+        return {
+            "topic": topic,
+            "topic_type": "intent",
+            "categories": {},
+            "summary": [],
+            "confidence": intent.get("confidence", 1.0),
+            "notes": ["v0: intent layer handled conversational input"],
+            "llm_used": False,
+            "intent": intent.get("intent"),
+            "reply": intent.get("reply", ""),
+            "followups": intent.get("followups", []),
+            "needs_clarification": intent.get("intent") == "clarify",
+        }
+
+    return interrogate(topic)
 
 
 @app.post("/illustrate")
