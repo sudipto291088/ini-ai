@@ -1511,17 +1511,53 @@ def page_new_chat() -> None:
         _append_chat_branch(topic_text, "fuq")
 
     def _run_new_chat_branch_interrogate(topic_text: str) -> None:
-        if not topic_text.strip():
-            return
+        try:
+            with st.spinner("Generating question map... may take some time."):
+                data = fetch_interrogate(topic_text)
 
-        current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
+            # ---- INTENT RESPONSE ----
+            if not (data.get("categories") or {}):
+                reply = (data.get("reply") or "").strip() or "Send a topic to explore."
+                followups = data.get("followups") or []
 
-        with st.spinner("Generating question map... may take some time."):
-            data = fetch_interrogate(topic_text.strip())
-            intro_resp = fetch_study_full(topic_text.strip(), mode="high")
-            intro = intro_resp.get("answer", "").strip()
-            _append_interrogate_branch(topic_text.strip(), data, intro)
-            _persist_new_chat_session(current_sid)
+                st.session_state.chat["topic"] = topic_text
+                st.session_state.chat["interrogate"] = None
+                st.session_state.chat_intro = ""
+
+                st.session_state.chat_direct_answer = {
+                    "prompt": topic_text,
+                    "text": reply,
+                    "incomplete": False,
+                    "stop_reason": None,
+                    "mode": "focused",
+                    "followups": followups,
+                }
+
+                st.session_state.chat_answers = {}
+                st.session_state.chat_followups = {}
+                st.session_state.chat_open_questions = set()
+                st.session_state.chat_visited_questions = set()
+
+            # ---- NORMAL QUESTION MAP FLOW ----
+            else:
+                st.session_state.chat["topic"] = topic_text
+                st.session_state.chat["interrogate"] = data
+
+                intro_resp = fetch_study_full(topic_text, mode="high")
+                intro = intro_resp.get("answer", "").strip()
+
+                st.session_state.chat_intro = intro
+                st.session_state.chat_direct_answer = None
+
+                st.session_state.chat_answers = {}
+                st.session_state.chat_followups = {}
+                st.session_state.chat_open_questions = set()
+                st.session_state.chat_visited_questions = set()
+
+            st.rerun()
+
+        except Exception as e:
+            st.error(f"Error calling /interrogate: {e}")
 
     def _run_new_chat_branch_illustrate(topic_text: str) -> None:
         if not topic_text.strip():
@@ -1683,86 +1719,86 @@ def page_new_chat() -> None:
                             st.markdown("---")
 
     def _run_new_chat_interrogate(topic_text: str) -> None:
-    if not topic_text.strip():
-        return
-    try:
-        current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
-
-        if current_sid and st.session_state.chat_loaded_sid == current_sid and _session_has_existing_root():
-            _run_new_chat_branch_interrogate(topic_text.strip())
-            st.rerun()
+        if not topic_text.strip():
             return
+        try:
+            current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
 
-        st.session_state.chat_popup_sid = None
-        st.query_params.clear()
-        st.query_params["page"] = "chat"
+            if current_sid and st.session_state.chat_loaded_sid == current_sid and _session_has_existing_root():
+                _run_new_chat_branch_interrogate(topic_text.strip())
+                st.rerun()
+                return
 
-        with st.spinner("Generating question map... may take some time."):
-            data = fetch_interrogate(topic_text.strip())
-            st.session_state.chat["topic"] = topic_text.strip()
+            st.session_state.chat_popup_sid = None
+            st.query_params.clear()
+            st.query_params["page"] = "chat"
 
-            if "chat_bottom_topic_input" in st.session_state:
-                del st.session_state["chat_bottom_topic_input"]
+            with st.spinner("Generating question map... may take some time."):
+                data = fetch_interrogate(topic_text.strip())
+                st.session_state.chat["topic"] = topic_text.strip()
 
-            # Intent-layer response: conversational input, help, greeting, thanks, etc.
-            if not (data.get("categories") or {}):
-                reply = (data.get("reply") or "").strip() or "Send a topic to explore."
-                followups = data.get("followups") or []
+                if "chat_bottom_topic_input" in st.session_state:
+                    del st.session_state["chat_bottom_topic_input"]
 
-                st.session_state.chat["interrogate"] = None
-                st.session_state.chat["illustrate"] = None
-                st.session_state.chat_intro = ""
-                st.session_state.chat_direct_answer = {
-                    "prompt": topic_text.strip(),
-                    "text": reply,
-                    "incomplete": False,
-                    "stop_reason": None,
-                    "mode": "focused",
-                    "followups": followups,
+                # Intent-layer response: conversational input, help, greeting, thanks, etc.
+                if not (data.get("categories") or {}):
+                    reply = (data.get("reply") or "").strip() or "Send a topic to explore."
+                    followups = data.get("followups") or []
+
+                    st.session_state.chat["interrogate"] = None
+                    st.session_state.chat["illustrate"] = None
+                    st.session_state.chat_intro = ""
+                    st.session_state.chat_direct_answer = {
+                        "prompt": topic_text.strip(),
+                        "text": reply,
+                        "incomplete": False,
+                        "stop_reason": None,
+                        "mode": "focused",
+                        "followups": followups,
                 }
 
-                st.session_state.chat_answers = {}
-                st.session_state.chat_followups = {}
-                st.session_state.chat_open_questions = set()
-                st.session_state.chat_visited_questions = set()
+                    st.session_state.chat_answers = {}
+                    st.session_state.chat_followups = {}
+                    st.session_state.chat_open_questions = set()
+                    st.session_state.chat_visited_questions = set()
 
-                st.session_state.chat_root_interrogate = None
-                st.session_state.chat_root_illustrate = None
-                st.session_state.chat_root_intro = ""
-                st.session_state.chat_root_answers = {}
-                st.session_state.chat_root_followups = {}
-                st.session_state.chat_root_open_questions = set()
-                st.session_state.chat_root_visited_questions = set()
+                    st.session_state.chat_root_interrogate = None
+                    st.session_state.chat_root_illustrate = None
+                    st.session_state.chat_root_intro = ""
+                    st.session_state.chat_root_answers = {}
+                    st.session_state.chat_root_followups = {}
+                    st.session_state.chat_root_open_questions = set()
+                    st.session_state.chat_root_visited_questions = set()
 
-            # Normal interrogate flow: real topic -> question map
-            else:
-                st.session_state.chat["interrogate"] = data
+                # Normal interrogate flow: real topic -> question map
+                else:
+                    st.session_state.chat["interrogate"] = data
 
-                intro_resp = fetch_study_full(topic_text.strip(), mode="high")
-                intro = intro_resp.get("answer", "").strip()
+                    intro_resp = fetch_study_full(topic_text.strip(), mode="high")
+                    intro = intro_resp.get("answer", "").strip()
 
-                st.session_state.chat_intro = intro
-                st.session_state.chat["illustrate"] = None
-                st.session_state.chat_direct_answer = None
-                st.session_state.chat_answers = {}
-                st.session_state.chat_followups = {}
-                st.session_state.chat_open_questions = set()
-                st.session_state.chat_visited_questions = set()
+                    st.session_state.chat_intro = intro
+                    st.session_state.chat["illustrate"] = None
+                    st.session_state.chat_direct_answer = None
+                    st.session_state.chat_answers = {}
+                    st.session_state.chat_followups = {}
+                    st.session_state.chat_open_questions = set()
+                    st.session_state.chat_visited_questions = set()
 
-                st.session_state.chat_root_interrogate = data
-                st.session_state.chat_root_illustrate = None
-                st.session_state.chat_root_intro = intro
-                st.session_state.chat_root_answers = {}
-                st.session_state.chat_root_followups = {}
-                st.session_state.chat_root_open_questions = set()
-                st.session_state.chat_root_visited_questions = set()
+                    st.session_state.chat_root_interrogate = data
+                    st.session_state.chat_root_illustrate = None
+                    st.session_state.chat_root_intro = intro
+                    st.session_state.chat_root_answers = {}
+                    st.session_state.chat_root_followups = {}
+                    st.session_state.chat_root_open_questions = set()
+                    st.session_state.chat_root_visited_questions = set()
 
-                _sync_chat_root_snapshot()
+                    _sync_chat_root_snapshot()
 
-            _persist_new_chat_session(current_sid)
-        st.rerun()
-    except Exception as e:
-        st.error(f"Error calling /interrogate: {e}")
+                _persist_new_chat_session(current_sid)
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error calling /interrogate: {e}")
 
     def _run_new_chat_illustrate(topic_text: str) -> None:
         if not topic_text.strip():
