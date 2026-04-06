@@ -1368,11 +1368,11 @@ with st.sidebar:
         """
         <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
-             href="?page=chat">💬&nbsp;&nbsp;New Chat</a>
+             href="?page=chat" target="_self">💬&nbsp;&nbsp;New Chat</a>
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
-             href="?page=learn">📚&nbsp;&nbsp;My New Learning</a>
+             href="?page=learn" target="_self">📚&nbsp;&nbsp;My New Learning</a>
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
-             href="?page=proj">🧩&nbsp;&nbsp;New Project</a>
+             href="?page=proj" target="_self">🧩&nbsp;&nbsp;New Project</a>
         </div>
         """,
         unsafe_allow_html=True,
