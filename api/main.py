@@ -28,11 +28,12 @@ class StudyAIIn(BaseModel):
 
 def _warm_up_in_background() -> None:
     try:
+        # Force a real LLM response so the model is ready
         generate_dynamic_answer(
             topic="Artificial Intelligence",
             topic_type="concept",
             archetype="ORIENT",
-            question="Warm up the model.",
+            question="What is artificial intelligence?",
             meta={"mode": "warmup"},
         )
     except Exception:
@@ -53,27 +54,41 @@ def root():
     return {"message": "InI engine is alive"}
 
 
+# @app.post("/interrogate")
+# def interrogate_route(payload: TopicIn):
+#     topic = (payload.topic or "").strip()
+
+#     # Detect conversational intent
+#     intent = detect_intent(topic)
+
+#     # Only block interrogation for clearly conversational intents
+#     conversational_intents = {"greeting", "thanks", "farewell", "help"}
+
+#     if intent.get("intent") in conversational_intents:
+#         return {
+#             "topic": topic,
+#             "topic_type": "intent",
+#             "categories": {},
+#             "summary": [],
+#             "confidence": intent.get("confidence", 1.0),
+#             "notes": ["v0: intent layer handled conversational input"],
+#             "llm_used": False,
+#             "intent": intent.get("intent"),
+#             "reply": intent.get("reply", ""),
+#             "followups": intent.get("followups", []),
+#             "needs_clarification": False,
+#         }
+
+#     # Everything else should go through interrogation
+#     return interrogate(topic)
+
+
+
 @app.post("/interrogate")
 def interrogate_route(payload: TopicIn):
     topic = (payload.topic or "").strip()
-    intent = detect_intent(topic)
-
-    if not intent.get("should_interrogate", True):
-        return {
-            "topic": topic,
-            "topic_type": "intent",
-            "categories": {},
-            "summary": [],
-            "confidence": intent.get("confidence", 1.0),
-            "notes": ["v0: intent layer handled conversational input"],
-            "llm_used": False,
-            "intent": intent.get("intent"),
-            "reply": intent.get("reply", ""),
-            "followups": intent.get("followups", []),
-            "needs_clarification": intent.get("intent") == "clarify",
-        }
-
     return interrogate(topic)
+
 
 
 @app.post("/illustrate")

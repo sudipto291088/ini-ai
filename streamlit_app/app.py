@@ -3,7 +3,7 @@ import time
 import re
 from datetime import datetime
 from typing import Any, Dict, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 import requests
 import streamlit as st
@@ -498,8 +498,26 @@ def _format_short_mmdd(created_at: str) -> str:
     return ""
 
 
+def _query_href(**updates: Optional[str]) -> str:
+    params: Dict[str, str] = {}
+    for key, value in st.query_params.items():
+        if isinstance(value, list):
+            if value:
+                params[key] = str(value[-1])
+        elif value is not None:
+            params[key] = str(value)
+
+    for key, value in updates.items():
+        if value is None or str(value).strip() == "":
+            params.pop(key, None)
+        else:
+            params[key] = str(value)
+
+    return "?" + urlencode(params)
+
+
 def _chat_popup_href(sid: str) -> str:
-    return f"?page=chat&popup_chat_sid={quote(sid, safe='')}"
+    return _query_href(popup_chat_sid=sid)
 
 
 def _chat_root_href(sid: str) -> str:
@@ -569,6 +587,25 @@ def render_followup_links(page: str, followups: list[str], sid: Optional[str] = 
         )
     lines.append("</div>")
     st.markdown("\n".join(lines), unsafe_allow_html=True)
+
+
+def render_followup_text(followups: list[str]) -> None:
+    cleaned: list[str] = []
+    seen = set()
+
+    for fu in followups or []:
+        item = (fu or "").strip()
+        key = item.lower()
+        if item and key not in seen:
+            seen.add(key)
+            cleaned.append(item)
+
+    if not cleaned:
+        return
+
+    st.markdown(
+        "\n".join([f"{idx}. {item}" for idx, item in enumerate(cleaned, start=1)])
+    )
 
 
 # =========================
@@ -683,21 +720,6 @@ def ensure_learning_session() -> str:
         and st.session_state.learning_active_id in st.session_state.learning_sessions
     ):
         return st.session_state.learning_active_id
-
-    rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("learn-")]
-    if rows:
-        sid, title, created_at, updated_at = rows[0]
-        loaded = load_session(sid)
-        if loaded:
-            st.session_state.learning_active_id = sid
-            st.session_state.learning_sessions[sid] = {
-                "created": loaded.get("created") or datetime.now().strftime("%b %d.%Y"),
-                "messages": loaded.get("messages") or [],
-                "last_prompt": "",
-                "title": (loaded.get("title") or "Learning Session"),
-                "_title_set": (loaded.get("title") or "").strip() not in {"", "Learning Session", "Session", "New Session"},
-            }
-            return sid
 
     sid = f"learn-{int(time.time())}"
     st.session_state.learning_sessions[sid] = {
@@ -1510,54 +1532,44 @@ def page_new_chat() -> None:
         )
         _append_chat_branch(topic_text, "fuq")
 
-    def _run_new_chat_branch_interrogate(topic_text: str) -> None:
+    def _run_new_chat_direct_followup(topic_text: str) -> None:
+        if not topic_text.strip():
+            return
         try:
-            with st.spinner("Generating question map... may take some time."):
-                data = fetch_interrogate(topic_text)
-
-            # ---- INTENT RESPONSE ----
-            if not (data.get("categories") or {}):
-                reply = (data.get("reply") or "").strip() or "Send a topic to explore."
-                followups = data.get("followups") or []
-
-                st.session_state.chat["topic"] = topic_text
-                st.session_state.chat["interrogate"] = None
-                st.session_state.chat_intro = ""
+            current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
+            with st.spinner("Generating details... please wait."):
+                resp = fetch_study(topic_text.strip(), mode="focused")
+                answer = normalize_whitespace_for_readability(
+                    normalize_mojibake(resp.get("answer", "") or "")
+                ).strip() or "No answer generated."
+                followups = resp.get("followups") or []
 
                 st.session_state.chat_direct_answer = {
-                    "prompt": topic_text,
-                    "text": reply,
-                    "incomplete": False,
-                    "stop_reason": None,
+                    "prompt": topic_text.strip(),
+                    "text": answer,
+                    "incomplete": bool(resp.get("incomplete")),
+                    "stop_reason": resp.get("stop_reason") or None,
                     "mode": "focused",
                     "followups": followups,
                 }
-
-                st.session_state.chat_answers = {}
-                st.session_state.chat_followups = {}
-                st.session_state.chat_open_questions = set()
-                st.session_state.chat_visited_questions = set()
-
-            # ---- NORMAL QUESTION MAP FLOW ----
-            else:
-                st.session_state.chat["topic"] = topic_text
-                st.session_state.chat["interrogate"] = data
-
-                intro_resp = fetch_study_full(topic_text, mode="high")
-                intro = intro_resp.get("answer", "").strip()
-
-                st.session_state.chat_intro = intro
-                st.session_state.chat_direct_answer = None
-
-                st.session_state.chat_answers = {}
-                st.session_state.chat_followups = {}
-                st.session_state.chat_open_questions = set()
-                st.session_state.chat_visited_questions = set()
-
+                _append_chat_branch(topic_text.strip(), "cta")
+                _persist_new_chat_session(current_sid)
             st.rerun()
-
         except Exception as e:
-            st.error(f"Error calling /interrogate: {e}")
+            st.error(f"Error calling /study/ai: {e}")
+
+    def _run_new_chat_branch_interrogate(topic_text: str) -> None:
+        if not topic_text.strip():
+            return
+
+        current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
+
+        with st.spinner("Generating question map... may take some time."):
+            data = fetch_interrogate(topic_text.strip())
+            intro_resp = fetch_study_full(topic_text.strip(), mode="high")
+            intro = intro_resp.get("answer", "").strip()
+            _append_interrogate_branch(topic_text.strip(), data, intro)
+            _persist_new_chat_session(current_sid)
 
     def _run_new_chat_branch_illustrate(topic_text: str) -> None:
         if not topic_text.strip():
@@ -1675,7 +1687,7 @@ def page_new_chat() -> None:
                             followups = embedded_followups or branch_followups.get(q, [])
                             if followups:
                                 st.markdown("##### Suggested follow-ups")
-                                render_followup_links("chat", followups, st.session_state.chat_active_id)
+                                render_followup_text(followups)
 
                             is_incomplete = False
                             if isinstance(answer_obj, dict):
@@ -1723,6 +1735,10 @@ def page_new_chat() -> None:
             return
         try:
             current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
+
+            if st.session_state.chat_direct_answer and current_sid:
+                _run_new_chat_direct_followup(topic_text.strip())
+                return
 
             if current_sid and st.session_state.chat_loaded_sid == current_sid and _session_has_existing_root():
                 _run_new_chat_branch_interrogate(topic_text.strip())
@@ -1961,7 +1977,8 @@ def page_new_chat() -> None:
         followups = embedded_followups or (direct_answer.get("followups") or [])
         if followups:
             st.markdown("#### Suggested follow-ups")
-            render_followup_links("chat", followups, st.session_state.chat_active_id)
+            render_followup_text(followups)
+            st.caption("Type your next question below to continue.")
 
         is_incomplete = bool(direct_answer.get("incomplete")) or (
             (direct_answer.get("stop_reason") or "").strip().lower() == "max_output_tokens"
@@ -2138,7 +2155,7 @@ def page_new_chat() -> None:
                             followups = embedded_followups or st.session_state.chat_followups.get(q, [])
                             if followups:
                                 st.markdown("#### Suggested follow-ups")
-                                render_followup_links("chat", followups, st.session_state.chat_active_id)
+                                render_followup_text(followups)
 
                             is_incomplete = False
                             if isinstance(answer_obj, dict):

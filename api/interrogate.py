@@ -401,7 +401,37 @@ def _next_answer(topic: str) -> str:
 # ------------------------------------------------------------
 def _is_llm_topic(topic: str) -> bool:
     tl = (topic or "").lower()
-    return any(x in tl for x in ["artificial intelligence", "ai", "machine learning", "ml"])
+
+    AI_KEYWORDS = [
+        "ai",
+        "artificial intelligence",
+        "machine learning",
+        "ml",
+        "deep learning",
+        "neural",
+        "neural network",
+        "transformer",
+        "llm",
+        "large language model",
+        "gpt",
+        "computer vision",
+        "nlp",
+        "natural language",
+        "reinforcement learning",
+        "supervised learning",
+        "unsupervised learning",
+        "data science",
+        "data scientist",
+        "model training",
+        "model inference",
+        "feature engineering",
+        "dataset",
+        "prediction",
+        "classification",
+        "regression",
+    ]
+
+    return any(k in tl for k in AI_KEYWORDS)
 
 
 def _extract_json_object(text: str) -> Optional[dict]:

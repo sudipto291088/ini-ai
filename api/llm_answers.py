@@ -28,7 +28,7 @@ except Exception:
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
 # Responses-compatible model
-DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-5-mini-2025-08-07").strip()
+DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-4o-mini").strip()
 
 # Responses API uses max_output_tokens
 INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "3000"))
