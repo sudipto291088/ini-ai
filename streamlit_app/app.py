@@ -730,7 +730,6 @@ def ensure_learning_session() -> str:
         "_title_set": False,
     }
     st.session_state.learning_active_id = sid
-    _persist_learning_session(sid, st.session_state.learning_sessions[sid])
     return sid
 
 
@@ -741,9 +740,9 @@ def start_new_learning_session() -> str:
         "messages": [],
         "last_prompt": "",
         "title": "Learning Session",
+        "_title_set": False,
     }
     st.session_state.learning_active_id = sid
-    _persist_learning_session(sid, st.session_state.learning_sessions[sid])
     return sid
 
 
@@ -1047,10 +1046,19 @@ def _render_chat_session_popup() -> None:
     fuqs = data["fuqs"]
     ctas = data["ctas"]
 
+    has_visible_bg = any([
+        (st.session_state.get("chat") or {}).get("interrogate"),
+        (st.session_state.get("chat") or {}).get("illustrate"),
+        st.session_state.get("chat_direct_answer"),
+        bool(st.session_state.get("chat_answers", {})),
+    ])
+
+    fuq_target = "_blank" if has_visible_bg else "_self"
+
     st.markdown(
-    f'<a class="ini_plain_link" href="{_chat_root_view_href(sid)}" target="_self"><b>↠ {root_topic}</b></a>',
-    unsafe_allow_html=True,
-)
+        f'<a class="ini_plain_link" href="{_chat_root_view_href(sid)}" target="_self"><b>↠ {root_topic}</b></a>',
+        unsafe_allow_html=True,
+    )
 
     st.markdown("---")
 
@@ -1059,7 +1067,7 @@ def _render_chat_session_popup() -> None:
         html = ['<div class="ini_popup_section">']
         for item in fuqs:
             href = _chat_branch_href(sid, item)
-            html.append(f'<a class="ini_plain_link" href="{href}" target="_blank">{item}</a>')
+            html.append(f'<a class="ini_plain_link" href="{href}" target="{fuq_target}">{item}</a>')
         html.append("</div>")
         st.markdown("\n".join(html), unsafe_allow_html=True)
     else:
@@ -1075,7 +1083,6 @@ def _render_chat_session_popup() -> None:
         st.markdown("\n".join(html), unsafe_allow_html=True)
     else:
         st.caption("No CTAs saved yet.")
-
 
 # =========================
 # API calls
@@ -1409,24 +1416,27 @@ with st.sidebar:
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Learning</div>', unsafe_allow_html=True)
 
+
     rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("learn-")]
     if rows:
         html = []
         for sid, title, created_at, updated_at in rows:
             label = truncate_session_text((title or "Learning Session").strip(), max_chars=28)
+            mmdd = _format_short_mmdd(created_at or "")
+            display = f"{label} {mmdd}".strip()
 
             html.append(f"""
             <div class="ini_session_row">
-              <a class="ini_sidebar_link" href="{_learn_session_href(sid)}" target="_self">{label}</a>
-              <div class="ini_session_menu">
+            <a class="ini_sidebar_link" href="{_learn_session_href(sid)}" target="_self">{display}</a>
+            <div class="ini_session_menu">
                 <details>
-                  <summary>⋯</summary>
-                  <div class="ini_session_dropdown">
+                <summary>⋯</summary>
+                <div class="ini_session_dropdown">
                     <a href="{_learn_rename_href(sid)}" target="_self">Rename</a>
                     <a href="{_learn_delete_href(sid)}" target="_self">Delete</a>
-                  </div>
+                </div>
                 </details>
-              </div>
+            </div>
             </div>
             """)
 
@@ -1977,8 +1987,7 @@ def page_new_chat() -> None:
         followups = embedded_followups or (direct_answer.get("followups") or [])
         if followups:
             st.markdown("#### Suggested follow-ups")
-            render_followup_text(followups)
-            st.caption("Type your next question below to continue.")
+            render_followup_links("chat", followups, st.session_state.chat_active_id)
 
         is_incomplete = bool(direct_answer.get("incomplete")) or (
             (direct_answer.get("stop_reason") or "").strip().lower() == "max_output_tokens"
@@ -2033,7 +2042,6 @@ def page_new_chat() -> None:
 
                     st.rerun()
 
-        _render_new_chat_bottom_uib()
         return
 
     data = st.session_state.chat.get("interrogate")
