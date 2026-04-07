@@ -4,6 +4,8 @@ import json
 import re
 from typing import Dict, List, Tuple, Any, Optional
 
+from api.intent_layer import detect_intent
+
 
 # ------------------------------------------------------------
 # OPTIONAL LLM HOOKS (safe import)
@@ -168,7 +170,8 @@ def _question_map_counts_ok(categories: Dict[str, List[Dict[str, Any]]]) -> bool
         if len(items) < SECTION_MIN_COUNTS.get(cat, 0):
             return False
     return MIN_TOTAL_QUESTIONS <= total <= MAX_TOTAL_QUESTIONS
-   
+
+
 def _top_up_question_map(
     categories: Dict[str, List[Dict[str, Any]]],
     topic: str,
@@ -596,7 +599,6 @@ Generate the questions now.
 
     data = _extract_json_object(raw or "")
 
-    # === CHANGE: expose raw LLM output when debug is enabled ===
     if not isinstance(data, dict):
         if os.getenv("INI_LLM_DEBUG", "0").lower() in ("1", "true", "yes"):
             return (
@@ -618,10 +620,9 @@ Generate the questions now.
 
     summary = data.get("summary") if isinstance(data.get("summary"), list) else []
     cats = _normalize_category_keys(
-    data.get("categories") if isinstance(data.get("categories"), dict) else {}
-)
-    
-    # Force exact category schema so UI always stays stable
+        data.get("categories") if isinstance(data.get("categories"), dict) else {}
+    )
+
     cats = {key: cats.get(key, []) for key in CATEGORY_ORDER}
 
     categories_out: Dict[str, List[Dict[str, Any]]] = {}
@@ -649,7 +650,7 @@ Generate the questions now.
                     "id": f"{cat.lower().replace(' ', '_')}_{idx}",
                     "archetype": archetype,
                     "question": q,
-                    "answer": "",          # answers fetched later via /answer on click
+                    "answer": "",
                     "collapsed": True,
                     "visible": global_count <= 8,
                 }
@@ -741,7 +742,7 @@ JSON shape:
     "short sentence about why it matters",
     "short sentence about how understanding will progress"
   ],
-"categories": {{
+  "categories": {{
     "Orientation": [{{"question": "..."}}],
     "Foundations": [{{"question": "..."}}],
     "Mechanisms": [{{"question": "..."}}],
@@ -767,8 +768,8 @@ JSON shape:
 
     summary = data.get("summary") if isinstance(data.get("summary"), list) else []
     cats = _normalize_category_keys(
-    data.get("categories") if isinstance(data.get("categories"), dict) else {}
-)
+        data.get("categories") if isinstance(data.get("categories"), dict) else {}
+    )
     cats = {key: cats.get(key, []) for key in CATEGORY_ORDER}
 
     categories_out: Dict[str, List[Dict[str, Any]]] = {}
@@ -810,8 +811,6 @@ JSON shape:
     return (summary, categories_out)
 
 
-
-
 def attach_answers(categories: Dict[str, List[str]], topic: str, topic_type: str) -> Dict[str, List[Dict[str, Any]]]:
     """
     Non-AI topics: template questions + template answers.
@@ -845,7 +844,7 @@ def attach_answers(categories: Dict[str, List[str]], topic: str, topic_type: str
                     "question": q,
                     "answer": ans,
                     "collapsed": True,
-                    "visible": False,  # Streamlit controls top-8 view globally
+                    "visible": False,
                 }
             )
 
@@ -854,14 +853,13 @@ def attach_answers(categories: Dict[str, List[str]], topic: str, topic_type: str
     return out
 
 
-
 # ------------------------------------------------------------
 # Main entry
 # ------------------------------------------------------------
 def interrogate(text: str) -> Dict[str, Any]:
-    clean_topic = extract_topic(text)
+    intent = detect_intent(text)
 
-    if not clean_topic:
+    if intent.get("intent") == "empty":
         return {
             "topic": "",
             "topic_type": "unknown",
@@ -871,6 +869,48 @@ def interrogate(text: str) -> Dict[str, Any]:
             "confidence": 0.0,
             "needs_clarification": True,
             "clarifying_question": "Please provide a topic to explore.",
+            "reply": intent.get("reply", ""),
+            "followups": intent.get("followups", []),
+            "llm_used": False,
+            "intent": intent.get("intent", "empty"),
+            "mode_hint": intent.get("mode_hint", "deep"),
+        }
+
+    if not intent.get("should_interrogate", False):
+        return {
+            "topic": "",
+            "topic_type": intent.get("intent", "conversation"),
+            "categories": {},
+            "notes": ["Intent layer handled without question map."],
+            "summary": [],
+            "confidence": float(intent.get("confidence", 0.8)),
+            "needs_clarification": False,
+            "clarifying_question": "",
+            "reply": intent.get("reply", ""),
+            "followups": intent.get("followups", []),
+            "llm_used": False,
+            "intent": intent.get("intent", "conversation"),
+            "mode_hint": intent.get("mode_hint", "deep"),
+            "should_answer_direct": bool(intent.get("should_answer_direct", False)),
+        }
+
+    clean_topic = extract_topic(text)
+
+    if not clean_topic:
+        return {
+            "topic": "",
+            "topic_type": "unknown",
+            "categories": {},
+            "notes": ["Empty topic received after extraction."],
+            "summary": [],
+            "confidence": 0.0,
+            "needs_clarification": True,
+            "clarifying_question": "Please provide a topic to explore.",
+            "reply": "",
+            "followups": [],
+            "llm_used": False,
+            "intent": "empty",
+            "mode_hint": intent.get("mode_hint", "deep"),
         }
 
     topic_type, confidence = detect_topic_type(clean_topic)
@@ -878,7 +918,6 @@ def interrogate(text: str) -> Dict[str, Any]:
     # AI topic: LLM questions-only (answers on click via /answer)
     use_llm = _llm_is_enabled() and _is_llm_topic(clean_topic) and (llm_answer_question is not None)
 
-    
     if use_llm:
         summary, llm_categories = [], {}
 
@@ -909,6 +948,10 @@ def interrogate(text: str) -> Dict[str, Any]:
                     "v0: underfilled sections are topped up from templates when needed",
                 ],
                 "llm_used": True,
+                "intent": intent.get("intent", "topic_explore"),
+                "mode_hint": intent.get("mode_hint", "deep"),
+                "followups": intent.get("followups", []),
+                "reply": "",
             }
 
         # AI fallback: only if rescue + main attempts both return no usable categories
@@ -927,8 +970,11 @@ def interrogate(text: str) -> Dict[str, Any]:
             ],
             "llm_used": False,
             "needs_clarification": False,
+            "intent": intent.get("intent", "topic_explore"),
+            "mode_hint": intent.get("mode_hint", "deep"),
+            "followups": intent.get("followups", []),
+            "reply": "",
         }
-       
 
     # Non-AI topics: templates
     categories = build_categories(clean_topic, topic_type)
@@ -945,6 +991,10 @@ def interrogate(text: str) -> Dict[str, Any]:
             "v0: templates for non-AI topics",
         ],
         "llm_used": False,
+        "intent": intent.get("intent", "topic_explore"),
+        "mode_hint": intent.get("mode_hint", "deep"),
+        "followups": intent.get("followups", []),
+        "reply": "",
     }
 
 

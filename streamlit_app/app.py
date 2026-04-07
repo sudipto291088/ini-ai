@@ -1541,6 +1541,17 @@ def page_new_chat() -> None:
             }
         )
         _append_chat_branch(topic_text, "fuq")
+    
+    def _append_direct_branch(topic_text: str, answer_payload: Dict[str, Any], kind: str = "fuq") -> None:
+        st.session_state.chat_branch_answers.append(
+            {
+                "kind": "direct",
+                "topic": topic_text,
+                "direct_answer": answer_payload,
+                "ts": now_label(),
+            }
+        )
+        _append_chat_branch(topic_text, kind)
 
     def _run_new_chat_direct_followup(topic_text: str) -> None:
         if not topic_text.strip():
@@ -1746,15 +1757,6 @@ def page_new_chat() -> None:
         try:
             current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
 
-            if st.session_state.chat_direct_answer and current_sid:
-                _run_new_chat_direct_followup(topic_text.strip())
-                return
-
-            if current_sid and st.session_state.chat_loaded_sid == current_sid and _session_has_existing_root():
-                _run_new_chat_branch_interrogate(topic_text.strip())
-                st.rerun()
-                return
-
             st.session_state.chat_popup_sid = None
             st.query_params.clear()
             st.query_params["page"] = "chat"
@@ -1766,22 +1768,64 @@ def page_new_chat() -> None:
                 if "chat_bottom_topic_input" in st.session_state:
                     del st.session_state["chat_bottom_topic_input"]
 
-                # Intent-layer response: conversational input, help, greeting, thanks, etc.
-                if not (data.get("categories") or {}):
-                    reply = (data.get("reply") or "").strip() or "Send a topic to explore."
-                    followups = data.get("followups") or []
+                has_existing_root = bool(
+                    current_sid
+                    and st.session_state.chat_loaded_sid == current_sid
+                    and _session_has_existing_root()
+                )
 
+                # -------------------------------------------------
+                # Intent-layer / direct-answer / conversational path
+                # -------------------------------------------------
+                if not (data.get("categories") or {}):
+                    followups = data.get("followups") or []
+                    intent_name = (data.get("intent") or "").strip().lower()
+                    should_answer_direct = bool(data.get("should_answer_direct", False))
+
+                    if should_answer_direct:
+                        direct_resp = fetch_study_full(topic_text.strip(), mode="high")
+                        reply = (direct_resp.get("answer") or "").strip() or "No answer generated."
+                        followups = direct_resp.get("followups") or followups
+                        answer_incomplete = bool(direct_resp.get("incomplete"))
+                        answer_stop_reason = direct_resp.get("stop_reason") or None
+                        mode_name = "high"
+                    else:
+                        reply = (data.get("reply") or "").strip() or "Send a topic to explore."
+                        answer_incomplete = False
+                        answer_stop_reason = None
+                        mode_name = "focused"
+
+                    show_followups = should_answer_direct
+
+                    direct_payload = {
+                        "prompt": topic_text.strip(),
+                        "text": reply,
+                        "incomplete": answer_incomplete,
+                        "stop_reason": answer_stop_reason,
+                        "mode": mode_name,
+                        "followups": followups,
+                        "intent": intent_name,
+                        "should_answer_direct": should_answer_direct,
+                        "show_followups": show_followups,
+                    }
+
+                    # If a real root session already exists, append this as a branch
+                    # instead of destroying the current root page.
+                    if has_existing_root:
+                        _append_direct_branch(
+                            topic_text.strip(),
+                            direct_payload,
+                            "cta" if should_answer_direct else "fuq",
+                        )
+                        _persist_new_chat_session(current_sid)
+                        st.rerun()
+                        return
+
+                    # Otherwise show it on the main page
                     st.session_state.chat["interrogate"] = None
                     st.session_state.chat["illustrate"] = None
                     st.session_state.chat_intro = ""
-                    st.session_state.chat_direct_answer = {
-                        "prompt": topic_text.strip(),
-                        "text": reply,
-                        "incomplete": False,
-                        "stop_reason": None,
-                        "mode": "focused",
-                        "followups": followups,
-                }
+                    st.session_state.chat_direct_answer = direct_payload
 
                     st.session_state.chat_answers = {}
                     st.session_state.chat_followups = {}
@@ -1796,32 +1840,45 @@ def page_new_chat() -> None:
                     st.session_state.chat_root_open_questions = set()
                     st.session_state.chat_root_visited_questions = set()
 
-                # Normal interrogate flow: real topic -> question map
-                else:
-                    st.session_state.chat["interrogate"] = data
+                    _persist_new_chat_session(current_sid)
+                    st.rerun()
+                    return
 
+                # -------------------------------------------------
+                # Real topic -> question-map path
+                # -------------------------------------------------
+                if has_existing_root:
                     intro_resp = fetch_study_full(topic_text.strip(), mode="high")
                     intro = intro_resp.get("answer", "").strip()
+                    _append_interrogate_branch(topic_text.strip(), data, intro)
+                    _persist_new_chat_session(current_sid)
+                    st.rerun()
+                    return
 
-                    st.session_state.chat_intro = intro
-                    st.session_state.chat["illustrate"] = None
-                    st.session_state.chat_direct_answer = None
-                    st.session_state.chat_answers = {}
-                    st.session_state.chat_followups = {}
-                    st.session_state.chat_open_questions = set()
-                    st.session_state.chat_visited_questions = set()
+                st.session_state.chat["interrogate"] = data
 
-                    st.session_state.chat_root_interrogate = data
-                    st.session_state.chat_root_illustrate = None
-                    st.session_state.chat_root_intro = intro
-                    st.session_state.chat_root_answers = {}
-                    st.session_state.chat_root_followups = {}
-                    st.session_state.chat_root_open_questions = set()
-                    st.session_state.chat_root_visited_questions = set()
+                intro_resp = fetch_study_full(topic_text.strip(), mode="high")
+                intro = intro_resp.get("answer", "").strip()
 
-                    _sync_chat_root_snapshot()
+                st.session_state.chat_intro = intro
+                st.session_state.chat["illustrate"] = None
+                st.session_state.chat_direct_answer = None
+                st.session_state.chat_answers = {}
+                st.session_state.chat_followups = {}
+                st.session_state.chat_open_questions = set()
+                st.session_state.chat_visited_questions = set()
 
+                st.session_state.chat_root_interrogate = data
+                st.session_state.chat_root_illustrate = None
+                st.session_state.chat_root_intro = intro
+                st.session_state.chat_root_answers = {}
+                st.session_state.chat_root_followups = {}
+                st.session_state.chat_root_open_questions = set()
+                st.session_state.chat_root_visited_questions = set()
+
+                _sync_chat_root_snapshot()
                 _persist_new_chat_session(current_sid)
+
             st.rerun()
         except Exception as e:
             st.error(f"Error calling /interrogate: {e}")
@@ -1984,8 +2041,10 @@ def page_new_chat() -> None:
         st.markdown("### Answer")
         st.markdown(clean_answer or raw_answer)
 
+        show_followups = bool(direct_answer.get("show_followups", True))
         followups = embedded_followups or (direct_answer.get("followups") or [])
-        if followups:
+
+        if show_followups and followups:
             st.markdown("#### Suggested follow-ups")
             render_followup_links("chat", followups, st.session_state.chat_active_id)
 
@@ -2032,6 +2091,9 @@ def page_new_chat() -> None:
                             "stop_reason": resp.get("stop_reason") or None,
                             "mode": mode,
                             "followups": resp.get("followups") or direct_answer.get("followups") or [],
+                            "intent": direct_answer.get("intent"),
+                            "should_answer_direct": direct_answer.get("should_answer_direct", False),
+                            "show_followups": direct_answer.get("show_followups", True),
                         }
                         _persist_new_chat_session()
 
@@ -2042,6 +2104,7 @@ def page_new_chat() -> None:
 
                     st.rerun()
 
+        _render_new_chat_bottom_uib()
         return
 
     data = st.session_state.chat.get("interrogate")
@@ -2247,6 +2310,22 @@ def page_new_chat() -> None:
                         st.markdown(illustration_text)
                     else:
                         st.caption("No illustration generated.")
+
+                elif kind == "direct":
+                    direct_payload = item.get("direct_answer") or {}
+                    raw_answer = (direct_payload.get("text") or "").strip() if isinstance(direct_payload, dict) else ""
+                    if raw_answer:
+                        clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
+                        st.markdown(clean_answer or raw_answer)
+
+                        show_followups = bool(direct_payload.get("show_followups", True))
+                        followups = embedded_followups or (direct_payload.get("followups") or [])
+                        if show_followups and followups:
+                            st.markdown("#### Suggested follow-ups")
+                            render_followup_text(followups)
+                    else:
+                        st.caption("No direct answer generated.")
+
                 else:
                     _render_branch_question_map(idx - 1, item)
 

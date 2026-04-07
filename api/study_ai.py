@@ -3,6 +3,7 @@ from typing import Dict, Any, Tuple, Optional, Union
 import re
 
 from api.llm_answers import llm_enabled, generate_dynamic_answer_result
+from api.intent_layer import detect_intent
 
 
 def _parse_llm_debug_error(text: str) -> Tuple[Optional[int], str]:
@@ -176,6 +177,28 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
 
     if not user_topic:
         user_topic = "Explain Artificial Intelligence."
+
+    intent = detect_intent(user_topic)
+    intent_name = (intent.get("intent") or "").strip().lower()
+    should_interrogate = bool(intent.get("should_interrogate", False))
+    should_answer_direct = bool(intent.get("should_answer_direct", False))
+
+    # Normal conversational behavior: greeting / thanks / help / etc.
+    if not should_interrogate and not should_answer_direct:
+        reply = (intent.get("reply") or "").strip() or "Send a topic to explore."
+        return {
+            "mode": mode,
+            "topic": user_topic,
+            "domain": domain,
+            "status": "ok",
+            "llm": {"enabled": bool(llm_enabled()), "reason": "intent_reply"},
+            "answer": reply,
+            "incomplete": False,
+            "stop_reason": None,
+            "intent": intent_name,
+            "followups": intent.get("followups") or [],
+            "should_answer_direct": False,
+        }
 
     # ---- LLM disabled fallback ----
     if not llm_enabled():
