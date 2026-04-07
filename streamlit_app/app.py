@@ -1751,7 +1751,108 @@ def page_new_chat() -> None:
 
                             st.markdown("---")
 
+    def _render_nc_user_bubble(text: str, ts: str = "") -> None:
+        prompt = (text or "").strip()
+        if not prompt:
+            return
+        with st.chat_message("user"):
+            st.markdown(prompt)
+            if ts:
+                st.markdown(
+                    f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>",
+                    unsafe_allow_html=True,
+                )
+
+    def _looks_like_live_local_query(text: str) -> bool:
+        s = (text or "").strip().lower()
+        markers = {
+            "today", "current", "latest", "now",
+            "gas", "petrol", "diesel", "water rate", "electricity rate",
+            "price", "rate", "cost", "weather", "temperature",
+            "maryland", "dc", "usa", "us", "near me", "local",
+        }
+        return any(m in s for m in markers)
+
+    def _dedupe_followups(items: list[str]) -> list[str]:
+        out: list[str] = []
+        seen = set()
+        for x in items or []:
+            item = (x or "").strip()
+            key = item.lower()
+            if item and key not in seen:
+                seen.add(key)
+                out.append(item)
+        return out
+
+    def _collect_active_nc_followups() -> list[str]:
+        candidates: list[str] = []
+
+        direct_payload = st.session_state.chat_direct_answer
+        if isinstance(direct_payload, dict):
+            candidates.extend(direct_payload.get("followups") or [])
+
+        intro_text = (st.session_state.chat_intro or "").strip()
+        if intro_text:
+            _, intro_followups = split_answer_and_embedded_followups(intro_text)
+            candidates.extend(intro_followups)
+
+        for vals in (st.session_state.chat_followups or {}).values():
+            if isinstance(vals, list):
+                candidates.extend(vals)
+
+        for item in st.session_state.chat_branch_answers or []:
+            if not isinstance(item, dict):
+                continue
+
+            kind = (item.get("kind") or "").strip().lower()
+
+            if kind == "direct":
+                direct_payload = item.get("direct_answer") or {}
+                if isinstance(direct_payload, dict):
+                    candidates.extend(direct_payload.get("followups") or [])
+
+            elif kind == "interrogate":
+                intro = (item.get("intro") or "").strip()
+                if intro:
+                    _, intro_followups = split_answer_and_embedded_followups(intro)
+                    candidates.extend(intro_followups)
+
+                for vals in (item.get("followups") or {}).values():
+                    if isinstance(vals, list):
+                        candidates.extend(vals)
+
+        return _dedupe_followups(candidates)
+
+    def _resolve_typed_followup(prompt_text: str) -> str:
+        raw = (prompt_text or "").strip()
+        if not raw:
+            return raw
+
+        candidates = _collect_active_nc_followups()
+        if not candidates:
+            return raw
+
+        # Numeric selection: "2" or "2."
+        m = re.match(r"^\s*(\d+)\.?\s*$", raw)
+        if m:
+            idx = int(m.group(1))
+            if 1 <= idx <= len(candidates):
+                return candidates[idx - 1]
+
+        raw_norm = re.sub(r"\s+", " ", raw.lower()).strip()
+
+        # Partial/full text match
+        if len(raw_norm) >= 4:
+            for cand in candidates:
+                cand_norm = re.sub(r"\s+", " ", cand.lower()).strip()
+                if raw_norm == cand_norm or raw_norm in cand_norm or cand_norm in raw_norm:
+                    return cand
+
+        return raw
+
     def _run_new_chat_interrogate(topic_text: str) -> None:
+        topic_text = _resolve_typed_followup(topic_text)
+
         if not topic_text.strip():
             return
         try:
@@ -1783,19 +1884,30 @@ def page_new_chat() -> None:
                     should_answer_direct = bool(data.get("should_answer_direct", False))
 
                     if should_answer_direct:
-                        direct_resp = fetch_study_full(topic_text.strip(), mode="high")
-                        reply = (direct_resp.get("answer") or "").strip() or "No answer generated."
-                        followups = direct_resp.get("followups") or followups
-                        answer_incomplete = bool(direct_resp.get("incomplete"))
-                        answer_stop_reason = direct_resp.get("stop_reason") or None
-                        mode_name = "high"
+                        if _looks_like_live_local_query(topic_text):
+                            reply = (
+                                "I can recognize this as a direct factual query, but live or location-specific "
+                                "rates need a current data source. In v0, ask me to explain the topic, or use a "
+                                "fully sourced query once live data is connected."
+                            )
+                            followups = []
+                            answer_incomplete = False
+                            answer_stop_reason = None
+                            mode_name = "focused"
+                        else:
+                            direct_resp = fetch_study_full(topic_text.strip(), mode="high")
+                            reply = (direct_resp.get("answer") or "").strip() or "No answer generated."
+                            followups = direct_resp.get("followups") or followups
+                            answer_incomplete = bool(direct_resp.get("incomplete"))
+                            answer_stop_reason = direct_resp.get("stop_reason") or None
+                            mode_name = "high"
                     else:
                         reply = (data.get("reply") or "").strip() or "Send a topic to explore."
                         answer_incomplete = False
                         answer_stop_reason = None
                         mode_name = "focused"
 
-                    show_followups = should_answer_direct
+                    show_followups = should_answer_direct and not _looks_like_live_local_query(topic_text)
 
                     direct_payload = {
                         "prompt": topic_text.strip(),
@@ -1809,8 +1921,6 @@ def page_new_chat() -> None:
                         "show_followups": show_followups,
                     }
 
-                    # If a real root session already exists, append this as a branch
-                    # instead of destroying the current root page.
                     if has_existing_root:
                         _append_direct_branch(
                             topic_text.strip(),
@@ -1821,7 +1931,6 @@ def page_new_chat() -> None:
                         st.rerun()
                         return
 
-                    # Otherwise show it on the main page
                     st.session_state.chat["interrogate"] = None
                     st.session_state.chat["illustrate"] = None
                     st.session_state.chat_intro = ""
@@ -2028,87 +2137,96 @@ def page_new_chat() -> None:
 
     illustrate_data = st.session_state.chat.get("illustrate")
     if isinstance(illustrate_data, dict) and (illustrate_data.get("illustration_text") or "").strip():
-        st.markdown("### Illustrations")
-        st.markdown(illustrate_data.get("illustration_text") or "")
+        _render_nc_user_bubble(st.session_state.chat.get("topic") or "")
+
+        with st.chat_message("assistant"):
+            st.markdown("### Illustrations")
+            st.markdown(illustrate_data.get("illustration_text") or "")
+
         _render_new_chat_bottom_uib()
         return
 
     direct_answer = st.session_state.chat_direct_answer
     if isinstance(direct_answer, dict) and (direct_answer.get("text") or "").strip():
+        _render_nc_user_bubble(
+            direct_answer.get("prompt") or st.session_state.chat.get("topic") or ""
+        )
+
         raw_answer = (direct_answer.get("text") or "").strip()
         clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
 
-        st.markdown("### Answer")
-        st.markdown(clean_answer or raw_answer)
+        with st.chat_message("assistant"):
+            st.markdown(clean_answer or raw_answer)
 
-        show_followups = bool(direct_answer.get("show_followups", True))
-        followups = embedded_followups or (direct_answer.get("followups") or [])
+            show_followups = bool(direct_answer.get("show_followups", True))
+            followups = embedded_followups or (direct_answer.get("followups") or [])
 
-        if show_followups and followups:
-            st.markdown("#### Suggested follow-ups")
-            render_followup_links("chat", followups, st.session_state.chat_active_id)
+            if show_followups and followups:
+                st.markdown("#### Suggested follow-ups")
+                render_followup_links("chat", followups, st.session_state.chat_active_id)
 
-        is_incomplete = bool(direct_answer.get("incomplete")) or (
-            (direct_answer.get("stop_reason") or "").strip().lower() == "max_output_tokens"
-        )
+            is_incomplete = bool(direct_answer.get("incomplete")) or (
+                (direct_answer.get("stop_reason") or "").strip().lower() == "max_output_tokens"
+            )
 
-        if is_incomplete:
-            direct_key = "__chat_direct_answer__"
+            if is_incomplete:
+                direct_key = "__chat_direct_answer__"
 
-            if st.button("Continue", key="nc_cont_direct_answer"):
-                st.session_state._nc_continue_loading_q = direct_key
-                st.rerun()
-
-            if st.session_state._nc_continue_loading_q == direct_key:
-                st.markdown("⏳ **Continuing...**")
-
-                previous_text = (direct_answer.get("text") or "").strip()
-                mode = (direct_answer.get("mode") or "focused").strip()
-                prompt = (direct_answer.get("prompt") or "").strip()
-
-                if previous_text and prompt:
-                    try:
-                        resp = fetch_study(
-                            topic=prompt,
-                            mode=mode,
-                            continue_mode=True,
-                            previous_answer=previous_text,
-                        )
-
-                        chunk = normalize_whitespace_for_readability(
-                            normalize_mojibake(resp.get("answer", "") or "")
-                        ).strip()
-
-                        if chunk:
-                            combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
-                        else:
-                            combined = previous_text
-
-                        st.session_state.chat_direct_answer = {
-                            "prompt": prompt,
-                            "text": combined,
-                            "incomplete": bool(resp.get("incomplete")),
-                            "stop_reason": resp.get("stop_reason") or None,
-                            "mode": mode,
-                            "followups": resp.get("followups") or direct_answer.get("followups") or [],
-                            "intent": direct_answer.get("intent"),
-                            "should_answer_direct": direct_answer.get("should_answer_direct", False),
-                            "show_followups": direct_answer.get("show_followups", True),
-                        }
-                        _persist_new_chat_session()
-
-                    except Exception as e:
-                        st.error(f"Error continuing answer: {e}")
-                    finally:
-                        st.session_state._nc_continue_loading_q = None
-
+                if st.button("Continue", key="nc_cont_direct_answer"):
+                    st.session_state._nc_continue_loading_q = direct_key
                     st.rerun()
+
+                if st.session_state._nc_continue_loading_q == direct_key:
+                    st.markdown("⏳ **Continuing...**")
+
+                    previous_text = (direct_answer.get("text") or "").strip()
+                    mode = (direct_answer.get("mode") or "focused").strip()
+                    prompt = (direct_answer.get("prompt") or "").strip()
+
+                    if previous_text and prompt:
+                        try:
+                            resp = fetch_study(
+                                topic=prompt,
+                                mode=mode,
+                                continue_mode=True,
+                                previous_answer=previous_text,
+                            )
+
+                            chunk = normalize_whitespace_for_readability(
+                                normalize_mojibake(resp.get("answer", "") or "")
+                            ).strip()
+
+                            if chunk:
+                                combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
+                            else:
+                                combined = previous_text
+
+                            st.session_state.chat_direct_answer = {
+                                "prompt": prompt,
+                                "text": combined,
+                                "incomplete": bool(resp.get("incomplete")),
+                                "stop_reason": resp.get("stop_reason") or None,
+                                "mode": mode,
+                                "followups": resp.get("followups") or direct_answer.get("followups") or [],
+                                "intent": direct_answer.get("intent"),
+                                "should_answer_direct": direct_answer.get("should_answer_direct", False),
+                                "show_followups": direct_answer.get("show_followups", True),
+                            }
+                            _persist_new_chat_session()
+
+                        except Exception as e:
+                            st.error(f"Error continuing answer: {e}")
+                        finally:
+                            st.session_state._nc_continue_loading_q = None
+
+                        st.rerun()
 
         _render_new_chat_bottom_uib()
         return
 
     data = st.session_state.chat.get("interrogate")
     if isinstance(data, dict) and data.get("categories"):
+        _render_nc_user_bubble(st.session_state.chat.get("topic") or "")
         intro = st.session_state.chat_intro
         if intro:
             clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
@@ -2291,14 +2409,12 @@ def page_new_chat() -> None:
                             st.markdown("---")
 
         if st.session_state.chat_branch_answers:
-            st.markdown("---")
-            st.markdown("### Continued in this session")
-
             for idx, item in enumerate(st.session_state.chat_branch_answers, start=1):
                 kind = (item.get("kind") or "interrogate").strip().lower()
                 topic = (item.get("topic") or item.get("prompt") or f"Continued topic {idx}").strip()
+                ts = (item.get("ts") or "").strip()
 
-                st.markdown(f"#### {idx}. {topic}")
+                _render_nc_user_bubble(topic, ts)
 
                 if kind == "illustrate":
                     illustrate_payload = item.get("illustrate") or {}
@@ -2306,25 +2422,28 @@ def page_new_chat() -> None:
                     if isinstance(illustrate_payload, dict):
                         illustration_text = (illustrate_payload.get("illustration_text") or "").strip()
 
-                    if illustration_text:
-                        st.markdown(illustration_text)
-                    else:
-                        st.caption("No illustration generated.")
+                    with st.chat_message("assistant"):
+                        if illustration_text:
+                            st.markdown(illustration_text)
+                        else:
+                            st.caption("No illustration generated.")
 
                 elif kind == "direct":
                     direct_payload = item.get("direct_answer") or {}
                     raw_answer = (direct_payload.get("text") or "").strip() if isinstance(direct_payload, dict) else ""
-                    if raw_answer:
-                        clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
-                        st.markdown(clean_answer or raw_answer)
 
-                        show_followups = bool(direct_payload.get("show_followups", True))
-                        followups = embedded_followups or (direct_payload.get("followups") or [])
-                        if show_followups and followups:
-                            st.markdown("#### Suggested follow-ups")
-                            render_followup_text(followups)
-                    else:
-                        st.caption("No direct answer generated.")
+                    with st.chat_message("assistant"):
+                        if raw_answer:
+                            clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
+                            st.markdown(clean_answer or raw_answer)
+
+                            show_followups = bool(direct_payload.get("show_followups", True))
+                            followups = embedded_followups or (direct_payload.get("followups") or [])
+                            if show_followups and followups:
+                                st.markdown("#### Suggested follow-ups")
+                                render_followup_links("chat", followups, st.session_state.chat_active_id)
+                        else:
+                            st.caption("No direct answer generated.")
 
                 else:
                     _render_branch_question_map(idx - 1, item)
