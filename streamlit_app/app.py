@@ -665,6 +665,9 @@ if "chat_top_topic_input" not in st.session_state:
 if "chat_bottom_topic_input" not in st.session_state:
     st.session_state.chat_bottom_topic_input = ""
 
+if "chat_root_topic" not in st.session_state:
+    st.session_state.chat_root_topic = ""
+
 if "chat_root_interrogate" not in st.session_state:
     st.session_state.chat_root_interrogate = None
 
@@ -809,6 +812,7 @@ def _reset_new_chat_state() -> None:
     st.session_state.chat_top_topic_input = ""
     st.session_state.chat_bottom_topic_input = ""
 
+    st.session_state.chat_root_topic = ""
     st.session_state.chat_root_interrogate = None
     st.session_state.chat_root_illustrate = None
     st.session_state.chat_root_intro = ""
@@ -832,6 +836,7 @@ def _current_new_chat_payload() -> Dict[str, Any]:
         "chat_branch_history": st.session_state.chat_branch_history,
         "chat_branch_answers": st.session_state.chat_branch_answers,
 
+        "chat_root_topic": st.session_state.chat_root_topic,
         "chat_root_interrogate": st.session_state.chat_root_interrogate,
         "chat_root_illustrate": st.session_state.chat_root_illustrate,
         "chat_root_intro": st.session_state.chat_root_intro,
@@ -938,6 +943,7 @@ def _load_new_chat_session(sid: str) -> bool:
     st.session_state.chat_branch_answers = payload.get("chat_branch_answers") or []
     st.session_state.chat_top_topic_input = payload.get("topic") or ""
     st.session_state.chat_bottom_topic_input = ""
+    st.session_state.chat_root_topic = payload.get("chat_root_topic") or payload.get("topic") or ""
     st.session_state.chat_root_interrogate = payload.get("chat_root_interrogate")
     st.session_state.chat_root_illustrate = payload.get("chat_root_illustrate")
     st.session_state.chat_root_intro = payload.get("chat_root_intro") or ""
@@ -1931,6 +1937,8 @@ def page_new_chat() -> None:
                         st.rerun()
                         return
 
+                    st.session_state.chat["topic"] = topic_text.strip()
+                    st.session_state.chat_root_topic = topic_text.strip()
                     st.session_state.chat["interrogate"] = None
                     st.session_state.chat["illustrate"] = None
                     st.session_state.chat_intro = ""
@@ -1964,6 +1972,8 @@ def page_new_chat() -> None:
                     st.rerun()
                     return
 
+                st.session_state.chat["topic"] = topic_text.strip()
+                st.session_state.chat_root_topic = topic_text.strip()
                 st.session_state.chat["interrogate"] = data
 
                 intro_resp = fetch_study_full(topic_text.strip(), mode="high")
@@ -2010,6 +2020,7 @@ def page_new_chat() -> None:
             with st.spinner("Generating illustrations... please wait."):
                 data = fetch_illustrate(topic_text.strip())
                 st.session_state.chat["topic"] = topic_text.strip()
+                st.session_state.chat_root_topic = topic_text.strip()
                 if "chat_bottom_topic_input" in st.session_state:
                     del st.session_state["chat_bottom_topic_input"]
                 st.session_state.chat["illustrate"] = data
@@ -2137,7 +2148,7 @@ def page_new_chat() -> None:
 
     illustrate_data = st.session_state.chat.get("illustrate")
     if isinstance(illustrate_data, dict) and (illustrate_data.get("illustration_text") or "").strip():
-        _render_nc_user_bubble(st.session_state.chat.get("topic") or "")
+        _render_nc_user_bubble(st.session_state.chat_root_topic or st.session_state.chat.get("topic") or "")
 
         with st.chat_message("assistant"):
             st.markdown("### Illustrations")
@@ -2226,7 +2237,7 @@ def page_new_chat() -> None:
 
     data = st.session_state.chat.get("interrogate")
     if isinstance(data, dict) and data.get("categories"):
-        _render_nc_user_bubble(st.session_state.chat.get("topic") or "")
+        _render_nc_user_bubble(st.session_state.chat_root_topic or st.session_state.chat.get("topic") or "")
         intro = st.session_state.chat_intro
         if intro:
             clean_intro, intro_followups = split_answer_and_embedded_followups(intro)

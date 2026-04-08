@@ -172,7 +172,12 @@ TOPIC_CUES = {
     "difference", "versus", "vs", "roadmap", "guide", "steps", "deep",
     "architecture", "system", "model", "algorithm", "concept", "theory",
     "workflow", "pipeline", "framework", "fundamentals", "basics",
-    "beginner", "advanced", "mechanism", "working", "internals",
+    "beginner", "advanced", "mechanism", "working", "internals","so teach me", "i want to learn", "i want to understand", "i want to know about", "can you explain", "can you tell me about", "can you teach me", "can you help me understand", "i want to learn about", 
+    "i want to understand", "i want to know about", "explain to me", "tell me about", "teach me about", "help me understand", "what is", "what are", "who is", "who are", "when is", "when are", "where is", "where are", "how much", "how many", "how old", "which is", "which are",
+    "give me a roadmap for", "give me a guide for", "what are the steps to learn", "what is the workflow for", "what is the pipeline for", "what is the framework for", "what are the fundamentals of", "what are the basics of", "how does X work", 
+    "how does X actually work", "how does X internally work", "how does X mechanism work", "how does X architecture look like", "how does X system look like", "what is the internals of", "what is the architecture of", "what is the system of", "what is the model of", "what is the algorithm of", 
+    "what is the concept of", "what is the theory of",
+
 }
 
 
