@@ -848,6 +848,10 @@ def _current_new_chat_payload() -> Dict[str, Any]:
 
 
 def _new_chat_title_from_payload(payload: Dict[str, Any]) -> str:
+    root_topic = (payload.get("chat_root_topic") or "").strip()
+    if root_topic:
+        return root_topic
+
     topic = (payload.get("topic") or "").strip()
     if topic:
         return topic
