@@ -562,7 +562,12 @@ def _learn_delete_href(sid: str) -> str:
     return f"?page=learn&session_action=delete&session_sid={quote(sid, safe='')}"
 
 
-def render_followup_links(page: str, followups: list[str], sid: Optional[str] = None) -> None:
+def render_followup_links(
+    page: str,
+    followups: list[str],
+    sid: Optional[str] = None,
+    target: Optional[str] = None,
+) -> None:
     cleaned: list[str] = []
     seen = set()
     for fu in followups or []:
@@ -575,6 +580,9 @@ def render_followup_links(page: str, followups: list[str], sid: Optional[str] = 
     if not cleaned:
         return
 
+    if target is None:
+        target = "_blank" if page == "chat" else "_self"
+
     lines = ['<div style="text-align:left;">']
     for idx, fu in enumerate(cleaned, start=1):
         if page == "chat":
@@ -583,7 +591,7 @@ def render_followup_links(page: str, followups: list[str], sid: Optional[str] = 
             href = _learn_branch_href(sid, fu)
 
         lines.append(
-            f'<a class="ini_plain_link" href="{href}" target="_blank">{idx}. {fu}</a>'
+            f'<a class="ini_plain_link" href="{href}" target="{target}">{idx}. {fu}</a>'
         )
     lines.append("</div>")
     st.markdown("\n".join(lines), unsafe_allow_html=True)
@@ -983,6 +991,9 @@ def _sync_chat_root_snapshot() -> None:
 def _append_chat_branch(prompt: str, kind: str) -> None:
     p = (prompt or "").strip()
     k = (kind or "").strip().lower()
+
+    # Only explicit CTA/FUQ-derived prompts should be stored in popup history.
+    # Ordinary typed follow-up topics should not appear there.
     if not p or k not in {"fuq", "cta"}:
         return
 
@@ -1000,7 +1011,12 @@ def _append_chat_branch(prompt: str, kind: str) -> None:
 
 
 def _collect_chat_popup_data(payload: Dict[str, Any]) -> Dict[str, Any]:
-    root_topic = (payload.get("topic") or "").strip() or "Root Topic"
+    root_topic = (
+        (payload.get("chat_root_topic") or "").strip()
+        or (payload.get("topic") or "").strip()
+        or "Root Topic"
+    )
+
     history = payload.get("chat_branch_history") or []
 
     fuqs: list[str] = []
@@ -1539,7 +1555,8 @@ def page_new_chat() -> None:
                 "ts": now_label(),
             }
         )
-        _append_chat_branch(topic_text, "fuq")
+        # typed ordinary follow-up topic: keep in chat timeline only, not popup FUQ list
+        pass
 
     def _append_illustrate_branch(topic_text: str, data: Dict[str, Any]) -> None:
         st.session_state.chat_branch_answers.append(
@@ -1550,7 +1567,8 @@ def page_new_chat() -> None:
                 "ts": now_label(),
             }
         )
-        _append_chat_branch(topic_text, "fuq")
+        # typed ordinary follow-up topic: keep in chat timeline only, not popup FUQ list
+        pass
     
     def _append_direct_branch(topic_text: str, answer_payload: Dict[str, Any], kind: str = "fuq") -> None:
         st.session_state.chat_branch_answers.append(
@@ -1561,7 +1579,24 @@ def page_new_chat() -> None:
                 "ts": now_label(),
             }
         )
-        _append_chat_branch(topic_text, kind)
+        # typed ordinary follow-up topic: keep in chat timeline only, not popup CTA/FUQ list
+        pass
+
+
+    def _append_nc_message(topic_text: str, answer_payload: Dict[str, Any], kind: str = "direct") -> None:
+        st.session_state.chat_branch_answers.append(
+            {
+                "kind": kind,
+                "topic": (topic_text or "").strip(),
+                "direct_answer": answer_payload,
+                "ts": now_label(),
+            }
+        )
+
+    
+
+
+
 
     def _run_new_chat_direct_followup(topic_text: str) -> None:
         if not topic_text.strip():
@@ -1718,7 +1753,7 @@ def page_new_chat() -> None:
                             followups = embedded_followups or branch_followups.get(q, [])
                             if followups:
                                 st.markdown("##### Suggested follow-ups")
-                                render_followup_text(followups)
+                                render_followup_links("chat", followups, st.session_state.chat_active_id, target="_blank")
 
                             is_incomplete = False
                             if isinstance(answer_obj, dict):
@@ -1932,14 +1967,16 @@ def page_new_chat() -> None:
                     }
 
                     if has_existing_root:
-                        _append_direct_branch(
+                        _append_nc_message(
                             topic_text.strip(),
                             direct_payload,
-                            "cta" if should_answer_direct else "fuq",
+                            "direct",
                         )
                         _persist_new_chat_session(current_sid)
                         st.rerun()
                         return
+                    
+
 
                     st.session_state.chat["topic"] = topic_text.strip()
                     st.session_state.chat_root_topic = topic_text.strip()
@@ -2359,7 +2396,7 @@ def page_new_chat() -> None:
                             followups = embedded_followups or st.session_state.chat_followups.get(q, [])
                             if followups:
                                 st.markdown("#### Suggested follow-ups")
-                                render_followup_text(followups)
+                                render_followup_links("chat", followups, st.session_state.chat_active_id, target="_blank")
 
                             is_incomplete = False
                             if isinstance(answer_obj, dict):
@@ -2723,7 +2760,7 @@ def page_my_new_learning() -> None:
                 followups = embedded_followups or (msg.get("followups") or [])
                 if followups:
                     st.markdown("#### Suggested follow-ups")
-                    render_followup_links("learn", followups, st.session_state.learning_active_id)
+                    render_followup_links("learn", followups, st.session_state.learning_active_id, target="_self")
 
                 if needs_continue_flag(msg) and (msg.get("id") == last_incomplete_id):
                     msg_id = msg.get("id")
