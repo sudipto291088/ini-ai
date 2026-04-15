@@ -685,6 +685,9 @@ if "chat_root_illustrate" not in st.session_state:
 if "chat_root_intro" not in st.session_state:
     st.session_state.chat_root_intro = ""
 
+if "chat_root_direct_answer" not in st.session_state:
+    st.session_state.chat_root_direct_answer = None
+
 if "chat_root_answers" not in st.session_state:
     st.session_state.chat_root_answers = {}
 
@@ -824,6 +827,7 @@ def _reset_new_chat_state() -> None:
     st.session_state.chat_root_interrogate = None
     st.session_state.chat_root_illustrate = None
     st.session_state.chat_root_intro = ""
+    st.session_state.chat_root_direct_answer = None
     st.session_state.chat_root_answers = {}
     st.session_state.chat_root_followups = {}
     st.session_state.chat_root_open_questions = set()
@@ -848,6 +852,7 @@ def _current_new_chat_payload() -> Dict[str, Any]:
         "chat_root_interrogate": st.session_state.chat_root_interrogate,
         "chat_root_illustrate": st.session_state.chat_root_illustrate,
         "chat_root_intro": st.session_state.chat_root_intro,
+        "chat_root_direct_answer": st.session_state.chat_root_direct_answer,
         "chat_root_answers": st.session_state.chat_root_answers,
         "chat_root_followups": st.session_state.chat_root_followups,
         "chat_root_open_questions": sorted(list(st.session_state.chat_root_open_questions)),
@@ -959,6 +964,7 @@ def _load_new_chat_session(sid: str) -> bool:
     st.session_state.chat_root_interrogate = payload.get("chat_root_interrogate")
     st.session_state.chat_root_illustrate = payload.get("chat_root_illustrate")
     st.session_state.chat_root_intro = payload.get("chat_root_intro") or ""
+    st.session_state.chat_root_direct_answer = payload.get("chat_root_direct_answer")
     st.session_state.chat_root_answers = payload.get("chat_root_answers") or {}
     st.session_state.chat_root_followups = payload.get("chat_root_followups") or {}
     st.session_state.chat_root_open_questions = set(payload.get("chat_root_open_questions") or [])
@@ -974,13 +980,14 @@ def _activate_root_view_from_loaded_session() -> None:
     st.session_state.chat_followups = dict(st.session_state.chat_root_followups or {})
     st.session_state.chat_open_questions = set(st.session_state.chat_root_open_questions or [])
     st.session_state.chat_visited_questions = set(st.session_state.chat_root_visited_questions or [])
-    st.session_state.chat_direct_answer = None
+    st.session_state.chat_direct_answer = st.session_state.chat_root_direct_answer
     st.session_state.chat_seed_done = ""
 
 def _sync_chat_root_snapshot() -> None:
     st.session_state.chat_root_interrogate = st.session_state.chat.get("interrogate")
     st.session_state.chat_root_illustrate = st.session_state.chat.get("illustrate")
     st.session_state.chat_root_intro = st.session_state.chat_intro or ""
+    st.session_state.chat_root_direct_answer = st.session_state.chat_direct_answer
     st.session_state.chat_root_answers = dict(st.session_state.chat_answers or {})
     st.session_state.chat_root_followups = dict(st.session_state.chat_followups or {})
     st.session_state.chat_root_open_questions = set(st.session_state.chat_open_questions or [])
@@ -1269,6 +1276,45 @@ def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
             deduped.append(fu)
 
     return "\n".join(body_lines).strip(), deduped
+
+
+def normalize_clicked_followup_prompt(text: str) -> str:
+    s = (text or "").strip()
+    if not s:
+        return s
+
+    lowered = s.lower()
+
+    patterns = [
+        r"^would you like\s+",
+        r"^do you want\s+",
+        r"^want\s+",
+        r"^interested in\s+",
+    ]
+
+    for p in patterns:
+        if re.match(p, lowered):
+            s = re.sub(p, "", s, flags=re.IGNORECASE).strip()
+            break
+
+    replacements = [
+        ("a short checklist", "Give me a short checklist"),
+        ("a concise comparison", "Give me a concise comparison"),
+        ("a compact example", "Give me a compact example"),
+        ("a practical checklist", "Give me a practical checklist"),
+        ("a short plan", "Give me a short plan"),
+    ]
+
+    low2 = s.lower()
+    for old, new in replacements:
+        if low2.startswith(old):
+            s = new + s[len(old):]
+            break
+
+    s = s.rstrip(" ?")
+    return s      
+
+
 
 
 # =========================
@@ -1663,11 +1709,25 @@ def page_new_chat() -> None:
                 render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
 
         st.markdown("##### Question Map")
-        cats = data.get("categories") or {}
+
         branch_answers = branch.setdefault("answers", {})
         branch_followups = branch.setdefault("followups", {})
         branch_open_questions = set(branch.get("open_questions") or [])
         branch_visited_questions = set(branch.get("visited_questions") or [])
+
+        hide_all = st.button(
+            "Hide All Answers",
+            key=f"branch_hide_all_answers_{branch_idx}"
+        )
+        if hide_all:
+            branch_open_questions = set()
+            branch["open_questions"] = []
+            branch["visited_questions"] = sorted(list(branch_visited_questions))
+            st.session_state.chat_branch_answers[branch_idx] = branch
+            _persist_new_chat_session()
+            st.rerun()
+
+        cats = data.get("categories") or {}
 
         ladder = [
             ("Orientation", ["Orientation"]),
@@ -1993,6 +2053,7 @@ def page_new_chat() -> None:
                     st.session_state.chat_root_interrogate = None
                     st.session_state.chat_root_illustrate = None
                     st.session_state.chat_root_intro = ""
+                    st.session_state.chat_root_direct_answer = direct_payload
                     st.session_state.chat_root_answers = {}
                     st.session_state.chat_root_followups = {}
                     st.session_state.chat_root_open_questions = set()
@@ -2195,7 +2256,51 @@ def page_new_chat() -> None:
             st.markdown("### Illustrations")
             st.markdown(illustrate_data.get("illustration_text") or "")
 
-        _render_new_chat_bottom_uib()
+        if st.session_state.chat_branch_answers:
+            st.markdown("---")
+            for idx, item in enumerate(st.session_state.chat_branch_answers, start=1):
+                kind = (item.get("kind") or "interrogate").strip().lower()
+                topic = (item.get("topic") or item.get("prompt") or f"Continued topic {idx}").strip()
+                ts = (item.get("ts") or "").strip()
+
+                _render_nc_user_bubble(topic, ts)
+
+                if kind == "illustrate":
+                    illustrate_payload = item.get("illustrate") or {}
+                    illustration_text = ""
+                    if isinstance(illustrate_payload, dict):
+                        illustration_text = (illustrate_payload.get("illustration_text") or "").strip()
+
+                    with st.chat_message("assistant"):
+                        if illustration_text:
+                            st.markdown(illustration_text)
+                        else:
+                            st.caption("No illustration generated.")
+
+                elif kind == "direct":
+                    direct_payload = item.get("direct_answer") or {}
+                    raw_answer = (direct_payload.get("text") or "").strip() if isinstance(direct_payload, dict) else ""
+
+                    with st.chat_message("assistant"):
+                        if raw_answer:
+                            clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
+                            st.markdown(clean_answer or raw_answer)
+
+                            show_followups = bool(direct_payload.get("show_followups", True))
+                            followups = embedded_followups or (direct_payload.get("followups") or [])
+                            if show_followups and followups:
+                                st.markdown("#### Suggested follow-ups")
+                                render_followup_links("chat", followups, st.session_state.chat_active_id)
+                        else:
+                            st.caption("No direct answer generated.")
+
+                else:
+                    _render_branch_question_map(idx - 1, item)
+
+                st.markdown("---")
+
+        if not chat_q:
+            _render_new_chat_bottom_uib()
         return
 
     direct_answer = st.session_state.chat_direct_answer
@@ -2273,7 +2378,8 @@ def page_new_chat() -> None:
 
                         st.rerun()
 
-        _render_new_chat_bottom_uib()
+        if not chat_q:
+            _render_new_chat_bottom_uib()
         return
 
     data = st.session_state.chat.get("interrogate")
@@ -2703,12 +2809,14 @@ def page_my_new_learning() -> None:
 
     if learn_q and st.session_state.learn_seed_done != learn_q:
         try:
+            resolved_learn_q = normalize_clicked_followup_prompt(learn_q)
+
             sess["messages"].append(
                 {"id": f"u-{int(time.time())}", "role": "user", "text": learn_q, "ts": now_label(), "mode_label": "Deep"}
             )
 
             with st.spinner("Generating answer... may take some time."):
-                resp = fetch_study_full(learn_q, mode="deep")
+                resp = fetch_study_full(resolved_learn_q, mode="deep")
                 answer = (resp.get("answer") or "").strip() or "No answer generated."
                 followups = resp.get("followups") or []
 
