@@ -168,18 +168,18 @@ button[kind="secondary"]{
 /* =========================
    UIB capsule (stable)
    ========================= */
-.ini_uib_wrap{ margin-top: 18px; }
+.ini_uib_wrap{ margin-top: 120px; }
 .ini_uib_outer{
   display:flex;
   justify-content:center;
   width:100%;
 }
 .ini_uib_capsule{
-  width: min(920px, 100%);
+  width: min(980px, 100%);
   border: 1px solid var(--stroke);
   background: #fff;
   border-radius: 999px;
-  padding: 10px 12px;
+  padding: 14px 18px;
 }
 .ini_uib_capsule [data-testid="stHorizontalBlock"]{
   flex-wrap: nowrap !important;
@@ -2181,11 +2181,24 @@ def page_new_chat() -> None:
             st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
 
         st.markdown(
-            """
-            <div style="height:110px;"></div>
-            """,
-            unsafe_allow_html=True,
-        )
+    """
+    <div style="height:200px;"></div>
+    """,
+    unsafe_allow_html=True,
+)
+        
+        st.markdown(
+    """
+    <style>
+    div[data-testid="stTextInput"] input {
+        height: 52px;
+        border-radius: 12px;
+        font-size: 16px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
         st.text_input(
             "Topic",
@@ -2224,7 +2237,28 @@ def page_new_chat() -> None:
             _run_new_chat_illustrate(st.session_state.chat_top_topic_input)
 
     def _render_new_chat_bottom_uib() -> None:
-        st.markdown("---")
+        st.markdown(
+    """
+    <div style="height:30px;"></div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+
+        st.markdown(
+    """
+    <style>
+    div[data-testid="stTextInput"] input {
+        height: 44px;
+        border-radius: 10px;
+        font-size: 15px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
         st.text_input(
             "Topic",
