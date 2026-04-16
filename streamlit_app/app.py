@@ -371,6 +371,29 @@ div.stButton > button {
   line-height: 1.45 !important;
   padding: 0.7rem 0.9rem !important;
 }
+
+
+/* =========================
+   New Chat UIB polish
+   ========================= */
+div[data-testid="stTextInput"] input[aria-label="Topic"]{
+  border-radius: 18px !important;
+  border: 1px solid var(--stroke) !important;
+  background: #ffffff !important;
+  min-height: 52px !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  box-shadow: 0 6px 18px rgba(15,23,42,0.04) !important;
+}
+
+div[data-testid="stTextInput"] input[aria-label="Topic"]::placeholder{
+  color: #94a3b8 !important;
+}
+
+div.stButton > button[kind="secondary"],
+div.stButton > button{
+  border-radius: 12px !important;
+}
 </style>
 """
 
@@ -2159,15 +2182,7 @@ def page_new_chat() -> None:
 
         st.markdown(
             """
-            <div style="display:flex; justify-content:center; margin-top:140px; margin-bottom:60px;">
-              <div style="
-                    width:min(980px, 100%);
-                    background:#ffffff;
-                    border:1px solid #e5e7eb;
-                    border-radius:28px;
-                    padding:18px 18px 14px 18px;
-                    box-shadow:0 10px 30px rgba(15,23,42,0.06);
-              ">
+            <div style="height:110px;"></div>
             """,
             unsafe_allow_html=True,
         )
@@ -2188,7 +2203,12 @@ def page_new_chat() -> None:
         with colC:
             st.caption("Question → Click → Answer")
 
-        st.markdown("</div></div>", unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div style="height:40px;"></div>
+            """,
+            unsafe_allow_html=True,
+        )
 
         if st.session_state.chat_top_enter_submit:
             st.session_state.chat_top_enter_submit = False
@@ -2206,21 +2226,6 @@ def page_new_chat() -> None:
     def _render_new_chat_bottom_uib() -> None:
         st.markdown("---")
 
-        st.markdown(
-            """
-            <div style="display:flex; justify-content:center; margin-top:18px; margin-bottom:8px;">
-              <div style="
-                    width:min(920px, 100%);
-                    background:#ffffff;
-                    border:1px solid #e5e7eb;
-                    border-radius:22px;
-                    padding:12px 14px 10px 14px;
-                    box-shadow:0 6px 18px rgba(15,23,42,0.04);
-              ">
-            """,
-            unsafe_allow_html=True,
-        )
-
         st.text_input(
             "Topic",
             key="chat_bottom_topic_input",
@@ -2236,8 +2241,6 @@ def page_new_chat() -> None:
             illustrate_run = st.button("Illustrate", key="nc_bottom_illustrate")
         with colC:
             st.caption("Type a new topic above to continue exploring.")
-
-        st.markdown("</div></div>", unsafe_allow_html=True)
 
         if st.session_state.chat_bottom_enter_submit:
             st.session_state.chat_bottom_enter_submit = False
