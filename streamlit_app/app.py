@@ -721,6 +721,9 @@ if "_uib_clear_next" not in st.session_state:
 if "_uib_send_requested" not in st.session_state:
     st.session_state._uib_send_requested = False
 
+if "nc_started" not in st.session_state:
+    st.session_state.nc_started = False
+
 if "rename_session_sid" not in st.session_state:
     st.session_state.rename_session_sid = None
 
@@ -832,6 +835,7 @@ def _reset_new_chat_state() -> None:
     st.session_state.chat_root_followups = {}
     st.session_state.chat_root_open_questions = set()
     st.session_state.chat_root_visited_questions = set()
+    st.session_state.nc_started = False
 
 def _current_new_chat_payload() -> Dict[str, Any]:
     return {
@@ -969,6 +973,8 @@ def _load_new_chat_session(sid: str) -> bool:
     st.session_state.chat_root_followups = payload.get("chat_root_followups") or {}
     st.session_state.chat_root_open_questions = set(payload.get("chat_root_open_questions") or [])
     st.session_state.chat_root_visited_questions = set(payload.get("chat_root_visited_questions") or [])
+
+    st.session_state.nc_started = True
     return True
 
 
@@ -2151,41 +2157,79 @@ def page_new_chat() -> None:
         if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
             st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
 
-        st.text_input(
-        "Topic",
-        placeholder="Type a topic (e.g., Artificial Intelligence, Data Science)...",
-        key="chat_top_topic_input",
-        on_change=_request_chat_top_enter_submit,
-)
+        st.markdown(
+            """
+            <div style="display:flex; justify-content:center; margin-top:140px; margin-bottom:60px;">
+              <div style="
+                    width:min(980px, 100%);
+                    background:#ffffff;
+                    border:1px solid #e5e7eb;
+                    border-radius:28px;
+                    padding:18px 18px 14px 18px;
+                    box-shadow:0 10px 30px rgba(15,23,42,0.06);
+              ">
+            """,
+            unsafe_allow_html=True,
+        )
 
-        colA, colB, colC = st.columns([1, 1, 4])
+        st.text_input(
+            "Topic",
+            placeholder="Ask InI anything to begin...",
+            key="chat_top_topic_input",
+            label_visibility="collapsed",
+            on_change=_request_chat_top_enter_submit,
+        )
+
+        colA, colB, colC = st.columns([1.15, 1.15, 5.7])
         with colA:
             run = st.button("Interrogate", key="nc_top_interrogate")
         with colB:
             illustrate_run = st.button("Illustrate", key="nc_top_illustrate")
         with colC:
-            st.caption("Tip: backend must be running (FastAPI).")
+            st.caption("Question → Click → Answer")
+
+        st.markdown("</div></div>", unsafe_allow_html=True)
 
         if st.session_state.chat_top_enter_submit:
-           st.session_state.chat_top_enter_submit = False
-           _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
+            st.session_state.chat_top_enter_submit = False
+            st.session_state.nc_started = True
+            _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
 
         if run:
+            st.session_state.nc_started = True
             _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
+
         if illustrate_run:
+            st.session_state.nc_started = True
             _run_new_chat_illustrate(st.session_state.chat_top_topic_input)
 
     def _render_new_chat_bottom_uib() -> None:
         st.markdown("---")
+
+        st.markdown(
+            """
+            <div style="display:flex; justify-content:center; margin-top:18px; margin-bottom:8px;">
+              <div style="
+                    width:min(920px, 100%);
+                    background:#ffffff;
+                    border:1px solid #e5e7eb;
+                    border-radius:22px;
+                    padding:12px 14px 10px 14px;
+                    box-shadow:0 6px 18px rgba(15,23,42,0.04);
+              ">
+            """,
+            unsafe_allow_html=True,
+        )
+
         st.text_input(
             "Topic",
             key="chat_bottom_topic_input",
             label_visibility="collapsed",
             placeholder="Type another topic...",
             on_change=_request_chat_bottom_enter_submit,
-)
+        )
 
-        colA, colB, colC = st.columns([1, 1, 4])
+        colA, colB, colC = st.columns([1.05, 1.05, 5.9])
         with colA:
             run = st.button("Interrogate", key="nc_bottom_interrogate")
         with colB:
@@ -2193,13 +2237,19 @@ def page_new_chat() -> None:
         with colC:
             st.caption("Type a new topic above to continue exploring.")
 
+        st.markdown("</div></div>", unsafe_allow_html=True)
+
         if st.session_state.chat_bottom_enter_submit:
             st.session_state.chat_bottom_enter_submit = False
+            st.session_state.nc_started = True
             _run_new_chat_interrogate(st.session_state.chat_bottom_topic_input)
 
         if run:
+            st.session_state.nc_started = True
             _run_new_chat_interrogate(st.session_state.chat_bottom_topic_input)
+
         if illustrate_run:
+            st.session_state.nc_started = True
             _run_new_chat_illustrate(st.session_state.chat_bottom_topic_input)
 
     # Auto-run FUQ opened in a new tab for New Chat
@@ -2245,7 +2295,7 @@ def page_new_chat() -> None:
         bool(st.session_state.chat_answers),
     ])
 
-    if not has_new_chat_content:
+    if not st.session_state.nc_started and not has_new_chat_content:
         _render_new_chat_top_uib()
 
     illustrate_data = st.session_state.chat.get("illustrate")
