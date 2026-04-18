@@ -409,6 +409,58 @@ div.stButton > button[kind="secondary"],
 div.stButton > button{
   border-radius: 12px !important;
 }
+
+
+/* =========================
+   New Chat landing UIB
+   ========================= */
+.nc-top-wrap{
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.nc-top-btn-row{
+  display:flex;
+  justify-content:center;
+  gap:14px;
+  margin-top:12px;
+  flex-wrap:nowrap;
+}
+
+.nc-top-caption{
+  text-align:center;
+  color:#6b7280;
+  font-size:12px;
+  margin-top:10px;
+}
+
+div[data-testid="stTextInput"] input[aria-label="Topic"]{
+  min-height:56px !important;
+  border-radius:18px !important;
+}
+
+div.stButton > button[kind="primary"]{
+  background:#000000 !important;
+  color:#ffffff !important;
+  border:1px solid #000000 !important;
+  border-radius:12px !important;
+  min-height:42px !important;
+  min-width:130px !important;
+  max-width:130px !important;
+  width:130px !important;
+  white-space:nowrap !important;
+  text-align:center !important;
+  justify-content:center !important;
+  padding:0 !important;
+}
+
+div.stButton > button[kind="primary"]:hover{
+  background:#111111 !important;
+  color:#ffffff !important;
+  border-color:#111111 !important;
+}
+
+
 </style>
 """
 
@@ -2200,59 +2252,62 @@ def page_new_chat() -> None:
     
 
     def _render_new_chat_top_uib() -> None:
-    if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
-        st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
+        if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
+            st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
 
-    st.markdown("<div style='height:220px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:220px'></div>", unsafe_allow_html=True)
 
-    # narrower centered input block
-    left, center, right = st.columns([3.1, 3.8, 3.1])
+        left, center, right = st.columns([2.8, 4.4, 2.8])
 
-    with center:
-        st.text_input(
-            "Topic",
-            placeholder="Ask InI anything to begin...",
-            key="chat_top_topic_input",
-            label_visibility="collapsed",
-            on_change=_request_chat_top_enter_submit,
-        )
+        run = False
+        illustrate_run = False
 
-        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+        with center:
+            st.markdown('<div class="nc-top-wrap">', unsafe_allow_html=True)
 
-        # compact centered button pair below the input
-        b_left, b1, gap, b2, b_right = st.columns([2.4, 1.0, 0.25, 1.0, 2.4])
-
-        with b1:
-            run = st.button(
-                "Interrogate",
-                key="nc_top_interrogate",
-                use_container_width=True,
+            st.text_input(
+                "Topic",
+                placeholder="Ask InI anything to begin...",
+                key="chat_top_topic_input",
+                label_visibility="collapsed",
+                on_change=_request_chat_top_enter_submit,
             )
 
-        with b2:
-            illustrate_run = st.button(
-                "Illustrate",
-                key="nc_top_illustrate",
-                use_container_width=True,
+            bleft, b1, gap, b2, bright = st.columns([1.6, 1.0, 0.18, 1.0, 1.6])
+
+            with b1:
+                run = st.button(
+                    "Interrogate",
+                    key="nc_top_interrogate",
+                    type="primary",
+                )
+
+            with b2:
+                illustrate_run = st.button(
+                    "Illustrate",
+                    key="nc_top_illustrate",
+                    type="primary",
+                )
+
+            st.markdown(
+                '<div class="nc-top-caption">Question → Click → Answer</div>',
+                unsafe_allow_html=True,
             )
 
-        st.markdown(
-            "<div style='text-align:center; color:#6b7280; font-size:12px; margin-top:8px;'>Question → Click → Answer</div>",
-            unsafe_allow_html=True,
-        )
+            st.markdown("</div>", unsafe_allow_html=True)
 
-    if st.session_state.chat_top_enter_submit:
-        st.session_state.chat_top_enter_submit = False
-        st.session_state.nc_started = True
-        _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
+        if st.session_state.chat_top_enter_submit:
+            st.session_state.chat_top_enter_submit = False
+            st.session_state.nc_started = True
+            _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
 
-    if run:
-        st.session_state.nc_started = True
-        _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
+        if run:
+            st.session_state.nc_started = True
+            _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
 
-    if illustrate_run:
-        st.session_state.nc_started = True
-        _run_new_chat_illustrate(st.session_state.chat_top_topic_input)
+        if illustrate_run:
+            st.session_state.nc_started = True
+            _run_new_chat_illustrate(st.session_state.chat_top_topic_input)
 
 
     def _render_new_chat_bottom_uib() -> None:
