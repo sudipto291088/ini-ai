@@ -415,16 +415,8 @@ div.stButton > button{
    New Chat landing UIB
    ========================= */
 .nc-top-wrap{
-  max-width: 620px;
+  max-width: 680px;
   margin: 0 auto;
-}
-
-.nc-top-btn-row{
-  display:flex;
-  justify-content:center;
-  gap:14px;
-  margin-top:12px;
-  flex-wrap:nowrap;
 }
 
 .nc-top-caption{
@@ -435,8 +427,19 @@ div.stButton > button{
 }
 
 div[data-testid="stTextInput"] input[aria-label="Topic"]{
-  min-height:56px !important;
+  min-height:64px !important;
+  height:64px !important;
   border-radius:18px !important;
+  border:1px solid var(--stroke) !important;
+  background:#ffffff !important;
+  font-size:16px !important;
+  padding-top:14px !important;
+  padding-bottom:14px !important;
+  box-shadow:0 6px 18px rgba(15,23,42,0.04) !important;
+}
+
+div[data-testid="stTextInput"] input[aria-label="Topic"]::placeholder{
+  color:#94a3b8 !important;
 }
 
 div.stButton > button[kind="primary"]{
@@ -445,12 +448,17 @@ div.stButton > button[kind="primary"]{
   border:1px solid #000000 !important;
   border-radius:12px !important;
   min-height:42px !important;
-  min-width:130px !important;
-  max-width:130px !important;
-  width:130px !important;
+  height:42px !important;
+  min-width:126px !important;
+  max-width:126px !important;
+  width:126px !important;
   white-space:nowrap !important;
+  word-break:keep-all !important;
+  overflow-wrap:normal !important;
   text-align:center !important;
   justify-content:center !important;
+  font-weight:800 !important;
+  line-height:1 !important;
   padding:0 !important;
 }
 
@@ -459,7 +467,6 @@ div.stButton > button[kind="primary"]:hover{
   color:#ffffff !important;
   border-color:#111111 !important;
 }
-
 
 </style>
 """
@@ -2255,9 +2262,9 @@ def page_new_chat() -> None:
         if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
             st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
 
-        st.markdown("<div style='height:220px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:160px'></div>", unsafe_allow_html=True)
 
-        left, center, right = st.columns([2.8, 4.4, 2.8])
+        left, center, right = st.columns([2.2, 5.6, 2.2])
 
         run = False
         illustrate_run = False
@@ -2273,16 +2280,18 @@ def page_new_chat() -> None:
                 on_change=_request_chat_top_enter_submit,
             )
 
-            bleft, b1, gap, b2, bright = st.columns([1.6, 1.0, 0.18, 1.0, 1.6])
+            st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-            with b1:
+            pad_l, btn_l, gap, btn_r, pad_r = st.columns([2.2, 1.25, 0.32, 1.25, 2.2])
+
+            with btn_l:
                 run = st.button(
                     "Interrogate",
                     key="nc_top_interrogate",
                     type="primary",
                 )
 
-            with b2:
+            with btn_r:
                 illustrate_run = st.button(
                     "Illustrate",
                     key="nc_top_illustrate",
