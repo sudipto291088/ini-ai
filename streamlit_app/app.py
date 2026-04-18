@@ -376,6 +376,21 @@ div.stButton > button {
 /* =========================
    New Chat UIB polish
    ========================= */
+
+
+div[data-testid="stTextInput"] input{
+    border-radius: 24px;
+    height: 58px;
+}
+
+div.stButton > button{
+    background: black;
+    color: white;
+    border-radius: 12px;
+    height: 44px;
+}
+
+   
 div[data-testid="stTextInput"] input[aria-label="Topic"]{
   border-radius: 18px !important;
   border: 1px solid var(--stroke) !important;
@@ -1366,6 +1381,12 @@ if page_param in param_to_page:
     new_page = param_to_page[page_param]
     st.session_state.page = new_page
 
+
+if page_param == "chat" and not chat_sid and not chat_q and not popup_chat_sid:
+    _reset_new_chat_state()
+    st.session_state.chat_active_id = None
+    st.session_state.chat_loaded_sid = None
+
 st.session_state._last_page_param = page_param
 
 if popup_chat_sid:
@@ -2176,30 +2197,18 @@ def page_new_chat() -> None:
         except Exception as e:
             st.error(f"Error calling /illustrate: {e}")
 
+    
+
     def _render_new_chat_top_uib() -> None:
-        if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
-            st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
+    if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
+        st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
 
-        st.markdown(
-    """
-    <div style="height:200px;"></div>
-    """,
-    unsafe_allow_html=True,
-)
-        
-        st.markdown(
-    """
-    <style>
-    div[data-testid="stTextInput"] input {
-        height: 52px;
-        border-radius: 12px;
-        font-size: 16px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+    st.markdown("<div style='height:220px'></div>", unsafe_allow_html=True)
 
+    # narrower centered input block
+    left, center, right = st.columns([3.1, 3.8, 3.1])
+
+    with center:
         st.text_input(
             "Topic",
             placeholder="Ask InI anything to begin...",
@@ -2208,33 +2217,43 @@ def page_new_chat() -> None:
             on_change=_request_chat_top_enter_submit,
         )
 
-        colA, colB, colC = st.columns([1.15, 1.15, 5.7])
-        with colA:
-            run = st.button("Interrogate", key="nc_top_interrogate")
-        with colB:
-            illustrate_run = st.button("Illustrate", key="nc_top_illustrate")
-        with colC:
-            st.caption("Question → Click → Answer")
+        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+
+        # compact centered button pair below the input
+        b_left, b1, gap, b2, b_right = st.columns([2.4, 1.0, 0.25, 1.0, 2.4])
+
+        with b1:
+            run = st.button(
+                "Interrogate",
+                key="nc_top_interrogate",
+                use_container_width=True,
+            )
+
+        with b2:
+            illustrate_run = st.button(
+                "Illustrate",
+                key="nc_top_illustrate",
+                use_container_width=True,
+            )
 
         st.markdown(
-            """
-            <div style="height:40px;"></div>
-            """,
+            "<div style='text-align:center; color:#6b7280; font-size:12px; margin-top:8px;'>Question → Click → Answer</div>",
             unsafe_allow_html=True,
         )
 
-        if st.session_state.chat_top_enter_submit:
-            st.session_state.chat_top_enter_submit = False
-            st.session_state.nc_started = True
-            _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
+    if st.session_state.chat_top_enter_submit:
+        st.session_state.chat_top_enter_submit = False
+        st.session_state.nc_started = True
+        _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
 
-        if run:
-            st.session_state.nc_started = True
-            _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
+    if run:
+        st.session_state.nc_started = True
+        _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
 
-        if illustrate_run:
-            st.session_state.nc_started = True
-            _run_new_chat_illustrate(st.session_state.chat_top_topic_input)
+    if illustrate_run:
+        st.session_state.nc_started = True
+        _run_new_chat_illustrate(st.session_state.chat_top_topic_input)
+
 
     def _render_new_chat_bottom_uib() -> None:
         st.markdown(
