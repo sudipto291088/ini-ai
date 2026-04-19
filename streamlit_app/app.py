@@ -372,112 +372,68 @@ div.stButton > button {
   padding: 0.7rem 0.9rem !important;
 }
 
+# /* =========================
+#    New Chat landing UIB
+#    ========================= */
+# .nc-top-wrap{
+#   max-width: 860px;
+#   margin: 0 auto;
+# }
 
-/* =========================
-   New Chat UIB polish
-   ========================= */
+# .nc-top-wrap div[data-testid="stTextInput"]{
+#   margin-bottom: 0 !important;
+# }
 
+# .nc-top-wrap div[data-testid="stTextInput"] input[aria-label="Topic"]{
+#   min-height: 78px !important;
+#   height: 78px !important;
+#   border-radius: 20px !important;
+#   border: 1px solid var(--stroke) !important;
+#   background: #ffffff !important;
+#   font-size: 16px !important;
+#   line-height: 1.2 !important;
+#   padding-top: 20px !important;
+#   padding-bottom: 20px !important;
+#   box-sizing: border-box !important;
+#   box-shadow: 0 6px 18px rgba(15,23,42,0.04) !important;
+# }
 
-div[data-testid="stTextInput"] input{
-    border-radius: 24px;
-    height: 58px;
-}
+# .nc-top-wrap div[data-testid="stTextInput"] input[aria-label="Topic"]::placeholder{
+#   color:#94a3b8 !important;
+# }
 
-div.stButton > button{
-    background: black;
-    color: white;
-    border-radius: 12px;
-    height: 44px;
-}
+# .nc-top-wrap div.stButton > button[kind="primary"]{
+#   background:#000000 !important;
+#   color:#ffffff !important;
+#   -webkit-text-fill-color:#ffffff !important;
+#   border:1px solid #000000 !important;
+#   border-radius:12px !important;
+#   min-height:42px !important;
+#   height:42px !important;
+#   min-width:148px !important;
+#   max-width:148px !important;
+#   width:148px !important;
+#   white-space:nowrap !important;
+#   word-break:keep-all !important;
+#   overflow-wrap:normal !important;
+#   text-align:center !important;
+#   justify-content:center !important;
+#   align-items:center !important;
+#   font-weight:900 !important;
+#   font-size:14px !important;
+#   letter-spacing:0.08px !important;
+#   line-height:1 !important;
+#   padding:0 !important;
+#   box-shadow:none !important;
+# }
 
-   
-div[data-testid="stTextInput"] input[aria-label="Topic"]{
-  border-radius: 18px !important;
-  border: 1px solid var(--stroke) !important;
-  background: #ffffff !important;
-  min-height: 52px !important;
-  padding-top: 12px !important;
-  padding-bottom: 12px !important;
-  box-shadow: 0 6px 18px rgba(15,23,42,0.04) !important;
-}
+# .nc-top-wrap div.stButton > button[kind="primary"]:hover{
+#   background:#111111 !important;
+#   color:#ffffff !important;
+#   -webkit-text-fill-color:#ffffff !important;
+#   border-color:#111111 !important;
+# }
 
-div[data-testid="stTextInput"] input[aria-label="Topic"]::placeholder{
-  color: #94a3b8 !important;
-}
-
-div.stButton > button[kind="secondary"],
-div.stButton > button{
-  border-radius: 12px !important;
-}
-
-
-/* =========================
-   New Chat landing UIB
-   ========================= */
-.nc-top-wrap{
-  max-width: 560px;
-  margin: 0 auto;
-}
-
-.nc-top-caption{
-  text-align:center;
-  color:#6b7280;
-  font-size:12px;
-  margin-top:10px;
-}
-
-.nc-top-wrap div[data-testid="stTextInput"]{
-  margin-bottom: 0 !important;
-}
-
-.nc-top-wrap div[data-testid="stTextInput"] input[aria-label="Topic"]{
-  min-height: 88px !important;
-  height: 88px !important;
-  border-radius: 20px !important;
-  border: 1px solid var(--stroke) !important;
-  background: #ffffff !important;
-  font-size: 16px !important;
-  line-height: 1.2 !important;
-  padding-top: 28px !important;
-  padding-bottom: 28px !important;
-  box-sizing: border-box !important;
-  box-shadow: 0 6px 18px rgba(15,23,42,0.04) !important;
-}
-
-.nc-top-wrap div[data-testid="stTextInput"] input[aria-label="Topic"]::placeholder{
-  color:#94a3b8 !important;
-}
-
-.nc-top-wrap div.stButton > button[kind="primary"]{
-  background:#000000 !important;
-  color:#ffffff !important;
-  -webkit-text-fill-color:#ffffff !important;
-  border:1px solid #000000 !important;
-  border-radius:12px !important;
-  min-height:42px !important;
-  height:42px !important;
-  min-width:148px !important;
-  max-width:148px !important;
-  width:148px !important;
-  white-space:nowrap !important;
-  word-break:keep-all !important;
-  overflow-wrap:normal !important;
-  text-align:center !important;
-  justify-content:center !important;
-  align-items:center !important;
-  font-weight:900 !important;
-  font-size:14px !important;
-  letter-spacing:0.1px !important;
-  line-height:1 !important;
-  padding:0 !important;
-}
-
-.nc-top-wrap div.stButton > button[kind="primary"]:hover{
-  background:#111111 !important;
-  color:#ffffff !important;
-  -webkit-text-fill-color:#ffffff !important;
-  border-color:#111111 !important;
-}
 
 </style>
 """
@@ -2273,48 +2229,109 @@ def page_new_chat() -> None:
         if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
             st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
 
-        st.markdown("<div style='height:160px'></div>", unsafe_allow_html=True)
+        st.markdown(
+            """
+            <style>
+            /* Landing-only top composer */
+            div[data-testid="stTextInput"] input[aria-label="Topic"]{
+            min-height: 76px !important;
+            height: 76px !important;
+            border-radius: 20px !important;
+            border: 1px solid var(--stroke) !important;
+            background: #ffffff !important;
+            font-size: 16px !important;
+            line-height: 1.2 !important;
+            padding-top: 20px !important;
+            padding-bottom: 20px !important;
+            box-sizing: border-box !important;
+            box-shadow: 0 6px 18px rgba(15,23,42,0.04) !important;
+            }
 
-        left, center, right = st.columns([1.0, 8.0, 1.0])
+            div[data-testid="stTextInput"] input[aria-label="Topic"]::placeholder{
+            color: #94a3b8 !important;
+            }
+
+            /* Override the broad global question-button rule on landing */
+            div.stButton > button{
+            white-space: nowrap !important;
+            word-break: keep-all !important;
+            overflow-wrap: normal !important;
+            text-align: center !important;
+            justify-content: center !important;
+            align-items: center !important;
+            line-height: 1 !important;
+            font-weight: 900 !important;
+            padding: 0 !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            }
+
+            div.stButton > button[kind="secondary"]{
+            background: #000000 !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            border: 1px solid #000000 !important;
+            border-radius: 12px !important;
+            width: 126px !important;
+            min-width: 126px !important;
+            max-width: 126px !important;
+            font-size: 13px !important;
+            font-weight: 900 !important;
+            box-shadow: none !important;
+            }
+
+            div.stButton > button[kind="secondary"]:hover{
+            background: #111111 !important;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            border-color: #111111 !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("<div style='height:120px'></div>", unsafe_allow_html=True)
+
+        outer_l, outer_c, outer_r = st.columns([0.45, 9.1, 0.45])
 
         run = False
         illustrate_run = False
 
-        with center:
-            st.markdown('<div class="nc-top-wrap">', unsafe_allow_html=True)
+        with outer_c:
+            # narrower centered UIB than before
+            input_l, input_c, input_r = st.columns([0.75, 8.5, 0.75])
 
-            st.text_input(
-                "Topic",
-                placeholder="Ask InI anything to begin...",
-                key="chat_top_topic_input",
-                label_visibility="collapsed",
-                on_change=_request_chat_top_enter_submit,
-            )
-
-            st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
-
-            pad_l, btn_l, gap, btn_r, pad_r = st.columns([2.2, 1.35, 0.02, 1.35, 2.2])
-
-            with btn_l:
-                run = st.button(
-                    "Interrogate",
-                    key="nc_top_interrogate",
-                    type="primary",
+            with input_c:
+                st.text_input(
+                    "Topic",
+                    placeholder="Ask InI anything to begin...",
+                    key="chat_top_topic_input",
+                    label_visibility="collapsed",
+                    on_change=_request_chat_top_enter_submit,
                 )
 
-            with btn_r:
-                illustrate_run = st.button(
-                    "Illustrate",
-                    key="nc_top_illustrate",
-                    type="primary",
-                )
+            st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-            st.markdown(
-                '<div class="nc-top-caption">Question → Click → Answer</div>',
-                unsafe_allow_html=True,
-            )
+            # dedicated centered button shell so they stay equal and do not fold
+            btn_shell_l, btn_shell_c, btn_shell_r = st.columns([2.1, 5.8, 2.1])
 
-            st.markdown("</div>", unsafe_allow_html=True)
+            with btn_shell_c:
+                btn_l, gap, btn_r = st.columns([1, 0.08, 1])
+
+                with btn_l:
+                    run = st.button(
+                        "Interrogate",
+                        key="nc_top_interrogate",
+                        type="secondary",
+                    )
+
+                with btn_r:
+                    illustrate_run = st.button(
+                        "Illustrate",
+                        key="nc_top_illustrate",
+                        type="secondary",
+                    )
 
         if st.session_state.chat_top_enter_submit:
             st.session_state.chat_top_enter_submit = False
