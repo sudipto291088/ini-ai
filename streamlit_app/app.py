@@ -2229,67 +2229,88 @@ def page_new_chat() -> None:
         if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
             st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
 
+        
         st.markdown(
-            """
-            <style>
-            /* Landing-only top composer */
-            div[data-testid="stTextInput"] input[aria-label="Topic"]{
-            min-height: 76px !important;
-            height: 76px !important;
-            border-radius: 20px !important;
-            border: 1px solid var(--stroke) !important;
-            background: #ffffff !important;
-            font-size: 16px !important;
-            line-height: 1.2 !important;
-            padding-top: 20px !important;
-            padding-bottom: 20px !important;
-            box-sizing: border-box !important;
-            box-shadow: 0 6px 18px rgba(15,23,42,0.04) !important;
-            }
+    """
+    <style>
+    /* Landing-only top composer */
+    div[data-testid="stTextInput"]{
+      margin-bottom: 0 !important;
+    }
 
-            div[data-testid="stTextInput"] input[aria-label="Topic"]::placeholder{
-            color: #94a3b8 !important;
-            }
+    div[data-testid="stTextInput"] > div{
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
 
-            /* Override the broad global question-button rule on landing */
-            div.stButton > button{
-            white-space: nowrap !important;
-            word-break: keep-all !important;
-            overflow-wrap: normal !important;
-            text-align: center !important;
-            justify-content: center !important;
-            align-items: center !important;
-            line-height: 1 !important;
-            font-weight: 900 !important;
-            padding: 0 !important;
-            height: 42px !important;
-            min-height: 42px !important;
-            }
+    div[data-testid="stTextInput"] input[aria-label="Topic"]{
+      min-height: 70px !important;
+      height: 70px !important;
+      border-radius: 20px !important;
+      border: 1px solid var(--stroke) !important;
+      background: #ffffff !important;
+      font-size: 16px !important;
+      line-height: 1.2 !important;
+      padding-top: 16px !important;
+      padding-bottom: 16px !important;
+      box-sizing: border-box !important;
+      box-shadow: 0 6px 18px rgba(15,23,42,0.04) !important;
+    }
 
-            div.stButton > button[kind="secondary"]{
-            background: #000000 !important;
-            color: #ffffff !important;
-            -webkit-text-fill-color: #ffffff !important;
-            border: 1px solid #000000 !important;
-            border-radius: 12px !important;
-            width: 126px !important;
-            min-width: 126px !important;
-            max-width: 126px !important;
-            font-size: 13px !important;
-            font-weight: 900 !important;
-            box-shadow: none !important;
-            }
+    div[data-testid="stTextInput"] input[aria-label="Topic"]::placeholder{
+      color: #94a3b8 !important;
+    }
 
-            div.stButton > button[kind="secondary"]:hover{
-            background: #111111 !important;
-            color: #ffffff !important;
-            -webkit-text-fill-color: #ffffff !important;
-            border-color: #111111 !important;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
+    /* Landing buttons only */
+    div.stButton > button{
+      white-space: nowrap !important;
+      word-break: keep-all !important;
+      overflow-wrap: normal !important;
+      text-align: center !important;
+      justify-content: center !important;
+      align-items: center !important;
+      line-height: 1 !important;
+      padding: 0 !important;
+      height: 42px !important;
+      min-height: 42px !important;
+    }
+
+    div.stButton > button[kind="secondary"]{
+      background: #000000 !important;
+      color: #ffffff !important;
+      -webkit-text-fill-color: #ffffff !important;
+      border: 1px solid #000000 !important;
+      border-radius: 14px !important;
+      width: 132px !important;
+      min-width: 132px !important;
+      max-width: 132px !important;
+      box-shadow: none !important;
+    }
+
+    div.stButton > button[kind="secondary"] p,
+    div.stButton > button[kind="secondary"] span,
+    div.stButton > button[kind="secondary"] div{
+      color: #ffffff !important;
+      -webkit-text-fill-color: #ffffff !important;
+      font-size: 14px !important;
+      font-weight: 900 !important;
+      letter-spacing: 0.05px !important;
+      margin: 0 !important;
+    }
+
+    div.stButton > button[kind="secondary"]:hover{
+      background: #111111 !important;
+      color: #ffffff !important;
+      -webkit-text-fill-color: #ffffff !important;
+      border-color: #111111 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
         st.markdown("<div style='height:120px'></div>", unsafe_allow_html=True)
 
@@ -2300,7 +2321,7 @@ def page_new_chat() -> None:
 
         with outer_c:
             # narrower centered UIB than before
-            input_l, input_c, input_r = st.columns([0.75, 8.5, 0.75])
+            input_l, input_c, input_r = st.columns([1.35, 7.3, 1.35])
 
             with input_c:
                 st.text_input(
@@ -2314,10 +2335,10 @@ def page_new_chat() -> None:
             st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
             # dedicated centered button shell so they stay equal and do not fold
-            btn_shell_l, btn_shell_c, btn_shell_r = st.columns([2.1, 5.8, 2.1])
+            btn_shell_l, btn_shell_c, btn_shell_r = st.columns([2.55, 4.9, 2.55])
 
             with btn_shell_c:
-                btn_l, gap, btn_r = st.columns([1, 0.08, 1])
+                btn_l, gap, btn_r = st.columns([1, 0.03, 1])
 
                 with btn_l:
                     run = st.button(
