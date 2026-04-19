@@ -427,14 +427,14 @@ div.stButton > button{
 }
 
 div[data-testid="stTextInput"] input[aria-label="Topic"]{
-  min-height:64px !important;
-  height:64px !important;
+  min-height:72px !important;
+  height:72px !important;
   border-radius:18px !important;
   border:1px solid var(--stroke) !important;
   background:#ffffff !important;
   font-size:16px !important;
-  padding-top:14px !important;
-  padding-bottom:14px !important;
+  padding-top:18px !important;
+  padding-bottom:18px !important;
   box-shadow:0 6px 18px rgba(15,23,42,0.04) !important;
 }
 
@@ -457,7 +457,8 @@ div.stButton > button[kind="primary"]{
   overflow-wrap:normal !important;
   text-align:center !important;
   justify-content:center !important;
-  font-weight:800 !important;
+  font-weight:900 !important;
+  letter-spacing:0.15px !important;
   line-height:1 !important;
   padding:0 !important;
 }
@@ -2282,7 +2283,7 @@ def page_new_chat() -> None:
 
             st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-            pad_l, btn_l, gap, btn_r, pad_r = st.columns([2.2, 1.25, 0.32, 1.25, 2.2])
+            pad_l, btn_l, gap, btn_r, pad_r = st.columns([2.7, 1.25, 0.01, 1.25, 2.7])
 
             with btn_l:
                 run = st.button(
