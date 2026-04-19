@@ -415,7 +415,7 @@ div.stButton > button{
    New Chat landing UIB
    ========================= */
 .nc-top-wrap{
-  max-width: 680px;
+  max-width: 560px;
   margin: 0 auto;
 }
 
@@ -426,46 +426,56 @@ div.stButton > button{
   margin-top:10px;
 }
 
-div[data-testid="stTextInput"] input[aria-label="Topic"]{
-  min-height:72px !important;
-  height:72px !important;
-  border-radius:18px !important;
-  border:1px solid var(--stroke) !important;
-  background:#ffffff !important;
-  font-size:16px !important;
-  padding-top:18px !important;
-  padding-bottom:18px !important;
-  box-shadow:0 6px 18px rgba(15,23,42,0.04) !important;
+.nc-top-wrap div[data-testid="stTextInput"]{
+  margin-bottom: 0 !important;
 }
 
-div[data-testid="stTextInput"] input[aria-label="Topic"]::placeholder{
+.nc-top-wrap div[data-testid="stTextInput"] input[aria-label="Topic"]{
+  min-height: 88px !important;
+  height: 88px !important;
+  border-radius: 20px !important;
+  border: 1px solid var(--stroke) !important;
+  background: #ffffff !important;
+  font-size: 16px !important;
+  line-height: 1.2 !important;
+  padding-top: 28px !important;
+  padding-bottom: 28px !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 6px 18px rgba(15,23,42,0.04) !important;
+}
+
+.nc-top-wrap div[data-testid="stTextInput"] input[aria-label="Topic"]::placeholder{
   color:#94a3b8 !important;
 }
 
-div.stButton > button[kind="primary"]{
+.nc-top-wrap div.stButton > button[kind="primary"]{
   background:#000000 !important;
   color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
   border:1px solid #000000 !important;
   border-radius:12px !important;
   min-height:42px !important;
   height:42px !important;
-  min-width:126px !important;
-  max-width:126px !important;
-  width:126px !important;
+  min-width:148px !important;
+  max-width:148px !important;
+  width:148px !important;
   white-space:nowrap !important;
   word-break:keep-all !important;
   overflow-wrap:normal !important;
   text-align:center !important;
   justify-content:center !important;
+  align-items:center !important;
   font-weight:900 !important;
-  letter-spacing:0.15px !important;
+  font-size:14px !important;
+  letter-spacing:0.1px !important;
   line-height:1 !important;
   padding:0 !important;
 }
 
-div.stButton > button[kind="primary"]:hover{
+.nc-top-wrap div.stButton > button[kind="primary"]:hover{
   background:#111111 !important;
   color:#ffffff !important;
+  -webkit-text-fill-color:#ffffff !important;
   border-color:#111111 !important;
 }
 
@@ -2265,7 +2275,7 @@ def page_new_chat() -> None:
 
         st.markdown("<div style='height:160px'></div>", unsafe_allow_html=True)
 
-        left, center, right = st.columns([2.2, 5.6, 2.2])
+        left, center, right = st.columns([1.0, 8.0, 1.0])
 
         run = False
         illustrate_run = False
@@ -2283,7 +2293,7 @@ def page_new_chat() -> None:
 
             st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
-            pad_l, btn_l, gap, btn_r, pad_r = st.columns([2.7, 1.25, 0.01, 1.25, 2.7])
+            pad_l, btn_l, gap, btn_r, pad_r = st.columns([2.2, 1.35, 0.02, 1.35, 2.2])
 
             with btn_l:
                 run = st.button(
