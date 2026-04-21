@@ -1684,6 +1684,7 @@ def page_new_chat() -> None:
                     "stop_reason": resp.get("stop_reason") or None,
                     "mode": "focused",
                     "followups": followups,
+                    "ts": now_label()
                 }
                 _append_chat_branch(topic_text.strip(), "cta")
                 _persist_new_chat_session(current_sid)
@@ -1908,6 +1909,53 @@ def page_new_chat() -> None:
             unsafe_allow_html=True,
         )
 
+
+
+
+    def _render_nc_ai_bubble(text: str, ts: str = "") -> None:
+        body = (text or "").strip()
+        if not body:
+            return
+
+        ts_html = ""
+        if ts:
+            ts_html = (
+                f"<div style='margin-top:8px; text-align:right; color:#64748b; "
+                f"font-size:11px;'>{ts}</div>"
+            )
+
+        st.markdown(
+            f"""
+            <div style="display:flex; justify-content:flex-start; margin:10px 0 18px 0;">
+                <div style="
+                    max-width: 760px;
+                    width: fit-content;
+                    background:#ffffff;
+                    color:#111827;
+                    border:1px solid #e5e7eb;
+                    border-radius:18px;
+                    padding:16px 18px;
+                    line-height:1.55;
+                    font-size:14px;
+                    box-shadow:0 2px 8px rgba(15,23,42,0.05);
+                    overflow-wrap: break-word;
+                ">
+                    <div>
+                        {body}
+                    </div>
+                    {ts_html}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+    
+
+
+
+
     def _looks_like_live_local_query(text: str) -> bool:
         s = (text or "").strip().lower()
         markers = {
@@ -2064,6 +2112,7 @@ def page_new_chat() -> None:
                         "intent": intent_name,
                         "should_answer_direct": should_answer_direct,
                         "show_followups": show_followups,
+                        "ts": now_label(),
                     }
 
                     if has_existing_root:
@@ -2129,7 +2178,10 @@ def page_new_chat() -> None:
                 st.session_state.chat_open_questions = set()
                 st.session_state.chat_visited_questions = set()
 
-                st.session_state.chat_root_interrogate = data
+                st.session_state.chat_root_interrogate = {
+                **data,
+                "ts": now_label(),
+                }
                 st.session_state.chat_root_illustrate = None
                 st.session_state.chat_root_intro = intro
                 st.session_state.chat_root_answers = {}
@@ -2165,7 +2217,10 @@ def page_new_chat() -> None:
                 st.session_state.chat_root_topic = topic_text.strip()
                 if "chat_bottom_topic_input" in st.session_state:
                     del st.session_state["chat_bottom_topic_input"]
-                st.session_state.chat["illustrate"] = data
+                st.session_state.chat["illustrate"] = {
+                    **data,
+                    "ts": now_label(),
+                }
                 st.session_state.chat["interrogate"] = None
                 st.session_state.chat_intro = ""
                 st.session_state.chat_direct_answer = None
@@ -2175,7 +2230,10 @@ def page_new_chat() -> None:
                 st.session_state.chat_visited_questions = set()
 
                 st.session_state.chat_root_interrogate = None
-                st.session_state.chat_root_illustrate = data
+                st.session_state.chat_root_illustrate = {
+                    **data,
+                    "ts": now_label(),
+                }
                 st.session_state.chat_root_intro = ""
                 st.session_state.chat_root_answers = {}
                 st.session_state.chat_root_followups = {}
@@ -2309,6 +2367,20 @@ def page_new_chat() -> None:
 
         with center:
 
+            # --- UIB capsule start ---
+            st.markdown(
+                """
+                <div style="
+                    border:1px solid #e5e7eb;
+                    border-radius:18px;
+                    padding:12px 14px;
+                    background:#ffffff;
+                    box-shadow:0 2px 8px rgba(15,23,42,0.04);
+                ">
+                """,
+                unsafe_allow_html=True
+            )
+
             st.text_area(
                 "NC_TOP_TOPIC",
                 placeholder="Ask InI anything to begin...",
@@ -2345,6 +2417,9 @@ def page_new_chat() -> None:
                         use_container_width=True,
                     )
 
+            # --- UIB capsule end ---
+            st.markdown("</div>", unsafe_allow_html=True)
+
         if run:
             st.session_state.nc_started = True
             _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
@@ -2358,8 +2433,29 @@ def page_new_chat() -> None:
         st.markdown(
             """
             <style>
+            .nc-bottom-shell{
+                margin-top: 26px;
+                margin-bottom: 8px;
+            }
+
+            .nc-bottom-wrap{
+                border: 1px solid #e5e7eb;
+                background: #ffffff;
+                border-radius: 999px;
+                padding: 8px 10px;
+                box-shadow: 0 4px 16px rgba(15,23,42,0.05);
+            }
+
+            .nc-bottom-shell [data-testid="stHorizontalBlock"]{
+                align-items: center !important;
+            }
+
+            .nc-bottom-shell [data-testid="stTextInput"]{
+                margin-bottom: 0 !important;
+            }
+
             div[data-testid="stTextInput"] input[aria-label="NC_BOTTOM_TOPIC"]{
-                height: 44px !important;
+                height: 42px !important;
                 border: none !important;
                 outline: none !important;
                 background: transparent !important;
@@ -2372,19 +2468,6 @@ def page_new_chat() -> None:
                 border: none !important;
                 outline: none !important;
                 box-shadow: none !important;
-            }
-
-            .nc-bottom-shell{
-                margin-top: 24px;
-                margin-bottom: 6px;
-            }
-
-            .nc-bottom-shell [data-testid="stHorizontalBlock"]{
-                align-items: center !important;
-            }
-
-            .nc-bottom-shell [data-testid="stTextInput"]{
-                margin-bottom: 0 !important;
             }
 
             .nc-bottom-shell div.stButton > button{
@@ -2409,6 +2492,13 @@ def page_new_chat() -> None:
                 background: #111111 !important;
                 border-color: #111111 !important;
             }
+
+            @media (max-width: 980px){
+                .nc-bottom-shell div.stButton > button{
+                    font-size: 11px !important;
+                    padding: 0 10px !important;
+                }
+            }
             </style>
             """,
             unsafe_allow_html=True,
@@ -2416,26 +2506,15 @@ def page_new_chat() -> None:
 
         st.markdown("<div class='nc-bottom-shell'>", unsafe_allow_html=True)
 
-        outer_l, outer_c, outer_r = st.columns([1.2, 7.6, 1.2])
+        left, center, right = st.columns([0.4, 9.2, 0.4])
 
         run = False
         illustrate_run = False
 
-        with outer_c:
-            st.markdown(
-                """
-                <div style="
-                    border: 1px solid #e5e7eb;
-                    background: #ffffff;
-                    border-radius: 999px;
-                    padding: 8px 10px;
-                    box-shadow: 0 4px 16px rgba(15,23,42,0.05);
-                ">
-                """,
-                unsafe_allow_html=True,
-            )
+        with center:
+            st.markdown("<div class='nc-bottom-wrap'>", unsafe_allow_html=True)
 
-            input_col, btn1_col, btn2_col = st.columns([6.6, 1.25, 1.25], gap="small")
+            input_col, btn1_col, btn2_col = st.columns([7.0, 1.35, 1.35], gap="small")
 
             with input_col:
                 st.text_input(
@@ -2499,6 +2578,7 @@ def page_new_chat() -> None:
                     "stop_reason": resp.get("stop_reason") or None,
                     "mode": "focused",
                     "followups": followups,
+                    "ts": now_label()
                 }
 
                 st.session_state.chat["interrogate"] = None
@@ -2525,11 +2605,15 @@ def page_new_chat() -> None:
 
     illustrate_data = st.session_state.chat.get("illustrate")
     if isinstance(illustrate_data, dict) and (illustrate_data.get("illustration_text") or "").strip():
-        _render_nc_user_bubble(st.session_state.chat_root_topic or st.session_state.chat.get("topic") or "")
+        _render_nc_user_bubble(
+            st.session_state.chat_root_topic or st.session_state.chat.get("topic") or "",
+            st.session_state.chat_root_illustrate.get("ts", "") if isinstance(st.session_state.chat_root_illustrate, dict) else "",
+)
 
-        with st.chat_message("assistant"):
-            st.markdown("### Illustrations")
-            st.markdown(illustrate_data.get("illustration_text") or "")
+        _render_nc_ai_bubble(
+    "### Illustrations\n\n" + (illustrate_data.get("illustration_text") or ""),
+    illustrate_data.get("ts") or "",
+)
 
         if st.session_state.chat_branch_answers:
             st.markdown("---")
@@ -2546,28 +2630,40 @@ def page_new_chat() -> None:
                     if isinstance(illustrate_payload, dict):
                         illustration_text = (illustrate_payload.get("illustration_text") or "").strip()
 
-                    with st.chat_message("assistant"):
-                        if illustration_text:
-                            st.markdown(illustration_text)
-                        else:
-                            st.caption("No illustration generated.")
+                    if illustration_text:
+                        _render_nc_ai_bubble(
+                            illustration_text,
+                            illustrate_payload.get("ts", "")
+                        )
+                    else:
+                        st.caption("No illustration generated.")
 
                 elif kind == "direct":
                     direct_payload = item.get("direct_answer") or {}
                     raw_answer = (direct_payload.get("text") or "").strip() if isinstance(direct_payload, dict) else ""
 
-                    with st.chat_message("assistant"):
-                        if raw_answer:
-                            clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
-                            st.markdown(clean_answer or raw_answer)
+                    if raw_answer:
 
-                            show_followups = bool(direct_payload.get("show_followups", True))
-                            followups = embedded_followups or (direct_payload.get("followups") or [])
-                            if show_followups and followups:
-                                st.markdown("#### Suggested follow-ups")
-                                render_followup_links("chat", followups, st.session_state.chat_active_id)
-                        else:
-                            st.caption("No direct answer generated.")
+                        clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
+
+                        _render_nc_ai_bubble(
+                            clean_answer or raw_answer,
+                            direct_payload.get("ts") or ""
+                        )
+
+                        show_followups = bool(direct_payload.get("show_followups", True))
+                        followups = embedded_followups or (direct_payload.get("followups") or [])
+
+                        if show_followups and followups:
+                            st.markdown("#### Suggested follow-ups")
+                            render_followup_links(
+                                "chat",
+                                followups,
+                                st.session_state.chat_active_id
+                            )
+
+                    else:
+                        st.caption("No direct answer generated.")
 
                 else:
                     _render_branch_question_map(idx - 1, item)
@@ -2581,27 +2677,29 @@ def page_new_chat() -> None:
     direct_answer = st.session_state.chat_direct_answer
     if isinstance(direct_answer, dict) and (direct_answer.get("text") or "").strip():
         _render_nc_user_bubble(
-            direct_answer.get("prompt") or st.session_state.chat.get("topic") or ""
+            direct_answer.get("prompt") or st.session_state.chat.get("topic") or "",
+            direct_answer.get("ts") or "",
         )
 
         raw_answer = (direct_answer.get("text") or "").strip()
         clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
 
-        with st.chat_message("assistant"):
-            st.markdown(clean_answer or raw_answer)
+        _render_nc_ai_bubble(clean_answer or raw_answer, direct_answer.get("ts") or now_label())
 
-            show_followups = bool(direct_answer.get("show_followups", True))
-            followups = embedded_followups or (direct_answer.get("followups") or [])
+        show_followups = bool(direct_answer.get("show_followups", True))
+        followups = embedded_followups or (direct_answer.get("followups") or [])
 
-            if show_followups and followups:
-                st.markdown("#### Suggested follow-ups")
-                render_followup_links("chat", followups, st.session_state.chat_active_id)
+        if show_followups and followups:
+            st.markdown("#### Suggested follow-ups")
+            render_followup_links("chat", followups, st.session_state.chat_active_id)
 
-            is_incomplete = bool(direct_answer.get("incomplete")) or (
-                (direct_answer.get("stop_reason") or "").strip().lower() == "max_output_tokens"
-            )
+        is_incomplete = bool(direct_answer.get("incomplete")) or (
+            (direct_answer.get("stop_reason") or "").strip().lower() == "max_output_tokens"
+        )
 
-            if is_incomplete:
+        
+
+        if is_incomplete:
                 direct_key = "__chat_direct_answer__"
 
                 if st.button("Continue", key="nc_cont_direct_answer"):
@@ -2643,6 +2741,7 @@ def page_new_chat() -> None:
                                 "intent": direct_answer.get("intent"),
                                 "should_answer_direct": direct_answer.get("should_answer_direct", False),
                                 "show_followups": direct_answer.get("show_followups", True),
+                                "ts": now_label()
                             }
                             _persist_new_chat_session()
 
@@ -2659,7 +2758,10 @@ def page_new_chat() -> None:
 
     data = st.session_state.chat.get("interrogate")
     if isinstance(data, dict) and data.get("categories"):
-        _render_nc_user_bubble(st.session_state.chat_root_topic or st.session_state.chat.get("topic") or "")
+        _render_nc_user_bubble(
+            st.session_state.chat_root_topic or st.session_state.chat.get("topic") or "",
+            st.session_state.chat_root_interrogate.get("ts", "") if isinstance(st.session_state.chat_root_interrogate, dict) else "",
+        )
         intro = st.session_state.chat_intro
         if intro:
             clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
@@ -2855,18 +2957,17 @@ def page_new_chat() -> None:
                     if isinstance(illustrate_payload, dict):
                         illustration_text = (illustrate_payload.get("illustration_text") or "").strip()
 
-                    with st.chat_message("assistant"):
-                        if illustration_text:
-                            st.markdown(illustration_text)
-                        else:
-                            st.caption("No illustration generated.")
+                    if illustration_text:
+                        _render_nc_ai_bubble(illustration_text, item.get("ts") or "")
+                    else:
+                        st.caption("No illustration generated.")
 
                 elif kind == "direct":
                     direct_payload = item.get("direct_answer") or {}
                     raw_answer = (direct_payload.get("text") or "").strip() if isinstance(direct_payload, dict) else ""
 
-                    with st.chat_message("assistant"):
-                        if raw_answer:
+
+                    if raw_answer:
                             clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
                             st.markdown(clean_answer or raw_answer)
 
@@ -2875,8 +2976,11 @@ def page_new_chat() -> None:
                             if show_followups and followups:
                                 st.markdown("#### Suggested follow-ups")
                                 render_followup_links("chat", followups, st.session_state.chat_active_id)
-                        else:
+                    else:
                             st.caption("No direct answer generated.")
+
+                
+                        
 
                 else:
                     _render_branch_question_map(idx - 1, item)
@@ -3123,47 +3227,70 @@ def page_my_new_learning() -> None:
     for msg in sess["messages"]:
         role = msg.get("role", "assistant")
         ts = msg.get("ts") or ""
-        text = normalize_whitespace_for_readability(normalize_mojibake(msg.get("text", "") or ""))
+        text = normalize_whitespace_for_readability(
+            normalize_mojibake(msg.get("text", "") or "")
+        )
 
         if role == "user":
             with st.chat_message("user"):
                 st.markdown(text)
                 _render_user_mode_hint(msg.get("mode_label") or "Deep")
-                st.markdown(f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>",
+                    unsafe_allow_html=True,
+                )
+
         else:
-            with st.chat_message("assistant"):
-                if (msg.get("text") or "").lstrip().startswith("**Continued (Part "):
-                    st.markdown("---")
 
-                clean_answer, embedded_followups = split_answer_and_embedded_followups(text)
+            if (msg.get("text") or "").lstrip().startswith("**Continued (Part "):
+                st.markdown("---")
 
-                st.markdown(clean_answer or text)
-                st.markdown(f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>", unsafe_allow_html=True)
+            clean_answer, embedded_followups = split_answer_and_embedded_followups(text)
 
-                followups = embedded_followups or (msg.get("followups") or [])
-                if followups:
-                    st.markdown("#### Suggested follow-ups")
-                    render_followup_links("learn", followups, st.session_state.learning_active_id, target="_self")
+            _render_nc_ai_bubble(
+                clean_answer or text,
+                ts
+            )
 
-                if needs_continue_flag(msg) and (msg.get("id") == last_incomplete_id):
-                    msg_id = msg.get("id")
+            followups = embedded_followups or (msg.get("followups") or [])
+            if followups:
+                st.markdown("#### Suggested follow-ups")
+                render_followup_links(
+                    "learn",
+                    followups,
+                    st.session_state.learning_active_id,
+                    target="_self",
+                )
 
-                    if st.button("Continue", key=f"cont-{msg_id}"):
-                        st.session_state._mnl_continue_loading_id = msg_id
-                        st.rerun()
+            if needs_continue_flag(msg) and (msg.get("id") == last_incomplete_id):
 
-                    if st.session_state._mnl_continue_loading_id == msg_id:
-                        st.markdown("⏳ **Continuing...**")
-                        try:
-                            _continue_one_chunk(sess, msg_id)
-                        except Exception as e:
-                            sess["messages"].append(
-                                {"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error continuing: {e}", "ts": now_label()}
-                            )
-                        finally:
-                            st.session_state._mnl_continue_loading_id = None
+                msg_id = msg.get("id")
 
-                        st.rerun()
+                if st.button("Continue", key=f"cont-{msg_id}"):
+                    st.session_state._mnl_continue_loading_id = msg_id
+                    st.rerun()
+
+                if st.session_state._mnl_continue_loading_id == msg_id:
+
+                    st.markdown("⏳ **Continuing...**")
+
+                    try:
+                        _continue_one_chunk(sess, msg_id)
+
+                    except Exception as e:
+                        sess["messages"].append(
+                            {
+                                "id": f"e-{int(time.time())}",
+                                "role": "assistant",
+                                "text": f"Error continuing: {e}",
+                                "ts": now_label(),
+                            }
+                        )
+
+                    finally:
+                        st.session_state._mnl_continue_loading_id = None
+
+                    st.rerun()
 
     if st.session_state._uib_clear_next:
         st.session_state.uib_text = ""
