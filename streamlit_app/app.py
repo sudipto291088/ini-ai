@@ -1941,36 +1941,39 @@ def page_new_chat() -> None:
 
 
     def _render_nc_ai_bubble(text: str, ts: str = "") -> None:
-        body = (text or "").strip()
+        body = (text or "").replace("</div>", "").strip()
         if not body:
             return
 
         ts_html = ""
         if ts:
             ts_html = (
-                f"<div style='margin-top:8px; text-align:right; color:#64748b; "
-                f"font-size:11px;'>{ts}</div>"
+                f"<div style='margin-top:10px; text-align:right; "
+                f"color:#64748b; font-size:11px;'>{ts}</div>"
             )
 
         st.markdown(
             f"""
-            <div style="display:flex; justify-content:flex-start; margin:10px 0 18px 0;">
+            <div style="
+                display:flex;
+                justify-content:flex-start;
+                width:100%;
+                margin:12px 0 20px 0;
+            ">
                 <div style="
-                    max-width: 760px;
-                    width: fit-content;
+                    width:100%;
+                    max-width:100%;
                     background:#ffffff;
                     color:#111827;
                     border:1px solid #e5e7eb;
                     border-radius:18px;
-                    padding:16px 18px;
+                    padding:16px 20px;
                     line-height:1.55;
                     font-size:14px;
-                    box-shadow:0 2px 8px rgba(15,23,42,0.05);
-                    overflow-wrap: break-word;
+                    box-shadow:0 2px 10px rgba(15,23,42,0.06);
+                    overflow-wrap:break-word;
                 ">
-                    <div>
-                        {body}
-                    </div>
+                    {body}
                     {ts_html}
                 </div>
             </div>
