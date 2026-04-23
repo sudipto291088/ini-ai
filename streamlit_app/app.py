@@ -2449,6 +2449,9 @@ def page_new_chat() -> None:
             _run_new_chat_illustrate(st.session_state.chat_top_topic_input)
 
 
+    
+        
+    
     def _render_new_chat_bottom_uib() -> None:
         st.markdown(
             """
@@ -2755,16 +2758,36 @@ def page_new_chat() -> None:
             st.session_state.chat_root_topic or st.session_state.chat.get("topic") or "",
             st.session_state.chat_root_interrogate.get("ts", "") if isinstance(st.session_state.chat_root_interrogate, dict) else "",
         )
+
+        st.markdown(
+    """
+    <div style="
+        width:100%;
+        background:#ffffff;
+        color:#111827;
+        border:1px solid #e5e7eb;
+        border-radius:18px;
+        padding:16px 20px;
+        line-height:1.55;
+        font-size:14px;
+        box-shadow:0 2px 10px rgba(15,23,42,0.06);
+        overflow-wrap:break-word;
+        margin:12px 0 20px 0;
+    ">
+    """,
+    unsafe_allow_html=True,
+)
+
+
+
+
         intro = st.session_state.chat_intro
         if intro:
             clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
 
             intro_text = "### Introduction\n\n" + (clean_intro or intro)
 
-            _render_nc_ai_bubble(
-                intro_text,
-                st.session_state.chat_root_interrogate.get("ts", "") if isinstance(st.session_state.chat_root_interrogate, dict) else now_label(),
-            )
+            st.markdown(intro_text)
 
             if intro_followups:
                 st.markdown("#### Suggested follow-ups")
@@ -2940,6 +2963,14 @@ def page_new_chat() -> None:
 
                             st.markdown("---")
 
+
+
+        root_ts = st.session_state.chat_root_interrogate.get("ts", "") if isinstance(st.session_state.chat_root_interrogate, dict) else now_label()
+        st.markdown(
+            f"<div style='margin-top:10px; text-align:right; color:#64748b; font-size:11px;'>{root_ts}</div></div>",
+            unsafe_allow_html=True,
+        )                   
+
         if st.session_state.chat_branch_answers:
             for idx, item in enumerate(st.session_state.chat_branch_answers, start=1):
                 kind = (item.get("kind") or "interrogate").strip().lower()
@@ -2966,7 +2997,7 @@ def page_new_chat() -> None:
 
                     if raw_answer:
                             clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
-                            st.markdown(clean_answer or raw_answer)
+                            _render_nc_ai_bubble(clean_answer or raw_answer, direct_payload.get("ts") or "")
 
                             show_followups = bool(direct_payload.get("show_followups", True))
                             followups = embedded_followups or (direct_payload.get("followups") or [])
