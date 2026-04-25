@@ -1749,162 +1749,214 @@ def page_new_chat() -> None:
         if not isinstance(data, dict) or not data.get("categories"):
             return
 
-        intro = (branch.get("intro") or "").strip()
-        if intro:
-            clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
-            st.markdown("##### Introduction")
-            st.markdown(clean_intro or intro)
-            if intro_followups:
-                st.markdown("##### Suggested follow-ups")
-                render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
+        with st.container():
+            branch_ts = branch.get("ts") or now_label()
 
-        st.markdown("##### Question Map")
+            intro = (branch.get("intro") or "").strip()
+            if intro:
+                clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
 
-        branch_answers = branch.setdefault("answers", {})
-        branch_followups = branch.setdefault("followups", {})
-        branch_open_questions = set(branch.get("open_questions") or [])
-        branch_visited_questions = set(branch.get("visited_questions") or [])
+                st.markdown("##### Introduction")
+                st.markdown(clean_intro or intro)
 
-        hide_all = st.button(
-            "Hide All Answers",
-            key=f"branch_hide_all_answers_{branch_idx}"
-        )
-        if hide_all:
-            branch_open_questions = set()
-            branch["open_questions"] = []
-            branch["visited_questions"] = sorted(list(branch_visited_questions))
-            st.session_state.chat_branch_answers[branch_idx] = branch
-            _persist_new_chat_session()
-            st.rerun()
+                if intro_followups:
+                    st.markdown("##### Suggested follow-ups")
+                    render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
 
-        cats = data.get("categories") or {}
+            st.markdown("##### Question Map")
 
-        ladder = [
-            ("Orientation", ["Orientation"]),
-            ("Foundations", ["Foundations"]),
-            ("Mechanisms", ["Mechanisms"]),
-            ("Methods & Tools", ["Methods & Tools"]),
-            ("Applications", ["Applications"]),
-            ("Pitfalls", ["Pitfalls"]),
-            ("Advanced / Future", ["Advanced / Future"]),
-        ]
+            branch_answers = branch.setdefault("answers", {})
+            branch_followups = branch.setdefault("followups", {})
+            branch_open_questions = set(branch.get("open_questions") or [])
+            branch_visited_questions = set(branch.get("visited_questions") or [])
 
-        for section, cat_keys in ladder:
-            qs = []
-            for ck in cat_keys:
-                items = cats.get(ck) or []
-                for it in items:
-                    q = (it.get("question") or "").strip()
-                    if q and q not in qs:
-                        qs.append(q)
+            hide_all = st.button(
+                "Hide All Answers",
+                key=f"branch_hide_all_answers_{branch_idx}"
+            )
+            if hide_all:
+                branch_open_questions = set()
+                branch["open_questions"] = []
+                branch["visited_questions"] = sorted(list(branch_visited_questions))
+                st.session_state.chat_branch_answers[branch_idx] = branch
+                _persist_new_chat_session()
+                st.rerun()
 
-            if not qs:
-                continue
+            cats = data.get("categories") or {}
 
-            open_section = st.toggle(section, value=(section == "Orientation"), key=f"branch_{branch_idx}_sec_{section}")
+            ladder = [
+                ("Orientation", ["Orientation"]),
+                ("Foundations", ["Foundations"]),
+                ("Mechanisms", ["Mechanisms"]),
+                ("Methods & Tools", ["Methods & Tools"]),
+                ("Applications", ["Applications"]),
+                ("Pitfalls", ["Pitfalls"]),
+                ("Advanced / Future", ["Advanced / Future"]),
+            ]
 
-            if open_section:
-                for q in qs:
-                    visited = q in branch_visited_questions
-                    is_open = q in branch_open_questions
-                    button_label = f"✓ {q}" if visited else q
+            for section, cat_keys in ladder:
+                qs = []
+                for ck in cat_keys:
+                    items = cats.get(ck) or []
+                    for it in items:
+                        q = (it.get("question") or "").strip()
+                        if q and q not in qs:
+                            qs.append(q)
 
-                    if st.button(button_label, key=f"branch_{branch_idx}_q_{section}_{q}", type="secondary"):
-                        branch_visited_questions.add(q)
+                if not qs:
+                    continue
 
-                        if is_open:
-                            branch_open_questions.discard(q)
-                            branch["open_questions"] = sorted(list(branch_open_questions))
-                            branch["visited_questions"] = sorted(list(branch_visited_questions))
-                            st.session_state.chat_branch_answers[branch_idx] = branch
-                            _persist_new_chat_session()
-                            st.rerun()
+                open_section = st.toggle(
+                    section,
+                    value=(section == "Orientation"),
+                    key=f"branch_{branch_idx}_sec_{section}",
+                )
 
-                        if q in branch_answers:
-                            branch_open_questions.add(q)
-                            branch["open_questions"] = sorted(list(branch_open_questions))
-                            branch["visited_questions"] = sorted(list(branch_visited_questions))
-                            st.session_state.chat_branch_answers[branch_idx] = branch
-                            _persist_new_chat_session()
-                            st.rerun()
+                if open_section:
+                    for q in qs:
+                        visited = q in branch_visited_questions
+                        is_open = q in branch_open_questions
+                        button_label = f"✓ {q}" if visited else q
 
-                        try:
-                            with st.spinner("Generating details... please wait."):
-                                resp = fetch_study(q, mode="deep")
-                                answer = normalize_whitespace_for_readability(normalize_mojibake(resp.get("answer", "") or "")).strip() or "No answer generated."
-                                branch_answers[q] = {
-                                    "text": answer,
-                                    "incomplete": bool(resp.get("incomplete")),
-                                    "stop_reason": resp.get("stop_reason") or None,
-                                    "prompt": q,
-                                    "mode": "deep",
-                                }
-                                branch_followups[q] = resp.get("followups") or []
-                                branch_open_questions.add(q)
-                                branch["answers"] = branch_answers
-                                branch["followups"] = branch_followups
+                        if st.button(button_label, key=f"branch_{branch_idx}_q_{section}_{q}", type="secondary"):
+                            branch_visited_questions.add(q)
+
+                            if is_open:
+                                branch_open_questions.discard(q)
                                 branch["open_questions"] = sorted(list(branch_open_questions))
                                 branch["visited_questions"] = sorted(list(branch_visited_questions))
                                 st.session_state.chat_branch_answers[branch_idx] = branch
                                 _persist_new_chat_session()
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error calling /study/ai: {e}")
+                                st.rerun()
 
-                    if q in branch_open_questions:
-                        answer_obj = branch_answers.get(q, {})
-                        raw_answer = (answer_obj.get("text") or "").strip() if isinstance(answer_obj, dict) else str(answer_obj or "").strip()
+                            if q in branch_answers:
+                                branch_open_questions.add(q)
+                                branch["open_questions"] = sorted(list(branch_open_questions))
+                                branch["visited_questions"] = sorted(list(branch_visited_questions))
+                                st.session_state.chat_branch_answers[branch_idx] = branch
+                                _persist_new_chat_session()
+                                st.rerun()
 
-                        if raw_answer:
-                            clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
-                            st.markdown("##### Answer")
-                            st.markdown(clean_answer or raw_answer)
+                            try:
+                                with st.spinner("Generating details... please wait."):
+                                    resp = fetch_study(q, mode="deep")
+                                    answer = normalize_whitespace_for_readability(
+                                        normalize_mojibake(resp.get("answer", "") or "")
+                                    ).strip() or "No answer generated."
 
-                            followups = embedded_followups or branch_followups.get(q, [])
-                            if followups:
-                                st.markdown("##### Suggested follow-ups")
-                                render_followup_links("chat", followups, st.session_state.chat_active_id, target="_blank")
+                                    branch_answers[q] = {
+                                        "text": answer,
+                                        "incomplete": bool(resp.get("incomplete")),
+                                        "stop_reason": resp.get("stop_reason") or None,
+                                        "prompt": q,
+                                        "mode": "deep",
+                                    }
+                                    branch_followups[q] = resp.get("followups") or []
+                                    branch_open_questions.add(q)
+                                    branch["answers"] = branch_answers
+                                    branch["followups"] = branch_followups
+                                    branch["open_questions"] = sorted(list(branch_open_questions))
+                                    branch["visited_questions"] = sorted(list(branch_visited_questions))
+                                    st.session_state.chat_branch_answers[branch_idx] = branch
+                                    _persist_new_chat_session()
 
-                            is_incomplete = False
-                            if isinstance(answer_obj, dict):
-                                is_incomplete = bool(answer_obj.get("incomplete")) or ((answer_obj.get("stop_reason") or "").strip().lower() == "max_output_tokens")
+                                st.rerun()
 
-                            if is_incomplete:
-                                branch_continue_key = f"branch::{branch_idx}::{q}"
-                                if st.button("Continue", key=f"branch_{branch_idx}_cont_{section}_{q}"):
-                                    st.session_state._nc_continue_loading_q = branch_continue_key
-                                    st.rerun()
+                            except Exception as e:
+                                st.error(f"Error calling /study/ai: {e}")
 
-                                if st.session_state._nc_continue_loading_q == branch_continue_key:
-                                    st.markdown("⏳ **Continuing...**")
-                                    previous_text = (answer_obj.get("text") or "").strip()
-                                    mode = (answer_obj.get("mode") or "deep").strip()
+                        if q in branch_open_questions:
+                            answer_obj = branch_answers.get(q, {})
+                            raw_answer = (
+                                (answer_obj.get("text") or "").strip()
+                                if isinstance(answer_obj, dict)
+                                else str(answer_obj or "").strip()
+                            )
 
-                                    if previous_text:
-                                        try:
-                                            resp = fetch_study(topic=q, mode=mode, continue_mode=True, previous_answer=previous_text)
-                                            chunk = normalize_whitespace_for_readability(normalize_mojibake(resp.get("answer", "") or "")).strip()
-                                            combined = (previous_text.rstrip() + "\n\n" + chunk).strip() if chunk else previous_text
-                                            branch_answers[q] = {
-                                                "text": combined,
-                                                "incomplete": bool(resp.get("incomplete")),
-                                                "stop_reason": resp.get("stop_reason") or None,
-                                                "prompt": q,
-                                                "mode": mode,
-                                            }
-                                            if resp.get("followups"):
-                                                branch_followups[q] = resp.get("followups") or []
-                                            branch["answers"] = branch_answers
-                                            branch["followups"] = branch_followups
-                                            st.session_state.chat_branch_answers[branch_idx] = branch
-                                            _persist_new_chat_session()
-                                        except Exception as e:
-                                            st.error(f"Error continuing answer: {e}")
-                                        finally:
-                                            st.session_state._nc_continue_loading_q = None
+                            if raw_answer:
+                                clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
+
+                                _render_nc_ai_bubble(
+                                    "##### Answer\n\n" + (clean_answer or raw_answer),
+                                    "",
+                                )
+
+                                followups = embedded_followups or branch_followups.get(q, [])
+                                if followups:
+                                    st.markdown("##### Suggested follow-ups")
+                                    render_followup_links(
+                                        "chat",
+                                        followups,
+                                        st.session_state.chat_active_id,
+                                        target="_blank",
+                                    )
+
+                                is_incomplete = False
+                                if isinstance(answer_obj, dict):
+                                    is_incomplete = bool(answer_obj.get("incomplete")) or (
+                                        (answer_obj.get("stop_reason") or "").strip().lower() == "max_output_tokens"
+                                    )
+
+                                if is_incomplete:
+                                    branch_continue_key = f"branch::{branch_idx}::{q}"
+
+                                    if st.button("Continue", key=f"branch_{branch_idx}_cont_{section}_{q}"):
+                                        st.session_state._nc_continue_loading_q = branch_continue_key
                                         st.rerun()
 
-                            st.markdown("---")
+                                    if st.session_state._nc_continue_loading_q == branch_continue_key:
+                                        st.markdown("⏳ **Continuing...**")
+
+                                        previous_text = (answer_obj.get("text") or "").strip()
+                                        mode = (answer_obj.get("mode") or "deep").strip()
+
+                                        if previous_text:
+                                            try:
+                                                resp = fetch_study(
+                                                    topic=q,
+                                                    mode=mode,
+                                                    continue_mode=True,
+                                                    previous_answer=previous_text,
+                                                )
+
+                                                chunk = normalize_whitespace_for_readability(
+                                                    normalize_mojibake(resp.get("answer", "") or "")
+                                                ).strip()
+
+                                                combined = (
+                                                    previous_text.rstrip() + "\n\n" + chunk
+                                                ).strip() if chunk else previous_text
+
+                                                branch_answers[q] = {
+                                                    "text": combined,
+                                                    "incomplete": bool(resp.get("incomplete")),
+                                                    "stop_reason": resp.get("stop_reason") or None,
+                                                    "prompt": q,
+                                                    "mode": mode,
+                                                }
+
+                                                if resp.get("followups"):
+                                                    branch_followups[q] = resp.get("followups") or []
+
+                                                branch["answers"] = branch_answers
+                                                branch["followups"] = branch_followups
+                                                st.session_state.chat_branch_answers[branch_idx] = branch
+                                                _persist_new_chat_session()
+
+                                            except Exception as e:
+                                                st.error(f"Error continuing answer: {e}")
+
+                                            finally:
+                                                st.session_state._nc_continue_loading_q = None
+
+                                            st.rerun()
+
+                                st.markdown("---")
+
+            st.markdown(
+                f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{branch_ts}</div>",
+                unsafe_allow_html=True,
+            )
 
     def _render_nc_user_bubble(text: str, ts: str = "") -> None:
         prompt = (text or "").strip()
@@ -2763,193 +2815,204 @@ def page_new_chat() -> None:
 
 
 
-
-        intro = st.session_state.chat_intro
-        if intro:
-            clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
-
-            intro_text = "### Introduction\n\n" + (clean_intro or intro)
-
-            _render_nc_ai_bubble(
-    intro_text,
-    st.session_state.chat_root_interrogate.get("ts", "") if isinstance(st.session_state.chat_root_interrogate, dict) else now_label(),
-)
-
-            if intro_followups:
-                st.markdown("#### Suggested follow-ups")
-                render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
-
-        st.markdown("### Question Map")
-        st.caption("Orientation → Foundations → Mechanisms → Methods & Tools → Applications → Pitfalls → Advanced / Future")
-
-        hide_all = st.button("Hide All Answers", key="hide_all_answers_newchat")
-        if hide_all:
-            st.session_state.chat_open_questions = set()
-            _sync_chat_root_snapshot()
-            _persist_new_chat_session()
-            st.rerun()
-
-        cats = data.get("categories") or {}
-
-        ladder = [
-            ("Orientation", ["Orientation"]),
-            ("Foundations", ["Foundations"]),
-            ("Mechanisms", ["Mechanisms"]),
-            ("Methods & Tools", ["Methods & Tools"]),
-            ("Applications", ["Applications"]),
-            ("Pitfalls", ["Pitfalls"]),
-            ("Advanced / Future", ["Advanced / Future"]),
-        ]
-
-        for section, cat_keys in ladder:
-            qs = []
-
-            for ck in cat_keys:
-                items = cats.get(ck) or []
-                for it in items:
-                    q = (it.get("question") or "").strip()
-                    if q and q not in qs:
-                        qs.append(q)
-
-            if not qs:
-                continue
-
-            open_section = st.toggle(
-                section,
-                value=(section == "Orientation"),
-                key=f"sec_{section}"
+        with st.container(border=True):
+            root_ts = (
+                st.session_state.chat_root_interrogate.get("ts", "")
+                if isinstance(st.session_state.chat_root_interrogate, dict)
+                else now_label()
             )
 
-            if open_section:
-                for q in qs:
-                    visited = q in st.session_state.chat_visited_questions
-                    is_open = q in st.session_state.chat_open_questions
+            intro = st.session_state.chat_intro
+            if intro:
+                clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
 
-                    button_label = f"✓ {q}" if visited else q
+                intro_text = "### Introduction\n\n" + (clean_intro or intro)
+                st.markdown(intro_text)
 
-                    if st.button(button_label, key=f"q_{section}_{q}", type="secondary"):
-                        st.session_state.chat_visited_questions.add(q)
+                if intro_followups:
+                    st.markdown("#### Suggested follow-ups")
+                    render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
 
-                        if is_open:
-                            st.session_state.chat_open_questions.discard(q)
-                            _sync_chat_root_snapshot()
-                            _persist_new_chat_session()
-                            st.rerun()
+            st.markdown("### Question Map")
+            st.caption("Orientation → Foundations → Mechanisms → Methods & Tools → Applications → Pitfalls → Advanced / Future")
 
-                        if q in st.session_state.chat_answers:
-                            st.session_state.chat_open_questions.add(q)
-                            _sync_chat_root_snapshot()
-                            _persist_new_chat_session()
-                            st.rerun()
+            hide_all = st.button("Hide All Answers", key="hide_all_answers_newchat")
+            if hide_all:
+                st.session_state.chat_open_questions = set()
+                _sync_chat_root_snapshot()
+                _persist_new_chat_session()
+                st.rerun()
 
-                        try:
-                            with st.spinner("Generating details... please wait."):
-                                resp = fetch_study(q, mode="deep")
-                                answer = normalize_whitespace_for_readability(
-                                    normalize_mojibake(resp.get("answer", "") or "")
-                                ).strip() or "No answer generated."
+            cats = data.get("categories") or {}
 
-                                followups = resp.get("followups") or []
+            ladder = [
+                ("Orientation", ["Orientation"]),
+                ("Foundations", ["Foundations"]),
+                ("Mechanisms", ["Mechanisms"]),
+                ("Methods & Tools", ["Methods & Tools"]),
+                ("Applications", ["Applications"]),
+                ("Pitfalls", ["Pitfalls"]),
+                ("Advanced / Future", ["Advanced / Future"]),
+            ]
 
-                                st.session_state.chat_answers[q] = {
-                                    "text": answer,
-                                    "incomplete": bool(resp.get("incomplete")),
-                                    "stop_reason": resp.get("stop_reason") or None,
-                                    "prompt": q,
-                                    "mode": "deep",
-                                }
-                                st.session_state.chat_followups[q] = followups
+            for section, cat_keys in ladder:
+                qs = []
+
+                for ck in cat_keys:
+                    items = cats.get(ck) or []
+                    for it in items:
+                        q = (it.get("question") or "").strip()
+                        if q and q not in qs:
+                            qs.append(q)
+
+                if not qs:
+                    continue
+
+                open_section = st.toggle(
+                    section,
+                    value=(section == "Orientation"),
+                    key=f"sec_{section}"
+                )
+
+                if open_section:
+                    for q in qs:
+                        visited = q in st.session_state.chat_visited_questions
+                        is_open = q in st.session_state.chat_open_questions
+
+                        button_label = f"✓ {q}" if visited else q
+
+                        if st.button(button_label, key=f"q_{section}_{q}", type="secondary"):
+                            st.session_state.chat_visited_questions.add(q)
+
+                            if is_open:
+                                st.session_state.chat_open_questions.discard(q)
+                                _sync_chat_root_snapshot()
+                                _persist_new_chat_session()
+                                st.rerun()
+
+                            if q in st.session_state.chat_answers:
                                 st.session_state.chat_open_questions.add(q)
                                 _sync_chat_root_snapshot()
-                                _persist_new_chat_session() 
-                            st.rerun()
+                                _persist_new_chat_session()
+                                st.rerun()
 
-                        except Exception as e:
-                            st.error(f"Error calling /study/ai: {e}")
+                            try:
+                                with st.spinner("Generating details... please wait."):
+                                    resp = fetch_study(q, mode="deep")
+                                    answer = normalize_whitespace_for_readability(
+                                        normalize_mojibake(resp.get("answer", "") or "")
+                                    ).strip() or "No answer generated."
 
-                    if q in st.session_state.chat_open_questions:
-                        answer_obj = st.session_state.chat_answers.get(q, {})
-                        raw_answer = ""
+                                    followups = resp.get("followups") or []
 
-                        if isinstance(answer_obj, dict):
-                            raw_answer = (answer_obj.get("text") or "").strip()
-                        else:
-                            raw_answer = str(answer_obj or "").strip()
+                                    st.session_state.chat_answers[q] = {
+                                        "text": answer,
+                                        "incomplete": bool(resp.get("incomplete")),
+                                        "stop_reason": resp.get("stop_reason") or None,
+                                        "prompt": q,
+                                        "mode": "deep",
+                                    }
+                                    st.session_state.chat_followups[q] = followups
+                                    st.session_state.chat_open_questions.add(q)
+                                    _sync_chat_root_snapshot()
+                                    _persist_new_chat_session()
 
-                        if raw_answer:
-                            clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
+                                st.rerun()
 
-                            _render_nc_ai_bubble(
-    "#### Answer\n\n" + (clean_answer or raw_answer),
-    now_label(),
-)
+                            except Exception as e:
+                                st.error(f"Error calling /study/ai: {e}")
 
-                            followups = embedded_followups or st.session_state.chat_followups.get(q, [])
-                            if followups:
-                                st.markdown("#### Suggested follow-ups")
-                                render_followup_links("chat", followups, st.session_state.chat_active_id, target="_blank")
+                        if q in st.session_state.chat_open_questions:
+                            answer_obj = st.session_state.chat_answers.get(q, {})
+                            raw_answer = ""
 
-                            is_incomplete = False
                             if isinstance(answer_obj, dict):
-                                is_incomplete = bool(answer_obj.get("incomplete")) or (
-                                    (answer_obj.get("stop_reason") or "").strip().lower() == "max_output_tokens"
+                                raw_answer = (answer_obj.get("text") or "").strip()
+                            else:
+                                raw_answer = str(answer_obj or "").strip()
+
+                            if raw_answer:
+                                clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
+
+                                _render_nc_ai_bubble(
+                                    "#### Answer\n\n" + (clean_answer or raw_answer),
+                                    "",
                                 )
 
-                            if is_incomplete:
-                                if st.button("Continue", key=f"nc_cont_{section}_{q}"):
-                                    st.session_state._nc_continue_loading_q = q
-                                    st.rerun()
+                                followups = embedded_followups or st.session_state.chat_followups.get(q, [])
+                                if followups:
+                                    st.markdown("#### Suggested follow-ups")
+                                    render_followup_links("chat", followups, st.session_state.chat_active_id, target="_blank")
 
-                                if st.session_state._nc_continue_loading_q == q:
-                                    st.markdown("⏳ **Continuing...**")
+                                is_incomplete = False
+                                if isinstance(answer_obj, dict):
+                                    is_incomplete = bool(answer_obj.get("incomplete")) or (
+                                        (answer_obj.get("stop_reason") or "").strip().lower() == "max_output_tokens"
+                                    )
 
-                                    answer_obj = st.session_state.chat_answers.get(q, {})
-                                    if isinstance(answer_obj, dict):
-                                        previous_text = (answer_obj.get("text") or "").strip()
-                                        mode = (answer_obj.get("mode") or "deep").strip()
-                                    else:
-                                        previous_text = str(answer_obj or "").strip()
-                                        mode = "deep"
-
-                                    if previous_text:
-                                        try:
-                                            resp = fetch_study(
-                                                topic=q,
-                                                mode=mode,
-                                                continue_mode=True,
-                                                previous_answer=previous_text,
-                                            )
-
-                                            chunk = normalize_whitespace_for_readability(
-                                                normalize_mojibake(resp.get("answer", "") or "")
-                                            ).strip()
-
-                                            if chunk:
-                                                combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
-                                            else:
-                                                combined = previous_text
-
-                                            st.session_state.chat_answers[q] = {
-                                                "text": combined,
-                                                "incomplete": bool(resp.get("incomplete")),
-                                                "stop_reason": resp.get("stop_reason") or None,
-                                                "prompt": q,
-                                                "mode": mode,
-                                            }
-
-                                            if resp.get("followups"):
-                                                st.session_state.chat_followups[q] = resp.get("followups") or []
-                                            _sync_chat_root_snapshot()
-                                            _persist_new_chat_session()
-
-                                        except Exception as e:
-                                            st.error(f"Error continuing answer: {e}")
-                                        finally:
-                                            st.session_state._nc_continue_loading_q = None
-
+                                if is_incomplete:
+                                    if st.button("Continue", key=f"nc_cont_{section}_{q}"):
+                                        st.session_state._nc_continue_loading_q = q
                                         st.rerun()
 
-                            st.markdown("---")
+                                    if st.session_state._nc_continue_loading_q == q:
+                                        st.markdown("⏳ **Continuing...**")
+
+                                        answer_obj = st.session_state.chat_answers.get(q, {})
+                                        if isinstance(answer_obj, dict):
+                                            previous_text = (answer_obj.get("text") or "").strip()
+                                            mode = (answer_obj.get("mode") or "deep").strip()
+                                        else:
+                                            previous_text = str(answer_obj or "").strip()
+                                            mode = "deep"
+
+                                        if previous_text:
+                                            try:
+                                                resp = fetch_study(
+                                                    topic=q,
+                                                    mode=mode,
+                                                    continue_mode=True,
+                                                    previous_answer=previous_text,
+                                                )
+
+                                                chunk = normalize_whitespace_for_readability(
+                                                    normalize_mojibake(resp.get("answer", "") or "")
+                                                ).strip()
+
+                                                if chunk:
+                                                    combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
+                                                else:
+                                                    combined = previous_text
+
+                                                st.session_state.chat_answers[q] = {
+                                                    "text": combined,
+                                                    "incomplete": bool(resp.get("incomplete")),
+                                                    "stop_reason": resp.get("stop_reason") or None,
+                                                    "prompt": q,
+                                                    "mode": mode,
+                                                }
+
+                                                if resp.get("followups"):
+                                                    st.session_state.chat_followups[q] = resp.get("followups") or []
+
+                                                _sync_chat_root_snapshot()
+                                                _persist_new_chat_session()
+
+                                            except Exception as e:
+                                                st.error(f"Error continuing answer: {e}")
+
+                                            finally:
+                                                st.session_state._nc_continue_loading_q = None
+
+                                            st.rerun()
+
+                                st.markdown("---")
+
+            st.markdown(
+                f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{root_ts}</div>",
+                unsafe_allow_html=True,
+            )
+        
 
 
 
