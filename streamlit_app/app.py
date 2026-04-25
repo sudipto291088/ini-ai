@@ -2759,24 +2759,7 @@ def page_new_chat() -> None:
             st.session_state.chat_root_interrogate.get("ts", "") if isinstance(st.session_state.chat_root_interrogate, dict) else "",
         )
 
-        st.markdown(
-    """
-    <div style="
-        width:100%;
-        background:#ffffff;
-        color:#111827;
-        border:1px solid #e5e7eb;
-        border-radius:18px;
-        padding:16px 20px;
-        line-height:1.55;
-        font-size:14px;
-        box-shadow:0 2px 10px rgba(15,23,42,0.06);
-        overflow-wrap:break-word;
-        margin:12px 0 20px 0;
-    ">
-    """,
-    unsafe_allow_html=True,
-)
+        
 
 
 
@@ -2787,7 +2770,10 @@ def page_new_chat() -> None:
 
             intro_text = "### Introduction\n\n" + (clean_intro or intro)
 
-            st.markdown(intro_text)
+            _render_nc_ai_bubble(
+    intro_text,
+    st.session_state.chat_root_interrogate.get("ts", "") if isinstance(st.session_state.chat_root_interrogate, dict) else now_label(),
+)
 
             if intro_followups:
                 st.markdown("#### Suggested follow-ups")
@@ -2893,8 +2879,10 @@ def page_new_chat() -> None:
                         if raw_answer:
                             clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
 
-                            st.markdown("#### Answer")
-                            st.markdown(clean_answer or raw_answer)
+                            _render_nc_ai_bubble(
+    "#### Answer\n\n" + (clean_answer or raw_answer),
+    now_label(),
+)
 
                             followups = embedded_followups or st.session_state.chat_followups.get(q, [])
                             if followups:
@@ -2965,11 +2953,7 @@ def page_new_chat() -> None:
 
 
 
-        root_ts = st.session_state.chat_root_interrogate.get("ts", "") if isinstance(st.session_state.chat_root_interrogate, dict) else now_label()
-        st.markdown(
-            f"<div style='margin-top:10px; text-align:right; color:#64748b; font-size:11px;'>{root_ts}</div></div>",
-            unsafe_allow_html=True,
-        )                   
+                    
 
         if st.session_state.chat_branch_answers:
             for idx, item in enumerate(st.session_state.chat_branch_answers, start=1):
