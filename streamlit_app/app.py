@@ -360,7 +360,7 @@ button[kind="secondary"]{
   content: "▼";
 }
 
-
+st.markdown(clean_answer)
 /* Interrogate main response wrapper */
 div[data-testid="stVerticalBlockBorderWrapper"]{
   background:#ffffff !important;
@@ -2419,9 +2419,9 @@ def page_new_chat() -> None:
                 margin: 0 !important;
             }
 
-            div.stButton > button[kind="secondary"] p,
-            div.stButton > button[kind="secondary"] span,
-            div.stButton > button[kind="secondary"] div{
+            button[data-testid="baseButton-secondary"] p,
+            button[data-testid="baseButton-secondary"] span,
+            button[data-testid="baseButton-secondary"] div{
                 color: #ffffff !important;
                 -webkit-text-fill-color: #ffffff !important;
                 font-size: 14px !important;
@@ -2430,7 +2430,7 @@ def page_new_chat() -> None:
                 white-space: nowrap !important;
             }
 
-            div.stButton > button[kind="secondary"]:hover{
+            button[data-testid="baseButton-secondary"]:hover{
                 background: #111111 !important;
                 border-color: #111111 !important;
             }
@@ -2438,7 +2438,7 @@ def page_new_chat() -> None:
             /* responsive shrink for sidebar mode */
 
             @media (max-width:1100px){
-                div.stButton > button[kind="secondary"]{
+                button[data-testid="baseButton-secondary"]{
                     max-width:112px !important;
                     height:40px !important;
                 }
@@ -2449,7 +2449,7 @@ def page_new_chat() -> None:
             }
 
             @media (max-width:900px){
-                div.stButton > button[kind="secondary"]{
+                button[data-testid="baseButton-secondary"]{
                     max-width:96px !important;
                     height:38px !important;
                 }
