@@ -372,6 +372,14 @@ div.stButton > button {
   padding: 0.7rem 0.9rem !important;
 }
 
+div[data-testid="stVerticalBlockBorderWrapper"]{
+  background:#ffffff !important;
+  border:1px solid #e5e7eb !important;
+  border-radius:18px !important;
+  padding:16px 20px !important;
+  box-shadow:0 2px 10px rgba(15,23,42,0.06) !important;
+}
+
 </style>
 """
 
@@ -1749,7 +1757,7 @@ def page_new_chat() -> None:
         if not isinstance(data, dict) or not data.get("categories"):
             return
 
-        with st.container():
+        with st.container(border=True):
             branch_ts = branch.get("ts") or now_label()
 
             intro = (branch.get("intro") or "").strip()
