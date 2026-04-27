@@ -361,24 +361,39 @@ button[kind="secondary"]{
 }
 
 
-
-/* Question buttons */
-div.stButton > button {
-  text-align: left !important;
-  justify-content: flex-start !important;
-  white-space: normal !important;
-  height: auto !important;
-  line-height: 1.45 !important;
-  padding: 0.7rem 0.9rem !important;
-}
-
+/* Interrogate main response wrapper */
 div[data-testid="stVerticalBlockBorderWrapper"]{
   background:#ffffff !important;
   border:1px solid #e5e7eb !important;
   border-radius:18px !important;
-  padding:16px 20px !important;
+  padding:18px 22px !important;
   box-shadow:0 2px 10px rgba(15,23,42,0.06) !important;
 }
+
+/* Interrogate question mini wrappers */
+div.stButton > button {
+  width:100% !important;
+  text-align:left !important;
+  justify-content:flex-start !important;
+  white-space:normal !important;
+  height:auto !important;
+  line-height:1.45 !important;
+  padding:12px 14px !important;
+  margin:5px 0 !important;
+
+  background:#ffffff !important;
+  color:#111827 !important;
+  border:1px solid #e5e7eb !important;
+  border-radius:14px !important;
+  box-shadow:0 1px 4px rgba(15,23,42,0.05) !important;
+}
+
+/* Hover polish */
+div.stButton > button:hover {
+  background:#f8fafc !important;
+  border-color:#d1d5db !important;
+}
+
 
 </style>
 """
