@@ -1768,6 +1768,8 @@ def page_new_chat() -> None:
             _persist_new_chat_session(current_sid)
 
     def _render_branch_question_map(branch_idx: int, branch: Dict[str, Any]) -> None:
+
+        st.markdown("</div>", unsafe_allow_html=True)
         data = branch.get("interrogate") or {}
         if not isinstance(data, dict) or not data.get("categories"):
             return
@@ -1799,6 +1801,8 @@ def page_new_chat() -> None:
             )
             if hide_all:
                 branch_open_questions = set()
+                
+
                 branch["open_questions"] = []
                 branch["visited_questions"] = sorted(list(branch_visited_questions))
                 st.session_state.chat_branch_answers[branch_idx] = branch
@@ -2612,7 +2616,7 @@ def page_new_chat() -> None:
                         use_container_width=True,
                     )
 
-            st.markdown("</div>", unsafe_allow_html=True)
+            
 
         if st.session_state.chat_bottom_enter_submit:
             st.session_state.chat_bottom_enter_submit = False
@@ -3343,12 +3347,22 @@ def page_my_new_learning() -> None:
             if (msg.get("text") or "").lstrip().startswith("**Continued (Part "):
                 st.markdown("---")
 
+            st.markdown("<div class='ini_main_wrapper'>", unsafe_allow_html=True)
+
             clean_answer, embedded_followups = split_answer_and_embedded_followups(text)
 
-            _render_nc_ai_bubble(
-                clean_answer or text,
-                ts
-            )
+            def _render_nc_ai_bubble(text, ts):
+
+                st.markdown("<div class='ini_ai_bubble'>", unsafe_allow_html=True)
+
+                st.markdown(text)
+
+                st.markdown(
+                    f"<div class='ini_ts'>{ts}</div>",
+                    unsafe_allow_html=True
+                )
+
+                st.markdown("</div>", unsafe_allow_html=True)
 
             followups = embedded_followups or (msg.get("followups") or [])
             if followups:
@@ -3389,6 +3403,8 @@ def page_my_new_learning() -> None:
                         st.session_state._mnl_continue_loading_id = None
 
                     st.rerun()
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
     if st.session_state._uib_clear_next:
         st.session_state.uib_text = ""
