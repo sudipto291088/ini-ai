@@ -360,14 +360,19 @@ button[kind="secondary"]{
   content: "▼";
 }
 
-st.markdown(clean_answer)
-/* Interrogate main response wrapper */
+
 div[data-testid="stVerticalBlockBorderWrapper"]{
   background:#ffffff !important;
   border:1px solid #e5e7eb !important;
-  border-radius:18px !important;
-  padding:18px 22px !important;
-  box-shadow:0 2px 10px rgba(15,23,42,0.06) !important;
+  border-radius:22px !important;
+  padding:22px 26px !important;
+  margin:18px 0 28px 0 !important;
+  box-shadow:0 6px 22px rgba(15,23,42,0.08) !important;
+  overflow:hidden !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"] > div{
+  background:#ffffff !important;
 }
 
 /* Interrogate question mini wrappers */
@@ -1769,7 +1774,7 @@ def page_new_chat() -> None:
 
     def _render_branch_question_map(branch_idx: int, branch: Dict[str, Any]) -> None:
 
-        st.markdown("</div>", unsafe_allow_html=True)
+        
         data = branch.get("interrogate") or {}
         if not isinstance(data, dict) or not data.get("categories"):
             return
