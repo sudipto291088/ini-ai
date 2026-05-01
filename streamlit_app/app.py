@@ -418,6 +418,10 @@ def now_label() -> str:
     return datetime.now().strftime("%a, %b %d • %I:%M %p")
 
 
+def new_msg_id(prefix: str) -> str:
+    return f"{prefix}-{time.time_ns()}"
+
+
 def clock_parts() -> Dict[str, str]:
     now = datetime.now()
     t = now.strftime("%I:%M").lstrip("0") or now.strftime("%I:%M")
@@ -3152,7 +3156,7 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
     followups = resp.get("followups") or []
     sess["messages"].append(
         {
-            "id": f"a-{int(time.time())}",
+            "id": new_msg_id("a"),
             "role": "assistant",
             "text": labeled,
             "ts": now_label(),
@@ -3226,7 +3230,7 @@ def _process_send(sess: Dict[str, Any]) -> None:
 
     if _typed_continue_should_fire(sess, prompt):
         sess["messages"].append(
-            {"id": f"u-{int(time.time())}", "role": "user", "text": prompt, "ts": now_label(), "mode_label": mode_label(mode)}
+            {"id": new_msg_id("u"), "role": "user", "text": prompt, "ts": now_label(), "mode_label": mode_label(mode)}
         )
 
         target_id = _find_last_incomplete_assistant_id(sess)
@@ -3237,7 +3241,7 @@ def _process_send(sess: Dict[str, Any]) -> None:
         st.rerun()
 
     sess["messages"].append(
-        {"id": f"u-{int(time.time())}", "role": "user", "text": prompt, "ts": now_label(), "mode_label": mode_label(mode)}
+        {"id": new_msg_id("u"), "role": "user", "text": prompt, "ts": now_label(), "mode_label": mode_label(mode)}
     )
     sess["last_prompt"] = prompt
 
@@ -3248,7 +3252,7 @@ def _process_send(sess: Dict[str, Any]) -> None:
             followups = resp.get("followups") or []
             sess["messages"].append(
                 {
-                    "id": f"a-{int(time.time())}",
+                    "id": new_msg_id("a"),
                     "role": "assistant",
                     "text": answer,
                     "ts": now_label(),
@@ -3262,7 +3266,7 @@ def _process_send(sess: Dict[str, Any]) -> None:
                 }
             )
     except Exception as e:
-        sess["messages"].append({"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error calling API: {e}", "ts": now_label()})
+        sess["messages"].append({"id": new_msg_id("e"), "role": "assistant", "text": f"Error calling API: {e}", "ts": now_label()})
 
     st.session_state._uib_clear_next = True
     _persist_learning_session(st.session_state.learning_active_id, sess)
@@ -3298,7 +3302,7 @@ def page_my_new_learning() -> None:
             resolved_learn_q = normalize_clicked_followup_prompt(learn_q)
 
             sess["messages"].append(
-                {"id": f"u-{int(time.time())}", "role": "user", "text": learn_q, "ts": now_label(), "mode_label": "Deep"}
+                {"id": new_msg_id("u"), "role": "user", "text": learn_q, "ts": now_label(), "mode_label": "Deep"}
             )
 
             with st.spinner("Generating answer... may take some time."):
@@ -3308,7 +3312,7 @@ def page_my_new_learning() -> None:
 
                 sess["messages"].append(
                     {
-                        "id": f"a-{int(time.time())}",
+                        "id": new_msg_id("a"),
                         "role": "assistant",
                         "text": answer,
                         "ts": now_label(),
@@ -3320,9 +3324,10 @@ def page_my_new_learning() -> None:
                 _persist_learning_session(st.session_state.learning_active_id, sess)
                 st.session_state.learn_seed_done = learn_q
             st.rerun()
+
         except Exception as e:
             sess["messages"].append(
-                {"id": f"e-{int(time.time())}", "role": "assistant", "text": f"Error auto-running learning FUQ: {e}", "ts": now_label()}
+                {"id": new_msg_id("e"), "role": "assistant", "text": f"Error auto-running learning FUQ: {e}", "ts": now_label()}
             )
 
     last_incomplete_id = None
@@ -3348,7 +3353,6 @@ def page_my_new_learning() -> None:
                 )
 
         else:
-
             if (msg.get("text") or "").lstrip().startswith("**Continued (Part "):
                 st.markdown("---")
 
@@ -3356,18 +3360,13 @@ def page_my_new_learning() -> None:
 
             clean_answer, embedded_followups = split_answer_and_embedded_followups(text)
 
-            def _render_nc_ai_bubble(text, ts):
+            st.markdown(clean_answer or text)
 
-                st.markdown("<div class='ini_ai_bubble'>", unsafe_allow_html=True)
-
-                st.markdown(text)
-
+            if ts:
                 st.markdown(
-                    f"<div class='ini_ts'>{ts}</div>",
-                    unsafe_allow_html=True
+                    f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>",
+                    unsafe_allow_html=True,
                 )
-
-                st.markdown("</div>", unsafe_allow_html=True)
 
             followups = embedded_followups or (msg.get("followups") or [])
             if followups:
@@ -3380,7 +3379,6 @@ def page_my_new_learning() -> None:
                 )
 
             if needs_continue_flag(msg) and (msg.get("id") == last_incomplete_id):
-
                 msg_id = msg.get("id")
 
                 if st.button("Continue", key=f"cont-{msg_id}"):
@@ -3388,7 +3386,6 @@ def page_my_new_learning() -> None:
                     st.rerun()
 
                 if st.session_state._mnl_continue_loading_id == msg_id:
-
                     st.markdown("⏳ **Continuing...**")
 
                     try:
@@ -3397,7 +3394,7 @@ def page_my_new_learning() -> None:
                     except Exception as e:
                         sess["messages"].append(
                             {
-                                "id": f"e-{int(time.time())}",
+                                "id": new_msg_id("e"),
                                 "role": "assistant",
                                 "text": f"Error continuing: {e}",
                                 "ts": now_label(),
@@ -3471,6 +3468,10 @@ def page_my_new_learning() -> None:
     if st.session_state._uib_send_requested:
         st.session_state._uib_send_requested = False
         _process_send(sess)
+
+
+
+
 
 
 def page_new_project() -> None:
