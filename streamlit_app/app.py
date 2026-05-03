@@ -2483,7 +2483,7 @@ def page_new_chat() -> None:
         logo_path = os.path.join(os.path.dirname(__file__), "ini_logo.png")
         logo = Image.open(logo_path)
 
-        col_l, col_c, col_r = st.columns([3,2,3])
+        col_l, col_c, col_r = st.columns([3.7,2,2.5])
         with col_c:
             st.image(logo, width=120)
 
