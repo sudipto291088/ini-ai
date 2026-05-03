@@ -2477,7 +2477,17 @@ def page_new_chat() -> None:
             unsafe_allow_html=True,
         )
 
-        st.markdown("<div style='height:120px'></div>", unsafe_allow_html=True)
+        # --- Logo (centered, before first query only) ---
+        st.markdown(
+            """
+            <div style='display:flex; justify-content:center; margin-top:40px; margin-bottom:10px;'>
+                <img src="ini_logo.png" style="height:70px; opacity:0.95;">
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("<div style='height:80px'></div>", unsafe_allow_html=True)
 
         left, center, right = st.columns([2.6, 4.8, 2.6])
 

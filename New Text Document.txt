@@ -1,0 +1,131 @@
+C:\Users\bhadr\OneDrive\Desktop\App1\ini-ai
+
+C:\Users\bhadr\OneDrive\Desktop\App1\ini-ai\streamlit_app
+
+
+setx PYTHONUTF8 1
+setx PYTHONIOENCODING utf-8
+
+
+
+python -m uvicorn api.main:app --reload --port 8000
+http://127.0.0.1:8000/docs
+
+
+
+
+python -m streamlit run streamlit_app/app.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+$OutputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+$env:PYTHONUTF8 = "1"
+
+
+
+
+
+
+
+
+
+ $r = Invoke-RestMethod -Method Post `
+   -Uri "http://127.0.0.1:8000/answer" `
+   -ContentType "application/json" `
+   -Body '{"topic":"Artificial Intelligence","question":"What is Artificial Intelligence?"}'
+
+ $r.answer
+
+
+
+
+
+
+
+
+
+Get-Item app.py | Select-Object LastWriteTime
+
+Get-Item storage_sqlite.py | Select-Object LastWriteTime
+
+
+
+
+Here are strong AI topics to properly stress-test InI (long + structured + continuation-heavy):
+
+🔬 Core AI Foundations
+
+Explain Artificial Intelligence from scratch to advanced level
+
+History of AI: symbolic AI → machine learning → deep learning → foundation models
+
+Difference between AI, ML, DL, and Generative AI
+
+How Large Language Models (LLMs) actually work internally
+
+Transformer architecture explained step by step
+
+🧠 Deep Learning (good for long outputs)
+
+How backpropagation works mathematically
+
+Gradient descent variants (SGD, Adam, RMSProp)
+
+Vanishing vs exploding gradients
+
+Scaling laws in LLMs (Chinchilla, compute-optimal training)
+
+Attention mechanism deep dive
+
+🏗️ System / Architecture (great for continuation testing)
+
+Retrieval-Augmented Generation (RAG) architecture end-to-end
+
+How to productionize an LLM system
+
+Evaluation metrics for generative models
+
+RLHF vs DPO vs Constitutional AI
+
+Fine-tuning vs LoRA vs PEFT comparison
+
+🛡️ Safety & Governance (good for structured sections)
+
+Hallucination mitigation strategies in LLMs
+
+AI alignment problem explained deeply
+
+Adversarial attacks in LLM systems
+
+Membership inference & model extraction
+
+AI governance & regulation landscape
+
+🧪 For continuation stress testing
+
+Ask:
+
+“Explain RAG deeply with failure modes and deployment checklist.”
+
+“Explain RLHF in mathematical detail.”
+
+“Explain transformers with full math derivation.”
+
+
+
+///////////////listing down few improvements//////////
+
+** FUQs or ctas generate proper structured,indented answers.
+** InI recognizes if a user types for Fuqs/ctas like 'go ahead' or typing the fuq. 
+
+
