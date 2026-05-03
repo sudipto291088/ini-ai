@@ -2477,9 +2477,11 @@ def page_new_chat() -> None:
             unsafe_allow_html=True,
         )
 
+        import os
         from PIL import Image
 
-        logo = Image.open("ini_logo.png")  # <-- NOT streamlit_app/
+        logo_path = os.path.join(os.path.dirname(__file__), "ini_logo.png")
+        logo = Image.open(logo_path)
 
         col_l, col_c, col_r = st.columns([3,2,3])
         with col_c:
