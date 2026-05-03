@@ -2477,17 +2477,13 @@ def page_new_chat() -> None:
             unsafe_allow_html=True,
         )
 
-        # --- Logo (centered, before first query only) ---
-        st.markdown(
-            """
-            <div style='display:flex; justify-content:center; margin-top:40px; margin-bottom:10px;'>
-                <img src="ini_logo.png" style="height:70px; opacity:0.95;">
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        from PIL import Image
 
-        st.markdown("<div style='height:80px'></div>", unsafe_allow_html=True)
+        logo = Image.open("ini_logo.png")  # <-- NOT streamlit_app/
+
+        col_l, col_c, col_r = st.columns([3,2,3])
+        with col_c:
+            st.image(logo, width=120)
 
         left, center, right = st.columns([2.6, 4.8, 2.6])
 
