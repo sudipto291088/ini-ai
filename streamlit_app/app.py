@@ -603,6 +603,7 @@ def render_followup_links(
 ) -> None:
     cleaned: list[str] = []
     seen = set()
+
     for fu in followups or []:
         item = (fu or "").strip()
         key = item.lower()
@@ -616,18 +617,23 @@ def render_followup_links(
     if target is None:
         target = "_blank" if page == "chat" else "_self"
 
-    lines = ['<div style="text-align:left;">']
     for idx, fu in enumerate(cleaned, start=1):
         if page == "chat":
             href = _chat_branch_href(sid, fu)
         else:
             href = _learn_branch_href(sid, fu)
 
-        lines.append(
-            f'<a class="ini_plain_link" href="{href}" target="{target}">{idx}. {fu}</a>'
+        st.markdown(
+            f"""
+            <a class="ini_plain_link"
+               href="{href}"
+               target="{target}"
+               style="display:block; cursor:pointer; color:#2563eb !important; margin:8px 0;">
+               {idx}. {fu} ↗
+            </a>
+            """,
+            unsafe_allow_html=True,
         )
-    lines.append("</div>")
-    st.markdown("\n".join(lines), unsafe_allow_html=True)
 
 
 def render_followup_text(followups: list[str]) -> None:

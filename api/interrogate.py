@@ -921,16 +921,17 @@ def interrogate(text: str) -> Dict[str, Any]:
     if use_llm:
         summary, llm_categories = [], {}
 
-        # Cold start is more stable with the lighter rescue prompt first
-        summary, llm_categories = _llm_generate_questions_only_rescue(clean_topic, topic_type)
+        # STEP 1: Use full LLM generation FIRST (stronger output)
+        for _ in range(MAIN_LLM_ATTEMPTS):
+            summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
+            if llm_categories and any(llm_categories.get(c) for c in llm_categories):
+                break
 
-        # If rescue still gives nothing usable, try the full strict prompt
+        # STEP 2: If full LLM fails → fallback to lighter rescue prompt
         if not (llm_categories and any(llm_categories.get(c) for c in llm_categories)):
-            for _ in range(MAIN_LLM_ATTEMPTS):
-                summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
-                if llm_categories and any(llm_categories.get(c) for c in llm_categories):
-                    break
+            summary, llm_categories = _llm_generate_questions_only_rescue(clean_topic, topic_type)
 
+        # STEP 3: If we got valid categories → proceed normally
         if llm_categories and any(llm_categories.get(c) for c in llm_categories):
             llm_categories = _top_up_question_map(llm_categories, clean_topic, topic_type)
 
@@ -954,7 +955,7 @@ def interrogate(text: str) -> Dict[str, Any]:
                 "reply": "",
             }
 
-        # AI fallback: only if rescue + main attempts both return no usable categories
+        # STEP 4: FINAL fallback → template only
         fallback_categories = build_categories(clean_topic, topic_type)
         fallback_qa = attach_answers(fallback_categories, clean_topic, topic_type)
 
