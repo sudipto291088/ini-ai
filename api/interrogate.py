@@ -599,6 +599,14 @@ Generate the questions now.
 
     data = _extract_json_object(raw or "")
 
+    # 🔥 NEW: second attempt to parse raw JSON directly
+    if not isinstance(data, dict):
+        try:
+            data = json.loads(raw.strip())
+        except Exception:
+            data = None
+
+    # 🔥 FINAL fallback (with debug support)
     if not isinstance(data, dict):
         if os.getenv("INI_LLM_DEBUG", "0").lower() in ("1", "true", "yes"):
             return (
@@ -616,7 +624,13 @@ Generate the questions now.
                     ]
                 },
             )
+
+        # 🔥 also print raw output for visibility (important)
+        print("LLM RAW OUTPUT (FAILED PARSE):", (raw or "")[:1000])
+
         return (build_summary(topic, topic_type, 0.67), {})
+
+
 
     summary = data.get("summary") if isinstance(data.get("summary"), list) else []
     cats = _normalize_category_keys(
