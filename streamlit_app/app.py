@@ -2029,45 +2029,20 @@ def page_new_chat() -> None:
 
 
     def _render_nc_ai_bubble(text: str, ts: str = "") -> None:
-        body = (text or "").replace("</div>", "").strip()
+        body = (text or "").strip()
         if not body:
             return
 
-        ts_html = ""
-        if ts:
-            ts_html = (
-                f"<div style='margin-top:10px; text-align:right; "
-                f"color:#64748b; font-size:11px;'>{ts}</div>"
-            )
+        # 🚨 REMOVE ANY HTML TAGS FROM LLM OUTPUT
+        
+        body = re.sub(r"<[^>]+>", "", body)
 
-        st.markdown(
-            f"""
-            <div style="
-                display:flex;
-                justify-content:flex-start;
-                width:100%;
-                margin:12px 0 20px 0;
-            ">
-                <div style="
-                    width:100%;
-                    max-width:100%;
-                    background:#ffffff;
-                    color:#111827;
-                    border:1px solid #e5e7eb;
-                    border-radius:18px;
-                    padding:16px 20px;
-                    line-height:1.55;
-                    font-size:14px;
-                    box-shadow:0 2px 10px rgba(15,23,42,0.06);
-                    overflow-wrap:break-word;
-                ">
-                    {body}
-                    {ts_html}
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        # Render clean markdown (NO unsafe HTML)
+        st.markdown(body)
+
+        # timestamp (safe)
+        if ts:
+            st.caption(ts)
 
 
     
