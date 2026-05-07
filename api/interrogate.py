@@ -599,14 +599,20 @@ Generate the questions now.
 
     data = _extract_json_object(raw or "")
 
-    # 🔥 NEW: second attempt to parse raw JSON directly
+    # 🔥 Attempt 2: clean and extract JSON substring manually
     if not isinstance(data, dict):
         try:
-            data = json.loads(raw.strip())
+            start = raw.find("{")
+            end = raw.rfind("}")
+            if start != -1 and end != -1:
+                candidate = raw[start:end+1]
+                data = json.loads(candidate)
+            else:
+                data = None
         except Exception:
             data = None
 
-    # 🔥 FINAL fallback (with debug support)
+    # 🔥 FINAL fallback
     if not isinstance(data, dict):
         if os.getenv("INI_LLM_DEBUG", "0").lower() in ("1", "true", "yes"):
             return (
@@ -625,9 +631,7 @@ Generate the questions now.
                 },
             )
 
-        # 🔥 also print raw output for visibility (important)
         print("LLM RAW OUTPUT (FAILED PARSE):", (raw or "")[:1000])
-
         return (build_summary(topic, topic_type, 0.67), {})
 
 
@@ -936,6 +940,7 @@ def interrogate(text: str) -> Dict[str, Any]:
         summary, llm_categories = [], {}
 
         # STEP 1: Use full LLM generation FIRST (stronger output)
+        print("USING FULL QUESTION GENERATOR")
         for _ in range(MAIN_LLM_ATTEMPTS):
             summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
             if llm_categories and any(llm_categories.get(c) for c in llm_categories):
@@ -943,6 +948,7 @@ def interrogate(text: str) -> Dict[str, Any]:
 
         # STEP 2: If full LLM fails → fallback to lighter rescue prompt
         if not (llm_categories and any(llm_categories.get(c) for c in llm_categories)):
+            print("USING RESCUE QUESTION GENERATOR")
             summary, llm_categories = _llm_generate_questions_only_rescue(clean_topic, topic_type)
 
         # STEP 3: If we got valid categories → proceed normally
