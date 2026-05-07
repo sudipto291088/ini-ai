@@ -29,6 +29,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
 # Responses-compatible model
 DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-4o-mini").strip()
+print("ACTIVE MODEL:", DEFAULT_MODEL)
 
 # Responses API uses max_output_tokens
 INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "3000"))
