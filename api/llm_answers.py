@@ -32,7 +32,7 @@ DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-4o-mini").strip()
 print("ACTIVE MODEL:", DEFAULT_MODEL)
 
 # Responses API uses max_output_tokens
-INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "3000"))
+INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "750"))
 
 # If True, keep extra debug info in returned dict (not appended to answer text)
 INI_LLM_DEBUG = os.getenv("INI_LLM_DEBUG", "0").lower() in ("1", "true", "yes")
@@ -361,7 +361,7 @@ def generate_dynamic_answer_result(
         "Hard rules:\n"
         "- Be technically correct and specific. Prefer concrete mechanisms over vague claims.\n"
         "- Do NOT be generic or motivational. No filler, no clichés.\n"
-        "- Do NOT artificially shorten. If the topic is deep, write a deep answer.\n"
+        "- Keep answers concise, high-signal, and question-specific. Avoid unnecessary verbosity.\n"
         "- Aim for research-notes depth: include enough detail that a serious learner can implement or verify.\n"
         "- When helpful, include light pseudocode / equations / concrete parameter examples (but keep it readable).\n"
         "- Use crisp structure with headings and bullets. Preserve indentation.\n"
