@@ -1789,7 +1789,7 @@ def page_new_chat() -> None:
         if not isinstance(data, dict) or not data.get("categories"):
             return
 
-        with st.container(border=True):
+        with st.container():
             branch_ts = branch.get("ts") or now_label()
 
             intro = (branch.get("intro") or "").strip()
@@ -2034,21 +2034,68 @@ def page_new_chat() -> None:
 
 
 
+
     def _render_nc_ai_bubble(text: str, ts: str = "") -> None:
         body = (text or "").strip()
         if not body:
             return
 
-        # 🚨 REMOVE ANY HTML TAGS FROM LLM OUTPUT
-        
         body = re.sub(r"<[^>]+>", "", body)
 
-        # Render clean markdown (NO unsafe HTML)
-        st.markdown(body)
+        with st.container(border=True):
 
-        # timestamp (safe)
-        if ts:
-            st.caption(ts)
+            st.markdown(
+                """
+                <style>
+                .ini_ai_inner{
+                    background:#ffffff;
+                    border-radius:18px;
+                    padding:14px 16px 10px 16px;
+                    animation: fadeIn 0.18s ease;
+                }
+
+                @keyframes fadeIn{
+                    from{
+                        opacity:0;
+                        transform:translateY(4px);
+                    }
+                    to{
+                        opacity:1;
+                        transform:translateY(0px);
+                    }
+                }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown('<div class="ini_ai_inner">', unsafe_allow_html=True)
+
+            st.markdown(body)
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
+            if ts:
+                st.markdown(
+                    f"""
+                    <div style="
+                        margin-top:10px;
+                        text-align:right;
+                        color:#64748b;
+                        font-size:11px;
+                    ">
+                        {ts}
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+
+
+
+
+
+    
 
 
     
@@ -2840,7 +2887,7 @@ def page_new_chat() -> None:
 
 
 
-        with st.container(border=True):
+        with st.container():
             root_ts = (
                 st.session_state.chat_root_interrogate.get("ts", "")
                 if isinstance(st.session_state.chat_root_interrogate, dict)
