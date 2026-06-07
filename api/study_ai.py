@@ -102,34 +102,21 @@ def _build_instruction(mode: str) -> str:
 
     if mode == "focused":
         return (
-            "You are InI, a deep technical AI tutor.\n"
-            "Provide a structured explanation of the user's question.\n"
+            "You are InI, a thoughtful and visually clear AI tutor.\n"
+            "Answer the user's question in a concise but pleasant-to-read way.\n"
             "\n"
             "Formatting rules:\n"
             "- Do NOT include an Introduction section.\n"
             "- Do NOT produce a Question Map.\n"
-            "- Organize the answer into 7 to 10 clear titled sections.\n"
-            "- Each section title must be short, specific, bold and technical when appropriate.\n"
-            "- After each section title, write descriptive explanation paragraphs (2–7 sentences when needed).\n"
-            "- Insert a horizontal separator '---' between major sections.\n"
-            "- Use bullet points only when they genuinely help list properties, steps, examples, or edge cases.\n"
-            "- Use indentation for subpoints or examples where appropriate.\n"
-            "- Maintain research-level depth, technical clarity, and practical usefulness.\n"
-            "- Organize sections logically from fundamentals to mechanisms to implications.\n"
-            "- Avoid filler and avoid generic motivational language.\n"
-            "- Do NOT ask meta-questions unless required.\n"
-            "\n"
-            "Output pattern:\n"
-            "Section Title\n"
-            "\n"
-            "Explanation paragraph(s)\n"
-            "\n"
-            "---\n"
-            "\n"
-            "Next Section Title\n"
-            "\n"
-            "Explanation paragraph(s)\n"
-    )
+            "- Prefer 2 short readable paragraphs.\n"
+            "- Target roughly 150 to 220 words total.\n"
+            "- Avoid giant essays and avoid overly compressed bullets.\n"
+            "- Use smooth educational flow and natural language.\n"
+            "- Keep explanations beginner-friendly but intelligent.\n"
+            "- Use examples only when they genuinely improve clarity.\n"
+            "- Avoid numbered sections unless steps are necessary.\n"
+            "- End naturally and cleanly.\n"
+        )
 
     # deep (default)
     return (
@@ -146,7 +133,14 @@ def _build_instruction(mode: str) -> str:
     )
 
 
-
+def _archetype_for_mode(mode: str) -> str:
+    if mode == "high":
+        return "ORIENT"
+    if mode == "focused":
+        return "APPLY"
+    if mode == "quiz":
+        return "NEXT"
+    return "APPLY"
 
 
 
@@ -178,13 +172,25 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
     if not user_topic:
         user_topic = "Explain Artificial Intelligence."
 
-    intent = detect_intent(user_topic)
-    intent_name = (intent.get("intent") or "").strip().lower()
-    should_interrogate = bool(intent.get("should_interrogate", False))
-    should_answer_direct = bool(intent.get("should_answer_direct", False))
+    # Focused mode = clicked Question Map / FUQ answer.
+    # These are already educational questions and should bypass
+    # conversational intent filtering.
+    if mode == "focused":
+        intent_name = "focused_question"
+        should_interrogate = True
+        should_answer_direct = False
+    else:
+        intent = detect_intent(user_topic)
+        intent_name = (intent.get("intent") or "").strip().lower()
+        should_interrogate = bool(intent.get("should_interrogate", False))
+        should_answer_direct = bool(intent.get("should_answer_direct", False))
 
     # Normal conversational behavior: greeting / thanks / help / etc.
-    if not should_interrogate and not should_answer_direct:
+    if (
+    mode != "focused"
+    and not should_interrogate
+    and not should_answer_direct
+        ):
         reply = (intent.get("reply") or "").strip() or "Send a topic to explore."
         return {
             "mode": mode,
@@ -243,7 +249,7 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
     result = generate_dynamic_answer_result(
         topic=domain,
         topic_type="concept",
-        archetype="APPLY",
+        archetype=_archetype_for_mode(mode),
         question=question,
         meta={
             "mode": "study_ai",

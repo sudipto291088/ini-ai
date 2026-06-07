@@ -237,7 +237,28 @@ def _looks_like_direct_factual_query(text: str) -> bool:
     if not s:
         return False
 
-    # classic structured questions
+    # Educational questions should NOT be treated as factual lookups
+    EDUCATIONAL_QUESTION_PREFIXES = (
+        "what terminology",
+        "what methods",
+        "what techniques",
+        "what assumptions",
+        "what principles",
+        "what future developments",
+        "what frontier questions",
+        "what challenges",
+        "what limitations",
+        "what misconceptions",
+        "what pitfalls",
+        "what applications",
+        "why does",
+        "why do",
+    )
+
+    if any(s.startswith(prefix) for prefix in EDUCATIONAL_QUESTION_PREFIXES):
+        return False
+
+    # classic structured factual questions
     if any(s.startswith(prefix) for prefix in DIRECT_FACTUAL_PREFIXES):
         return True
 
@@ -259,7 +280,7 @@ def _looks_like_direct_factual_query(text: str) -> bool:
         "weather",
         "temperature",
         "population",
-        "age",
+        "agelet me ",
         "salary",
         "stock",
         "bitcoin",

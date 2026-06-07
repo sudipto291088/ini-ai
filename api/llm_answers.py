@@ -21,6 +21,9 @@ except Exception:
     pass
 
 
+
+
+
 # ============================================================
 # ENV / CONFIG
 # ============================================================
@@ -32,7 +35,10 @@ DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-4o-mini").strip()
 print("ACTIVE MODEL:", DEFAULT_MODEL)
 
 # Responses API uses max_output_tokens
-INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "750"))
+INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "1800"))
+
+
+
 
 # If True, keep extra debug info in returned dict (not appended to answer text)
 INI_LLM_DEBUG = os.getenv("INI_LLM_DEBUG", "0").lower() in ("1", "true", "yes")
@@ -361,13 +367,19 @@ def generate_dynamic_answer_result(
         "Hard rules:\n"
         "- Be technically correct and specific. Prefer concrete mechanisms over vague claims.\n"
         "- Do NOT be generic or motivational. No filler, no clichés.\n"
-        "- Keep answers concise, high-signal, and question-specific. Avoid unnecessary verbosity.\n"
-        "- Aim for research-notes depth: include enough detail that a serious learner can implement or verify.\n"
+        "- max_output_tokens is only a ceiling, NOT a target length.\n"
+        "- Match answer length to question complexity.\n"
+        "- For simple definition/plain-language questions, answer in 3-6 concise lines.\n"
+        "- For normal conceptual questions, answer in 2-4 short paragraphs or bullets.\n"
+        "- Use long deep technical answers ONLY when the question clearly asks for mechanisms, architecture, math, code, comparison, or advanced detail.\n"
+        "- Do NOT include every suggested section for every answer.\n"
         "- When helpful, include light pseudocode / equations / concrete parameter examples (but keep it readable).\n"
         "- Use crisp structure with headings and bullets. Preserve indentation.\n"
         "- Use definitions + intuition + mechanics + examples + failure modes.\n"
         "- If you make an assumption, state it.\n"
-        "- Prefer: precise terms, clear boundaries, and “where it breaks”.\n\n"
+        "- Prefer: precise terms, clear boundaries, and where it breaks.\n\n"
+        "- If the user input is ambiguous or conversational, still try to infer a meaningful educational interpretation instead of rejecting immediately.\n"
+        "- Avoid assistant-like refusal phrasing such as 'I can help, but...'.\n"
         "STRUCTURE POLICY:\n"
         "- Use the following structure internally, but DO NOT print the template text literally.\n"
         "- Only include sections that fit the question.\n"
@@ -385,8 +397,8 @@ def generate_dynamic_answer_result(
         "- APPLY: include where it works AND where it fails, with examples.\n"
         "- NEXT: include a short actionable learning plan + exercises.\n\n"
         "Continuation rule:\n"
-        "- If you hit output limits, stop cleanly mid-section without concluding.\n"
-        "- Only continue when asked.\n"
+        "- Prefer finishing naturally within the allowed response size.\n"
+        "- Only stop mid-section if absolutely necessary.\n"
         "- Do NOT output UI-control text like 'Continue', 'Continue?', '(continued)', 'to be continued', or instructions like 'click continue'.\n"
         "- If you want to ask permission to proceed, ask naturally without the word 'continue' (e.g., 'Want me to go deeper into X?' or 'Should I give an example next?').\n"
         "- CODE FORMATTING:\n"
@@ -404,6 +416,42 @@ def generate_dynamic_answer_result(
 
     era_hint = _era_hints(topic)
 
+
+    archetype_hint = ""
+
+    arch = (archetype or "").upper().strip()
+
+    if arch == "ORIENT":
+        archetype_hint = (
+            "Answer briefly and clearly. "
+            "Prefer 3-6 lines maximum for simple questions. "
+            "Do NOT write essays. "
+            "Do NOT explain every edge case. "
+            "Use only the most important explanation needed for understanding."
+            "End with a section titled 'Suggested Follow-ups' containing exactly 2 concise follow-up questions."
+        )
+
+    elif arch in {"APPLY", "RISK"}:
+        archetype_hint = (
+            "Use moderate depth with practical examples and concise explanations."
+        )
+
+    elif arch in {"MECHANISM", "SYSTEM", "INTERNAL"}:
+        archetype_hint = (
+            "Detailed technical depth is allowed when useful."
+        )
+
+    elif arch == "NEXT":
+        archetype_hint = (
+            "Prefer structured learning steps and concise roadmaps."
+        )
+
+
+
+
+
+
+
     meta_txt = ""
     if isinstance(meta, dict) and meta:
         meta_txt = "Meta context: " + ", ".join(
@@ -416,6 +464,7 @@ def generate_dynamic_answer_result(
         f"Archetype: {archetype}\n"
         f"{meta_txt}\n"
         f"Era hints (if relevant): {era_hint}\n\n"
+        f"Answer style guidance: {archetype_hint}\n"
         f"User question / instruction:\n{question}\n"
     )
 
@@ -425,18 +474,48 @@ def generate_dynamic_answer_result(
         "Content-Type": "application/json",
     }
 
+    arch = (archetype or "").upper().strip()
+
+    answer_token_limit = INI_LLM_MAX_TOKENS
+
+    # IMPORTANT:
+    # Never aggressively cap JSON generation.
+    # Interrogate question maps use:
+    # archetype="ORIENT" + expects_json=True
+    # and need enough tokens to finish valid JSON.
+
+    if not expects_json:
+
+        if arch == "ORIENT":
+            answer_token_limit = 600
+
+        elif arch in {"APPLY", "RISK"}:
+            answer_token_limit = 700
+
+        elif arch in {"MECHANISM", "SYSTEM", "INTERNAL"}:
+            answer_token_limit = 1400
+
+        elif arch == "NEXT":
+            answer_token_limit = 500
+
+
     payload: Dict[str, Any] = {
         "model": DEFAULT_MODEL,
+        "reasoning": {
+            "effort": "low"
+        },
         "input": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "max_output_tokens": INI_LLM_MAX_TOKENS,
+        "max_output_tokens": answer_token_limit,
         "text": {"format": {"type": "text"}},
     }
 
-    if expects_json:
-        payload["text"] = {"format": {"type": "json_object"}}
+    # TEMP DEBUG:
+    # Disable strict JSON formatting temporarily.
+    # The prompt already instructs the model to return JSON.
+    pass
 
     if previous_response_id:
         payload["previous_response_id"] = previous_response_id
@@ -445,6 +524,10 @@ def generate_dynamic_answer_result(
         resp = requests.post(url, headers=headers, json=payload, timeout=timeout_s)
 
         if resp.status_code != 200:
+            print("\n===== OPENAI HTTP ERROR =====")
+            print("STATUS:", resp.status_code)
+            print("BODY:", resp.text[:4000])
+            print("===== END HTTP ERROR =====\n")
             return {
                 "answer": "",
                 "incomplete": False,
@@ -460,16 +543,32 @@ def generate_dynamic_answer_result(
 
         data = resp.json()
 
+        print("\n===== RAW OPENAI RESPONSE =====")
+        print(data)
+        print("===== END RESPONSE =====\n")
+
         # Normalize immediately (first pass)
         text = _normalize_text(_extract_output_text(data).strip())
 
         incomplete, reason = _is_incomplete(data)
 
+        # If truncated, aggressively shorten the visible answer.
+        if incomplete and text:
+            text = text.strip()
+
+            # Cut off unfinished trailing fragments.
+            text = re.sub(r"[,\-\:\s]+$", "", text)
+
+            # Prefer complete ending.
+            last_period = text.rfind(".")
+            if last_period > 200:
+                text = text[: last_period + 1]
+
         # If we got incomplete but no text (rare: reasoning-only output), return debug-safe error
         if incomplete and not text:
             
             return {
-                "answer": " ",
+                "answer": "",
                 "incomplete": True,
                 "stop_reason": reason,
                 "status": data.get("status"),
@@ -494,6 +593,10 @@ def generate_dynamic_answer_result(
 
         text = _postprocess_text(text)
 
+        print("\n===== EXTRACTED TEXT =====")
+        print(text[:3000] if text else "EMPTY_TEXT")
+        print("===== END EXTRACTED TEXT =====\n")
+
         return {
             "answer": text,
             "incomplete": bool(incomplete),
@@ -508,6 +611,9 @@ def generate_dynamic_answer_result(
         }
 
     except Exception as e:
+        print("\n===== OPENAI EXCEPTION =====")
+        print(type(e).__name__, str(e))
+        print("===== END EXCEPTION =====\n")
         return {
             "answer": "",
             "incomplete": False,

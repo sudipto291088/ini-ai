@@ -459,10 +459,7 @@ def session_title_for_sidebar(sess: Dict[str, Any]) -> str:
 
 
 def needs_continue_flag(msg: Dict[str, Any]) -> bool:
-    if msg.get("incomplete") is True:
-        return True
-    sr = (msg.get("stop_reason") or "").strip().lower()
-    return sr == "max_output_tokens"
+    return bool(msg.get("incomplete"))
 
 
 def mode_label(mode: str) -> str:
@@ -595,6 +592,23 @@ def _learn_delete_href(sid: str) -> str:
     return f"?page=learn&session_action=delete&session_sid={quote(sid, safe='')}"
 
 
+
+def clean_followup_text(text: str) -> str:
+    s = (text or "").strip()
+
+    # remove numbering already supplied by backend
+    s = re.sub(r"^\(?\d+\)?[.)]?\s*", "", s)
+    s = re.sub(r"^[•\-*]\s*", "", s)
+
+    # remove wrapping quotes
+    s = s.strip('"').strip("'")
+
+    # collapse duplicate spaces
+    s = re.sub(r"\s+", " ", s)
+
+    return s.strip()
+
+
 def render_followup_links(
     page: str,
     followups: list[str],
@@ -605,8 +619,8 @@ def render_followup_links(
     seen = set()
 
     for fu in followups or []:
-        item = (fu or "").strip()
-        key = item.lower()
+        item = clean_followup_text(fu)
+        key = re.sub(r"\s+", " ", item.lower()).strip()
         if item and key not in seen:
             seen.add(key)
             cleaned.append(item)
@@ -624,14 +638,12 @@ def render_followup_links(
             href = _learn_branch_href(sid, fu)
 
         st.markdown(
-            f"""
-            <a class="ini_plain_link"
-               href="{href}"
-               target="{target}"
-               style="display:block; cursor:pointer; color:#2563eb !important; margin:8px 0;">
-               {idx}. {fu} ↗
-            </a>
-            """,
+            f'<a class="ini_plain_link" '
+            f'href="{href}" '
+            f'target="{target}" '
+            f'style="display:block; cursor:pointer; color:#2563eb !important; margin:8px 0;">'
+            f'{idx}. {fu} ↗'
+            f'</a>',
             unsafe_allow_html=True,
         )
 
@@ -641,8 +653,8 @@ def render_followup_text(followups: list[str]) -> None:
     seen = set()
 
     for fu in followups or []:
-        item = (fu or "").strip()
-        key = item.lower()
+        item = clean_followup_text(fu)
+        key = re.sub(r"\s+", " ", item.lower()).strip()
         if item and key not in seen:
             seen.add(key)
             cleaned.append(item)
@@ -1280,8 +1292,8 @@ def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
     ]
 
     def _clean_fu_line(s: str) -> str:
-        s = re.sub(r"^\d+\.\s*", "", s)
-        s = re.sub(r"^[-•*o]\s*", "", s).strip()
+        s = re.sub(r"^\(?\d+\)?[.)]?\s*", "", s)
+        s = re.sub(r"^[-•*o]\s*", "", s)
         return s.strip()
 
     marker_idx = None
@@ -1394,7 +1406,7 @@ def normalize_clicked_followup_prompt(text: str) -> str:
 # URL / Query routing
 # =========================
 qp = st.query_params
-page_param = (qp.get("page") or "chat").lower()
+page_param = (qp.get("page") or "home").lower()
 learn_sid = (qp.get("learn_sid") or "").strip()
 chat_sid = (qp.get("chat_sid") or "").strip()
 popup_chat_sid = (qp.get("popup_chat_sid") or "").strip()
@@ -1404,7 +1416,12 @@ learn_q = (qp.get("learn_q") or "").strip()
 session_action = (qp.get("session_action") or "").strip().lower()
 session_sid = (qp.get("session_sid") or "").strip()
 
-param_to_page = {"chat": "New Chat", "learn": "My New Learning", "proj": "New Project"}
+param_to_page = {
+    "home": "Home",
+    "chat": "New Chat",
+    "learn": "My New Learning",
+    "proj": "New Project",
+}
 
 if page_param in param_to_page:
     new_page = param_to_page[page_param]
@@ -1527,6 +1544,8 @@ with st.sidebar:
         """
         <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
+             href="?page=home" target="_self">🏠&nbsp;&nbsp;Home</a>
+          <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
              href="?page=chat" target="_self">💬&nbsp;&nbsp;New Chat</a>
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
              href="?page=learn" target="_self">📚&nbsp;&nbsp;My New Learning</a>
@@ -1643,6 +1662,74 @@ if st.session_state.rename_session_sid:
 # =========================
 # Pages
 # =========================
+
+def page_home():
+    st.markdown(
+        """
+# Welcome to InI.ai
+
+### Interrogate n Illustrate
+
+InI.ai is a Question Engine designed to help users learn through structured exploration rather than isolated answers.
+
+The platform is actively being improved and updated on a regular basis.
+
+---
+
+## Currently Available
+
+### New Chat
+
+The primary learning experience.
+
+**Interrogate**
+
+- Generates an Introduction.
+- Creates a structured Question Map.
+- Organizes learning from Foundations to Advanced topics.
+- AI, Machine Learning and Data Science topics use LLM-generated Question Maps.
+- Other topics use structured template-based Question Maps.
+
+**Illustrate**
+
+- Provides examples and applications for a topic.
+- Helps understand where a concept is used in the real world.
+
+**Recommended Topics**
+
+- Artificial Intelligence
+- Machine Learning
+- Data Science
+- Neural Networks
+- Transformers
+- Reinforcement Learning
+
+---
+
+### My New Learning
+
+Use it to obtain research-level information for any topic.
+
+Current modes:
+
+- Deep
+- Overview
+- Quiz
+
+---
+
+### Current Version
+
+Version: v0.1
+
+The platform is under active development and new features are being added regularly.
+
+---
+
+Enter a topic to begin your learning journey.
+"""
+    )
+
 def page_new_chat() -> None:
     st.markdown('<div class="bigtitle">New Chat</div>', unsafe_allow_html=True)
     st.caption(
@@ -1881,7 +1968,7 @@ def page_new_chat() -> None:
 
                             try:
                                 with st.spinner("Generating details... please wait."):
-                                    resp = fetch_study(q, mode="deep")
+                                    resp = fetch_study(q, mode="focused")
                                     answer = normalize_whitespace_for_readability(
                                         normalize_mojibake(resp.get("answer", "") or "")
                                     ).strip() or "No answer generated."
@@ -1935,9 +2022,7 @@ def page_new_chat() -> None:
 
                                 is_incomplete = False
                                 if isinstance(answer_obj, dict):
-                                    is_incomplete = bool(answer_obj.get("incomplete")) or (
-                                        (answer_obj.get("stop_reason") or "").strip().lower() == "max_output_tokens"
-                                    )
+                                    is_incomplete = bool(answer_obj.get("incomplete"))
 
                                 if is_incomplete:
                                     branch_continue_key = f"branch::{branch_idx}::{q}"
@@ -2042,8 +2127,42 @@ def page_new_chat() -> None:
 
         body = re.sub(r"<[^>]+>", "", body)
 
-        with st.container(border=True):
+        # =========================
+        # Highlight Engine
+        # =========================
 
+        def apply_highlights(s: str) -> str:
+
+            # == highlighted text ==
+            s = re.sub(
+                r"==(.+?)==",
+                r'<span style="background:#fef08a; padding:2px 5px; border-radius:6px; font-weight:600;">\1</span>',
+                s,
+                flags=re.DOTALL
+            )
+
+            # **important**
+            s = re.sub(
+                r"\*\*(.+?)\*\*",
+                r'<span style="color:#111827; font-weight:800;">\1</span>',
+                s,
+                flags=re.DOTALL
+            )
+
+            # `inline code`
+            s = re.sub(
+                r"`(.+?)`",
+                r'<span style="background:#f3f4f6; padding:2px 6px; border-radius:6px; font-family:monospace;">\1</span>',
+                s,
+                flags=re.DOTALL
+            )
+
+            return s
+
+        body = apply_highlights(body)
+
+        with st.container(border=True):
+            
             st.markdown(
                 """
                 <style>
@@ -2052,6 +2171,16 @@ def page_new_chat() -> None:
                     border-radius:18px;
                     padding:14px 16px 10px 16px;
                     animation: fadeIn 0.18s ease;
+                    line-height:1.65;
+                }
+
+                .ini_ai_inner ul,
+                .ini_ai_inner ol{
+                    padding-left:22px;
+                }
+
+                .ini_ai_inner li{
+                    margin-bottom:6px;
                 }
 
                 @keyframes fadeIn{
@@ -2071,7 +2200,7 @@ def page_new_chat() -> None:
 
             st.markdown('<div class="ini_ai_inner">', unsafe_allow_html=True)
 
-            st.markdown(body)
+            st.markdown(body, unsafe_allow_html=True)
 
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -2813,9 +2942,7 @@ def page_new_chat() -> None:
             st.markdown("#### Suggested follow-ups")
             render_followup_links("chat", followups, st.session_state.chat_active_id)
 
-        is_incomplete = bool(direct_answer.get("incomplete")) or (
-            (direct_answer.get("stop_reason") or "").strip().lower() == "max_output_tokens"
-        )
+        is_incomplete = bool(direct_answer.get("incomplete"))
 
         
 
@@ -2970,7 +3097,7 @@ def page_new_chat() -> None:
 
                             try:
                                 with st.spinner("Generating details... please wait."):
-                                    resp = fetch_study(q, mode="deep")
+                                    resp = fetch_study(q, mode="focused")
                                     answer = normalize_whitespace_for_readability(
                                         normalize_mojibake(resp.get("answer", "") or "")
                                     ).strip() or "No answer generated."
@@ -3018,9 +3145,7 @@ def page_new_chat() -> None:
 
                                 is_incomplete = False
                                 if isinstance(answer_obj, dict):
-                                    is_incomplete = bool(answer_obj.get("incomplete")) or (
-                                        (answer_obj.get("stop_reason") or "").strip().lower() == "max_output_tokens"
-                                    )
+                                    is_incomplete = bool(answer_obj.get("incomplete"))
 
                                 if is_incomplete:
                                     if st.button("Continue", key=f"nc_cont_{section}_{q}"):
@@ -3518,7 +3643,9 @@ def page_new_project() -> None:
 # =========================
 # Router
 # =========================
-if st.session_state.page == "New Chat":
+if st.session_state.page == "Home":
+    page_home()
+elif st.session_state.page == "New Chat":
     page_new_chat()
 elif st.session_state.page == "My New Learning":
     page_my_new_learning()

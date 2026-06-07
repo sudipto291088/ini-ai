@@ -15,10 +15,10 @@ from api.intent_layer import detect_intent
 # ------------------------------------------------------------
 try:
     from api.llm_answers import llm_enabled as _llm_enabled
-    from api.llm_answers import generate_dynamic_answer as llm_answer_question
+    from api.llm_answers import generate_dynamic_answer_result
 except Exception:
     _llm_enabled = None
-    llm_answer_question = None
+    generate_dynamic_answer_result = None
 
 
 def _llm_is_enabled() -> bool:
@@ -148,7 +148,7 @@ CATEGORY_ORDER = [
 ]
 
 SECTION_MIN_COUNTS = {
-    "Orientation": 7,
+    "Orientation": 5,
     "Foundations": 4,
     "Mechanisms": 4,
     "Methods & Tools": 4,
@@ -157,7 +157,7 @@ SECTION_MIN_COUNTS = {
     "Advanced / Future": 3,
 }
 
-MIN_TOTAL_QUESTIONS = 28
+MIN_TOTAL_QUESTIONS = 26
 MAX_TOTAL_QUESTIONS = 32
 MAIN_LLM_ATTEMPTS = 2
 
@@ -438,31 +438,53 @@ def _is_llm_topic(topic: str) -> bool:
 
 
 def _extract_json_object(text: str) -> Optional[dict]:
-    """
-    Pull a JSON object from an LLM response.
-    Handles ```json fences and extra text.
-    """
     if not isinstance(text, str) or not text.strip():
         return None
 
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+    text = text.strip()
+
+    fenced = re.search(
+        r"```(?:json)?\s*(\{.*?\})\s*```",
+        text,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
     if fenced:
-        candidate = fenced.group(1).strip()
-        try:
-            return json.loads(candidate)
-        except Exception:
-            pass
+        text = fenced.group(1).strip()
 
     start = text.find("{")
-    end = text.rfind("}")
-    if start >= 0 and end > start:
-        candidate = text[start:end + 1].strip()
-        try:
-            return json.loads(candidate)
-        except Exception:
-            return None
+    if start < 0:
+        return None
 
-    return None
+    candidate = text[start:].strip()
+
+    # Prefer clean full object if available
+    end = candidate.rfind("}")
+    if end > 0:
+        full_candidate = candidate[:end + 1].strip()
+        try:
+            return json.loads(full_candidate)
+        except Exception:
+            candidate = full_candidate
+
+    # Repair common LLM JSON issues
+    candidate = re.sub(r",\s*([}\]])", r"\1", candidate)
+
+    # Balance braces/brackets
+    open_curly = candidate.count("{")
+    close_curly = candidate.count("}")
+    open_square = candidate.count("[")
+    close_square = candidate.count("]")
+
+    if open_square > close_square:
+        candidate += "]" * (open_square - close_square)
+
+    if open_curly > close_curly:
+        candidate += "}" * (open_curly - close_curly)
+
+    try:
+        return json.loads(candidate)
+    except Exception:
+        return None
 
 
 def _llm_generate_questions_only(topic: str, topic_type: str) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
@@ -589,13 +611,15 @@ IMPORTANT
 Generate the questions now.
 """.strip()
 
-    raw = llm_answer_question(
-        topic=topic,
-        topic_type=topic_type,
-        archetype="ORIENT",
-        question=instruction,
-        meta={"mode": "interrogate_questions_only", "expects": "json"},
-    )
+    res = generate_dynamic_answer_result(
+    topic=topic,
+    topic_type=topic_type,
+    archetype="ORIENT",
+    question=instruction,
+    meta={"mode": "interrogate_questions_only", "expects": "json"},
+)
+
+    raw = (res.get("answer") or "").strip()
 
     data = _extract_json_object(raw or "")
 
@@ -772,13 +796,15 @@ JSON shape:
 }}
 """.strip()
 
-    raw = llm_answer_question(
-        topic=topic,
-        topic_type=topic_type,
-        archetype="ORIENT",
-        question=instruction,
-        meta={"mode": "interrogate_questions_rescue", "expects": "json"},
-    )
+    res = generate_dynamic_answer_result(
+    topic=topic,
+    topic_type=topic_type,
+    archetype="ORIENT",
+    question=instruction,
+    meta={"mode": "interrogate_questions_rescue", "expects": "json"},
+)
+
+    raw = (res.get("answer") or "").strip()
 
     data = _extract_json_object(raw or "")
     if not isinstance(data, dict):
@@ -894,7 +920,39 @@ def interrogate(text: str) -> Dict[str, Any]:
             "mode_hint": intent.get("mode_hint", "deep"),
         }
 
-    if not intent.get("should_interrogate", False):
+    # ------------------------------------------------------------
+    # SAFER routing:
+    # valid educational questions should still interrogate
+    # ------------------------------------------------------------
+
+    raw_text_lower = (text or "").strip().lower()
+
+    EDUCATIONAL_SIGNALS = [
+        "what",
+        "why",
+        "how",
+        "difference",
+        "compare",
+        "explain",
+        "define",
+        "benefit",
+        "problem",
+        "classification",
+        "types",
+        "future",
+        "applications",
+        "limitations",
+    ]
+
+    looks_educational = (
+        len(raw_text_lower) > 8
+        and any(sig in raw_text_lower for sig in EDUCATIONAL_SIGNALS)
+    )
+
+    if (
+        not intent.get("should_interrogate", False)
+        and not looks_educational
+    ):
         return {
             "topic": "",
             "topic_type": intent.get("intent", "conversation"),
@@ -913,6 +971,9 @@ def interrogate(text: str) -> Dict[str, Any]:
         }
 
     clean_topic = extract_topic(text)
+
+    print("RAW TOPIC:", text)
+    print("EXTRACTED TOPIC:", clean_topic)
 
     if not clean_topic:
         return {
@@ -934,39 +995,77 @@ def interrogate(text: str) -> Dict[str, Any]:
     topic_type, confidence = detect_topic_type(clean_topic)
 
     # AI topic: LLM questions-only (answers on click via /answer)
-    use_llm = _llm_is_enabled() and _is_llm_topic(clean_topic) and (llm_answer_question is not None)
+    use_llm = (
+    _llm_is_enabled()
+    and _is_llm_topic(clean_topic)
+    and (generate_dynamic_answer_result is not None)
+)
 
     if use_llm:
         summary, llm_categories = [], {}
 
         # STEP 1: Use full LLM generation FIRST (stronger output)
         print("USING FULL QUESTION GENERATOR")
+
         for _ in range(MAIN_LLM_ATTEMPTS):
-            summary, llm_categories = _llm_generate_questions_only(clean_topic, topic_type)
+            summary, llm_categories = _llm_generate_questions_only(
+                clean_topic,
+                topic_type,
+            )
+
             if llm_categories and any(llm_categories.get(c) for c in llm_categories):
+                print("FULL QUESTION GENERATOR SUCCESS")
                 break
+            else:
+                print("FULL QUESTION GENERATOR FAILED")
+                llm_categories = {}
 
         # STEP 2: If full LLM fails → fallback to lighter rescue prompt
         if not (llm_categories and any(llm_categories.get(c) for c in llm_categories)):
             print("USING RESCUE QUESTION GENERATOR")
-            summary, llm_categories = _llm_generate_questions_only_rescue(clean_topic, topic_type)
 
-        # STEP 3: If we got valid categories → proceed normally
+            summary, llm_categories = _llm_generate_questions_only_rescue(
+                clean_topic,
+                topic_type,
+            )
+
+        # STEP 3: If we got a VALID full map → proceed normally
         if llm_categories and any(llm_categories.get(c) for c in llm_categories):
-            llm_categories = _top_up_question_map(llm_categories, clean_topic, topic_type)
+
+            validated_summary = (
+                    summary
+                    if isinstance(summary, list) and len(summary) >= 3
+                    else build_summary(clean_topic, topic_type, confidence)
+                )
+            
+            # Only top-up if an entire category is missing
+            missing_category = any(
+                len(llm_categories.get(cat, [])) == 0
+                for cat in CATEGORY_ORDER
+            )
+
+            if missing_category:
+                repair_summary, repair_categories = _llm_generate_questions_only_rescue(
+                    clean_topic,
+                    topic_type,
+                )
+
+                for cat in CATEGORY_ORDER:
+                    if len(llm_categories.get(cat, [])) == 0 and repair_categories.get(cat):
+                        llm_categories[cat] = repair_categories[cat]
 
             return {
                 "topic": clean_topic,
                 "topic_type": topic_type,
                 "categories": llm_categories,
-                "summary": summary or build_summary(clean_topic, topic_type, confidence),
+                "summary": validated_summary,                
                 "confidence": confidence,
                 "notes": [
                     "v0: interrogation engine",
                     "v0: AI uses LLM for questions",
                     "v0: answers fetched on click via /answer (LLM)",
                     "v0: UI reveals answers on click (progressive disclosure)",
-                    "v0: underfilled sections are topped up from templates when needed",
+                    "v0: validated full LLM question-map",
                 ],
                 "llm_used": True,
                 "intent": intent.get("intent", "topic_explore"),
