@@ -501,9 +501,6 @@ def generate_dynamic_answer_result(
 
     payload: Dict[str, Any] = {
         "model": DEFAULT_MODEL,
-        "reasoning": {
-            "effort": "low"
-        },
         "input": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
