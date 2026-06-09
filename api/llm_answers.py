@@ -32,10 +32,14 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
 # Responses-compatible model
 DEFAULT_MODEL = os.getenv("INI_LLM_MODEL", "gpt-4o-mini").strip()
+print("LOADED FROM API/LLM_ANSWERS.PY")
 print("ACTIVE MODEL:", DEFAULT_MODEL)
+print("INI_LLM_MODEL =", os.getenv("INI_LLM_MODEL"))
+
+
 
 # Responses API uses max_output_tokens
-INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "1800"))
+INI_LLM_MAX_TOKENS = int(os.getenv("INI_LLM_MAX_TOKENS", "3000"))
 
 
 
@@ -501,6 +505,7 @@ def generate_dynamic_answer_result(
 
     payload: Dict[str, Any] = {
         "model": DEFAULT_MODEL,
+        "reasoning": {"effort": "minimal"},
         "input": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},

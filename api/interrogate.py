@@ -549,9 +549,9 @@ Questions must follow a LEARNING LADDER:
 
 QUESTION RULES
 
-• Generate between 28 and 32 questions total.
+• Generate between 26 and 30 questions total.
 • Respect these section minimums:
-  - Orientation: 7 to 9 questions
+  - Orientation: 5 questions
   - Foundations: 4 to 5 questions
   - Mechanisms: 4 to 5 questions
   - Methods & Tools: 4 to 5 questions
@@ -562,7 +562,7 @@ QUESTION RULES
 • Avoid duplicates.
 • Avoid vague or generic questions.
 • Questions should reveal gaps in understanding.
-• Do NOT collapse Orientation into fewer than 7 questions.
+• Do NOT generate more than 5 Orientation questions.
 
 STRUCTURE
 
@@ -764,9 +764,9 @@ Rules:
 - No prose outside JSON
 - No markdown
 - No code fences
-- Generate between 28 and 32 questions total
+- Generate between 26 and 30 questions total
 - Respect these section minimums:
-  - Orientation: 7 to 9 questions
+  - Orientation: 5 questions
   - Foundations: 4 to 5 questions
   - Mechanisms: 4 to 5 questions
   - Methods & Tools: 4 to 5 questions
@@ -776,6 +776,7 @@ Rules:
 - Questions must be specific and modern
 - First question in "Orientation" must define the topic clearly
 - Do not leave any category empty
+- Do NOT generate more than 5 Orientation questions.
 
 JSON shape:
 {{
@@ -1013,7 +1014,7 @@ def interrogate(text: str) -> Dict[str, Any]:
                 topic_type,
             )
 
-            if llm_categories and any(llm_categories.get(c) for c in llm_categories):
+            if _question_map_counts_ok(llm_categories):
                 print("FULL QUESTION GENERATOR SUCCESS")
                 break
             else:
@@ -1030,7 +1031,7 @@ def interrogate(text: str) -> Dict[str, Any]:
             )
 
         # STEP 3: If we got a VALID full map → proceed normally
-        if llm_categories and any(llm_categories.get(c) for c in llm_categories):
+        if _question_map_counts_ok(llm_categories):
 
             validated_summary = (
                     summary
