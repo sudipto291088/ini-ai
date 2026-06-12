@@ -1537,7 +1537,7 @@ with st.sidebar:
         st.caption("Tip: install 'streamlit-autorefresh' to enable a live-updating clock.")
 
     st.markdown("## InI.ai")
-    st.markdown('<span class="badge">v0 • AI Tutor</span>', unsafe_allow_html=True)
+    st.markdown('<span class="badge">v0.1.1 • AI Tutor</span>', unsafe_allow_html=True)
 
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750; margin-top:10px;">Navigation</div>', unsafe_allow_html=True)
     st.markdown(
@@ -1720,7 +1720,7 @@ Current modes:
 
 ### Current Version
 
-Version: v0.1
+Version: v0.1.1
 
 The platform is under active development and new features are being added regularly.
 
@@ -2595,7 +2595,9 @@ def page_new_chat() -> None:
                 color: #ffffff !important;
                 -webkit-text-fill-color: #ffffff !important;
                 font-size: 14px !important;
-                font-weight: 900 !important;
+                font-weight: 800 !important;
+                letter-spacing: 0.2px !important;
+                opacity: 1 !important;
                 margin: 0 !important;
                 white-space: nowrap !important;
             }
