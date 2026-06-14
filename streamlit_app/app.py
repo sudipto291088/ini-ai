@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from typing import Any, Dict, Optional
 from urllib.parse import quote, urlencode
+from pathlib import Path
 
 import requests
 import streamlit as st
@@ -407,6 +408,19 @@ init_db()
 # cleanup_empty_sessions()
 
 st.markdown(CSS, unsafe_allow_html=True)
+
+# Load external styles.css (safe addition)
+try:
+    css_path = Path(__file__).parent / "styles.css"
+
+    if css_path.exists():
+        with open(css_path, "r", encoding="utf-8") as f:
+            st.markdown(
+                f"<style>{f.read()}</style>",
+                unsafe_allow_html=True,
+            )
+except Exception:
+    pass
 
 
 
