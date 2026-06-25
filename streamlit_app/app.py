@@ -2725,16 +2725,33 @@ def page_new_chat() -> None:
         st.markdown(
             """
             <style>
+
+            div[data-testid="stTextInput"]:has(input[aria-label="NC_BOTTOM_TOPIC"]){
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+
+            div[data-testid="stTextInput"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) > div{
+                background: transparent !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+
             div[data-testid="stTextInput"] input[aria-label="NC_BOTTOM_TOPIC"]{
                 height: 46px !important;
                 border-radius: 14px !important;
                 font-size: 15px !important;
-                border: 1px solid #e5e7eb !important;
-                background: #ffffff !important;
-                box-shadow: 0 2px 8px rgba(15,23,42,0.04) !important;
+                border: none !important;
+                background: transparent !important;
+                box-shadow: none !important;
                 padding: 10px 14px !important;
             }
 
+
+
+
+            
             div[data-testid="stTextInput"] input[aria-label="NC_BOTTOM_TOPIC"]:focus{
                 border: 1px solid #d1d5db !important;
                 box-shadow: 0 2px 8px rgba(15,23,42,0.04) !important;
@@ -2761,19 +2778,63 @@ def page_new_chat() -> None:
                 background: #111111 !important;
                 border-color: #111111 !important;
             }
+
+            .ini-chatbar-shell{
+                border: none !important;
+                border-radius: 0 !important;
+                background: transparent !important;
+                padding: 0 !important;
+            }
+
+            .ini-chatbar-shell [data-testid="stHorizontalBlock"]{
+                align-items: center !important;
+            }
+
+
+            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]){
+                border: 1px solid #e5e7eb !important;
+                border-radius: 16px !important;
+                background: #ffffff !important;
+                padding: 8px !important;
+                align-items: center !important;
+                gap: 6px !important;
+            }
+
+            
+
+            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) input{
+                border: none !important;
+                box-shadow: none !important;
+            }
+
+            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) button{
+                background: #000000 !important;
+                color: #ffffff !important;
+                -webkit-text-fill-color: #ffffff !important;
+                border-radius: 12px !important;
+                font-weight: 900 !important;
+            }
+
+
+
             </style>
             """,
             unsafe_allow_html=True,
         )
 
-        st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-
-        left, center, right = st.columns([0.9, 8.2, 0.9])
+        # st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
         run = False
         illustrate_run = False
 
-        with center:
+        st.markdown('<div class="ini-chatbar-shell">', unsafe_allow_html=True)
+
+        input_col, int_col, ill_col = st.columns(
+            [8.5, 1.4, 1.4],
+            gap="small"
+        )
+
+        with input_col:
             st.text_input(
                 "NC_BOTTOM_TOPIC",
                 key="chat_bottom_topic_input",
@@ -2782,29 +2843,21 @@ def page_new_chat() -> None:
                 on_change=_request_chat_bottom_enter_submit,
             )
 
-            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        with int_col:
+            run = st.button(
+                "Interrogate",
+                key="nc_bottom_interrogate",
+                use_container_width=True,
+            )
 
-            st.markdown("<div class='nc-bottom-btn-row'>", unsafe_allow_html=True)
+        with ill_col:
+            illustrate_run = st.button(
+                "Illustrate",
+                key="nc_bottom_illustrate",
+                use_container_width=True,
+            )
 
-            btn_outer_l, btn_outer_r = st.columns([1, 1], gap="small")
-
-            with btn_outer_l:
-                btn_pad_l, btn_slot_l = st.columns([1.45, 1.0], gap="small")
-                with btn_slot_l:
-                    run = st.button(
-                        "Interrogate",
-                        key="nc_bottom_interrogate",
-                        use_container_width=True,
-                    )
-
-            with btn_outer_r:
-                btn_slot_r, btn_pad_r = st.columns([0.89, 1.45], gap="small")
-                with btn_slot_r:
-                    illustrate_run = st.button(
-                        "Illustrate",
-                        key="nc_bottom_illustrate",
-                        use_container_width=True,
-                    )
+        st.markdown('</div>', unsafe_allow_html=True)
 
             
 

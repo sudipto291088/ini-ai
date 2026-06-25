@@ -1,1 +1,68 @@
 /* InI UI Styles */
+
+
+
+/* Active Chat Bar */
+
+.ini-chatbar {
+    border: 1px solid #d9d9d9;
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: white;
+}
+
+.ini-chatbar-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.ini-chatbar-btn {
+    background: black;
+    color: white;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 6px 16px;
+}
+
+.ini-chatbar-shell {
+    border: none;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+}
+
+.ini-chatbar-shell div[data-testid="stTextInput"] input {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    height: 40px !important;
+    padding: 8px 10px !important;
+}
+
+.ini-chatbar-shell div[data-testid="stTextInput"] input:focus {
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.ini-chatbar-shell div.stButton > button {
+    background: #000000 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border: 1px solid #000000 !important;
+    border-radius: 9px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 12px !important;
+    font-weight: 900 !important;
+    text-align: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+}
+
+.ini-chatbar-shell div.stButton > button p,
+.ini-chatbar-shell div.stButton > button span,
+.ini-chatbar-shell div.stButton > button div {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    font-weight: 900 !important;
+}
