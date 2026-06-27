@@ -1701,8 +1701,8 @@ The primary learning experience.
 - Generates an Introduction.
 - Creates a structured Question Map.
 - Organizes learning from Foundations to Advanced topics.
-- AI, Machine Learning and Data Science topics use LLM-generated Question Maps.
-- Other topics use structured template-based Question Maps.
+- Supported technical domains use LLM-generated Question Maps.
+- Topics outside current LLM coverage use structured template-based Question Maps.
 
 **Illustrate**
 
@@ -1720,9 +1720,24 @@ The primary learning experience.
 
 ---
 
+## What's New in v0.1.2
+
+InI now provides expanded Question Map coverage across:
+
+- **Computer Science:** Algorithms, Operating Systems and Computer Architecture
+- **Computer Hardware:** CPUs, GPUs, processors, AMD, Ryzen and multi-core architectures
+- **Software and Cloud:** Docker and Kubernetes
+- **Machine Learning and Statistics:** XGBoost, PCA, Bayesian Statistics, Time Series Forecasting and Gradient Descent
+
+This release also improves recognition of short technical topics and preserves specific subjects such as Spatial AI and Constitutional AI throughout the learning experience.
+
+---
+
 ### My New Learning
 
-Use it to obtain research-level information for any topic.
+**Status: In active development**
+
+This learning workspace is currently being refined. Its research modes, session continuity and overall learning experience will continue to improve in upcoming releases.
 
 Current modes:
 
