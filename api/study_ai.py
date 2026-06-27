@@ -143,6 +143,13 @@ def _archetype_for_mode(mode: str) -> str:
     return "APPLY"
 
 
+def _resolve_topic_context(topic: str) -> str:
+    """Add context only for exact acronyms already routed as technical topics."""
+    if topic.strip().lower() == "amd":
+        return "AMD (Advanced Micro Devices)"
+    return topic
+
+
 
 
 def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
@@ -171,6 +178,8 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
 
     if not user_topic:
         user_topic = "Explain Artificial Intelligence."
+
+    llm_topic = _resolve_topic_context(user_topic)
 
     # Focused mode = clicked Question Map / FUQ answer.
     # These are already educational questions and should bypass
@@ -242,12 +251,12 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
     else:
         question = (
             f"{instruction}\n"
-            f"User prompt: {user_topic}\n"
+            f"User prompt: {llm_topic}\n"
         )
 
     # ---- Call core LLM engine ----
     result = generate_dynamic_answer_result(
-        topic=user_topic,
+        topic=llm_topic,
         topic_type="concept",
         archetype=_archetype_for_mode(mode),
         question=question,
