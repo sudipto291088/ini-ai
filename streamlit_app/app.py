@@ -1551,14 +1551,14 @@ with st.sidebar:
         st.caption("Tip: install 'streamlit-autorefresh' to enable a live-updating clock.")
 
     st.markdown("## InI.ai")
-    st.markdown('<span class="badge">v0.1.1 • AI Tutor</span>', unsafe_allow_html=True)
+    st.markdown('<span class="badge">v0.1.2 • AI Tutor</span>', unsafe_allow_html=True)
 
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750; margin-top:10px;">Navigation</div>', unsafe_allow_html=True)
     st.markdown(
         """
         <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
-             href="?page=home" target="_self">🏠&nbsp;&nbsp;Home</a>
+             href="?page=home" target="_self">🏠&nbsp;&nbsp;Introduction</a>
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
              href="?page=chat" target="_self">💬&nbsp;&nbsp;New Chat</a>
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
@@ -1734,7 +1734,7 @@ Current modes:
 
 ### Current Version
 
-Version: v0.1.1
+Version: v0.1.2
 
 The platform is under active development and new features are being added regularly.
 
@@ -2603,13 +2603,13 @@ def page_new_chat() -> None:
                 margin: 0 !important;
             }
 
-            button[data-testid="baseButton-secondary"] p,
-            button[data-testid="baseButton-secondary"] span,
-            button[data-testid="baseButton-secondary"] div{
+            div.stButton > button[kind="secondary"] p,
+            div.stButton > button[kind="secondary"] span,
+            div.stButton > button[kind="secondary"] div{
                 color: #ffffff !important;
                 -webkit-text-fill-color: #ffffff !important;
                 font-size: 14px !important;
-                font-weight: 800 !important;
+                font-weight: 900 !important;
                 letter-spacing: 0.2px !important;
                 opacity: 1 !important;
                 margin: 0 !important;
@@ -2772,6 +2772,12 @@ def page_new_chat() -> None:
                 box-shadow: none !important;
                 text-align: center !important;
                 justify-content: center !important;
+            }
+
+            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) button p,
+            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) button span,
+            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) button div{
+                font-weight: 900 !important;
             }
 
             .nc-bottom-btn-row div.stButton > button:hover{
