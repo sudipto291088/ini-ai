@@ -157,6 +157,31 @@ DIRECT_FACTUAL_KEYWORDS = {
     "gold price", "silver price", "fuel price", "live", "now", "currently",
 }
 
+TECHNICAL_TOPIC_PHRASES = {
+    "ai",
+    "agi",
+    "ml",
+    "pca",
+    "gpu",
+    "cpu",
+    "amd",
+    "ryzen",
+    "processor",
+    "xgboost",
+    "docker",
+    "kubernetes",
+    "sql",
+    "time series",
+    "time series forecasting",
+    "bayesian statistics",
+    "principal component analysis",
+    "gradient descent",
+    "gradient descent variations",
+    "constitutional ai",
+    "spatial ai",
+    "artificial general intelligence",
+}
+
 QUIZ_CUES = {
     "quiz", "test me", "practice questions", "mcq", "multiple choice",
     "ask me questions", "challenge me", "give me a quiz",
@@ -231,10 +256,22 @@ def _is_smalltalk(text: str) -> bool:
     return _contains_phrase(s, SMALLTALK_PHRASES)
 
 
+def _is_known_technical_topic(text: str) -> bool:
+    s = _normalize_compact(text)
+    if not s:
+        return False
+
+    normalized_topics = {_normalize_compact(p) for p in TECHNICAL_TOPIC_PHRASES}
+    return s in normalized_topics
+
+
 def _looks_like_direct_factual_query(text: str) -> bool:
     s = _normalize_compact(text)
 
     if not s:
+        return False
+
+    if _is_known_technical_topic(text):
         return False
 
     # Educational questions should NOT be treated as factual lookups
@@ -298,6 +335,9 @@ def _looks_like_topic(text: str) -> bool:
     s = _normalize_compact(text)
     if not s:
         return False
+
+    if _is_known_technical_topic(text):
+        return True
 
     if _looks_like_direct_factual_query(s):
         return False

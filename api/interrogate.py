@@ -406,8 +406,11 @@ def _is_llm_topic(topic: str) -> bool:
     tl = (topic or "").lower()
 
     AI_KEYWORDS = [
+        # AI / ML / Data Science
         "ai",
+        "agi",
         "artificial intelligence",
+        "artificial general intelligence",
         "machine learning",
         "ml",
         "deep learning",
@@ -432,9 +435,62 @@ def _is_llm_topic(topic: str) -> bool:
         "prediction",
         "classification",
         "regression",
+        "bayesian statistics",
+        "time series",
+        "time series forecasting",
+        "principal component analysis",
+        "pca",
+        "gradient descent",
+        "xgboost",
+
+        # Computer Science / Software
+        "computer science",
+        "software engineering",
+        "programming",
+        "coding",
+        "algorithm",
+        "data structure",
+        "operating system",
+        "database",
+        "sql",
+        "networking",
+        "cybersecurity",
+        "cloud computing",
+        "docker",
+        "kubernetes",
+
+        # Computer Architecture / Hardware
+        "computer architecture",
+        "computer hardware",
+        "cpu",
+        "processor",
+        "core",
+        "dual core",
+        "quad core",
+        "hexa core",
+        "octa core",
+        "thread",
+        "cache",
+        "memory",
+        "ram",
+        "gpu",
+        "intel",
+        "amd",
+        "ryzen",
     ]
 
-    return any(k in tl for k in AI_KEYWORDS)
+    short_tokens = {"ai", "agi", "ml", "nlp", "gpt", "sql", "cpu", "gpu", "amd", "ram", "pca"}
+
+    for keyword in AI_KEYWORDS:
+        if keyword in short_tokens:
+            if re.search(rf"(?<![a-z0-9]){re.escape(keyword)}(?![a-z0-9])", tl):
+                return True
+            continue
+
+        if keyword in tl:
+            return True
+
+    return False
 
 
 def _extract_json_object(text: str) -> Optional[dict]:

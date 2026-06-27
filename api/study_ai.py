@@ -247,7 +247,7 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
 
     # ---- Call core LLM engine ----
     result = generate_dynamic_answer_result(
-        topic=domain,
+        topic=user_topic,
         topic_type="concept",
         archetype=_archetype_for_mode(mode),
         question=question,
