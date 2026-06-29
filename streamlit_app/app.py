@@ -17,6 +17,7 @@ from storage_sqlite import (
     delete_session,
     rename_session,
 )
+from time_utils import browser_local_now
 
 
 
@@ -438,8 +439,16 @@ except Exception:
 # =========================
 # Helpers
 # =========================
+def _user_now() -> datetime:
+    try:
+        timezone_offset = st.context.timezone_offset
+    except Exception:
+        timezone_offset = None
+    return browser_local_now(timezone_offset)
+
+
 def now_label() -> str:
-    return datetime.now().strftime("%a, %b %d • %I:%M %p")
+    return _user_now().strftime("%a, %b %d • %I:%M %p")
 
 
 def new_msg_id(prefix: str) -> str:
@@ -447,7 +456,7 @@ def new_msg_id(prefix: str) -> str:
 
 
 def clock_parts() -> Dict[str, str]:
-    now = datetime.now()
+    now = _user_now()
     t = now.strftime("%I:%M").lstrip("0") or now.strftime("%I:%M")
     return {"time": t, "ampm": now.strftime("%p"), "date": now.strftime("%m/%d"), "dow": now.strftime("%a")}
 
@@ -478,7 +487,7 @@ def normalize_whitespace_for_readability(text: str) -> str:
 def session_title_for_sidebar(sess: Dict[str, Any]) -> str:
     first = (sess.get("last_prompt") or sess.get("title") or "Session").strip()
     kw = (first.split()[0] if first else "Session").strip().strip(".,:;!?").upper()
-    created = sess.get("created") or datetime.now().strftime("%b %d.%Y")
+    created = sess.get("created") or _user_now().strftime("%b %d.%Y")
     return f"{kw}.{created}"
 
 
@@ -845,7 +854,7 @@ def ensure_learning_session() -> str:
 
     sid = f"learn-{secrets.token_urlsafe(12)}"
     st.session_state.learning_sessions[sid] = {
-        "created": datetime.now().strftime("%b %d.%Y"),
+        "created": _user_now().strftime("%b %d.%Y"),
         "messages": [],
         "last_prompt": "",
         "title": "Learning Session",
@@ -858,7 +867,7 @@ def ensure_learning_session() -> str:
 def start_new_learning_session() -> str:
     sid = f"learn-{secrets.token_urlsafe(12)}"
     st.session_state.learning_sessions[sid] = {
-        "created": datetime.now().strftime("%b %d.%Y"),
+        "created": _user_now().strftime("%b %d.%Y"),
         "messages": [],
         "last_prompt": "",
         "title": "Learning Session",
@@ -869,7 +878,7 @@ def start_new_learning_session() -> str:
 
 
 def _persist_learning_session(sid: str, sess: Dict[str, Any]) -> None:
-    created = sess.get("created") or datetime.now().strftime("%b %d.%Y")
+    created = sess.get("created") or _user_now().strftime("%b %d.%Y")
 
     default_titles = {"", "Learning Session", "Session", "New Session"}
 
@@ -1015,7 +1024,7 @@ def _persist_new_chat_session(sid: Optional[str] = None) -> str:
     st.session_state.chat_active_id = sid
     st.session_state.chat_loaded_sid = sid
 
-    created = datetime.now().strftime("%b %d.%Y")
+    created = _user_now().strftime("%b %d.%Y")
     existing = st.session_state.chat_sessions.get(sid, {})
     if existing.get("created"):
         created = existing["created"]
@@ -1050,7 +1059,7 @@ def _load_new_chat_session(sid: str) -> bool:
     st.session_state.chat_active_id = sid
     st.session_state.chat_loaded_sid = sid
     st.session_state.chat_sessions[sid] = {
-        "created": loaded.get("created") or datetime.now().strftime("%b %d.%Y"),
+        "created": loaded.get("created") or _user_now().strftime("%b %d.%Y"),
         "title": (loaded.get("title") or "New Chat Session"),
         "payload": payload,
     }
@@ -1509,7 +1518,7 @@ if learn_sid:
     if loaded:
         st.session_state.learning_active_id = learn_sid
         st.session_state.learning_sessions[learn_sid] = {
-            "created": loaded.get("created") or datetime.now().strftime("%b %d.%Y"),
+            "created": loaded.get("created") or _user_now().strftime("%b %d.%Y"),
             "messages": loaded.get("messages") or [],
             "title": (loaded.get("title") or "Learning Session"),
             "last_prompt": "",
