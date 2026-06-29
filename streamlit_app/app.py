@@ -3601,9 +3601,291 @@ def _render_user_mode_hint(mode_lbl: str) -> None:
             st.caption(f"{ico} {label}")
 
 
+def _render_my_learning_styles() -> None:
+    st.markdown(
+        """
+        <style>
+        [data-testid="stMainBlockContainer"]:has(.mnl-page-marker) {
+          width: 100%;
+          max-width: 1000px;
+          margin-left: 0;
+          margin-right: auto;
+          padding-top: 1.8rem;
+          padding-bottom: 2rem;
+        }
+        [data-testid="stMainBlockContainer"]:has(.mnl-empty-spacer) {
+          max-width: none;
+        }
+        [data-testid="stMainBlockContainer"]:has(.mnl-empty-spacer) .mnl-header {
+          width: min(100%, 840px);
+        }
+        [data-testid="stVerticalBlock"]:has(.mnl-page-marker) {
+          min-height: calc(100vh - 64px);
+        }
+        .mnl-page-marker { display: none; }
+        .mnl-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          margin-bottom: 0;
+        }
+        .mnl-title {
+          color: #111827;
+          font-size: 32px;
+          font-weight: 780;
+          line-height: 1.15;
+        }
+        .mnl-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: #92400e;
+          font-size: 13px;
+          font-weight: 650;
+          white-space: nowrap;
+        }
+        .mnl-status::before {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #f59e0b;
+          content: "";
+        }
+        .mnl-mode-label {
+          margin-bottom: 7px;
+          color: #6b7280;
+          font-size: 12px;
+          font-weight: 650;
+          text-transform: uppercase;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.st-key-mnl_mode_deep) {
+          width: min(100%, 520px);
+          gap: 4px;
+          flex-wrap: nowrap;
+          padding: 4px;
+          border: 1px solid #dfe3e8;
+          border-radius: 7px;
+          background: #f4f6f7;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.st-key-mnl_mode_deep)
+        > div[data-testid="stColumn"] {
+          width: 0 !important;
+          min-width: 0 !important;
+          flex: 1 1 0 !important;
+        }
+        .st-key-mnl_mode_deep button,
+        .st-key-mnl_mode_overview button,
+        .st-key-mnl_mode_quiz button {
+          min-width: 0 !important;
+          height: 38px;
+          border: 0 !important;
+          border-radius: 5px !important;
+          box-shadow: none !important;
+          font-weight: 650 !important;
+        }
+        .st-key-mnl_mode_deep button[kind="secondary"],
+        .st-key-mnl_mode_overview button[kind="secondary"],
+        .st-key-mnl_mode_quiz button[kind="secondary"] {
+          color: #4b5563 !important;
+          background: transparent !important;
+        }
+        .st-key-mnl_mode_deep button[kind="primary"],
+        .st-key-mnl_mode_overview button[kind="primary"],
+        .st-key-mnl_mode_quiz button[kind="primary"] {
+          color: #ffffff !important;
+          background: #087f7b !important;
+        }
+        .mnl-divider {
+          height: 1px;
+          margin: 18px 0 26px;
+          background: #e5e7eb;
+        }
+        .mnl-assistant-label {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          margin: 24px 0 10px;
+          color: #374151;
+          font-size: 13px;
+          font-weight: 700;
+        }
+        .mnl-assistant-mark {
+          display: inline-flex;
+          width: 29px;
+          height: 29px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          color: #ffffff;
+          background: #087f7b;
+          font-size: 11px;
+        }
+        .mnl-mode-tag {
+          display: inline-block;
+          margin-top: 7px;
+          color: #52606d;
+          font-size: 11px;
+          font-weight: 650;
+        }
+        div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+          width: min(78%, 720px);
+          margin-left: auto;
+          padding: 13px 16px;
+          border: 1px solid #e3e7ea;
+          border-radius: 7px;
+          background: #f5f7f8;
+        }
+        div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"])
+        [data-testid="stChatMessageAvatarUser"] {
+          display: none;
+        }
+        .mnl-empty-spacer {
+          height: clamp(150px, calc(50vh - 125px), 320px);
+        }
+        [data-testid="stElementContainer"]:has(.mnl-active-spacer) {
+          min-height: 44px;
+          flex: 1 1 auto;
+        }
+        .mnl-active-spacer { height: 100%; }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"]) {
+          width: min(100%, 920px);
+          align-items: center;
+          gap: 10px;
+          flex-wrap: nowrap;
+          margin-inline: auto;
+          padding: 7px 8px 7px 17px;
+          border: 1px solid #cfd5da;
+          border-radius: 999px;
+          background: #ffffff;
+          box-shadow: 0 7px 22px rgba(17, 24, 39, 0.08);
+        }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        > div[data-testid="stColumn"] {
+          min-width: 0 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        > div[data-testid="stColumn"]:first-child {
+          width: auto !important;
+          flex: 1 1 0 !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        > div[data-testid="stColumn"]:nth-child(n+2) {
+          width: 44px !important;
+          flex: 0 0 44px !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        [data-testid="stTextInput"],
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        [data-testid="stTextInputRootElement"] {
+          border: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        [data-testid="stTextInputRootElement"] > div {
+          border: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"]) input {
+          min-height: 43px;
+          padding: 0 !important;
+          color: #111827;
+          background: transparent !important;
+        }
+        .st-key-mnl_quiz button,
+        .st-key-mnl_overview button,
+        .st-key-mnl_send button {
+          width: 44px !important;
+          min-width: 44px !important;
+          height: 44px !important;
+          padding: 0 !important;
+          border: 1px solid #cbd2d8 !important;
+          border-radius: 50% !important;
+          font-size: 18px !important;
+          box-shadow: none !important;
+        }
+        .st-key-mnl_quiz button[kind="secondary"],
+        .st-key-mnl_overview button[kind="secondary"],
+        .st-key-mnl_send button[kind="secondary"] {
+          color: #374151 !important;
+          background: #ffffff !important;
+        }
+        .st-key-mnl_quiz button[kind="primary"],
+        .st-key-mnl_overview button[kind="primary"],
+        .st-key-mnl_send button[kind="primary"] {
+          color: #ffffff !important;
+          border-color: #087f7b !important;
+          background: #087f7b !important;
+        }
+        .mnl-icon-legend {
+          width: min(100%, 920px);
+          margin: 13px auto 0;
+          padding-left: 22px;
+          color: #66717d;
+          font-size: 11px;
+          line-height: 1.75;
+        }
+        .mnl-icon-legend-row {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+        }
+        .mnl-legend-symbol {
+          display: inline-block;
+          width: 14px;
+          color: #374151;
+          font-weight: 700;
+          text-align: center;
+        }
+        @media (max-width: 700px) {
+          [data-testid="stMainBlockContainer"]:has(.mnl-page-marker) { padding-top: 1.1rem; }
+          .mnl-header {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 7px;
+          }
+          .mnl-title { font-size: 27px; }
+          div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+            width: 92%;
+          }
+          .mnl-empty-spacer { height: 120px; }
+          .mnl-icon-legend { padding-left: 12px; }
+        }
+        </style>
+        <div class="mnl-page-marker"></div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_learning_mode_tag(mode_lbl: str) -> None:
+    active = (mode_lbl or "Deep").strip()
+    if active not in {"Deep", "Overview", "Quiz"}:
+        active = "Deep"
+    st.markdown(
+        f'<span class="mnl-mode-tag">{active} mode</span>',
+        unsafe_allow_html=True,
+    )
+
+
+def _set_learning_mode(mode: str) -> None:
+    st.session_state.uib_mode = mode
+    st.rerun()
+
+
 def page_my_new_learning() -> None:
-    st.markdown('<div class="bigtitle">My New Learning</div>', unsafe_allow_html=True)
-    st.caption("Interactive AI tutor (v0): AI topics only. Deep is default; use Overview/Quiz when needed.")
+    _render_my_learning_styles()
+    st.markdown(
+        """
+        <div class="mnl-header">
+          <div class="mnl-title">My New Learning</div>
+          <div class="mnl-status">In active development</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     sid = ensure_learning_session()
     sess = st.session_state.learning_sessions[sid]
@@ -3660,7 +3942,7 @@ def page_my_new_learning() -> None:
         if role == "user":
             with st.chat_message("user"):
                 st.markdown(text)
-                _render_user_mode_hint(msg.get("mode_label") or "Deep")
+                _render_learning_mode_tag(msg.get("mode_label") or "Deep")
                 st.markdown(
                     f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>",
                     unsafe_allow_html=True,
@@ -3670,7 +3952,15 @@ def page_my_new_learning() -> None:
             if (msg.get("text") or "").lstrip().startswith("**Continued (Part "):
                 st.markdown("---")
 
-            st.markdown("<div class='ini_main_wrapper'>", unsafe_allow_html=True)
+            st.markdown(
+                """
+                <div class="mnl-assistant-label">
+                  <span class="mnl-assistant-mark">InI</span>
+                  <span>InI Tutor</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             clean_answer, embedded_followups = split_answer_and_embedded_followups(text)
 
@@ -3720,64 +4010,72 @@ def page_my_new_learning() -> None:
 
                     st.rerun()
 
-            st.markdown("</div>", unsafe_allow_html=True)
-
     if st.session_state._uib_clear_next:
         st.session_state.uib_text = ""
         st.session_state._uib_clear_next = False
 
-    lit_over = (st.session_state.uib_mode == "high")
-    lit_quiz = (st.session_state.uib_mode == "quiz")
-    wrap_classes = "ini_uib_wrap"
-    if lit_over:
-        wrap_classes += " ini_lit_over"
-    if lit_quiz:
-        wrap_classes += " ini_lit_quiz"
+    spacer_class = "mnl-active-spacer" if sess["messages"] else "mnl-empty-spacer"
+    st.markdown(f'<div class="{spacer_class}"></div>', unsafe_allow_html=True)
 
-    st.markdown(f'<div class="{wrap_classes}">', unsafe_allow_html=True)
-    st.markdown('<div class="ini_uib_outer">', unsafe_allow_html=True)
-    st.markdown('<div class="ini_uib_capsule">', unsafe_allow_html=True)
-
-    cols = st.columns([8.4, 0.65, 0.65, 0.65], gap="small")
-
-    with cols[0]:
+    current_mode = st.session_state.uib_mode
+    input_cols = st.columns([11, 0.75, 0.75, 0.75], gap="small")
+    with input_cols[0]:
         st.text_input(
-            "uib",
+            "MNL_PROMPT",
             key="uib_text",
             label_visibility="collapsed",
-            placeholder="Type your topic/question...",
+            placeholder="Ask InI anything to learn...",
             on_change=_request_send,
         )
 
-    with cols[1]:
-        if st.button("◎", key="uib_over_btn"):
-            st.session_state.uib_mode = "deep" if st.session_state.uib_mode == "high" else "high"
-            st.rerun()
+    with input_cols[1]:
+        if st.button(
+            "?",
+            key="mnl_quiz",
+            help="Quiz",
+            type="primary" if current_mode == "quiz" else "secondary",
+        ):
+            _set_learning_mode("quiz")
 
-    with cols[2]:
-        if st.button("?", key="uib_quiz_btn"):
-            st.session_state.uib_mode = "deep" if st.session_state.uib_mode == "quiz" else "quiz"
-            st.rerun()
+    with input_cols[2]:
+        if st.button(
+            "◎",
+            key="mnl_overview",
+            help="Overview",
+            type="primary" if current_mode == "high" else "secondary",
+        ):
+            _set_learning_mode("high")
 
-    with cols[3]:
-        if st.button("➤", key="uib_send_btn"):
+    with input_cols[3]:
+        if st.button(
+            "➤",
+            key="mnl_send",
+            help="Send (Deep by default)",
+            type="primary" if current_mode == "deep" else "secondary",
+        ):
             st.session_state._uib_send_requested = True
             st.rerun()
 
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown(
-        f"""
-        <div class="ini_hint">
-          <div>• <b>{_mode_hint_text(st.session_state.uib_mode)}</b></div>
-          <div>Enter or ➤ to send</div>
-          <div>◎ / ? toggle mode</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
+    if not sess["messages"]:
+        st.markdown(
+            """
+            <div class="mnl-icon-legend">
+              <div class="mnl-icon-legend-row">
+                <span class="mnl-legend-symbol">?</span>
+                <span>Quiz</span>
+              </div>
+              <div class="mnl-icon-legend-row">
+                <span class="mnl-legend-symbol">◎</span>
+                <span>Overview</span>
+              </div>
+              <div class="mnl-icon-legend-row">
+                <span class="mnl-legend-symbol">➤</span>
+                <span>Deep / Send</span>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     if st.session_state._uib_send_requested:
         st.session_state._uib_send_requested = False
