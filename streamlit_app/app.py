@@ -1,15 +1,15 @@
 import os
 import time
 import re
+import secrets
 from datetime import datetime
 from typing import Any, Dict, Optional
-from urllib.parse import quote, urlencode
+from urllib.parse import urlencode
 from pathlib import Path
 
 import requests
 import streamlit as st
 from storage_sqlite import (
-    cleanup_empty_sessions,
     init_db,
     save_session,
     list_sessions,
@@ -38,6 +38,17 @@ DEV_MODE = os.environ.get("INI_DEV_MODE", "0") == "1"
 # Page Setup
 # =========================
 st.set_page_config(page_title="InI.ai", layout="wide", initial_sidebar_state="expanded")
+
+visitor_param = st.query_params.get("visitor")
+if isinstance(visitor_param, list):
+    visitor_param = visitor_param[-1] if visitor_param else ""
+
+visitor_id = str(visitor_param or "").strip()
+if not re.fullmatch(r"[A-Za-z0-9_-]{20,80}", visitor_id):
+    visitor_id = secrets.token_urlsafe(24)
+    st.query_params["visitor"] = visitor_id
+
+st.session_state.visitor_id = visitor_id
 
 CSS = """
 <style>
@@ -405,7 +416,6 @@ div.stButton > button:hover {
 """
 
 init_db()
-# cleanup_empty_sessions()
 
 st.markdown(CSS, unsafe_allow_html=True)
 
@@ -560,50 +570,80 @@ def _query_href(**updates: Optional[str]) -> str:
     return "?" + urlencode(params)
 
 
+def _private_href(**params: Optional[str]) -> str:
+    values: Dict[str, str] = {
+        "visitor": st.session_state.visitor_id,
+    }
+    for key, value in params.items():
+        if value is not None and str(value).strip():
+            values[key] = str(value)
+    return "?" + urlencode(values)
+
+
+def _reset_query_to_page(page: str) -> None:
+    st.query_params.clear()
+    st.query_params["visitor"] = st.session_state.visitor_id
+    st.query_params["page"] = page
+
+
 def _chat_popup_href(sid: str) -> str:
     return _query_href(popup_chat_sid=sid)
 
 
 def _chat_root_href(sid: str) -> str:
-    return f"?page=chat&chat_sid={quote(sid, safe='')}"
+    return _private_href(page="chat", chat_sid=sid)
 
 def _chat_root_view_href(sid: str) -> str:
-    return f"?page=chat&chat_sid={quote(sid, safe='')}&chat_root=1"
+    return _private_href(page="chat", chat_sid=sid, chat_root="1")
 
 
 
 def _chat_branch_href(sid: Optional[str], question: str) -> str:
-    q = quote(question, safe="")
     if sid:
-        return f"?page=chat&chat_sid={quote(sid, safe='')}&chat_q={q}"
-    return f"?page=chat&chat_q={q}"
+        return _private_href(page="chat", chat_sid=sid, chat_q=question)
+    return _private_href(page="chat", chat_q=question)
 
 
 def _learn_session_href(sid: str) -> str:
-    return f"?page=learn&learn_sid={quote(sid, safe='')}"
+    return _private_href(page="learn", learn_sid=sid)
 
 
 def _learn_branch_href(sid: Optional[str], question: str) -> str:
-    q = quote(question, safe="")
     if sid:
-        return f"?page=learn&learn_sid={quote(sid, safe='')}&learn_q={q}"
-    return f"?page=learn&learn_q={q}"
+        return _private_href(page="learn", learn_sid=sid, learn_q=question)
+    return _private_href(page="learn", learn_q=question)
 
 
 def _chat_rename_href(sid: str) -> str:
-    return f"?page=chat&session_action=rename&session_sid={quote(sid, safe='')}"
+    return _private_href(
+        page="chat",
+        session_action="rename",
+        session_sid=sid,
+    )
 
 
 def _chat_delete_href(sid: str) -> str:
-    return f"?page=chat&session_action=delete&session_sid={quote(sid, safe='')}"
+    return _private_href(
+        page="chat",
+        session_action="delete",
+        session_sid=sid,
+    )
 
 
 def _learn_rename_href(sid: str) -> str:
-    return f"?page=learn&session_action=rename&session_sid={quote(sid, safe='')}"
+    return _private_href(
+        page="learn",
+        session_action="rename",
+        session_sid=sid,
+    )
 
 
 def _learn_delete_href(sid: str) -> str:
-    return f"?page=learn&session_action=delete&session_sid={quote(sid, safe='')}"
+    return _private_href(
+        page="learn",
+        session_action="delete",
+        session_sid=sid,
+    )
 
 
 
@@ -803,7 +843,7 @@ def ensure_learning_session() -> str:
     ):
         return st.session_state.learning_active_id
 
-    sid = f"learn-{int(time.time())}"
+    sid = f"learn-{secrets.token_urlsafe(12)}"
     st.session_state.learning_sessions[sid] = {
         "created": datetime.now().strftime("%b %d.%Y"),
         "messages": [],
@@ -816,7 +856,7 @@ def ensure_learning_session() -> str:
 
 
 def start_new_learning_session() -> str:
-    sid = f"learn-{int(time.time())}"
+    sid = f"learn-{secrets.token_urlsafe(12)}"
     st.session_state.learning_sessions[sid] = {
         "created": datetime.now().strftime("%b %d.%Y"),
         "messages": [],
@@ -853,6 +893,7 @@ def _persist_learning_session(sid: str, sess: Dict[str, Any]) -> None:
     title_to_save = (sess.get("title") or "Learning Session").strip()
 
     save_session(
+        visitor_id=st.session_state.visitor_id,
         session_id=sid,
         title=title_to_save,
         created_at=created,
@@ -969,7 +1010,7 @@ def _persist_new_chat_session(sid: Optional[str] = None) -> str:
         sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
 
     if not sid:
-        sid = f"chat-{int(time.time())}"
+        sid = f"chat-{secrets.token_urlsafe(12)}"
 
     st.session_state.chat_active_id = sid
     st.session_state.chat_loaded_sid = sid
@@ -988,6 +1029,7 @@ def _persist_new_chat_session(sid: Optional[str] = None) -> str:
     }
 
     save_session(
+        visitor_id=st.session_state.visitor_id,
         session_id=sid,
         title=title,
         created_at=created,
@@ -997,7 +1039,7 @@ def _persist_new_chat_session(sid: Optional[str] = None) -> str:
 
 
 def _load_new_chat_session(sid: str) -> bool:
-    loaded = load_session(sid)
+    loaded = load_session(st.session_state.visitor_id, sid)
     if not loaded:
         return False
 
@@ -1163,7 +1205,7 @@ def _render_chat_session_popup() -> None:
     if not sid:
         return
 
-    loaded = load_session(sid)
+    loaded = load_session(st.session_state.visitor_id, sid)
     if not loaded:
         st.warning("Session could not be loaded.")
         return
@@ -1463,7 +1505,7 @@ else:
     st.session_state.chat_popup_sid = None
 
 if learn_sid:
-    loaded = load_session(learn_sid)
+    loaded = load_session(st.session_state.visitor_id, learn_sid)
     if loaded:
         st.session_state.learning_active_id = learn_sid
         st.session_state.learning_sessions[learn_sid] = {
@@ -1492,7 +1534,7 @@ if chat_sid and chat_root == "1":
 
 if session_action and session_sid:
     if session_action == "delete":
-        delete_session(session_sid)
+        delete_session(st.session_state.visitor_id, session_sid)
 
         if st.session_state.chat_active_id == session_sid:
             st.session_state.chat_active_id = None
@@ -1501,15 +1543,13 @@ if session_action and session_sid:
         if st.session_state.learning_active_id == session_sid:
             st.session_state.learning_active_id = None
 
-        st.query_params.clear()
-        st.query_params["page"] = page_param
+        _reset_query_to_page(page_param)
         st.rerun()
 
     elif session_action == "rename":
         st.session_state.rename_session_sid = session_sid
         st.session_state.rename_session_page = page_param
-        st.query_params.clear()
-        st.query_params["page"] = page_param
+        _reset_query_to_page(page_param)
 
 
 
@@ -1554,17 +1594,21 @@ with st.sidebar:
     st.markdown('<span class="badge">v0.1.2 • AI Tutor</span>', unsafe_allow_html=True)
 
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750; margin-top:10px;">Navigation</div>', unsafe_allow_html=True)
+    intro_nav_href = _private_href(page="home")
+    chat_nav_href = _private_href(page="chat")
+    learn_nav_href = _private_href(page="learn")
+    project_nav_href = _private_href(page="proj")
     st.markdown(
-        """
+        f"""
         <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
-             href="?page=home" target="_self">🏠&nbsp;&nbsp;Introduction</a>
+             href="{intro_nav_href}" target="_self">🏠&nbsp;&nbsp;Introduction</a>
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
-             href="?page=chat" target="_self">💬&nbsp;&nbsp;New Chat</a>
+             href="{chat_nav_href}" target="_self">💬&nbsp;&nbsp;New Chat</a>
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
-             href="?page=learn" target="_self">📚&nbsp;&nbsp;My New Learning</a>
+             href="{learn_nav_href}" target="_self">📚&nbsp;&nbsp;My New Learning</a>
           <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
-             href="?page=proj" target="_self">🧩&nbsp;&nbsp;New Project</a>
+             href="{project_nav_href}" target="_self">🧩&nbsp;&nbsp;New Project</a>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1578,7 +1622,11 @@ with st.sidebar:
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Chat</div>', unsafe_allow_html=True)
 
-    chat_rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("chat-")]
+    chat_rows = [
+        row
+        for row in list_sessions(st.session_state.visitor_id, limit=30)
+        if str(row[0]).startswith("chat-")
+    ]
     if chat_rows:
         html = []
         for sid, title, created_at, updated_at in chat_rows:
@@ -1609,7 +1657,11 @@ with st.sidebar:
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Learning</div>', unsafe_allow_html=True)
 
 
-    rows = [row for row in list_sessions(limit=30) if str(row[0]).startswith("learn-")]
+    rows = [
+        row
+        for row in list_sessions(st.session_state.visitor_id, limit=30)
+        if str(row[0]).startswith("learn-")
+    ]
     if rows:
         html = []
         for sid, title, created_at, updated_at in rows:
@@ -1641,7 +1693,7 @@ def _render_rename_session_dialog() -> None:
     if not sid:
         return
 
-    loaded = load_session(sid)
+    loaded = load_session(st.session_state.visitor_id, sid)
     current_title = ""
     if loaded:
         current_title = (loaded.get("title") or "").strip()
@@ -1651,7 +1703,11 @@ def _render_rename_session_dialog() -> None:
     c1, c2 = st.columns(2)
     with c1:
         if st.button("Save", key="rename_session_save_btn"):
-            rename_session(sid, new_title.strip())
+            rename_session(
+                st.session_state.visitor_id,
+                sid,
+                new_title.strip(),
+            )
             st.session_state.rename_session_sid = None
             st.session_state.rename_session_page = None
             st.rerun()
@@ -2357,8 +2413,7 @@ def page_new_chat() -> None:
             current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
 
             st.session_state.chat_popup_sid = None
-            st.query_params.clear()
-            st.query_params["page"] = "chat"
+            _reset_query_to_page("chat")
 
             with st.spinner("Generating question map... may take some time."):
                 data = fetch_interrogate(topic_text.strip())
@@ -2513,8 +2568,7 @@ def page_new_chat() -> None:
                 return
 
             st.session_state.chat_popup_sid = None
-            st.query_params.clear()
-            st.query_params["page"] = "chat"
+            _reset_query_to_page("chat")
 
             with st.spinner("Generating illustrations... please wait."):
                 data = fetch_illustrate(topic_text.strip())

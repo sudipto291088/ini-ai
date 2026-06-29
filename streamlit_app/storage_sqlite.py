@@ -1,8 +1,9 @@
 import os
 import json
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 DB_PATH = os.environ.get(
     "INI_DB_PATH",
@@ -10,8 +11,13 @@ DB_PATH = os.environ.get(
 )
 
 
-def _conn() -> sqlite3.Connection:
-    return sqlite3.connect(DB_PATH, check_same_thread=False)
+@contextmanager
+def _conn() -> Iterator[sqlite3.Connection]:
+    connection = sqlite3.connect(DB_PATH, check_same_thread=False)
+    try:
+        yield connection
+    finally:
+        connection.close()
 
 
 def init_db() -> None:
@@ -20,6 +26,7 @@ def init_db() -> None:
             """
             CREATE TABLE IF NOT EXISTS learning_sessions (
                 session_id TEXT PRIMARY KEY,
+                visitor_id TEXT NOT NULL DEFAULT '',
                 title TEXT,
                 created_at TEXT,
                 updated_at TEXT,
@@ -27,10 +34,28 @@ def init_db() -> None:
             )
             """
         )
+        columns = {
+            row[1]
+            for row in c.execute("PRAGMA table_info(learning_sessions)").fetchall()
+        }
+        if "visitor_id" not in columns:
+            c.execute(
+                """
+                ALTER TABLE learning_sessions
+                ADD COLUMN visitor_id TEXT NOT NULL DEFAULT ''
+                """
+            )
+        c.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_learning_sessions_visitor_updated
+            ON learning_sessions (visitor_id, updated_at DESC)
+            """
+        )
         c.commit()
 
 
 def save_session(
+    visitor_id: str,
     session_id: str,
     title: str,
     created_at: str,
@@ -42,41 +67,48 @@ def save_session(
     with _conn() as c:
         c.execute(
             """
-            INSERT INTO learning_sessions (session_id, title, created_at, updated_at, messages_json)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO learning_sessions (
+                session_id, visitor_id, title, created_at, updated_at, messages_json
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(session_id) DO UPDATE SET
                 title=excluded.title,
                 updated_at=excluded.updated_at,
                 messages_json=excluded.messages_json
+            WHERE learning_sessions.visitor_id=excluded.visitor_id
             """,
-            (session_id, title, created_at, now, payload),
+            (session_id, visitor_id, title, created_at, now, payload),
         )
         c.commit()
 
 
-def list_sessions(limit: int = 50) -> List[Tuple[str, str, str, str]]:
+def list_sessions(
+    visitor_id: str,
+    limit: int = 50,
+) -> List[Tuple[str, str, str, str]]:
     with _conn() as c:
         rows = c.execute(
             """
             SELECT session_id, title, created_at, updated_at
             FROM learning_sessions
+            WHERE visitor_id=?
             ORDER BY updated_at DESC
             LIMIT ?
             """,
-            (limit,),
+            (visitor_id, limit),
         ).fetchall()
     return rows
 
 
-def load_session(session_id: str) -> Optional[Dict[str, Any]]:
+def load_session(visitor_id: str, session_id: str) -> Optional[Dict[str, Any]]:
     with _conn() as c:
         row = c.execute(
             """
             SELECT session_id, title, created_at, updated_at, messages_json
             FROM learning_sessions
-            WHERE session_id=?
+            WHERE visitor_id=? AND session_id=?
             """,
-            (session_id,),
+            (visitor_id, session_id),
         ).fetchone()
 
     if not row:
@@ -94,7 +126,7 @@ def load_session(session_id: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def rename_session(session_id: str, new_title: str) -> None:
+def rename_session(visitor_id: str, session_id: str, new_title: str) -> None:
     clean_title = (new_title or "").strip()
     if not clean_title:
         return
@@ -106,29 +138,31 @@ def rename_session(session_id: str, new_title: str) -> None:
             """
             UPDATE learning_sessions
             SET title=?, updated_at=?
-            WHERE session_id=?
+            WHERE visitor_id=? AND session_id=?
             """,
-            (clean_title, now, session_id),
+            (clean_title, now, visitor_id, session_id),
         )
         c.commit()
 
 
-def delete_session(session_id: str) -> None:
+def delete_session(visitor_id: str, session_id: str) -> None:
     with _conn() as c:
         c.execute(
-            "DELETE FROM learning_sessions WHERE session_id=?",
-            (session_id,),
+            "DELETE FROM learning_sessions WHERE visitor_id=? AND session_id=?",
+            (visitor_id, session_id),
         )
         c.commit()
 
 
-def cleanup_empty_sessions() -> None:
+def cleanup_empty_sessions(visitor_id: str) -> None:
     with _conn() as c:
         c.execute(
             """
             DELETE FROM learning_sessions
-            WHERE (title IS NULL OR title='' OR title='Learning Session')
+            WHERE visitor_id=?
+              AND (title IS NULL OR title='' OR title='Learning Session')
               AND (messages_json IS NULL OR messages_json='[]')
-            """
+            """,
+            (visitor_id,),
         )
         c.commit()
