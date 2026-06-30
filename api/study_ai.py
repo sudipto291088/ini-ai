@@ -83,9 +83,13 @@ def _build_instruction(mode: str) -> str:
         return (
             "You are InI, a clean and helpful AI tutor.\n"
             "Produce a HIGH-LEVEL overview.\n"
-            "- Keep it short and crisp (8–12 bullets max).\n"
+            "- Answer the user's exact question before adding context.\n"
+            "- Keep it short and crisp (4–7 bullets maximum).\n"
             "- Avoid deep dives; focus on the big picture.\n"
-            "- Use bold headings.\n"
+            "- Do not repeat an idea in a summary or conclusion.\n"
+            "- If essential context is missing, ask one precise clarification instead of guessing.\n"
+            "- When clarification is required, use no more than 60 words and stop after the question.\n"
+            "- Never invent current, local, or live facts.\n"
             "- End with 2 suggested follow-up questions.\n"
         )
 
@@ -121,15 +125,20 @@ def _build_instruction(mode: str) -> str:
     # deep (default)
     return (
         "You are InI, a deep technical AI tutor.\n"
-        "Write a research-grade, well-structured answer.\n"
-        "- Use bold headings, bullets, and concrete examples.\n"
-        "- Maintain consistent hierarchy throughout the document.\n"
-        "- Do NOT introduce abrupt top-level headings mid-answer.\n"
-        "- Do NOT output standalone pseudo-code lines as headings.\n"
-        "- Keep formatting clean and proportional (no oversized structural resets).\n"
-        "- Add intuitions, failure modes, and practical trade-offs.\n"
-        "- Be specific, cohesive, and avoid filler.\n"
-        "- Do NOT ask meta-questions unless required.\n"
+        "Give the deepest useful answer for the question actually asked, not the longest possible answer.\n"
+        "- Start with a direct answer to the user's exact question.\n"
+        "- Match depth and length to the query. A simple or underspecified query should stay concise.\n"
+        "- For genuinely complex technical questions, add mechanisms, examples, trade-offs, or failure modes only when they improve understanding.\n"
+        "- Treat generic section templates as optional. Use at most 2–5 sections, each with a distinct purpose.\n"
+        "- Never restate the same idea under different headings, in a checklist, or in a concluding recap.\n"
+        "- Do not add both a detailed failure-modes section and a second short-checks section.\n"
+        "- Avoid exhaustive checklists unless the user explicitly requests one.\n"
+        "- If the query is ambiguous and the missing detail changes the answer, briefly explain the ambiguity and ask one targeted clarification.\n"
+        "- When clarification is required, use no more than 80 words, ask one question, and stop. Do not add a generic guide, checklist, or hypothetical answer first.\n"
+        "- For current, local, price, rate, weather, legal, medical, or other time-sensitive questions, never invent a present-day value. State what detail or live source is needed.\n"
+        "- Use clean proportional formatting and concrete examples only when they are factual or clearly labelled as hypothetical.\n"
+        "- Prefer roughly 250–600 words; exceed that only when the user clearly requests advanced depth.\n"
+        "- End cleanly without repeating the answer.\n"
     )
 
 
@@ -143,11 +152,43 @@ def _archetype_for_mode(mode: str) -> str:
     return "APPLY"
 
 
+def _requires_current_context(topic: str) -> bool:
+    """Identify requests whose answer depends on information that can change."""
+    text = (topic or "").strip().lower()
+    if not text:
+        return False
+
+    patterns = (
+        r"\btoday\b",
+        r"\bright now\b",
+        r"\bcurrently\b",
+        r"\blatest\b",
+        r"\blive (?:price|rate|score|status|data|weather)\b",
+        r"\bcurrent (?:price|rate|score|status|law|version|weather|temperature)\b",
+    )
+    return any(re.search(pattern, text) for pattern in patterns)
+
+
 def _resolve_topic_context(topic: str) -> str:
     """Add context only for exact acronyms already routed as technical topics."""
     if topic.strip().lower() == "amd":
         return "AMD (Advanced Micro Devices)"
     return topic
+
+
+def _continuation_context(previous_answer: str, max_chars: int = 6000) -> str:
+    """Keep both the established outline and the latest unfinished passage."""
+    text = (previous_answer or "").strip()
+    if len(text) <= max_chars:
+        return text
+
+    opening_chars = min(1500, max_chars // 3)
+    ending_chars = max_chars - opening_chars
+    return (
+        text[:opening_chars].rstrip()
+        + "\n\n[...middle omitted...]\n\n"
+        + text[-ending_chars:].lstrip()
+    )
 
 
 
@@ -234,19 +275,20 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
     if continue_mode and previous_answer:
 
     # --- STRICT TOKEN CONTINUATION ---
-    # Only send the tail of the previous answer
-        tail = previous_answer[-1500:]
+    # Preserve the established outline as well as the unfinished tail.
+        prior_context = _continuation_context(previous_answer)
 
         question = (
         f"{instruction}\n"
         "STRICT CONTINUATION MODE:\n"
-        "- Continue the text exactly from where it stopped.\n"
-        "- Do NOT restart the topic.\n"
-        "- Do NOT introduce new section headers.\n"
-        "- Do NOT repeat earlier content.\n"
-        "- Output ONLY the next portion of the same document.\n\n"
-        "Text so far (ending segment only):\n"
-        f"{tail}\n"
+        "- Review the supplied context before writing.\n"
+        "- Continue only the unfinished point from where the text stopped.\n"
+        "- Do NOT restart the topic, definition, example, checklist, or conclusion.\n"
+        "- Do NOT repeat any heading or idea already present in the context.\n"
+        "- Do NOT add generic sections merely to make the answer longer.\n"
+        "- Output ONLY genuinely new continuation text.\n\n"
+        "Answer context (opening and latest text are preserved):\n"
+        f"{prior_context}\n"
     )
     else:
         question = (
@@ -255,10 +297,14 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         )
 
     # ---- Call core LLM engine ----
+    archetype = _archetype_for_mode(mode)
+    if mode not in {"quiz", "focused"} and _requires_current_context(user_topic):
+        archetype = "CURRENT"
+
     result = generate_dynamic_answer_result(
         topic=llm_topic,
         topic_type="concept",
-        archetype=_archetype_for_mode(mode),
+        archetype=archetype,
         question=question,
         meta={
             "mode": "study_ai",

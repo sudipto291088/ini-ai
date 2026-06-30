@@ -450,6 +450,17 @@ def generate_dynamic_answer_result(
             "Prefer structured learning steps and concise roadmaps."
         )
 
+    elif arch == "CURRENT":
+        archetype_hint = (
+            "The request depends on current or live information. "
+            "Do not invent or estimate a present-day value. "
+            "State the limitation briefly, identify the minimum missing context or live source, "
+            "ask one targeted clarification when needed, and stop. "
+            "Use natural prose; do not print instruction-like labels such as 'Ask one'. "
+            "Do not add a generic guide, checklist, worked example, or repeated explanation. "
+            "Keep the complete answer under 100 words."
+        )
+
 
 
 
@@ -501,6 +512,9 @@ def generate_dynamic_answer_result(
 
         elif arch == "NEXT":
             answer_token_limit = 500
+
+        elif arch == "CURRENT":
+            answer_token_limit = 220
 
 
     payload: Dict[str, Any] = {
