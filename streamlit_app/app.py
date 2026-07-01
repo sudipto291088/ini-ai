@@ -829,11 +829,14 @@ if "uib_text" not in st.session_state:
 if "uib_mode" not in st.session_state:
     st.session_state.uib_mode = "deep"  # deep|high|quiz
 
-if "_uib_clear_next" not in st.session_state:
-    st.session_state._uib_clear_next = False
-
 if "_uib_send_requested" not in st.session_state:
     st.session_state._uib_send_requested = False
+
+if "_mnl_pending_request" not in st.session_state:
+    st.session_state._mnl_pending_request = None
+
+if "_mnl_generating" not in st.session_state:
+    st.session_state._mnl_generating = False
 
 if "nc_started" not in st.session_state:
     st.session_state.nc_started = False
@@ -3496,9 +3499,6 @@ def _mode_hint_text(mode: str) -> str:
     return "Deep (default)"
 
 
-def _request_send() -> None:
-    st.session_state._uib_send_requested = True
-
 def _request_chat_top_enter_submit() -> None:
     st.session_state.chat_top_enter_submit = True
 
@@ -3533,14 +3533,25 @@ def _typed_continue_should_fire(sess: Dict[str, Any], user_text: str) -> bool:
     return _find_last_incomplete_assistant_id(sess) is not None
 
 
-def _process_send(sess: Dict[str, Any]) -> None:
-    prompt = (st.session_state.uib_text or "").strip()
-    mode = (st.session_state.uib_mode or "deep").strip().lower()
+def _queue_learning_request(
+    sess: Dict[str, Any],
+    prompt: str,
+    mode: str,
+    *,
+    display_prompt: Optional[str] = None,
+    fetch_full: bool = False,
+) -> bool:
+    prompt = (prompt or "").strip()
+    mode = (mode or "deep").strip().lower()
     if mode not in {"deep", "high", "quiz"}:
         mode = "deep"
 
-    if not prompt:
-        return
+    if (
+        not prompt
+        or st.session_state._mnl_pending_request
+        or st.session_state._mnl_generating
+    ):
+        return False
 
     if _typed_continue_should_fire(sess, prompt):
         sess["messages"].append(
@@ -3551,17 +3562,60 @@ def _process_send(sess: Dict[str, Any]) -> None:
         if target_id:
             st.session_state._mnl_continue_loading_id = target_id
 
-        st.session_state._uib_clear_next = True
-        st.rerun()
+        st.session_state.uib_text = ""
+        _persist_learning_session(st.session_state.learning_active_id, sess)
+        return True
 
     sess["messages"].append(
-        {"id": new_msg_id("u"), "role": "user", "text": prompt, "ts": now_label(), "mode_label": mode_label(mode)}
+        {
+            "id": new_msg_id("u"),
+            "role": "user",
+            "text": (display_prompt or prompt).strip(),
+            "ts": now_label(),
+            "mode_label": mode_label(mode),
+        }
     )
-    sess["last_prompt"] = prompt
+    sess["last_prompt"] = (display_prompt or prompt).strip()
+    st.session_state.uib_text = ""
+    st.session_state._mnl_pending_request = {
+        "prompt": prompt,
+        "mode": mode,
+        "fetch_full": bool(fetch_full),
+    }
+    _persist_learning_session(st.session_state.learning_active_id, sess)
+    return True
+
+
+def _consume_requested_learning_send(sess: Dict[str, Any]) -> None:
+    if not st.session_state._uib_send_requested:
+        return
+
+    st.session_state._uib_send_requested = False
+    _queue_learning_request(
+        sess,
+        st.session_state.uib_text,
+        st.session_state.uib_mode,
+    )
+
+
+def _generate_pending_learning_response(sess: Dict[str, Any]) -> None:
+    pending = st.session_state._mnl_pending_request
+    if not isinstance(pending, dict) or st.session_state._mnl_generating:
+        return
+
+    prompt = (pending.get("prompt") or "").strip()
+    mode = (pending.get("mode") or "deep").strip().lower()
+    fetch_full = bool(pending.get("fetch_full"))
+    st.session_state._mnl_generating = True
 
     try:
-        with st.spinner("Generating answer... may take some time."):
-            resp = fetch_study(prompt, mode=mode)
+        with st.container(key="mnl_generation"):
+            with st.spinner("Generating answer... may take some time."):
+                if fetch_full:
+                    resp = fetch_study_full(prompt, mode=mode)
+                else:
+                    resp = fetch_study(prompt, mode=mode)
+
             answer = normalize_whitespace_for_readability(normalize_mojibake(resp.get("answer", "") or "")) or "No answer generated."
             followups = resp.get("followups") or []
             sess["messages"].append(
@@ -3581,9 +3635,11 @@ def _process_send(sess: Dict[str, Any]) -> None:
             )
     except Exception as e:
         sess["messages"].append({"id": new_msg_id("e"), "role": "assistant", "text": f"Error calling API: {e}", "ts": now_label()})
+    finally:
+        st.session_state._mnl_pending_request = None
+        st.session_state._mnl_generating = False
+        _persist_learning_session(st.session_state.learning_active_id, sess)
 
-    st.session_state._uib_clear_next = True
-    _persist_learning_session(st.session_state.learning_active_id, sess)
     st.rerun()
 
 
@@ -3607,8 +3663,8 @@ def _render_my_learning_styles() -> None:
         <style>
         [data-testid="stMainBlockContainer"]:has(.mnl-page-marker) {
           width: 100%;
-          max-width: 1000px;
-          margin-left: 0;
+          max-width: 1280px;
+          margin-left: auto;
           margin-right: auto;
           padding-top: 1.8rem;
           padding-bottom: 2rem;
@@ -3740,6 +3796,11 @@ def _render_my_learning_styles() -> None:
         [data-testid="stChatMessageAvatarUser"] {
           display: none;
         }
+        .st-key-mnl_generation {
+          width: min(78%, 720px);
+          min-height: 32px;
+          margin-left: auto;
+        }
         .mnl-empty-spacer {
           height: clamp(150px, calc(50vh - 125px), 320px);
         }
@@ -3775,6 +3836,14 @@ def _render_my_learning_styles() -> None:
           flex: 0 0 44px !important;
         }
         div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        > div[data-testid="stColumn"]:nth-child(1) { order: 1; }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        > div[data-testid="stColumn"]:nth-child(2) { order: 4; }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        > div[data-testid="stColumn"]:nth-child(3) { order: 2; }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        > div[data-testid="stColumn"]:nth-child(4) { order: 3; }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
         [data-testid="stTextInput"],
         div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
         [data-testid="stTextInputRootElement"] {
@@ -3806,15 +3875,15 @@ def _render_my_learning_styles() -> None:
           font-size: 18px !important;
           box-shadow: none !important;
         }
-        .st-key-mnl_quiz button[kind="secondary"],
-        .st-key-mnl_overview button[kind="secondary"],
-        .st-key-mnl_send button[kind="secondary"] {
+        .st-key-mnl_quiz button[kind^="secondary"],
+        .st-key-mnl_overview button[kind^="secondary"],
+        .st-key-mnl_send button[kind^="secondary"] {
           color: #374151 !important;
           background: #ffffff !important;
         }
-        .st-key-mnl_quiz button[kind="primary"],
-        .st-key-mnl_overview button[kind="primary"],
-        .st-key-mnl_send button[kind="primary"] {
+        .st-key-mnl_quiz button[kind^="primary"],
+        .st-key-mnl_overview button[kind^="primary"],
+        .st-key-mnl_send button[kind^="primary"] {
           color: #ffffff !important;
           border-color: #087f7b !important;
           background: #087f7b !important;
@@ -3894,37 +3963,17 @@ def page_my_new_learning() -> None:
         st.session_state.learn_seed_done = ""
 
     if learn_q and st.session_state.learn_seed_done != learn_q:
-        try:
-            resolved_learn_q = normalize_clicked_followup_prompt(learn_q)
+        resolved_learn_q = normalize_clicked_followup_prompt(learn_q)
+        if _queue_learning_request(
+            sess,
+            resolved_learn_q,
+            "deep",
+            display_prompt=learn_q,
+            fetch_full=True,
+        ):
+            st.session_state.learn_seed_done = learn_q
 
-            sess["messages"].append(
-                {"id": new_msg_id("u"), "role": "user", "text": learn_q, "ts": now_label(), "mode_label": "Deep"}
-            )
-
-            with st.spinner("Generating answer... may take some time."):
-                resp = fetch_study_full(resolved_learn_q, mode="deep")
-                answer = (resp.get("answer") or "").strip() or "No answer generated."
-                followups = resp.get("followups") or []
-
-                sess["messages"].append(
-                    {
-                        "id": new_msg_id("a"),
-                        "role": "assistant",
-                        "text": answer,
-                        "ts": now_label(),
-                        "followups": followups,
-                    }
-                )
-
-                sess["last_prompt"] = learn_q
-                _persist_learning_session(st.session_state.learning_active_id, sess)
-                st.session_state.learn_seed_done = learn_q
-            st.rerun()
-
-        except Exception as e:
-            sess["messages"].append(
-                {"id": new_msg_id("e"), "role": "assistant", "text": f"Error auto-running learning FUQ: {e}", "ts": now_label()}
-            )
+    _consume_requested_learning_send(sess)
 
     last_incomplete_id = None
     for mm in reversed(sess.get("messages", [])):
@@ -4010,51 +4059,60 @@ def page_my_new_learning() -> None:
 
                     st.rerun()
 
-    if st.session_state._uib_clear_next:
-        st.session_state.uib_text = ""
-        st.session_state._uib_clear_next = False
+    if st.session_state._mnl_pending_request:
+        _generate_pending_learning_response(sess)
 
     spacer_class = "mnl-active-spacer" if sess["messages"] else "mnl-empty-spacer"
     st.markdown(f'<div class="{spacer_class}"></div>', unsafe_allow_html=True)
 
     current_mode = st.session_state.uib_mode
-    input_cols = st.columns([11, 0.75, 0.75, 0.75], gap="small")
-    with input_cols[0]:
-        st.text_input(
-            "MNL_PROMPT",
-            key="uib_text",
-            label_visibility="collapsed",
-            placeholder="Ask InI anything to learn...",
-            on_change=_request_send,
-        )
+    with st.form(
+        "mnl_composer",
+        clear_on_submit=False,
+        enter_to_submit=True,
+        border=False,
+    ):
+        input_cols = st.columns([11, 0.75, 0.75, 0.75], gap="small")
+        with input_cols[0]:
+            st.text_input(
+                "MNL_PROMPT",
+                key="uib_text",
+                label_visibility="collapsed",
+                placeholder="Ask InI anything to learn...",
+            )
 
-    with input_cols[1]:
-        if st.button(
-            "?",
-            key="mnl_quiz",
-            help="Quiz",
-            type="primary" if current_mode == "quiz" else "secondary",
-        ):
-            _set_learning_mode("quiz")
+        with input_cols[1]:
+            with st.container(key="mnl_send"):
+                send_submitted = st.form_submit_button(
+                    "➤",
+                    help="Send (Deep by default)",
+                    type="primary" if current_mode == "deep" else "secondary",
+                    shortcut="Enter",
+                )
 
-    with input_cols[2]:
-        if st.button(
-            "◎",
-            key="mnl_overview",
-            help="Overview",
-            type="primary" if current_mode == "high" else "secondary",
-        ):
-            _set_learning_mode("high")
+        with input_cols[2]:
+            with st.container(key="mnl_quiz"):
+                quiz_selected = st.form_submit_button(
+                    "?",
+                    help="Quiz",
+                    type="primary" if current_mode == "quiz" else "secondary",
+                )
 
-    with input_cols[3]:
-        if st.button(
-            "➤",
-            key="mnl_send",
-            help="Send (Deep by default)",
-            type="primary" if current_mode == "deep" else "secondary",
-        ):
-            st.session_state._uib_send_requested = True
-            st.rerun()
+        with input_cols[3]:
+            with st.container(key="mnl_overview"):
+                overview_selected = st.form_submit_button(
+                    "◎",
+                    help="Overview",
+                    type="primary" if current_mode == "high" else "secondary",
+                )
+
+    if quiz_selected:
+        _set_learning_mode("deep" if current_mode == "quiz" else "quiz")
+    elif overview_selected:
+        _set_learning_mode("deep" if current_mode == "high" else "high")
+    elif send_submitted:
+        st.session_state._uib_send_requested = True
+        st.rerun()
 
     if not sess["messages"]:
         st.markdown(
@@ -4076,15 +4134,6 @@ def page_my_new_learning() -> None:
             """,
             unsafe_allow_html=True,
         )
-
-    if st.session_state._uib_send_requested:
-        st.session_state._uib_send_requested = False
-        _process_send(sess)
-
-
-
-
-
 
 def page_new_project() -> None:
     st.markdown('<div class="bigtitle">New Project</div>', unsafe_allow_html=True)
