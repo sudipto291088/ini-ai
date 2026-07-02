@@ -832,6 +832,12 @@ if "uib_mode" not in st.session_state:
 if "_uib_send_requested" not in st.session_state:
     st.session_state._uib_send_requested = False
 
+if "_mnl_send_payload" not in st.session_state:
+    st.session_state._mnl_send_payload = None
+
+if "_mnl_composer_revision" not in st.session_state:
+    st.session_state._mnl_composer_revision = 0
+
 if "_mnl_pending_request" not in st.session_state:
     st.session_state._mnl_pending_request = None
 
@@ -3587,18 +3593,34 @@ def _queue_learning_request(
 
 
 def _consume_requested_learning_send(sess: Dict[str, Any]) -> None:
-    if not st.session_state._uib_send_requested:
+    payload = st.session_state._mnl_send_payload
+    if not isinstance(payload, dict):
         return
 
-    st.session_state._uib_send_requested = False
+    st.session_state._mnl_send_payload = None
     _queue_learning_request(
         sess,
-        st.session_state.uib_text,
-        st.session_state.uib_mode,
+        payload.get("prompt") or "",
+        payload.get("mode") or "deep",
     )
 
 
-def _generate_pending_learning_response(sess: Dict[str, Any]) -> None:
+def _render_learning_assistant_label() -> None:
+    st.markdown(
+        """
+        <div class="mnl-assistant-label">
+          <span class="mnl-assistant-mark">InI</span>
+          <span>InI Tutor</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _generate_pending_learning_response(
+    sess: Dict[str, Any],
+    generation_slot: Any,
+) -> None:
     pending = st.session_state._mnl_pending_request
     if not isinstance(pending, dict) or st.session_state._mnl_generating:
         return
@@ -3609,12 +3631,14 @@ def _generate_pending_learning_response(sess: Dict[str, Any]) -> None:
     st.session_state._mnl_generating = True
 
     try:
-        with st.container(key="mnl_generation"):
-            with st.spinner("Generating answer... may take some time."):
-                if fetch_full:
-                    resp = fetch_study_full(prompt, mode=mode)
-                else:
-                    resp = fetch_study(prompt, mode=mode)
+        with generation_slot.container():
+            with st.container(key="mnl_generation"):
+                _render_learning_assistant_label()
+                with st.spinner("Generating answer... may take some time."):
+                    if fetch_full:
+                        resp = fetch_study_full(prompt, mode=mode)
+                    else:
+                        resp = fetch_study(prompt, mode=mode)
 
             answer = normalize_whitespace_for_readability(normalize_mojibake(resp.get("answer", "") or "")) or "No answer generated."
             followups = resp.get("followups") or []
@@ -3761,7 +3785,7 @@ def _render_my_learning_styles() -> None:
           display: flex;
           align-items: center;
           gap: 9px;
-          margin: 24px 0 10px;
+          margin: 0 0 13px;
           color: #374151;
           font-size: 13px;
           font-weight: 700;
@@ -3779,27 +3803,75 @@ def _render_my_learning_styles() -> None:
         }
         .mnl-mode-tag {
           display: inline-block;
-          margin-top: 7px;
-          color: #52606d;
+          margin-top: 9px;
+          color: #4f625e;
           font-size: 11px;
           font-weight: 650;
         }
-        div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
-          width: min(78%, 720px);
+        [class*="st-key-mnl_user_"] {
+          width: min(72%, 680px);
           margin-left: auto;
-          padding: 13px 16px;
-          border: 1px solid #e3e7ea;
-          border-radius: 7px;
-          background: #f5f7f8;
+          margin-bottom: 18px;
+          padding: 15px 17px 11px;
+          border: 1px solid #d8e4e1;
+          border-radius: 8px;
+          background: #f2f7f6;
+          box-shadow: 0 3px 12px rgba(15, 23, 42, 0.05);
         }
-        div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"])
-        [data-testid="stChatMessageAvatarUser"] {
-          display: none;
+        [class*="st-key-mnl_user_"] p {
+          margin-bottom: 0;
+          line-height: 1.5;
+        }
+        [class*="st-key-mnl_assistant_"],
+        .st-key-mnl_generation {
+          width: min(calc(92% + 12px), 912px);
+          margin-right: auto;
+          margin-bottom: 22px;
+          padding: 17px 19px 13px;
+          border: 1px solid #e1e6e5;
+          border-radius: 8px;
+          background: #ffffff;
+          box-shadow: 0 4px 16px rgba(15, 23, 42, 0.055);
+          transform: translateX(-12px);
+        }
+        [class*="st-key-mnl_assistant_"] p,
+        [class*="st-key-mnl_assistant_"] li {
+          line-height: 1.55;
+        }
+        @media (min-width: 1200px) {
+          [data-testid="stAppViewContainer"]:has(
+            [data-testid="stSidebar"][aria-expanded="true"]
+          ) [class*="st-key-mnl_assistant_"],
+          [data-testid="stAppViewContainer"]:has(
+            [data-testid="stSidebar"][aria-expanded="true"]
+          ) .st-key-mnl_generation {
+            --mnl-left-extension:
+              clamp(12px, calc(38vw - 486px), 240px);
+            width:
+              min(calc(92% + var(--mnl-left-extension)), 1152px);
+            transform:
+              translateX(calc(0px - var(--mnl-left-extension)));
+          }
+        }
+        .mnl-message-time {
+          margin-top: 10px;
+          color: #73807d;
+          font-size: 11px;
+          line-height: 1.25;
+          text-align: right;
+        }
+        [class*="st-key-mnl_user_"]
+        [data-testid="stMarkdownContainer"]:has(.mnl-message-time),
+        [class*="st-key-mnl_assistant_"]
+        [data-testid="stMarkdownContainer"]:has(.mnl-message-time) {
+          margin-bottom: 0 !important;
         }
         .st-key-mnl_generation {
-          width: min(78%, 720px);
-          min-height: 32px;
-          margin-left: auto;
+          min-height: 92px;
+        }
+        .st-key-mnl_generation [data-testid="stSpinner"] {
+          margin-top: 3px;
+          color: #52606d;
         }
         .mnl-empty-spacer {
           height: clamp(150px, calc(50vh - 125px), 320px);
@@ -3809,6 +3881,48 @@ def _render_my_learning_styles() -> None:
           flex: 1 1 auto;
         }
         .mnl-active-spacer { height: 100%; }
+        [data-testid="stMainBlockContainer"]:has(.mnl-page-marker) {
+          padding-bottom: 7.5rem;
+        }
+        [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)::after {
+          position: fixed;
+          z-index: 40;
+          right: 0;
+          bottom: 0;
+          left: 0;
+          height: 96px;
+          background: #ffffff;
+          content: "";
+          pointer-events: none;
+        }
+        [data-testid="stAppViewContainer"]:has(
+          [data-testid="stSidebar"][aria-expanded="true"]
+        ) [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)::after {
+          left: 256px;
+        }
+        [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)
+        [data-testid="stForm"]:has(input[aria-label="MNL_PROMPT"]) {
+          position: fixed;
+          z-index: 50;
+          bottom: 18px;
+          left: 50%;
+          width: min(1110px, calc(100vw - 32px));
+          height: auto !important;
+          transform: translateX(-50%);
+        }
+        [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)
+        [data-testid="stForm"]:has(input[aria-label="MNL_PROMPT"])
+        > [data-testid="stVerticalBlock"] {
+          height: auto !important;
+          flex: 0 0 auto !important;
+        }
+        [data-testid="stAppViewContainer"]:has(
+          [data-testid="stSidebar"][aria-expanded="true"]
+        ) [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)
+        [data-testid="stForm"]:has(input[aria-label="MNL_PROMPT"]) {
+          left: calc(50% + 128px);
+          width: min(1110px, calc(100vw - 288px));
+        }
         div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"]) {
           width: min(100%, 920px);
           align-items: center;
@@ -3873,7 +3987,68 @@ def _render_my_learning_styles() -> None:
           border: 1px solid #cbd2d8 !important;
           border-radius: 50% !important;
           font-size: 18px !important;
+          line-height: 1 !important;
+          box-shadow: 0 2px 7px rgba(15, 23, 42, 0.07) !important;
+          transition: transform 120ms ease, border-color 120ms ease,
+            background 120ms ease, box-shadow 120ms ease;
+        }
+        .st-key-mnl_quiz button:hover,
+        .st-key-mnl_overview button:hover,
+        .st-key-mnl_send button:hover {
+          transform: translateY(-1px);
+          border-color: #8ca7a1 !important;
+          box-shadow: 0 4px 10px rgba(15, 23, 42, 0.1) !important;
+        }
+        .st-key-mnl_quiz button:disabled,
+        .st-key-mnl_overview button:disabled,
+        .st-key-mnl_send button:disabled {
+          transform: none;
           box-shadow: none !important;
+        }
+        .st-key-mnl_quiz button,
+        .st-key-mnl_overview button {
+          position: relative;
+          font-size: 0 !important;
+        }
+        .st-key-mnl_quiz button p,
+        .st-key-mnl_overview button p {
+          position: absolute !important;
+          width: 1px !important;
+          height: 1px !important;
+          padding: 0 !important;
+          margin: -1px !important;
+          overflow: hidden !important;
+          clip: rect(0, 0, 0, 0) !important;
+          white-space: nowrap !important;
+        }
+        .st-key-mnl_quiz button::before,
+        .st-key-mnl_overview button::before {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 22px;
+          height: 22px;
+          display: block;
+          background: currentColor;
+          content: "";
+          transform: translate(-50%, -50%);
+          -webkit-mask-position: center;
+          -webkit-mask-repeat: no-repeat;
+          -webkit-mask-size: contain;
+          mask-position: center;
+          mask-repeat: no-repeat;
+          mask-size: contain;
+        }
+        .st-key-mnl_quiz button::before {
+          -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='1.8'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='m3%207%202%202%204-4'/%3E%3Cpath%20d='M13%206h8'/%3E%3Cpath%20d='m3%2017%202%202%204-4'/%3E%3Cpath%20d='M13%2018h8'/%3E%3Cpath%20d='M13%2012h8'/%3E%3C/svg%3E");
+          mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='1.8'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='m3%207%202%202%204-4'/%3E%3Cpath%20d='M13%206h8'/%3E%3Cpath%20d='m3%2017%202%202%204-4'/%3E%3Cpath%20d='M13%2018h8'/%3E%3Cpath%20d='M13%2012h8'/%3E%3C/svg%3E");
+        }
+        .st-key-mnl_overview button::before {
+          -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='1.8'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='m12.83%202.18a2%202%200%200%200-1.66%200L2.6%206.08a1%201%200%200%200%200%201.83l8.58%203.91a2%202%200%200%200%201.66%200l8.58-3.9a1%201%200%200%200%200-1.83z'/%3E%3Cpath%20d='m22%2012.5-9.17%204.17a2%202%200%200%201-1.66%200L2%2012.5'/%3E%3Cpath%20d='m22%2017.5-9.17%204.17a2%202%200%200%201-1.66%200L2%2017.5'/%3E%3C/svg%3E");
+          mask-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='black'%20stroke-width='1.8'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='m12.83%202.18a2%202%200%200%200-1.66%200L2.6%206.08a1%201%200%200%200%200%201.83l8.58%203.91a2%202%200%200%200%201.66%200l8.58-3.9a1%201%200%200%200%200-1.83z'/%3E%3Cpath%20d='m22%2012.5-9.17%204.17a2%202%200%200%201-1.66%200L2%2012.5'/%3E%3Cpath%20d='m22%2017.5-9.17%204.17a2%202%200%200%201-1.66%200L2%2017.5'/%3E%3C/svg%3E");
+        }
+        .st-key-mnl_send [aria-label="Shortcut Enter"] {
+          display: none !important;
         }
         .st-key-mnl_quiz button[kind^="secondary"],
         .st-key-mnl_overview button[kind^="secondary"],
@@ -3887,6 +4062,30 @@ def _render_my_learning_styles() -> None:
           color: #ffffff !important;
           border-color: #087f7b !important;
           background: #087f7b !important;
+        }
+        .st-key-mnl_quiz button,
+        .st-key-mnl_overview button,
+        .st-key-mnl_quiz button[kind^="secondary"],
+        .st-key-mnl_overview button[kind^="secondary"] {
+          color: #34433f !important;
+          border-color: transparent !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+        .st-key-mnl_quiz button:hover,
+        .st-key-mnl_overview button:hover {
+          color: #087f7b !important;
+          border-color: transparent !important;
+          background: #edf6f4 !important;
+          box-shadow: none !important;
+          transform: none;
+        }
+        .st-key-mnl_quiz button[kind^="primary"],
+        .st-key-mnl_overview button[kind^="primary"] {
+          color: #087f7b !important;
+          border-color: transparent !important;
+          background: #dff1ed !important;
+          box-shadow: none !important;
         }
         .mnl-icon-legend {
           width: min(100%, 920px);
@@ -3910,14 +4109,34 @@ def _render_my_learning_styles() -> None:
         }
         @media (max-width: 700px) {
           [data-testid="stMainBlockContainer"]:has(.mnl-page-marker) { padding-top: 1.1rem; }
+          [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)
+          [data-testid="stForm"]:has(input[aria-label="MNL_PROMPT"]),
+          [data-testid="stAppViewContainer"]:has(
+            [data-testid="stSidebar"][aria-expanded="true"]
+          ) [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)
+          [data-testid="stForm"]:has(input[aria-label="MNL_PROMPT"]) {
+            bottom: 10px;
+            left: 50%;
+            width: calc(100vw - 20px);
+          }
+          [data-testid="stAppViewContainer"]:has(
+            [data-testid="stSidebar"][aria-expanded="true"]
+          ) [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)::after {
+            left: 0;
+          }
           .mnl-header {
             align-items: flex-start;
             flex-direction: column;
             gap: 7px;
           }
           .mnl-title { font-size: 27px; }
-          div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+          [class*="st-key-mnl_user_"] {
             width: 92%;
+          }
+          [class*="st-key-mnl_assistant_"],
+          .st-key-mnl_generation {
+            width: 100%;
+            transform: none;
           }
           .mnl-empty-spacer { height: 120px; }
           .mnl-icon-legend { padding-left: 12px; }
@@ -3981,91 +4200,90 @@ def page_my_new_learning() -> None:
             last_incomplete_id = mm.get("id")
             break
 
-    for msg in sess["messages"]:
+    for message_index, msg in enumerate(sess["messages"]):
         role = msg.get("role", "assistant")
         ts = msg.get("ts") or ""
         text = normalize_whitespace_for_readability(
             normalize_mojibake(msg.get("text", "") or "")
         )
+        message_id = msg.get("id") or f"legacy_{message_index}"
 
         if role == "user":
-            with st.chat_message("user"):
+            with st.container(key=f"mnl_user_{message_id}"):
                 st.markdown(text)
                 _render_learning_mode_tag(msg.get("mode_label") or "Deep")
-                st.markdown(
-                    f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>",
-                    unsafe_allow_html=True,
-                )
+                if ts:
+                    st.markdown(
+                        f'<div class="mnl-message-time">{ts}</div>',
+                        unsafe_allow_html=True,
+                    )
 
         else:
             if (msg.get("text") or "").lstrip().startswith("**Continued (Part "):
                 st.markdown("---")
 
-            st.markdown(
-                """
-                <div class="mnl-assistant-label">
-                  <span class="mnl-assistant-mark">InI</span>
-                  <span>InI Tutor</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            with st.container(key=f"mnl_assistant_{message_id}"):
+                _render_learning_assistant_label()
 
-            clean_answer, embedded_followups = split_answer_and_embedded_followups(text)
+                clean_answer, embedded_followups = split_answer_and_embedded_followups(text)
+                st.markdown(clean_answer or text)
 
-            st.markdown(clean_answer or text)
+                followups = embedded_followups or (msg.get("followups") or [])
+                if followups:
+                    st.markdown("#### Suggested follow-ups")
+                    render_followup_links(
+                        "learn",
+                        followups,
+                        st.session_state.learning_active_id,
+                        target="_self",
+                    )
 
-            if ts:
-                st.markdown(
-                    f"<div style='text-align:right; color:#6b7280; font-size:12px;'>{ts}</div>",
-                    unsafe_allow_html=True,
-                )
+                if needs_continue_flag(msg) and (msg.get("id") == last_incomplete_id):
+                    msg_id = msg.get("id")
 
-            followups = embedded_followups or (msg.get("followups") or [])
-            if followups:
-                st.markdown("#### Suggested follow-ups")
-                render_followup_links(
-                    "learn",
-                    followups,
-                    st.session_state.learning_active_id,
-                    target="_self",
-                )
+                    if st.button("Continue", key=f"cont-{msg_id}"):
+                        st.session_state._mnl_continue_loading_id = msg_id
+                        st.rerun()
 
-            if needs_continue_flag(msg) and (msg.get("id") == last_incomplete_id):
-                msg_id = msg.get("id")
+                    if st.session_state._mnl_continue_loading_id == msg_id:
+                        st.markdown("⏳ **Continuing...**")
 
-                if st.button("Continue", key=f"cont-{msg_id}"):
-                    st.session_state._mnl_continue_loading_id = msg_id
-                    st.rerun()
+                        try:
+                            _continue_one_chunk(sess, msg_id)
 
-                if st.session_state._mnl_continue_loading_id == msg_id:
-                    st.markdown("⏳ **Continuing...**")
+                        except Exception as e:
+                            sess["messages"].append(
+                                {
+                                    "id": new_msg_id("e"),
+                                    "role": "assistant",
+                                    "text": f"Error continuing: {e}",
+                                    "ts": now_label(),
+                                }
+                            )
 
-                    try:
-                        _continue_one_chunk(sess, msg_id)
+                        finally:
+                            st.session_state._mnl_continue_loading_id = None
 
-                    except Exception as e:
-                        sess["messages"].append(
-                            {
-                                "id": new_msg_id("e"),
-                                "role": "assistant",
-                                "text": f"Error continuing: {e}",
-                                "ts": now_label(),
-                            }
-                        )
+                        st.rerun()
 
-                    finally:
-                        st.session_state._mnl_continue_loading_id = None
+                if ts:
+                    st.markdown(
+                        f'<div class="mnl-message-time">{ts}</div>',
+                        unsafe_allow_html=True,
+                    )
 
-                    st.rerun()
-
-    if st.session_state._mnl_pending_request:
-        _generate_pending_learning_response(sess)
+    generation_slot = st.empty()
 
     spacer_class = "mnl-active-spacer" if sess["messages"] else "mnl-empty-spacer"
     st.markdown(f'<div class="{spacer_class}"></div>', unsafe_allow_html=True)
 
     current_mode = st.session_state.uib_mode
+    composer_busy = bool(
+        st.session_state._mnl_pending_request
+        or st.session_state._mnl_generating
+    )
+    composer_revision = st.session_state._mnl_composer_revision
+    composer_text_key = f"mnl_prompt_{composer_revision}"
     with st.form(
         "mnl_composer",
         clear_on_submit=False,
@@ -4076,9 +4294,10 @@ def page_my_new_learning() -> None:
         with input_cols[0]:
             st.text_input(
                 "MNL_PROMPT",
-                key="uib_text",
+                key=composer_text_key,
                 label_visibility="collapsed",
                 placeholder="Ask InI anything to learn...",
+                disabled=composer_busy,
             )
 
         with input_cols[1]:
@@ -4087,23 +4306,26 @@ def page_my_new_learning() -> None:
                     "➤",
                     help="Send (Deep by default)",
                     type="primary" if current_mode == "deep" else "secondary",
+                    disabled=composer_busy,
                     shortcut="Enter",
                 )
 
         with input_cols[2]:
             with st.container(key="mnl_quiz"):
                 quiz_selected = st.form_submit_button(
-                    "?",
+                    "Quiz",
                     help="Quiz",
                     type="primary" if current_mode == "quiz" else "secondary",
+                    disabled=composer_busy,
                 )
 
         with input_cols[3]:
             with st.container(key="mnl_overview"):
                 overview_selected = st.form_submit_button(
-                    "◎",
+                    "Overview",
                     help="Overview",
                     type="primary" if current_mode == "high" else "secondary",
+                    disabled=composer_busy,
                 )
 
     if quiz_selected:
@@ -4111,7 +4333,11 @@ def page_my_new_learning() -> None:
     elif overview_selected:
         _set_learning_mode("deep" if current_mode == "high" else "high")
     elif send_submitted:
-        st.session_state._uib_send_requested = True
+        st.session_state._mnl_send_payload = {
+            "prompt": st.session_state.get(composer_text_key, ""),
+            "mode": current_mode,
+        }
+        st.session_state._mnl_composer_revision += 1
         st.rerun()
 
     if not sess["messages"]:
@@ -4134,6 +4360,9 @@ def page_my_new_learning() -> None:
             """,
             unsafe_allow_html=True,
         )
+
+    if st.session_state._mnl_pending_request:
+        _generate_pending_learning_response(sess, generation_slot)
 
 def page_new_project() -> None:
     st.markdown('<div class="bigtitle">New Project</div>', unsafe_allow_html=True)
