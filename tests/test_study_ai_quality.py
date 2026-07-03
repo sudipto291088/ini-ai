@@ -10,6 +10,18 @@ study_module = importlib.import_module("api.study_ai")
 
 
 class StudyAIQualityTests(unittest.TestCase):
+    def test_new_chat_introduction_is_distinct_from_mnl_overview(self) -> None:
+        intro = study_module._build_instruction("intro")
+        overview = study_module._build_instruction("high")
+
+        self.assertEqual(study_module._normalize_mode("introduction"), "intro")
+        self.assertEqual(study_module._archetype_for_mode("intro"), "ORIENT")
+        self.assertIn("250–400 words", intro)
+        self.assertIn("prepares the learner for a structured Question Map", intro)
+        self.assertIn("never replace it with a broader parent topic", intro)
+        self.assertIn("4–7 bullets maximum", overview)
+        self.assertNotEqual(intro, overview)
+
     def test_deep_instruction_is_adaptive_and_avoids_repetition(self) -> None:
         instruction = study_module._build_instruction("deep")
 

@@ -403,7 +403,7 @@ def _next_answer(topic: str) -> str:
 # LLM routing (AI / ML only)
 # ------------------------------------------------------------
 def _is_llm_topic(topic: str) -> bool:
-    tl = (topic or "").lower()
+    tl = re.sub(r"[^a-z0-9]+", " ", (topic or "").lower()).strip()
 
     AI_KEYWORDS = [
         # AI / ML / Data Science
@@ -458,6 +458,23 @@ def _is_llm_topic(topic: str) -> bool:
         "cloud computing",
         "docker",
         "kubernetes",
+        "quantum computing",
+        "qis",
+        "quantum information science",
+        "quantum physics",
+
+        # Cognitive Science / Language and the Brain
+        "bcbl",
+        "basque center on cognition brain and language",
+        "basque centre on cognition brain and language",
+        "cognitive science",
+        "cognitive neuroscience",
+        "psycholinguistics",
+        "neurolinguistics",
+        "language and the brain",
+        "bilingualism",
+        "multilingualism",
+        "language acquisition",
 
         # Computer Architecture / Hardware
         "computer architecture",
@@ -479,7 +496,10 @@ def _is_llm_topic(topic: str) -> bool:
         "ryzen",
     ]
 
-    short_tokens = {"ai", "agi", "ml", "nlp", "gpt", "sql", "cpu", "gpu", "amd", "ram", "pca"}
+    short_tokens = {
+        "ai", "agi", "ml", "nlp", "gpt", "sql", "cpu", "gpu", "amd",
+        "ram", "pca", "bcbl", "qis",
+    }
 
     for keyword in AI_KEYWORDS:
         if keyword in short_tokens:

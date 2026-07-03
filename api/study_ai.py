@@ -38,6 +38,7 @@ def _normalize_mode(raw: Optional[str]) -> str:
     """
     Supported:
       - deep (default)
+      - intro (New Chat topic introduction)
       - high (overview)
       - quiz
       - focused (FUQ-style direct deep bullets)
@@ -53,6 +54,9 @@ def _normalize_mode(raw: Optional[str]) -> str:
         "d": "deep",
         "research": "deep",
         "apply": "deep",
+
+        "intro": "intro",
+        "introduction": "intro",
 
         "overview": "high",
         "high": "high",
@@ -77,8 +81,33 @@ def _normalize_mode(raw: Optional[str]) -> str:
 def _build_instruction(mode: str) -> str:
     """
     Build the *style contract* for the tutor. This is where we make
-    'high', 'quiz', and 'focused' visibly different from 'deep'.
+    'intro', 'high', 'quiz', and 'focused' visibly different from 'deep'.
     """
+    if mode == "intro":
+        return (
+            "You are InI, a clear and thoughtful AI tutor.\n"
+            "Write a descriptive INTRODUCTION that prepares the learner for a structured Question Map.\n"
+            "- Preserve and address the user's exact topic; never replace it with a broader parent topic.\n"
+            "- Start with this exact machine-readable structure, using valid JSON between the tags:\n"
+            "<TOPIC_PROFILE>\n"
+            '{"Entity type":"...", "Broad field":"...", "Subject":"...", "Related topics":"..."}\n'
+            "</TOPIC_PROFILE>\n"
+            "- Include 3–6 concise profile fields and adapt their labels to the topic.\n"
+            "- Use only relevant labels such as Entity type, Organization type, Manufacturer, Broad field, Parent domain, Subject, Subfield, Full form, Name type, or Related topics.\n"
+            "- Omit irrelevant labels instead of writing unknown, none, or not applicable.\n"
+            "- Keep profile values factual and compact; do not use Markdown inside the JSON.\n"
+            "- After the closing tag, write the narrative introduction.\n"
+            "- Target roughly 250–400 words.\n"
+            "- Begin with a clear explanation of what the topic is.\n"
+            "- Then explain its context, purpose, major areas, and why it matters.\n"
+            "- For a named institution or organization, explain its identity, research focus, and relationship to the wider field without inventing current details.\n"
+            "- Use 3–5 short paragraphs or compact sections with natural educational flow.\n"
+            "- Do not produce the Question Map itself, a quiz, or an exhaustive technical deep dive.\n"
+            "- Avoid repetitive summaries and do not compress the introduction into only a few bullets.\n"
+            "- Never invent current, local, or live facts.\n"
+            "- End cleanly without repeating the opening definition.\n"
+        )
+
     if mode == "high":
         return (
             "You are InI, a clean and helpful AI tutor.\n"
@@ -143,7 +172,7 @@ def _build_instruction(mode: str) -> str:
 
 
 def _archetype_for_mode(mode: str) -> str:
-    if mode == "high":
+    if mode in {"intro", "high"}:
         return "ORIENT"
     if mode == "focused":
         return "APPLY"

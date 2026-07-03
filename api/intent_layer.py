@@ -180,6 +180,21 @@ TECHNICAL_TOPIC_PHRASES = {
     "constitutional ai",
     "spatial ai",
     "artificial general intelligence",
+    "bcbl",
+    "basque center on cognition brain and language",
+    "basque centre on cognition brain and language",
+    "cognitive science",
+    "cognitive neuroscience",
+    "psycholinguistics",
+    "neurolinguistics",
+    "bilingualism",
+    "multilingualism",
+    "language acquisition",
+    "computer science",
+    "quantum computing",
+    "qis",
+    "quantum information science",
+    "quantum physics",
 }
 
 QUIZ_CUES = {

@@ -2,6 +2,7 @@ import os
 import time
 import re
 import secrets
+from html import escape
 from datetime import datetime
 from typing import Any, Dict, Optional
 from urllib.parse import urlencode
@@ -18,6 +19,7 @@ from storage_sqlite import (
     rename_session,
 )
 from time_utils import browser_local_now
+from topic_profile import extract_topic_profile
 
 
 
@@ -412,6 +414,49 @@ div.stButton > button:hover {
   border-color:#d1d5db !important;
 }
 
+.ini-topic-profile {
+  margin: 12px 0 20px;
+  padding: 16px 17px;
+  border: 1px solid #dce6e3;
+  border-radius: 8px;
+  background: #f7faf9;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.045);
+}
+.ini-topic-profile__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 13px;
+  color: #1f3934;
+  font-size: 13px;
+  font-weight: 750;
+}
+.ini-topic-profile__mark {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #087f7b;
+}
+.ini-topic-profile__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+.ini-topic-profile__label {
+  margin-bottom: 3px;
+  color: #687773;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.ini-topic-profile__value {
+  color: #17211f;
+  font-size: 13px;
+  line-height: 1.4;
+}
+@media (max-width: 700px) {
+  .ini-topic-profile__grid { grid-template-columns: 1fr; }
+}
 
 </style>
 """
@@ -1437,6 +1482,33 @@ def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
     return "\n".join(body_lines).strip(), deduped
 
 
+def render_topic_profile(rows: list[tuple[str, str]]) -> None:
+    if not rows:
+        return
+
+    items = "".join(
+        (
+            '<div class="ini-topic-profile__item">'
+            f'<div class="ini-topic-profile__label">{escape(label)}</div>'
+            f'<div class="ini-topic-profile__value">{escape(value)}</div>'
+            "</div>"
+        )
+        for label, value in rows
+    )
+    st.markdown(
+        (
+            '<div class="ini-topic-profile">'
+            '<div class="ini-topic-profile__title">'
+            '<span class="ini-topic-profile__mark"></span>'
+            "<span>Topic Profile</span>"
+            "</div>"
+            f'<div class="ini-topic-profile__grid">{items}</div>'
+            "</div>"
+        ),
+        unsafe_allow_html=True,
+    )
+
+
 def normalize_clicked_followup_prompt(text: str) -> str:
     s = (text or "").strip()
     if not s:
@@ -1956,7 +2028,7 @@ def page_new_chat() -> None:
 
         with st.spinner("Generating question map... may take some time."):
             data = fetch_interrogate(topic_text.strip())
-            intro_resp = fetch_study_full(topic_text.strip(), mode="high")
+            intro_resp = fetch_study_full(topic_text.strip(), mode="intro")
             intro = intro_resp.get("answer", "").strip()
             _append_interrogate_branch(topic_text.strip(), data, intro)
             _persist_new_chat_session(current_sid)
@@ -1985,9 +2057,12 @@ def page_new_chat() -> None:
             intro = (branch.get("intro") or "").strip()
             if intro:
                 clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
+                profile_rows, intro_body = extract_topic_profile(clean_intro or intro)
 
                 st.markdown("##### Introduction")
-                st.markdown(clean_intro or intro)
+                render_topic_profile(profile_rows)
+                if intro_body:
+                    st.markdown(intro_body)
 
                 if intro_followups:
                     st.markdown("##### Suggested follow-ups")
@@ -2534,7 +2609,7 @@ def page_new_chat() -> None:
                 # Real topic -> question-map path
                 # -------------------------------------------------
                 if has_existing_root:
-                    intro_resp = fetch_study_full(topic_text.strip(), mode="high")
+                    intro_resp = fetch_study_full(topic_text.strip(), mode="intro")
                     intro = intro_resp.get("answer", "").strip()
                     _append_interrogate_branch(topic_text.strip(), data, intro)
                     _persist_new_chat_session(current_sid)
@@ -2545,7 +2620,7 @@ def page_new_chat() -> None:
                 st.session_state.chat_root_topic = topic_text.strip()
                 st.session_state.chat["interrogate"] = data
 
-                intro_resp = fetch_study_full(topic_text.strip(), mode="high")
+                intro_resp = fetch_study_full(topic_text.strip(), mode="intro")
                 intro = intro_resp.get("answer", "").strip()
 
                 st.session_state.chat_intro = intro
@@ -3186,9 +3261,12 @@ def page_new_chat() -> None:
             intro = st.session_state.chat_intro
             if intro:
                 clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
+                profile_rows, intro_body = extract_topic_profile(clean_intro or intro)
 
-                intro_text = "### Introduction\n\n" + (clean_intro or intro)
-                st.markdown(intro_text)
+                st.markdown("### Introduction")
+                render_topic_profile(profile_rows)
+                if intro_body:
+                    st.markdown(intro_body)
 
                 if intro_followups:
                     st.markdown("#### Suggested follow-ups")
