@@ -4049,11 +4049,27 @@ def _render_my_learning_styles() -> None:
           background: transparent !important;
           box-shadow: none !important;
         }
-        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"]) input {
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"]) input,
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"]) input:focus,
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"]) input:active {
           min-height: 43px;
           padding: 0 !important;
           color: #111827;
-          background: transparent !important;
+          outline: none !important;
+          background-color: transparent !important;
+          background-image: none !important;
+          box-shadow: none !important;
+          caret-color: #087f7b;
+        }
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        input:-webkit-autofill,
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        input:-webkit-autofill:hover,
+        div[data-testid="stHorizontalBlock"]:has(input[aria-label="MNL_PROMPT"])
+        input:-webkit-autofill:focus {
+          -webkit-text-fill-color: #111827 !important;
+          -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+          box-shadow: 0 0 0 1000px #ffffff inset !important;
         }
         .st-key-mnl_quiz button,
         .st-key-mnl_overview button,
@@ -4165,26 +4181,6 @@ def _render_my_learning_styles() -> None:
           background: #dff1ed !important;
           box-shadow: none !important;
         }
-        .mnl-icon-legend {
-          width: min(100%, 920px);
-          margin: 13px auto 0;
-          padding-left: 22px;
-          color: #66717d;
-          font-size: 11px;
-          line-height: 1.75;
-        }
-        .mnl-icon-legend-row {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-        }
-        .mnl-legend-symbol {
-          display: inline-block;
-          width: 14px;
-          color: #374151;
-          font-weight: 700;
-          text-align: center;
-        }
         @media (max-width: 700px) {
           [data-testid="stMainBlockContainer"]:has(.mnl-page-marker) { padding-top: 1.1rem; }
           [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)
@@ -4217,7 +4213,6 @@ def _render_my_learning_styles() -> None:
             transform: none;
           }
           .mnl-empty-spacer { height: 120px; }
-          .mnl-icon-legend { padding-left: 12px; }
         }
         </style>
         <div class="mnl-page-marker"></div>
@@ -4417,27 +4412,6 @@ def page_my_new_learning() -> None:
         }
         st.session_state._mnl_composer_revision += 1
         st.rerun()
-
-    if not sess["messages"]:
-        st.markdown(
-            """
-            <div class="mnl-icon-legend">
-              <div class="mnl-icon-legend-row">
-                <span class="mnl-legend-symbol">?</span>
-                <span>Quiz</span>
-              </div>
-              <div class="mnl-icon-legend-row">
-                <span class="mnl-legend-symbol">◎</span>
-                <span>Overview</span>
-              </div>
-              <div class="mnl-icon-legend-row">
-                <span class="mnl-legend-symbol">➤</span>
-                <span>Deep / Send</span>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
     if st.session_state._mnl_pending_request:
         _generate_pending_learning_response(sess, generation_slot)
