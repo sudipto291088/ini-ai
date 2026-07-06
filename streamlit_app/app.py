@@ -2,6 +2,8 @@ import os
 import time
 import re
 import secrets
+import base64
+from contextlib import nullcontext
 from html import escape
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -10,6 +12,7 @@ from pathlib import Path
 
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 from storage_sqlite import (
     init_db,
     save_session,
@@ -889,6 +892,15 @@ if "_mnl_pending_request" not in st.session_state:
 if "_mnl_generating" not in st.session_state:
     st.session_state._mnl_generating = False
 
+if "_nc_pending_request" not in st.session_state:
+    st.session_state._nc_pending_request = None
+
+if "_nc_generating" not in st.session_state:
+    st.session_state._nc_generating = False
+
+if "_nc_bottom_composer_revision" not in st.session_state:
+    st.session_state._nc_bottom_composer_revision = 0
+
 if "nc_started" not in st.session_state:
     st.session_state.nc_started = False
 
@@ -1004,6 +1016,11 @@ def _reset_new_chat_state() -> None:
     st.session_state.chat_root_followups = {}
     st.session_state.chat_root_open_questions = set()
     st.session_state.chat_root_visited_questions = set()
+    st.session_state._nc_pending_request = None
+    st.session_state._nc_generating = False
+    st.session_state._nc_bottom_composer_revision += 1
+    st.session_state.chat_top_enter_submit = False
+    st.session_state.chat_bottom_enter_submit = False
     st.session_state.nc_started = False
 
 def _current_new_chat_payload() -> Dict[str, Any]:
@@ -1906,12 +1923,6 @@ Enter a topic to begin your learning journey.
     )
 
 def page_new_chat() -> None:
-    st.markdown('<div class="bigtitle">New Chat</div>', unsafe_allow_html=True)
-    st.caption(
-        "InI Question Engine (v0): Interrogate generates a progressive question ladder. "
-        "Click a question to open or hide its answer."
-    )
-
     if "chat_answers" not in st.session_state:
         st.session_state.chat_answers = {}
     if "chat_open_questions" not in st.session_state:
@@ -2263,10 +2274,18 @@ def page_new_chat() -> None:
                 unsafe_allow_html=True,
             )
 
-    def _render_nc_user_bubble(text: str, ts: str = "") -> None:
+    def _render_nc_user_bubble(
+        text: str,
+        ts: str = "",
+        extra_class: str = "",
+    ) -> None:
         prompt = (text or "").strip()
         if not prompt:
             return
+
+        class_names = "nc-user-bubble"
+        if extra_class:
+            class_names += f" {extra_class.strip()}"
 
         ts_html = ""
         if ts:
@@ -2274,7 +2293,7 @@ def page_new_chat() -> None:
 
         st.markdown(
             f"""
-            <div style="display:flex; justify-content:flex-end; margin: 10px 0 14px 0;">
+            <div class="{class_names}" style="display:flex; justify-content:flex-end; margin: 10px 0 14px 0;">
             <div style="
                 max-width: 68%;
                 background: #f3f4f6;
@@ -2497,7 +2516,10 @@ def page_new_chat() -> None:
 
         return raw
 
-    def _run_new_chat_interrogate(topic_text: str) -> None:
+    def _run_new_chat_interrogate(
+        topic_text: str,
+        show_spinner: bool = True,
+    ) -> None:
         topic_text = _resolve_typed_followup(topic_text)
 
         if not topic_text.strip():
@@ -2508,7 +2530,12 @@ def page_new_chat() -> None:
             st.session_state.chat_popup_sid = None
             _reset_query_to_page("chat")
 
-            with st.spinner("Generating question map... may take some time."):
+            spinner_context = (
+                st.spinner("Generating question map... may take some time.")
+                if show_spinner
+                else nullcontext()
+            )
+            with spinner_context:
                 data = fetch_interrogate(topic_text.strip())
                 st.session_state.chat["topic"] = topic_text.strip()
 
@@ -2649,7 +2676,10 @@ def page_new_chat() -> None:
         except Exception as e:
             st.error(f"Error calling /interrogate: {e}")
 
-    def _run_new_chat_illustrate(topic_text: str) -> None:
+    def _run_new_chat_illustrate(
+        topic_text: str,
+        show_spinner: bool = True,
+    ) -> None:
         if not topic_text.strip():
             return
         try:
@@ -2663,7 +2693,12 @@ def page_new_chat() -> None:
             st.session_state.chat_popup_sid = None
             _reset_query_to_page("chat")
 
-            with st.spinner("Generating illustrations... please wait."):
+            spinner_context = (
+                st.spinner("Generating illustrations... please wait.")
+                if show_spinner
+                else nullcontext()
+            )
+            with spinner_context:
                 data = fetch_illustrate(topic_text.strip())
                 st.session_state.chat["topic"] = topic_text.strip()
                 st.session_state.chat_root_topic = topic_text.strip()
@@ -2697,305 +2732,976 @@ def page_new_chat() -> None:
         except Exception as e:
             st.error(f"Error calling /illustrate: {e}")
 
-    
+    def _queue_new_chat_request(topic_text: str, action: str) -> bool:
+        prompt = (topic_text or "").strip()
+        action = (action or "interrogate").strip().lower()
+        if action not in {"interrogate", "illustrate"}:
+            action = "interrogate"
+
+        if (
+            not prompt
+            or st.session_state._nc_pending_request
+            or st.session_state._nc_generating
+        ):
+            return False
+
+        st.session_state._nc_pending_request = {
+            "prompt": prompt,
+            "action": action,
+            "ts": now_label(),
+        }
+        st.session_state._nc_bottom_composer_revision += 1
+        st.session_state.chat_top_enter_submit = False
+        st.session_state.chat_bottom_enter_submit = False
+        st.session_state.nc_started = True
+        st.rerun()
+        return True
+
+    def _render_new_chat_generation_placeholder() -> None:
+        st.markdown(
+            """
+            <div class="nc-generation-placeholder">
+              <div class="nc-generation-label">
+                <span class="nc-generation-mark"></span>
+                <span>InI.ai</span>
+              </div>
+              <div class="nc-generation-copy">
+                <span class="nc-generation-pulse"></span>
+                Generating answer... may take some time.
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    def _generate_pending_new_chat_response(generation_slot: Any) -> None:
+        pending = st.session_state._nc_pending_request
+        if not isinstance(pending, dict) or st.session_state._nc_generating:
+            return
+
+        prompt = (pending.get("prompt") or "").strip()
+        action = (pending.get("action") or "interrogate").strip().lower()
+        if not prompt:
+            st.session_state._nc_pending_request = None
+            return
+
+        st.session_state._nc_generating = True
+        try:
+            with generation_slot.container():
+                _render_new_chat_generation_placeholder()
+                if action == "illustrate":
+                    _run_new_chat_illustrate(prompt, show_spinner=False)
+                else:
+                    _run_new_chat_interrogate(prompt, show_spinner=False)
+        finally:
+            st.session_state._nc_pending_request = None
+            st.session_state._nc_generating = False
+
+        st.rerun()
+
+    def _render_pending_new_chat_continuation(pending: Dict[str, Any]) -> None:
+        pending_prompt = (pending.get("prompt") or "").strip()
+        pending_ts = (pending.get("ts") or "").strip()
+        if not pending_prompt:
+            return
+
+        st.markdown('<div class="nc-pending-inline-anchor"></div>', unsafe_allow_html=True)
+        _render_nc_user_bubble(
+            pending_prompt,
+            pending_ts,
+            extra_class="nc-pending-inline-query",
+        )
+
+        generation_slot = st.empty()
+        with generation_slot.container():
+            _render_new_chat_generation_placeholder()
+
+        components.html(
+            """
+            <script>
+            requestAnimationFrame(() => {
+              try {
+                const doc = window.parent.document;
+                const anchor = doc.querySelector('.nc-pending-inline-anchor');
+                if (anchor) {
+                  anchor.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                }
+              } catch (err) {}
+            });
+            </script>
+            """,
+            height=0,
+            scrolling=False,
+        )
+
+        _render_new_chat_bottom_uib()
+        _generate_pending_new_chat_response(generation_slot)
 
     def _render_new_chat_top_uib() -> None:
         if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
             st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
 
+        icon_path = Path(__file__).with_name("ini_icon.png")
+        icon_data = base64.b64encode(icon_path.read_bytes()).decode("ascii")
+
         st.markdown(
-            """
+            f"""
             <style>
-            div[data-testid="stTextArea"][aria-label="NC_TOP_TOPIC"]{
-                background: transparent !important;
-                border: none !important;
-                box-shadow: none !important;
-            }
+            [data-testid="stMainBlockContainer"]:has(.nc-landing-marker) {{
+                width: 100%;
+                max-width: none;
+                padding-top: 1.2rem;
+                padding-bottom: 2rem;
+            }}
 
-            div[data-testid="stTextArea"][aria-label="NC_TOP_TOPIC"] > div{
-                background: #ffffff !important;
-                border: none !important;
-                border-radius: 24px !important;
-                box-shadow: 0 8px 22px rgba(15,23,42,0.08) !important;
-                padding: 0 !important;
+            [data-testid="stVerticalBlock"]:has(.nc-landing-marker) {{
+                min-height: calc(100vh - 70px);
+            }}
+
+            .nc-landing-marker {{
+                display: none;
+            }}
+
+            [data-testid="stElementContainer"]:has(.nc-landing-brand) {{
+                width: min(100%, 900px);
+                margin: clamp(70px, 13vh, 145px) auto 0;
+            }}
+
+            .nc-landing-brand {{
+                width: 100%;
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+                align-items: center;
+            }}
+
+            .nc-landing-brand-left {{
+                display: flex;
+                align-items: center;
+                justify-self: end;
+                gap: 8px;
+            }}
+
+            .nc-landing-brand img {{
+                width: 70px;
+                height: 70px;
+                object-fit: contain;
+                flex: 0 0 70px;
+                margin-right: -4px;
+            }}
+
+            .nc-landing-wordmark {{
+                color: #0f172a;
+                font-size: 43px;
+                font-weight: 800;
+                line-height: 1;
+            }}
+
+            .nc-landing-wordmark-accent {{
+                grid-column: 3;
+                justify-self: start;
+                color: #f51b3f;
+            }}
+
+            .nc-landing-wordmark-dot {{
+                grid-column: 2;
+                justify-self: center;
+            }}
+
+            .nc-landing-heading {{
+                margin: 22px auto 0;
+                color: #111827;
+                font-size: 30px;
+                font-weight: 760;
+                line-height: 1.2;
+                text-align: center;
+            }}
+
+            .nc-landing-subtitle {{
+                margin: 10px auto 28px;
+                color: #667085;
+                font-size: 15px;
+                line-height: 1.5;
+                text-align: center;
+            }}
+
+            div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) {{
+                width: min(100%, 860px);
+                margin-inline: auto;
+                background: transparent !important;
+                border: 0 !important;
+                box-shadow: none !important;
+            }}
+
+            div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) > div {{
                 overflow: hidden !important;
-            }
+                padding: 0 !important;
+                border: 1px solid #d7dde3 !important;
+                border-radius: 18px !important;
+                background: #ffffff !important;
+                box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07) !important;
+                transition: border-color 140ms ease, box-shadow 140ms ease;
+            }}
 
-            div[data-testid="stTextArea"][aria-label="NC_TOP_TOPIC"] textarea{
-                min-height: 118px !important;
-                height: 118px !important;
-                border: none !important;
-                outline: none !important;
-                border-radius: 24px !important;
-                background: transparent !important;
-                box-shadow: none !important;
-                font-size: 16px !important;
-                line-height: 1.35 !important;
-                padding: 34px 24px !important;
+            div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]:focus) > div {{
+                border-color: #9dbbb5 !important;
+                box-shadow: 0 9px 26px rgba(15, 23, 42, 0.09) !important;
+            }}
+
+            div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) textarea,
+            div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) textarea:focus {{
+                min-height: 88px !important;
+                height: auto !important;
+                max-height: 210px !important;
+                padding: 21px 25px !important;
                 box-sizing: border-box !important;
                 resize: none !important;
-                overflow: hidden !important;
-            }
-
-            div[data-testid="stTextArea"][aria-label="NC_TOP_TOPIC"] textarea::placeholder{
-                color: #94a3b8 !important;
-            }
-
-            div[data-testid="stTextArea"][aria-label="NC_TOP_TOPIC"] textarea:focus{
-                border: none !important;
-                outline: none !important;
+                overflow-y: auto !important;
+                field-sizing: content;
+                border: 0 !important;
+                border-radius: 18px !important;
+                outline: 0 !important;
+                color: #111827 !important;
+                background: #ffffff !important;
                 box-shadow: none !important;
-            }
+                font-size: 16px !important;
+                line-height: 1.45 !important;
+                caret-color: #087f7b;
+            }}
 
-            div.stButton > button[kind="secondary"]{
-                background: #000000 !important;
-                color: #ffffff !important;
-                -webkit-text-fill-color: #ffffff !important;
-                border: 1px solid #000000 !important;
-                border-radius: 14px !important;
+            div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"])
+            textarea::placeholder {{
+                color: #8b95a3 !important;
+                opacity: 1 !important;
+            }}
+
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_top_interrogate) {{
+                width: min(100%, 370px);
+                margin: 19px auto 0;
+                gap: 20px;
+                flex-wrap: nowrap;
+            }}
+
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_top_interrogate)
+            > div[data-testid="stColumn"] {{
+                width: 0 !important;
+                min-width: 0 !important;
+                flex: 1 1 0 !important;
+            }}
+
+            .st-key-nc_top_interrogate div.stButton > button[kind="secondary"],
+            .st-key-nc_top_illustrate div.stButton > button[kind="secondary"] {{
                 width: 100% !important;
                 min-width: 0 !important;
-                max-width: 128px !important;
-                height: 42px !important;
-                min-height: 42px !important;
-                white-space: nowrap !important;
-                text-align: center !important;
-                padding: 0 !important;
-                box-shadow: none !important;
+                height: 46px !important;
+                min-height: 46px !important;
+                justify-content: center !important;
+                padding: 0 18px !important;
                 margin: 0 !important;
-            }
+                border: 1px solid #071126 !important;
+                border-radius: 18px !important;
+                color: #ffffff !important;
+                -webkit-text-fill-color: #ffffff !important;
+                background: #071126 !important;
+                box-shadow: 0 4px 11px rgba(7, 17, 38, 0.13) !important;
+                transition: transform 120ms ease, background 120ms ease,
+                    box-shadow 120ms ease;
+            }}
 
-            div.stButton > button[kind="secondary"] p,
-            div.stButton > button[kind="secondary"] span,
-            div.stButton > button[kind="secondary"] div{
+            .st-key-nc_top_interrogate div.stButton > button[kind="secondary"]:hover,
+            .st-key-nc_top_illustrate div.stButton > button[kind="secondary"]:hover {{
+                transform: translateY(-1px);
+                border-color: #111d35 !important;
+                background: #111d35 !important;
+                box-shadow: 0 6px 14px rgba(7, 17, 38, 0.17) !important;
+            }}
+
+            .st-key-nc_top_interrogate div.stButton > button[kind="secondary"] p,
+            .st-key-nc_top_interrogate div.stButton > button[kind="secondary"] span,
+            .st-key-nc_top_illustrate div.stButton > button[kind="secondary"] p,
+            .st-key-nc_top_illustrate div.stButton > button[kind="secondary"] span {{
                 color: #ffffff !important;
                 -webkit-text-fill-color: #ffffff !important;
                 font-size: 14px !important;
-                font-weight: 900 !important;
-                letter-spacing: 0.2px !important;
-                opacity: 1 !important;
+                font-weight: 800 !important;
+                line-height: 1 !important;
+                letter-spacing: 0 !important;
                 margin: 0 !important;
                 white-space: nowrap !important;
-            }
+            }}
 
-            button[data-testid="baseButton-secondary"]:hover{
-                background: #111111 !important;
-                border-color: #111111 !important;
-            }
+            [data-testid="stElementContainer"]:has(.nc-explore-label) {{
+                width: min(100%, 860px);
+                margin: 30px auto 9px;
+            }}
 
-            /* responsive shrink for sidebar mode */
+            .nc-explore-label {{
+                color: #6b7280;
+                font-size: 12px;
+                font-weight: 700;
+                text-transform: uppercase;
+            }}
 
-            @media (max-width:1100px){
-                button[data-testid="baseButton-secondary"]{
-                    max-width:112px !important;
-                    height:40px !important;
-                }
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_ai) {{
+                width: min(100%, 860px);
+                margin-inline: auto;
+                display: grid !important;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 10px;
+            }}
 
-                div.stButton > button[kind="secondary"] p{
-                    font-size:12px !important;
-                }
-            }
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_ai)
+            > div[data-testid="stColumn"] {{
+                width: auto !important;
+                min-width: 0 !important;
+                flex: none !important;
+            }}
 
-            @media (max-width:900px){
-                button[data-testid="baseButton-secondary"]{
-                    max-width:96px !important;
-                    height:38px !important;
-                }
+            .st-key-nc_explore_ai button,
+            .st-key-nc_explore_quantum button,
+            .st-key-nc_explore_cognitive button,
+            .st-key-nc_explore_kubernetes button {{
+                position: relative;
+                width: 100% !important;
+                min-width: 0 !important;
+                height: 42px !important;
+                min-height: 42px !important;
+                justify-content: center !important;
+                gap: 8px;
+                padding: 0 12px !important;
+                margin: 0 !important;
+                overflow: hidden;
+                border: 1px solid #dde3e8 !important;
+                border-radius: 8px !important;
+                color: #34433f !important;
+                background: #ffffff !important;
+                box-shadow: 0 2px 7px rgba(15, 23, 42, 0.035) !important;
+            }}
 
-                div.stButton > button[kind="secondary"] p{
-                    font-size:11px !important;
-                }
-            }
+            .st-key-nc_explore_ai div.stButton > button[kind="secondary"]:hover,
+            .st-key-nc_explore_quantum div.stButton > button[kind="secondary"]:hover,
+            .st-key-nc_explore_cognitive div.stButton > button[kind="secondary"]:hover,
+            .st-key-nc_explore_kubernetes div.stButton > button[kind="secondary"]:hover {{
+                border-color: #f2a4b2 !important;
+                color: #d91d3f !important;
+                -webkit-text-fill-color: #d91d3f !important;
+                background: #fff3f5 !important;
+            }}
 
+            .st-key-nc_explore_ai div.stButton > button[kind="secondary"]:hover p,
+            .st-key-nc_explore_quantum div.stButton > button[kind="secondary"]:hover p,
+            .st-key-nc_explore_cognitive div.stButton > button[kind="secondary"]:hover p,
+            .st-key-nc_explore_kubernetes div.stButton > button[kind="secondary"]:hover p {{
+                color: #d91d3f !important;
+                -webkit-text-fill-color: #d91d3f !important;
+            }}
+
+            .st-key-nc_explore_ai button p,
+            .st-key-nc_explore_quantum button p,
+            .st-key-nc_explore_cognitive button p,
+            .st-key-nc_explore_kubernetes button p {{
+                min-width: 0;
+                overflow: hidden;
+                color: inherit !important;
+                -webkit-text-fill-color: currentColor !important;
+                font-size: 12px !important;
+                font-weight: 650 !important;
+                line-height: 1.2 !important;
+                text-overflow: ellipsis;
+                white-space: nowrap !important;
+            }}
+
+            .st-key-nc_explore_ai button::before,
+            .st-key-nc_explore_quantum button::before,
+            .st-key-nc_explore_cognitive button::before,
+            .st-key-nc_explore_kubernetes button::before {{
+                width: 17px;
+                height: 17px;
+                display: block;
+                flex: 0 0 17px;
+                background: currentColor;
+                content: "";
+                -webkit-mask-position: center;
+                -webkit-mask-repeat: no-repeat;
+                -webkit-mask-size: contain;
+                mask-position: center;
+                mask-repeat: no-repeat;
+                mask-size: contain;
+            }}
+
+            .st-key-nc_explore_ai button::before {{
+                -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.5 4A3.5 3.5 0 0 0 6 7.5c0 .3.04.58.1.85A3.5 3.5 0 0 0 7.5 15H9v3a2 2 0 0 0 4 0V6.5A2.5 2.5 0 0 0 10.5 4Z'/%3E%3Cpath d='M14.5 4A3.5 3.5 0 0 1 18 7.5c0 .3-.04.58-.1.85A3.5 3.5 0 0 1 16.5 15H15'/%3E%3Cpath d='M9 9h2M15 9h2M9 13h2M15 13h2'/%3E%3C/svg%3E");
+                mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9.5 4A3.5 3.5 0 0 0 6 7.5c0 .3.04.58.1.85A3.5 3.5 0 0 0 7.5 15H9v3a2 2 0 0 0 4 0V6.5A2.5 2.5 0 0 0 10.5 4Z'/%3E%3Cpath d='M14.5 4A3.5 3.5 0 0 1 18 7.5c0 .3-.04.58-.1.85A3.5 3.5 0 0 1 16.5 15H15'/%3E%3Cpath d='M9 9h2M15 9h2M9 13h2M15 13h2'/%3E%3C/svg%3E");
+            }}
+
+            .st-key-nc_explore_quantum button::before {{
+                -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8'%3E%3Ccircle cx='12' cy='12' r='1.5' fill='black'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3.8'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3.8' transform='rotate(60 12 12)'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3.8' transform='rotate(120 12 12)'/%3E%3C/svg%3E");
+                mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8'%3E%3Ccircle cx='12' cy='12' r='1.5' fill='black'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3.8'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3.8' transform='rotate(60 12 12)'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3.8' transform='rotate(120 12 12)'/%3E%3C/svg%3E");
+            }}
+
+            .st-key-nc_explore_cognitive button::before {{
+                -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 18H5l1.2-3A7 7 0 1 1 19 11a7 7 0 0 1-7 7Z'/%3E%3Cpath d='M9 10h6M9 13h4'/%3E%3C/svg%3E");
+                mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 18H5l1.2-3A7 7 0 1 1 19 11a7 7 0 0 1-7 7Z'/%3E%3Cpath d='M9 10h6M9 13h4'/%3E%3C/svg%3E");
+            }}
+
+            .st-key-nc_explore_kubernetes button::before {{
+                -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 3 7.8 4.5v9L12 21l-7.8-4.5v-9Z'/%3E%3Ccircle cx='12' cy='12' r='2.3'/%3E%3Cpath d='M12 5v4.7M18 8.5l-4 2.3M18 15.5l-4-2.3M12 19v-4.7M6 15.5l4-2.3M6 8.5l4 2.3'/%3E%3C/svg%3E");
+                mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 3 7.8 4.5v9L12 21l-7.8-4.5v-9Z'/%3E%3Ccircle cx='12' cy='12' r='2.3'/%3E%3Cpath d='M12 5v4.7M18 8.5l-4 2.3M18 15.5l-4-2.3M12 19v-4.7M6 15.5l4-2.3M6 8.5l4 2.3'/%3E%3C/svg%3E");
+            }}
+
+            @media (max-width: 1100px) {{
+                div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_ai) {{
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 8px;
+                }}
+            }}
+
+            @media (max-width: 760px) {{
+                [data-testid="stElementContainer"]:has(.nc-landing-brand) {{
+                    margin-top: 42px;
+                }}
+
+                .nc-landing-brand {{
+                    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+                }}
+
+                .nc-landing-brand-left {{
+                    gap: 7px;
+                }}
+
+                .nc-landing-brand img {{
+                    width: 58px;
+                    height: 58px;
+                    flex-basis: 58px;
+                }}
+
+                .nc-landing-wordmark {{
+                    font-size: 35px;
+                }}
+
+                .nc-landing-heading {{
+                    max-width: 92%;
+                    margin-top: 18px;
+                    font-size: 25px;
+                }}
+
+                .nc-landing-subtitle {{
+                    max-width: 92%;
+                    margin-bottom: 22px;
+                    font-size: 14px;
+                }}
+
+                div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) {{
+                    width: calc(100% - 18px);
+                }}
+
+                div[data-testid="stHorizontalBlock"]:has(.st-key-nc_top_interrogate) {{
+                    width: min(calc(100% - 34px), 350px);
+                    gap: 12px;
+                }}
+
+                .st-key-nc_top_interrogate div.stButton > button[kind="secondary"],
+                .st-key-nc_top_illustrate div.stButton > button[kind="secondary"] {{
+                    height: 44px !important;
+                    min-height: 44px !important;
+                    padding-inline: 10px !important;
+                }}
+
+                div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_ai) {{
+                    width: calc(100% - 18px);
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 8px;
+                }}
+
+                [data-testid="stElementContainer"]:has(.nc-explore-label) {{
+                    width: calc(100% - 18px);
+                }}
+            }}
             </style>
+            <div class="nc-landing-marker"></div>
+            <div class="nc-landing-brand">
+              <div class="nc-landing-brand-left">
+                <img src="data:image/png;base64,{icon_data}" alt="">
+                <span class="nc-landing-wordmark">InI</span>
+              </div>
+              <span class="nc-landing-wordmark nc-landing-wordmark-dot nc-landing-wordmark-accent">.</span>
+              <span class="nc-landing-wordmark nc-landing-wordmark-accent">ai</span>
+            </div>
+            <div class="nc-landing-heading">What would you like to understand?</div>
+            <div class="nc-landing-subtitle">Begin with a topic, question, or idea.</div>
             """,
             unsafe_allow_html=True,
         )
 
-        import os
-        from PIL import Image
-
-        logo_path = os.path.join(os.path.dirname(__file__), "ini_logo.png")
-        logo = Image.open(logo_path)
-
-        col_l, col_c, col_r = st.columns([3.7,2,2.5])
-        with col_c:
-            st.image(logo, width=120)
-
-        left, center, right = st.columns([2.6, 4.8, 2.6])
-
         run = False
         illustrate_run = False
+        explore_topic = None
 
-        with center:
+        st.text_area(
+            "NC_TOP_TOPIC",
+            placeholder="Ask InI anything...",
+            key="chat_top_topic_input",
+            label_visibility="collapsed",
+            height=88,
+            on_change=_request_chat_top_enter_submit,
+        )
 
-            # --- UIB capsule start ---
-            
-
-            st.text_area(
-                "NC_TOP_TOPIC",
-                placeholder="Ask InI anything to begin...",
-                key="chat_top_topic_input",
-                label_visibility="collapsed",
-                height=118,
+        action_cols = st.columns(2, gap="medium")
+        with action_cols[0]:
+            run = st.button(
+                "Interrogate",
+                key="nc_top_interrogate",
+                type="secondary",
+                use_container_width=True,
+            )
+        with action_cols[1]:
+            illustrate_run = st.button(
+                "Illustrate",
+                key="nc_top_illustrate",
+                type="secondary",
+                use_container_width=True,
             )
 
-            st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+        st.markdown('<div class="nc-explore-label">Explore</div>', unsafe_allow_html=True)
+        explore_cols = st.columns(4, gap="small")
+        explore_items = [
+            ("Artificial intelligence", "nc_explore_ai"),
+            ("Quantum computing", "nc_explore_quantum"),
+            ("Cognitive science", "nc_explore_cognitive"),
+            ("Kubernetes", "nc_explore_kubernetes"),
+        ]
+        for col, (label, key) in zip(explore_cols, explore_items):
+            with col:
+                if st.button(label, key=key, use_container_width=True):
+                    explore_topic = label
 
-            btn_outer_l, btn_outer_r = st.columns([1,1], gap="small")
+        components.html(
+            """
+            <script>
+            (() => {
+              const parentDoc = window.parent.document;
+              const bindEnter = () => {
+                const input = parentDoc.querySelector(
+                  'textarea[aria-label="NC_TOP_TOPIC"]'
+                );
 
-            with btn_outer_l:
+                if (!input || input.dataset.iniEnterBound) {
+                  return false;
+                }
 
-                btn_pad_l, btn_slot_l = st.columns([1.45,1.0], gap="small")
+                input.dataset.iniEnterBound = "true";
+                input.addEventListener("keydown", (event) => {
+                  if (
+                    event.key === "Enter"
+                    && !event.shiftKey
+                    && !event.ctrlKey
+                    && !event.metaKey
+                    && !event.isComposing
+                  ) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    input.dispatchEvent(new KeyboardEvent("keydown", {
+                      key: "Enter",
+                      code: "Enter",
+                      ctrlKey: true,
+                      bubbles: true,
+                      cancelable: true,
+                    }));
+                  }
+                });
+                return true;
+              };
 
-                with btn_slot_l:
-                    run = st.button(
-                        "Interrogate",
-                        key="nc_top_interrogate",
-                        type="secondary",
-                        use_container_width=True,
-                    )
-
-            with btn_outer_r:
-
-                btn_slot_r, btn_pad_r = st.columns([0.89,1.45], gap="small")
-
-                with btn_slot_r:
-                    illustrate_run = st.button(
-                        "Illustrate",
-                        key="nc_top_illustrate",
-                        type="secondary",
-                        use_container_width=True,
-                    )
-
-            # --- UIB capsule end ---
-            
-
-        if run:
-            st.session_state.nc_started = True
-            _run_new_chat_interrogate(st.session_state.chat_top_topic_input)
+              if (!bindEnter()) {
+                let attempts = 0;
+                const timer = window.setInterval(() => {
+                  attempts += 1;
+                  if (bindEnter() || attempts >= 20) {
+                    window.clearInterval(timer);
+                  }
+                }, 50);
+              }
+            })();
+            </script>
+            """,
+            height=0,
+            scrolling=False,
+        )
 
         if illustrate_run:
-            st.session_state.nc_started = True
-            _run_new_chat_illustrate(st.session_state.chat_top_topic_input)
+            _queue_new_chat_request(
+                st.session_state.chat_top_topic_input,
+                "illustrate",
+            )
+
+        if explore_topic:
+            _queue_new_chat_request(explore_topic, "interrogate")
+
+        if run or st.session_state.chat_top_enter_submit:
+            _queue_new_chat_request(
+                st.session_state.chat_top_topic_input,
+                "interrogate",
+            )
 
 
-    
-        
-    
     def _render_new_chat_bottom_uib() -> None:
         st.markdown(
             """
             <style>
+            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
+                position: fixed;
+                z-index: 50;
+                right: auto;
+                bottom: 18px;
+                left: 50%;
+                width: min(980px, calc(100vw - 32px));
+                margin: 0;
+                padding: 7px 8px 7px 16px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: nowrap;
+                border: 1px solid #d9dee4;
+                border-radius: 18px;
+                background: #ffffff;
+                box-shadow: 0 7px 22px rgba(15, 23, 42, 0.075);
+                transform: translateX(-50%);
+            }
 
-            div[data-testid="stTextInput"]:has(input[aria-label="NC_BOTTOM_TOPIC"]){
+            [data-testid="stAppViewContainer"]:has(
+                [data-testid="stSidebar"][aria-expanded="true"]
+            ) div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
+                left: calc(50% + 128px);
+                width: min(980px, calc(100vw - 288px));
+            }
+
+            [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
+                padding-bottom: 112px !important;
+            }
+
+            [data-testid="stMain"]:has(.nc-pending-screen) {
+                position: relative;
+            }
+
+            [data-testid="stMain"]:has(.nc-pending-screen)::before {
+                position: absolute;
+                z-index: 20;
+                inset: 0;
+                min-height: 100%;
+                background: #ffffff;
+                content: "";
+                pointer-events: none;
+            }
+
+            [data-testid="stElementContainer"]:has(.nc-pending-query),
+            [data-testid="stElementContainer"]:has(.nc-generation-placeholder) {
+                position: relative;
+                z-index: 30;
+            }
+
+            .nc-pending-query {
+                position: fixed !important;
+                z-index: 30;
+                top: 104px;
+                right: 32px;
+                left: 32px;
+                margin: 0 !important;
+            }
+
+            [data-testid="stAppViewContainer"]:has(
+                [data-testid="stSidebar"][aria-expanded="true"]
+            ) .nc-pending-query {
+                left: 288px;
+            }
+
+            [data-testid="stMain"]:has(.nc-pending-screen)
+            .nc-generation-placeholder {
+                position: fixed;
+                z-index: 30;
+                top: 194px;
+                left: 50%;
+                width: min(920px, calc(100vw - 64px));
+                margin: 0;
+                transform: translateX(-50%);
+            }
+
+            [data-testid="stAppViewContainer"]:has(
+                [data-testid="stSidebar"][aria-expanded="true"]
+            ) [data-testid="stMain"]:has(.nc-pending-screen)
+            .nc-generation-placeholder {
+                left: calc(50% + 128px);
+                width: min(920px, calc(100vw - 320px));
+            }
+
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_ai),
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_quantum),
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_cognitive),
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_kubernetes),
+            [data-testid="stElementContainer"]:has(.st-key-nc_explore_ai),
+            [data-testid="stElementContainer"]:has(.st-key-nc_explore_quantum),
+            [data-testid="stElementContainer"]:has(.st-key-nc_explore_cognitive),
+            [data-testid="stElementContainer"]:has(.st-key-nc_explore_kubernetes),
+            [data-testid="stElementContainer"]:has(.nc-explore-label) {
+                display: none !important;
+            }
+
+            [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"])::after {
+                position: fixed;
+                z-index: 40;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                height: 88px;
+                background: #ffffff;
+                content: "";
+                pointer-events: none;
+            }
+
+            [data-testid="stAppViewContainer"]:has(
+                [data-testid="stSidebar"][aria-expanded="true"]
+            ) [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"])::after {
+                left: 256px;
+            }
+
+            .nc-generation-placeholder {
+                width: min(100%, 920px);
+                min-height: 92px;
+                margin: 14px 0 20px;
+                padding: 17px 19px;
+                border: 1px solid #e1e6e5;
+                border-radius: 12px;
+                background: #ffffff;
+                box-shadow: 0 4px 16px rgba(15, 23, 42, 0.055);
+            }
+
+            .nc-generation-label {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: #374151;
+                font-size: 13px;
+                font-weight: 750;
+            }
+
+            .nc-generation-mark {
+                width: 16px;
+                height: 16px;
+                display: inline-block;
+                border-radius: 5px;
+                background: #f51b3f;
+                clip-path: polygon(50% 0%, 98% 38%, 80% 100%, 20% 100%, 2% 38%);
+            }
+
+            .nc-generation-copy {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                margin-top: 16px;
+                color: #667085;
+                font-size: 14px;
+            }
+
+            .nc-generation-pulse {
+                width: 8px;
+                height: 8px;
+                display: inline-block;
+                border-radius: 50%;
+                background: #f51b3f;
+                animation: nc-generation-pulse 1.2s ease-in-out infinite;
+            }
+
+            @keyframes nc-generation-pulse {
+                0%, 100% { opacity: 0.35; transform: scale(0.85); }
+                50% { opacity: 1; transform: scale(1); }
+            }
+
+            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"])
+            > div[data-testid="stColumn"]:first-child {
+                width: 0 !important;
+                min-width: 0 !important;
+                flex: 1 1 auto !important;
+            }
+
+            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"])
+            > div[data-testid="stColumn"]:nth-child(2) {
+                width: 116px !important;
+                min-width: 116px !important;
+                flex: 0 0 116px !important;
+            }
+
+            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"])
+            > div[data-testid="stColumn"]:nth-child(3) {
+                width: 116px !important;
+                min-width: 116px !important;
+                flex: 0 0 116px !important;
+            }
+
+            div[data-testid="stTextInput"]:has(input[aria-label="NC_BOTTOM_TOPIC"]),
+            div[data-testid="stTextInput"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) > div,
+            div[data-testid="stTextInput"]:has(input[aria-label="NC_BOTTOM_TOPIC"])
+            [data-testid="stTextInputRootElement"] {
+                border: 0 !important;
+                outline: 0 !important;
                 background: transparent !important;
-                border: none !important;
                 box-shadow: none !important;
             }
 
-            div[data-testid="stTextInput"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) > div{
-                background: transparent !important;
-                border: none !important;
+            div[data-testid="stTextInput"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) div {
+                background-color: transparent !important;
+                background-image: none !important;
                 box-shadow: none !important;
             }
 
-            div[data-testid="stTextInput"] input[aria-label="NC_BOTTOM_TOPIC"]{
-                height: 46px !important;
-                border-radius: 14px !important;
-                font-size: 15px !important;
-                border: none !important;
-                background: transparent !important;
-                box-shadow: none !important;
-                padding: 10px 14px !important;
-            }
-
-
-
-
-            
-            div[data-testid="stTextInput"] input[aria-label="NC_BOTTOM_TOPIC"]:focus{
-                border: 1px solid #d1d5db !important;
-                box-shadow: 0 2px 8px rgba(15,23,42,0.04) !important;
-            }
-
-            .nc-bottom-btn-row div.stButton > button{
-                background: #000000 !important;
-                color: #ffffff !important;
-                -webkit-text-fill-color: #ffffff !important;
-                border: 1px solid #000000 !important;
-                border-radius: 14px !important;
-                height: 42px !important;
-                min-height: 42px !important;
-                max-height: 42px !important;
-                white-space: nowrap !important;
-                font-size: 12px !important;
-                font-weight: 900 !important;
-                box-shadow: none !important;
-                text-align: center !important;
-                justify-content: center !important;
-            }
-
-            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) button p,
-            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) button span,
-            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) button div{
-                font-weight: 900 !important;
-            }
-
-            .nc-bottom-btn-row div.stButton > button:hover{
-                background: #111111 !important;
-                border-color: #111111 !important;
-            }
-
-            .ini-chatbar-shell{
-                border: none !important;
-                border-radius: 0 !important;
-                background: transparent !important;
+            input[aria-label="NC_BOTTOM_TOPIC"],
+            input[aria-label="NC_BOTTOM_TOPIC"]:focus,
+            input[aria-label="NC_BOTTOM_TOPIC"]:active {
+                width: 100% !important;
+                height: 44px !important;
+                min-height: 44px !important;
                 padding: 0 !important;
-            }
-
-            .ini-chatbar-shell [data-testid="stHorizontalBlock"]{
-                align-items: center !important;
-            }
-
-
-            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]){
-                border: 1px solid #e5e7eb !important;
-                border-radius: 16px !important;
-                background: #ffffff !important;
-                padding: 8px !important;
-                align-items: center !important;
-                gap: 6px !important;
-            }
-
-            
-
-            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) input{
-                border: none !important;
+                border: 0 !important;
+                border-radius: 12px !important;
+                outline: 0 !important;
+                color: #111827 !important;
+                background: transparent !important;
                 box-shadow: none !important;
+                font-size: 14px !important;
+                caret-color: #f51b3f;
             }
 
-            div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) button{
-                background: #000000 !important;
+            input[aria-label="NC_BOTTOM_TOPIC"]:-webkit-autofill,
+            input[aria-label="NC_BOTTOM_TOPIC"]:-webkit-autofill:hover,
+            input[aria-label="NC_BOTTOM_TOPIC"]:-webkit-autofill:focus {
+                -webkit-text-fill-color: #111827 !important;
+                -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+                box-shadow: 0 0 0 1000px #ffffff inset !important;
+            }
+
+            .st-key-nc_bottom_interrogate div.stButton > button,
+            .st-key-nc_bottom_illustrate div.stButton > button {
+                width: 100% !important;
+                min-width: 0 !important;
+                height: 40px !important;
+                min-height: 40px !important;
+                max-height: 40px !important;
+                padding: 0 12px !important;
+                margin: 0 !important;
+                justify-content: center !important;
+                overflow: hidden !important;
+                border: 1px solid #071126 !important;
+                border-radius: 14px !important;
                 color: #ffffff !important;
                 -webkit-text-fill-color: #ffffff !important;
-                border-radius: 12px !important;
-                font-weight: 900 !important;
+                background: #071126 !important;
+                box-shadow: none !important;
+                white-space: nowrap !important;
             }
 
+            .st-key-nc_bottom_interrogate div.stButton > button:hover,
+            .st-key-nc_bottom_illustrate div.stButton > button:hover {
+                border-color: #111d35 !important;
+                background: #111d35 !important;
+            }
 
+            .st-key-nc_bottom_interrogate div.stButton > button p,
+            .st-key-nc_bottom_interrogate div.stButton > button span,
+            .st-key-nc_bottom_illustrate div.stButton > button p,
+            .st-key-nc_bottom_illustrate div.stButton > button span {
+                margin: 0 !important;
+                color: #ffffff !important;
+                -webkit-text-fill-color: #ffffff !important;
+                font-size: 12px !important;
+                font-weight: 800 !important;
+                line-height: 1 !important;
+                letter-spacing: 0 !important;
+                white-space: nowrap !important;
+                overflow-wrap: normal !important;
+                word-break: keep-all !important;
+            }
 
+            @media (max-width: 560px) {
+                .nc-pending-query {
+                    top: 82px;
+                    right: 16px;
+                    left: 16px !important;
+                }
+
+                [data-testid="stMain"]:has(.nc-pending-screen)
+                .nc-generation-placeholder,
+                [data-testid="stAppViewContainer"]:has(
+                    [data-testid="stSidebar"][aria-expanded="true"]
+                ) [data-testid="stMain"]:has(.nc-pending-screen)
+                .nc-generation-placeholder {
+                    top: 166px;
+                    left: 50%;
+                    width: calc(100vw - 32px);
+                }
+
+                div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
+                    width: calc(100% - 12px);
+                    padding: 7px;
+                    display: grid !important;
+                    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                    gap: 7px;
+                }
+
+                [data-testid="stAppViewContainer"]:has(
+                    [data-testid="stSidebar"][aria-expanded="true"]
+                ) div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
+                    left: 50%;
+                    width: calc(100% - 12px);
+                }
+
+                [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
+                    padding-bottom: 144px !important;
+                }
+
+                [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"])::after,
+                [data-testid="stAppViewContainer"]:has(
+                    [data-testid="stSidebar"][aria-expanded="true"]
+                ) [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"])::after {
+                    left: 0;
+                    height: 124px;
+                }
+
+                div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"])
+                > div[data-testid="stColumn"]:first-child {
+                    width: auto !important;
+                    min-width: 0 !important;
+                    grid-column: 1 / -1;
+                    flex: none !important;
+                }
+
+                div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"])
+                > div[data-testid="stColumn"]:nth-child(2),
+                div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"])
+                > div[data-testid="stColumn"]:nth-child(3) {
+                    width: auto !important;
+                    min-width: 0 !important;
+                    flex: none !important;
+                }
+
+                input[aria-label="NC_BOTTOM_TOPIC"] {
+                    height: 40px !important;
+                    min-height: 40px !important;
+                    padding-inline: 9px !important;
+                }
+
+                .st-key-nc_bottom_interrogate div.stButton > button,
+                .st-key-nc_bottom_illustrate div.stButton > button {
+                    height: 38px !important;
+                    min-height: 38px !important;
+                    max-height: 38px !important;
+                }
+            }
             </style>
             """,
             unsafe_allow_html=True,
         )
 
-        # st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-
         run = False
         illustrate_run = False
-
-        st.markdown('<div class="ini-chatbar-shell">', unsafe_allow_html=True)
+        composer_revision = st.session_state._nc_bottom_composer_revision
+        composer_key = f"chat_bottom_topic_input_{composer_revision}"
 
         input_col, int_col, ill_col = st.columns(
             [8.5, 1.4, 1.4],
@@ -3005,7 +3711,7 @@ def page_new_chat() -> None:
         with input_col:
             st.text_input(
                 "NC_BOTTOM_TOPIC",
-                key="chat_bottom_topic_input",
+                key=composer_key,
                 label_visibility="collapsed",
                 placeholder="Ask InI anything to continue...",
                 on_change=_request_chat_bottom_enter_submit,
@@ -3025,22 +3731,17 @@ def page_new_chat() -> None:
                 use_container_width=True,
             )
 
-        st.markdown('</div>', unsafe_allow_html=True)
-
-            
-
-        if st.session_state.chat_bottom_enter_submit:
-            st.session_state.chat_bottom_enter_submit = False
-            st.session_state.nc_started = True
-            _run_new_chat_interrogate(st.session_state.chat_bottom_topic_input)
-
-        if run:
-            st.session_state.nc_started = True
-            _run_new_chat_interrogate(st.session_state.chat_bottom_topic_input)
-
         if illustrate_run:
-            st.session_state.nc_started = True
-            _run_new_chat_illustrate(st.session_state.chat_bottom_topic_input)
+            _queue_new_chat_request(
+                st.session_state.get(composer_key, ""),
+                "illustrate",
+            )
+
+        if run or st.session_state.chat_bottom_enter_submit:
+            _queue_new_chat_request(
+                st.session_state.get(composer_key, ""),
+                "interrogate",
+            )
 
     # Auto-run FUQ opened in a new tab for New Chat
     if chat_q and st.session_state.chat_seed_done != chat_q:
@@ -3085,9 +3786,61 @@ def page_new_chat() -> None:
         st.session_state.chat_direct_answer,
         bool(st.session_state.chat_answers),
     ])
+    pending_new_chat_request = st.session_state._nc_pending_request
 
-    if not st.session_state.nc_started and not has_new_chat_content:
+    is_new_chat_landing = (
+        not st.session_state.nc_started
+        and not has_new_chat_content
+        and not pending_new_chat_request
+    )
+
+    if is_new_chat_landing:
         _render_new_chat_top_uib()
+    elif not pending_new_chat_request:
+        st.markdown('<div class="bigtitle">New Chat</div>', unsafe_allow_html=True)
+        st.caption(
+            "InI Question Engine (v0): Interrogate generates a progressive question ladder. "
+            "Click a question to open or hide its answer."
+        )
+
+    if isinstance(pending_new_chat_request, dict) and not has_new_chat_content:
+        pending_prompt = (pending_new_chat_request.get("prompt") or "").strip()
+        pending_ts = (pending_new_chat_request.get("ts") or "").strip()
+        st.markdown(
+            """
+            <style>
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_ai),
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_quantum),
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_cognitive),
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_kubernetes),
+            [data-testid="stElementContainer"]:has(.st-key-nc_explore_ai),
+            [data-testid="stElementContainer"]:has(.st-key-nc_explore_quantum),
+            [data-testid="stElementContainer"]:has(.st-key-nc_explore_cognitive),
+            [data-testid="stElementContainer"]:has(.st-key-nc_explore_kubernetes),
+            [data-testid="stElementContainer"]:has(.nc-explore-label) {
+                display: none !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<div class="nc-pending-screen" aria-hidden="true"></div>',
+            unsafe_allow_html=True,
+        )
+        _render_nc_user_bubble(
+            pending_prompt,
+            pending_ts,
+            extra_class="nc-pending-query",
+        )
+
+        generation_slot = st.empty()
+        with generation_slot.container():
+            _render_new_chat_generation_placeholder()
+
+        _render_new_chat_bottom_uib()
+        _generate_pending_new_chat_response(generation_slot)
+        return
 
     illustrate_data = st.session_state.chat.get("illustrate")
     if isinstance(illustrate_data, dict) and (illustrate_data.get("illustration_text") or "").strip():
@@ -3156,7 +3909,9 @@ def page_new_chat() -> None:
 
                 st.markdown("---")
 
-        if not chat_q:
+        if isinstance(pending_new_chat_request, dict):
+            _render_pending_new_chat_continuation(pending_new_chat_request)
+        elif not chat_q:
             _render_new_chat_bottom_uib()
         return
 
@@ -3236,7 +3991,9 @@ def page_new_chat() -> None:
 
                         st.rerun()
 
-        if not chat_q:
+        if isinstance(pending_new_chat_request, dict):
+            _render_pending_new_chat_continuation(pending_new_chat_request)
+        elif not chat_q:
             _render_new_chat_bottom_uib()
         return
 
@@ -3499,7 +4256,10 @@ def page_new_chat() -> None:
 
                 st.markdown("---")
 
-        _render_new_chat_bottom_uib()
+        if isinstance(pending_new_chat_request, dict):
+            _render_pending_new_chat_continuation(pending_new_chat_request)
+        else:
+            _render_new_chat_bottom_uib()
         return
 
 
