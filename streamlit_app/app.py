@@ -2047,7 +2047,7 @@ def page_new_chat() -> None:
 
         with st.spinner("Generating question map... may take some time."):
             data = fetch_interrogate(topic_text.strip())
-            intro_resp = fetch_study_full(topic_text.strip(), mode="intro")
+            intro_resp = fetch_study_full(topic_text.strip(), mode="intro", max_rounds=0)
             intro = intro_resp.get("answer", "").strip()
             _append_interrogate_branch(topic_text.strip(), data, intro)
             _persist_new_chat_session(current_sid)
@@ -2576,7 +2576,7 @@ def page_new_chat() -> None:
                             answer_stop_reason = None
                             mode_name = "focused"
                         else:
-                            direct_resp = fetch_study_full(topic_text.strip(), mode="high")
+                            direct_resp = fetch_study_full(topic_text.strip(), mode="high", max_rounds=0)
                             reply = (direct_resp.get("answer") or "").strip() or "No answer generated."
                             followups = direct_resp.get("followups") or followups
                             answer_incomplete = bool(direct_resp.get("incomplete"))
@@ -2644,7 +2644,7 @@ def page_new_chat() -> None:
                 # Real topic -> question-map path
                 # -------------------------------------------------
                 if has_existing_root:
-                    intro_resp = fetch_study_full(topic_text.strip(), mode="intro")
+                    intro_resp = fetch_study_full(topic_text.strip(), mode="intro", max_rounds=0)
                     intro = intro_resp.get("answer", "").strip()
                     _append_interrogate_branch(topic_text.strip(), data, intro)
                     _persist_new_chat_session(current_sid)
