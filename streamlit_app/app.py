@@ -901,6 +901,9 @@ if "_nc_generating" not in st.session_state:
 if "_nc_bottom_composer_revision" not in st.session_state:
     st.session_state._nc_bottom_composer_revision = 0
 
+if "_nc_scroll_to_latest_response" not in st.session_state:
+    st.session_state._nc_scroll_to_latest_response = False
+
 if "nc_started" not in st.session_state:
     st.session_state.nc_started = False
 
@@ -1019,6 +1022,7 @@ def _reset_new_chat_state() -> None:
     st.session_state._nc_pending_request = None
     st.session_state._nc_generating = False
     st.session_state._nc_bottom_composer_revision += 1
+    st.session_state._nc_scroll_to_latest_response = False
     st.session_state.chat_top_enter_submit = False
     st.session_state.chat_bottom_enter_submit = False
     st.session_state.nc_started = False
@@ -1961,6 +1965,7 @@ def page_new_chat() -> None:
                 "ts": now_label(),
             }
         )
+        st.session_state._nc_scroll_to_latest_response = True
         # typed ordinary follow-up topic: keep in chat timeline only, not popup FUQ list
         pass
 
@@ -1973,6 +1978,7 @@ def page_new_chat() -> None:
                 "ts": now_label(),
             }
         )
+        st.session_state._nc_scroll_to_latest_response = True
         # typed ordinary follow-up topic: keep in chat timeline only, not popup FUQ list
         pass
     
@@ -1985,6 +1991,7 @@ def page_new_chat() -> None:
                 "ts": now_label(),
             }
         )
+        st.session_state._nc_scroll_to_latest_response = True
         # typed ordinary follow-up topic: keep in chat timeline only, not popup CTA/FUQ list
         pass
 
@@ -1998,6 +2005,7 @@ def page_new_chat() -> None:
                 "ts": now_label(),
             }
         )
+        st.session_state._nc_scroll_to_latest_response = True
 
     
 
@@ -2837,6 +2845,177 @@ def page_new_chat() -> None:
         _render_new_chat_bottom_uib()
         _generate_pending_new_chat_response(generation_slot)
 
+    def _render_nc_latest_scroll_target() -> None:
+        st.markdown(
+            '<div id="nc-latest-response" class="nc-latest-response-anchor"></div>',
+            unsafe_allow_html=True,
+        )
+
+    def _render_nc_scroll_to_latest_once() -> None:
+        if not st.session_state._nc_scroll_to_latest_response:
+            return
+
+        components.html(
+            """
+            <script>
+            requestAnimationFrame(() => {
+              try {
+                const doc = window.parent.document;
+                const win = doc.defaultView || window.parent;
+                const anchor = doc.querySelector('#nc-latest-response');
+                if (anchor) {
+                  const top = anchor.getBoundingClientRect().top + win.scrollY - 82;
+                  win.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+                  const scrollers = [
+                    doc.scrollingElement,
+                    doc.documentElement,
+                    doc.body,
+                    doc.querySelector('[data-testid="stAppViewContainer"]'),
+                    doc.querySelector('[data-testid="stMain"]'),
+                    doc.querySelector('.main')
+                  ].filter(Boolean);
+                  for (const scroller of scrollers) {
+                    if (scroller.scrollHeight > scroller.clientHeight + 20) {
+                      const boxTop = anchor.getBoundingClientRect().top
+                        - scroller.getBoundingClientRect().top
+                        + scroller.scrollTop
+                        - 82;
+                      scroller.scrollTo({ top: Math.max(0, boxTop), behavior: 'smooth' });
+                    }
+                  }
+                }
+              } catch (err) {}
+            });
+            </script>
+            """,
+            height=0,
+            scrolling=False,
+        )
+        st.session_state._nc_scroll_to_latest_response = False
+
+    def _render_nc_scroll_controls() -> None:
+        components.html(
+            """
+            <script>
+            (() => {
+              try {
+                const doc = window.parent.document;
+                const win = doc.defaultView || window.parent;
+                const old = doc.getElementById('ini-nc-scroll-controls');
+                if (old) old.remove();
+
+                const styleId = 'ini-nc-scroll-controls-style';
+                if (!doc.getElementById(styleId)) {
+                  const style = doc.createElement('style');
+                  style.id = styleId;
+                  style.textContent = `
+                    #ini-nc-scroll-controls {
+                      position: fixed;
+                      z-index: 2147483000;
+                      right: 22px;
+                      top: 50%;
+                      transform: translateY(-50%);
+                      display: flex;
+                      flex-direction: column;
+                      gap: 8px;
+                      pointer-events: auto;
+                    }
+                    #ini-nc-scroll-controls button {
+                      width: 38px;
+                      height: 38px;
+                      border: 1px solid rgba(15, 23, 42, 0.12);
+                      border-radius: 13px;
+                      color: #0f172a;
+                      background: rgba(255, 255, 255, 0.94);
+                      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.11);
+                      font: 800 17px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                      cursor: pointer;
+                      transition: transform 120ms ease, border-color 120ms ease, color 120ms ease;
+                    }
+                    #ini-nc-scroll-controls button:hover {
+                      transform: translateY(-1px);
+                      border-color: rgba(245, 27, 63, 0.45);
+                      color: #f51b3f;
+                    }
+                    @media (max-width: 760px) {
+                      #ini-nc-scroll-controls {
+                        right: 10px;
+                        gap: 6px;
+                      }
+                      #ini-nc-scroll-controls button {
+                        width: 34px;
+                        height: 34px;
+                        border-radius: 12px;
+                        font-size: 15px;
+                      }
+                    }
+                  `;
+                  doc.head.appendChild(style);
+                }
+
+                const scrollables = () => [
+                  doc.scrollingElement,
+                  doc.documentElement,
+                  doc.body,
+                  doc.querySelector('[data-testid="stAppViewContainer"]'),
+                  doc.querySelector('[data-testid="stMain"]'),
+                  doc.querySelector('.main')
+                ].filter(Boolean).filter((el, index, arr) => arr.indexOf(el) === index);
+
+                const applyScroll = (kind) => {
+                  const amount = win.innerHeight * 0.82;
+                  for (const el of scrollables()) {
+                    if (kind === 'home') {
+                      if (el === doc.scrollingElement || el === doc.documentElement || el === doc.body) {
+                        win.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                      el.scrollTo?.({ top: 0, behavior: 'smooth' });
+                    } else if (kind === 'end') {
+                      const bottom = Math.max(0, el.scrollHeight - el.clientHeight);
+                      if (el === doc.scrollingElement || el === doc.documentElement || el === doc.body) {
+                        win.scrollTo({ top: doc.documentElement.scrollHeight, behavior: 'smooth' });
+                      }
+                      el.scrollTo?.({ top: bottom, behavior: 'smooth' });
+                    } else if (kind === 'up') {
+                      if (el === doc.scrollingElement || el === doc.documentElement || el === doc.body) {
+                        win.scrollBy({ top: -amount, behavior: 'smooth' });
+                      }
+                      el.scrollBy?.({ top: -amount, behavior: 'smooth' });
+                    } else if (kind === 'down') {
+                      if (el === doc.scrollingElement || el === doc.documentElement || el === doc.body) {
+                        win.scrollBy({ top: amount, behavior: 'smooth' });
+                      }
+                      el.scrollBy?.({ top: amount, behavior: 'smooth' });
+                    }
+                  }
+                };
+
+                const wrap = doc.createElement('div');
+                wrap.id = 'ini-nc-scroll-controls';
+                const actions = [
+                  ['Home', '↑', () => applyScroll('home')],
+                  ['Page up', '⇞', () => applyScroll('up')],
+                  ['Page down', '⇟', () => applyScroll('down')],
+                  ['End', '↓', () => applyScroll('end')],
+                ];
+                for (const [title, label, action] of actions) {
+                  const btn = doc.createElement('button');
+                  btn.type = 'button';
+                  btn.title = title;
+                  btn.setAttribute('aria-label', title);
+                  btn.textContent = label;
+                  btn.addEventListener('click', action);
+                  wrap.appendChild(btn);
+                }
+                doc.body.appendChild(wrap);
+              } catch (err) {}
+            })();
+            </script>
+            """,
+            height=0,
+            scrolling=False,
+        )
+
     def _render_new_chat_top_uib() -> None:
         if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
             st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
@@ -3418,18 +3597,18 @@ def page_new_chat() -> None:
                 position: fixed;
                 z-index: 30;
                 top: 194px;
-                left: 50%;
+                left: 96px;
                 width: min(920px, calc(100vw - 64px));
                 margin: 0;
-                transform: translateX(-50%);
+                transform: none;
             }
 
             [data-testid="stAppViewContainer"]:has(
                 [data-testid="stSidebar"][aria-expanded="true"]
             ) [data-testid="stMain"]:has(.nc-pending-screen)
             .nc-generation-placeholder {
-                left: calc(50% + 128px);
-                width: min(920px, calc(100vw - 320px));
+                left: 352px;
+                width: min(920px, calc(100vw - 384px));
             }
 
             div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_ai),
@@ -3632,8 +3811,9 @@ def page_new_chat() -> None:
                 ) [data-testid="stMain"]:has(.nc-pending-screen)
                 .nc-generation-placeholder {
                     top: 166px;
-                    left: 50%;
+                    left: 16px;
                     width: calc(100vw - 32px);
+                    transform: none;
                 }
 
                 div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
@@ -3803,6 +3983,9 @@ def page_new_chat() -> None:
             "Click a question to open or hide its answer."
         )
 
+    if has_new_chat_content:
+        _render_nc_scroll_controls()
+
     if isinstance(pending_new_chat_request, dict) and not has_new_chat_content:
         pending_prompt = (pending_new_chat_request.get("prompt") or "").strip()
         pending_ts = (pending_new_chat_request.get("ts") or "").strip()
@@ -3855,11 +4038,20 @@ def page_new_chat() -> None:
 )
 
         if st.session_state.chat_branch_answers:
-            st.markdown("---")
+            root_has_open_answer_divider = any(
+                q in st.session_state.chat_answers
+                for q in st.session_state.chat_open_questions
+            )
+            if not root_has_open_answer_divider:
+                st.markdown("---")
+            total_branches = len(st.session_state.chat_branch_answers)
             for idx, item in enumerate(st.session_state.chat_branch_answers, start=1):
                 kind = (item.get("kind") or "interrogate").strip().lower()
                 topic = (item.get("topic") or item.get("prompt") or f"Continued topic {idx}").strip()
                 ts = (item.get("ts") or "").strip()
+
+                if idx == total_branches:
+                    _render_nc_latest_scroll_target()
 
                 _render_nc_user_bubble(topic, ts)
 
@@ -3912,6 +4104,7 @@ def page_new_chat() -> None:
         if isinstance(pending_new_chat_request, dict):
             _render_pending_new_chat_continuation(pending_new_chat_request)
         elif not chat_q:
+            _render_nc_scroll_to_latest_once()
             _render_new_chat_bottom_uib()
         return
 
@@ -3994,6 +4187,7 @@ def page_new_chat() -> None:
         if isinstance(pending_new_chat_request, dict):
             _render_pending_new_chat_continuation(pending_new_chat_request)
         elif not chat_q:
+            _render_nc_scroll_to_latest_once()
             _render_new_chat_bottom_uib()
         return
 
@@ -4213,10 +4407,15 @@ def page_new_chat() -> None:
                     
 
         if st.session_state.chat_branch_answers:
+            st.markdown("---")
+            total_branches = len(st.session_state.chat_branch_answers)
             for idx, item in enumerate(st.session_state.chat_branch_answers, start=1):
                 kind = (item.get("kind") or "interrogate").strip().lower()
                 topic = (item.get("topic") or item.get("prompt") or f"Continued topic {idx}").strip()
                 ts = (item.get("ts") or "").strip()
+
+                if idx == total_branches:
+                    _render_nc_latest_scroll_target()
 
                 _render_nc_user_bubble(topic, ts)
 
@@ -4259,6 +4458,7 @@ def page_new_chat() -> None:
         if isinstance(pending_new_chat_request, dict):
             _render_pending_new_chat_continuation(pending_new_chat_request)
         else:
+            _render_nc_scroll_to_latest_once()
             _render_new_chat_bottom_uib()
         return
 
