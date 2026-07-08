@@ -5117,6 +5117,10 @@ def _render_my_learning_styles() -> None:
           border-color: #087f7b !important;
           background: #087f7b !important;
         }
+        .st-key-mnl_send button[kind^="primary"] {
+          border-color: #f51b3f !important;
+          background: #f51b3f !important;
+        }
         .st-key-mnl_quiz button,
         .st-key-mnl_overview button,
         .st-key-mnl_quiz button[kind^="secondary"],
