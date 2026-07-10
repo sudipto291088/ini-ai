@@ -1947,7 +1947,7 @@ with st.sidebar:
         st.caption("Tip: install 'streamlit-autorefresh' to enable a live-updating clock.")
 
     st.markdown("## InI.ai")
-    st.markdown('<span class="badge">v0.1.2 • AI Tutor</span>', unsafe_allow_html=True)
+    st.markdown('<span class="badge">v0.1.3 • AI Tutor</span>', unsafe_allow_html=True)
 
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750; margin-top:10px;">Navigation</div>', unsafe_allow_html=True)
     intro_nav_href = _private_href(page="home")
@@ -2132,16 +2132,18 @@ The primary learning experience.
 
 ---
 
-## What's New in v0.1.2
+## What's New in v0.1.3
 
-InI now provides expanded Question Map coverage across:
+Released: July 10, 2026
 
-- **Computer Science:** Algorithms, Operating Systems and Computer Architecture
-- **Computer Hardware:** CPUs, GPUs, processors, AMD, Ryzen and multi-core architectures
-- **Software and Cloud:** Docker and Kubernetes
-- **Machine Learning and Statistics:** XGBoost, PCA, Bayesian Statistics, Time Series Forecasting and Gradient Descent
+New Chat now has a clearer learning flow:
 
-This release also improves recognition of short technical topics and preserves specific subjects such as Spatial AI and Constitutional AI throughout the learning experience.
+- **Structured response panels:** Topic Profile, Introduction, Suggested Follow-ups, and Question Map are presented as distinct reading sections.
+- **Focused Question Map:** Choose one learning layer at a time, then open a question to see its answer directly beneath it inside the same Question Map panel.
+- **Answer visibility control:** Hide and reveal opened answers without losing your place.
+- **Cleaner introductions:** A compact preview keeps the first response easy to scan, with a simple More / Show less control for the full explanation.
+
+These changes make InI's first response more structured, calmer to read, and easier to explore step by step.
 
 ---
 
@@ -2161,7 +2163,7 @@ Current modes:
 
 ### Current Version
 
-Version: v0.1.2
+Version: v0.1.3
 
 The platform is under active development and new features are being added regularly.
 
