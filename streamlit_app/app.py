@@ -419,35 +419,45 @@ div.stButton > button:hover {
 
 .ini-topic-profile {
   margin: 12px 0 20px;
-  padding: 16px 17px;
-  border: 1px solid #dce6e3;
-  border-radius: 8px;
-  background: #f7faf9;
-  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.045);
+  padding: 18px;
+  border: 1px solid #eceff4;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.055);
 }
 .ini-topic-profile__title {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 13px;
-  color: #1f3934;
+  margin-bottom: 14px;
+  color: #f51b3f;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 800;
 }
 .ini-topic-profile__mark {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #087f7b;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff1f4;
+  border: 1px solid #ffd0da;
+  box-shadow: inset 0 0 0 5px #f51b3f;
 }
 .ini-topic-profile__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 20px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.ini-topic-profile__item {
+  min-height: 74px;
+  padding: 13px 14px;
+  border: 1px solid #f0f2f6;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035);
 }
 .ini-topic-profile__label {
-  margin-bottom: 3px;
-  color: #687773;
+  margin-bottom: 6px;
+  color: #7b8493;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -459,6 +469,143 @@ div.stButton > button:hover {
 }
 @media (max-width: 700px) {
   .ini-topic-profile__grid { grid-template-columns: 1fr; }
+}
+
+.ini-nc-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 10px;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+.ini-nc-section-title__mark {
+  width: 25px;
+  height: 25px;
+  border-radius: 10px;
+  background: #fff1f4;
+  border: 1px solid #ffd0da;
+  position: relative;
+}
+.ini-nc-section-title__mark::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 999px;
+  background: #f51b3f;
+}
+.ini-nc-section-subtitle {
+  margin: -3px 0 14px 35px;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.45;
+}
+div[class*="st-key-nc_intro_more_button_"] button {
+  min-height: 0 !important;
+  padding: 2px 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #d91639 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+div[class*="st-key-nc_intro_more_button_"] button:hover {
+  color: #a90f2d !important;
+  text-decoration: underline;
+}
+.ini-nc-map-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 16px;
+}
+.ini-nc-map-tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: #f4f2f8;
+  color: #283041;
+  font-size: 12px;
+  font-weight: 750;
+}
+.ini-nc-map-tab:first-child {
+  background: linear-gradient(135deg, #f51b3f 0%, #6d35ff 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(245, 27, 63, 0.2);
+}
+[data-testid="stRadio"] div[role="radiogroup"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+[data-testid="stRadio"] div[role="radiogroup"] label {
+  min-height: 34px;
+  margin: 0 !important;
+  padding: 8px 14px !important;
+  border: 1px solid #eceef4;
+  border-radius: 999px;
+  background: #f7f6fb;
+  color: #283041;
+  font-size: 12px;
+  font-weight: 800;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+  border-color: transparent;
+  background: linear-gradient(135deg, #f51b3f 0%, #6d35ff 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(245, 27, 63, 0.18);
+}
+[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
+  display: none !important;
+}
+[data-testid="stRadio"] div[role="radiogroup"] label p {
+  margin: 0 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+[data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"])
+  [data-testid="stToggle"] label {
+  gap: 8px !important;
+  color: #667085 !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+}
+[data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"])
+  [data-testid="stToggle"] p {
+  font-size: 12px !important;
+  font-weight: 750 !important;
+}
+[data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"])
+  [data-testid="stToggle"] button[role="switch"][aria-checked="true"] {
+  background: #16a34a !important;
+}
+a.ini_nc_followup_link {
+  display: inline-flex !important;
+  align-items: center;
+  margin: 6px 7px 6px 0 !important;
+  padding: 10px 14px !important;
+  border: 1px solid #eceef4 !important;
+  border-radius: 999px !important;
+  background: #f7f6fb !important;
+  color: #172033 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  text-decoration: none !important;
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.045) !important;
+}
+a.ini_nc_followup_link:hover {
+  border-color: #ffc8d3 !important;
+  background: #fff1f4 !important;
+  color: #f51b3f !important;
 }
 
 </style>
@@ -755,6 +902,43 @@ def render_followup_links(
             f'style="display:block; cursor:pointer; color:#2563eb !important; margin:8px 0;">'
             f'{idx}. {fu} ↗'
             f'</a>',
+            unsafe_allow_html=True,
+        )
+
+
+def render_followup_links(
+    page: str,
+    followups: list[str],
+    sid: Optional[str] = None,
+    target: Optional[str] = None,
+) -> None:
+    cleaned: list[str] = []
+    seen = set()
+
+    for fu in followups or []:
+        item = clean_followup_text(fu)
+        key = re.sub(r"\s+", " ", item.lower()).strip()
+        if item and key not in seen:
+            seen.add(key)
+            cleaned.append(item)
+
+    if not cleaned:
+        return
+
+    if target is None:
+        target = "_blank" if page == "chat" else "_self"
+
+    for idx, fu in enumerate(cleaned, start=1):
+        href = _chat_branch_href(sid, fu) if page == "chat" else _learn_branch_href(sid, fu)
+        link_class = "ini_plain_link ini_nc_followup_link" if page == "chat" else "ini_plain_link"
+        link_style = (
+            "cursor:pointer;"
+            if page == "chat"
+            else "display:block; cursor:pointer; color:#2563eb !important; margin:8px 0;"
+        )
+        st.markdown(
+            f'<a class="{link_class}" href="{href}" target="{target}" '
+            f'style="{link_style}">{idx}. {fu} &rarr;</a>',
             unsafe_allow_html=True,
         )
 
@@ -1530,6 +1714,67 @@ def render_topic_profile(rows: list[tuple[str, str]]) -> None:
     )
 
 
+def render_nc_section_title(title: str, subtitle: str = "") -> None:
+    st.markdown(
+        (
+            '<div class="ini-nc-section-title">'
+            '<span class="ini-nc-section-title__mark"></span>'
+            f"<span>{escape(title)}</span>"
+            "</div>"
+        ),
+        unsafe_allow_html=True,
+    )
+    if subtitle:
+        st.markdown(
+            f'<div class="ini-nc-section-subtitle">{escape(subtitle)}</div>',
+            unsafe_allow_html=True,
+        )
+
+
+def render_nc_intro_preview(body: str) -> None:
+    text = (body or "").strip()
+    if not text:
+        return
+
+    parts = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    if len(parts) <= 1:
+        st.markdown(text)
+        return
+
+    st.markdown(parts[0])
+
+    # Keep the introduction control intentionally quiet: it is a reveal action,
+    # not a separate UI feature that needs an expander frame or icon.
+    control_id = abs(hash(text))
+    open_key = f"nc_intro_more_open_{control_id}"
+    button_key = f"nc_intro_more_button_{control_id}"
+
+    if st.session_state.get(open_key):
+        st.markdown("\n\n".join(parts[1:]))
+
+    if st.button(
+        "Show less" if st.session_state.get(open_key) else "More",
+        key=button_key,
+        type="tertiary",
+    ):
+        st.session_state[open_key] = not st.session_state.get(open_key, False)
+        st.rerun()
+
+
+def render_nc_question_map_tabs() -> None:
+    labels = [
+        "Orientation",
+        "Foundations",
+        "Mechanisms",
+        "Methods & Tools",
+        "Applications",
+        "Pitfalls",
+        "Advanced / Future",
+    ]
+    tabs = "".join(f'<span class="ini-nc-map-tab">{escape(label)}</span>' for label in labels)
+    st.markdown(f'<div class="ini-nc-map-tabs">{tabs}</div>', unsafe_allow_html=True)
+
+
 def normalize_clicked_followup_prompt(text: str) -> str:
     s = (text or "").strip()
     if not s:
@@ -2078,35 +2323,24 @@ def page_new_chat() -> None:
                 clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
                 profile_rows, intro_body = extract_topic_profile(clean_intro or intro)
 
-                st.markdown("##### Introduction")
                 render_topic_profile(profile_rows)
                 if intro_body:
-                    st.markdown(intro_body)
+                    with st.container(border=True):
+                        render_nc_section_title(
+                            "Introduction",
+                            "A clear starting point before the question ladder.",
+                        )
+                        render_nc_intro_preview(intro_body)
 
                 if intro_followups:
-                    st.markdown("##### Suggested follow-ups")
-                    render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
-
-            st.markdown("##### Question Map")
+                    with st.container(border=True):
+                        render_nc_section_title("Suggested Follow-ups")
+                        render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
 
             branch_answers = branch.setdefault("answers", {})
             branch_followups = branch.setdefault("followups", {})
             branch_open_questions = set(branch.get("open_questions") or [])
             branch_visited_questions = set(branch.get("visited_questions") or [])
-
-            hide_all = st.button(
-                "Hide All Answers",
-                key=f"branch_hide_all_answers_{branch_idx}"
-            )
-            if hide_all:
-                branch_open_questions = set()
-                
-
-                branch["open_questions"] = []
-                branch["visited_questions"] = sorted(list(branch_visited_questions))
-                st.session_state.chat_branch_answers[branch_idx] = branch
-                _persist_new_chat_session()
-                st.rerun()
 
             cats = data.get("categories") or {}
 
@@ -2120,6 +2354,29 @@ def page_new_chat() -> None:
                 ("Advanced / Future", ["Advanced / Future"]),
             ]
 
+            question_map_panel = st.container(border=True)
+            with question_map_panel:
+                top_cols = st.columns([0.78, 0.22])
+                with top_cols[0]:
+                    render_nc_section_title(
+                        "Question Map",
+                        "Choose one layer at a time.",
+                    )
+                with top_cols[1]:
+                    hide_answers = st.toggle(
+                        "Hide answers",
+                        value=False,
+                        key=f"branch_hide_answers_{branch_idx}",
+                    )
+
+                selected_section = st.radio(
+                    "Question Map section",
+                    [section for section, _ in ladder],
+                    horizontal=True,
+                    label_visibility="collapsed",
+                    key=f"branch_{branch_idx}_qm_section",
+                )
+
             for section, cat_keys in ladder:
                 qs = []
                 for ck in cat_keys:
@@ -2132,19 +2389,18 @@ def page_new_chat() -> None:
                 if not qs:
                     continue
 
-                open_section = st.toggle(
-                    section,
-                    value=(section == "Orientation"),
-                    key=f"branch_{branch_idx}_sec_{section}",
-                )
-
+                open_section = section == selected_section
                 if open_section:
                     for q in qs:
                         visited = q in branch_visited_questions
                         is_open = q in branch_open_questions
                         button_label = f"✓ {q}" if visited else q
 
-                        if st.button(button_label, key=f"branch_{branch_idx}_q_{section}_{q}", type="secondary"):
+                        if question_map_panel.button(
+                            button_label,
+                            key=f"branch_{branch_idx}_q_{section}_{q}",
+                            type="secondary",
+                        ):
                             branch_visited_questions.add(q)
 
                             if is_open:
@@ -2164,34 +2420,35 @@ def page_new_chat() -> None:
                                 st.rerun()
 
                             try:
-                                with st.spinner("Generating details... please wait."):
-                                    resp = fetch_study(q, mode="focused")
-                                    answer = normalize_whitespace_for_readability(
-                                        normalize_mojibake(resp.get("answer", "") or "")
-                                    ).strip() or "No answer generated."
+                                with question_map_panel:
+                                    with st.spinner("Generating details... please wait."):
+                                        resp = fetch_study(q, mode="focused")
+                                        answer = normalize_whitespace_for_readability(
+                                            normalize_mojibake(resp.get("answer", "") or "")
+                                        ).strip() or "No answer generated."
 
-                                    branch_answers[q] = {
-                                        "text": answer,
-                                        "incomplete": bool(resp.get("incomplete")),
-                                        "stop_reason": resp.get("stop_reason") or None,
-                                        "prompt": q,
-                                        "mode": "deep",
-                                    }
-                                    branch_followups[q] = resp.get("followups") or []
-                                    branch_open_questions.add(q)
-                                    branch["answers"] = branch_answers
-                                    branch["followups"] = branch_followups
-                                    branch["open_questions"] = sorted(list(branch_open_questions))
-                                    branch["visited_questions"] = sorted(list(branch_visited_questions))
-                                    st.session_state.chat_branch_answers[branch_idx] = branch
-                                    _persist_new_chat_session()
+                                        branch_answers[q] = {
+                                            "text": answer,
+                                            "incomplete": bool(resp.get("incomplete")),
+                                            "stop_reason": resp.get("stop_reason") or None,
+                                            "prompt": q,
+                                            "mode": "deep",
+                                        }
+                                        branch_followups[q] = resp.get("followups") or []
+                                        branch_open_questions.add(q)
+                                        branch["answers"] = branch_answers
+                                        branch["followups"] = branch_followups
+                                        branch["open_questions"] = sorted(list(branch_open_questions))
+                                        branch["visited_questions"] = sorted(list(branch_visited_questions))
+                                        st.session_state.chat_branch_answers[branch_idx] = branch
+                                        _persist_new_chat_session()
 
                                 st.rerun()
 
                             except Exception as e:
-                                st.error(f"Error calling /study/ai: {e}")
+                                question_map_panel.error(f"Error calling /study/ai: {e}")
 
-                        if q in branch_open_questions:
+                        if q in branch_open_questions and not hide_answers:
                             answer_obj = branch_answers.get(q, {})
                             raw_answer = (
                                 (answer_obj.get("text") or "").strip()
@@ -2202,20 +2459,20 @@ def page_new_chat() -> None:
                             if raw_answer:
                                 clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
 
-                                _render_nc_ai_bubble(
-                                    "##### Answer\n\n" + (clean_answer or raw_answer),
-                                    "",
-                                )
-
                                 followups = embedded_followups or branch_followups.get(q, [])
-                                if followups:
-                                    st.markdown("##### Suggested follow-ups")
-                                    render_followup_links(
-                                        "chat",
-                                        followups,
-                                        st.session_state.chat_active_id,
-                                        target="_blank",
+                                with question_map_panel:
+                                    _render_nc_ai_bubble(
+                                        "##### Answer\n\n" + (clean_answer or raw_answer),
+                                        "",
                                     )
+                                    if followups:
+                                        render_nc_section_title("Suggested Follow-ups")
+                                        render_followup_links(
+                                            "chat",
+                                            followups,
+                                            st.session_state.chat_active_id,
+                                            target="_blank",
+                                        )
 
                                 is_incomplete = False
                                 if isinstance(answer_obj, dict):
@@ -2275,7 +2532,7 @@ def page_new_chat() -> None:
 
                                             st.rerun()
 
-                                st.markdown("---")
+                                question_map_panel.markdown("---")
 
             st.markdown(
                 f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{branch_ts}</div>",
@@ -3977,10 +4234,28 @@ def page_new_chat() -> None:
     if is_new_chat_landing:
         _render_new_chat_top_uib()
     elif not pending_new_chat_request:
-        st.markdown('<div class="bigtitle">New Chat</div>', unsafe_allow_html=True)
+        active_chat_title = (st.session_state.chat_root_topic or "").strip()
+        if st.session_state.chat_branch_answers:
+            latest_branch = st.session_state.chat_branch_answers[-1]
+            if isinstance(latest_branch, dict):
+                active_chat_title = (
+                    latest_branch.get("topic")
+                    or latest_branch.get("prompt")
+                    or active_chat_title
+                )
+        if not active_chat_title and isinstance(st.session_state.chat_direct_answer, dict):
+            active_chat_title = (
+                st.session_state.chat_direct_answer.get("prompt")
+                or st.session_state.chat.get("topic")
+                or ""
+            )
+        active_chat_title = active_chat_title or "New Chat"
+        st.markdown(
+            f'<div class="bigtitle">{escape(active_chat_title)}</div>',
+            unsafe_allow_html=True,
+        )
         st.caption(
-            "InI Question Engine (v0): Interrogate generates a progressive question ladder. "
-            "Click a question to open or hide its answer."
+            "Explore the key ideas, profile and question ladder for this topic."
         )
 
     if has_new_chat_content:
@@ -4086,7 +4361,7 @@ def page_new_chat() -> None:
                         followups = embedded_followups or (direct_payload.get("followups") or [])
 
                         if show_followups and followups:
-                            st.markdown("#### Suggested follow-ups")
+                            render_nc_section_title("Suggested Follow-ups")
                             render_followup_links(
                                 "chat",
                                 followups,
@@ -4124,7 +4399,7 @@ def page_new_chat() -> None:
         followups = embedded_followups or (direct_answer.get("followups") or [])
 
         if show_followups and followups:
-            st.markdown("#### Suggested follow-ups")
+            render_nc_section_title("Suggested Follow-ups")
             render_followup_links("chat", followups, st.session_state.chat_active_id)
 
         is_incomplete = bool(direct_answer.get("incomplete"))
@@ -4214,24 +4489,19 @@ def page_new_chat() -> None:
                 clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
                 profile_rows, intro_body = extract_topic_profile(clean_intro or intro)
 
-                st.markdown("### Introduction")
                 render_topic_profile(profile_rows)
                 if intro_body:
-                    st.markdown(intro_body)
+                    with st.container(border=True):
+                        render_nc_section_title(
+                            "Introduction",
+                            "A clear starting point before the question ladder.",
+                        )
+                        render_nc_intro_preview(intro_body)
 
                 if intro_followups:
-                    st.markdown("#### Suggested follow-ups")
-                    render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
-
-            st.markdown("### Question Map")
-            st.caption("Orientation → Foundations → Mechanisms → Methods & Tools → Applications → Pitfalls → Advanced / Future")
-
-            hide_all = st.button("Hide All Answers", key="hide_all_answers_newchat")
-            if hide_all:
-                st.session_state.chat_open_questions = set()
-                _sync_chat_root_snapshot()
-                _persist_new_chat_session()
-                st.rerun()
+                    with st.container(border=True):
+                        render_nc_section_title("Suggested Follow-ups")
+                        render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
 
             cats = data.get("categories") or {}
 
@@ -4244,6 +4514,29 @@ def page_new_chat() -> None:
                 ("Pitfalls", ["Pitfalls"]),
                 ("Advanced / Future", ["Advanced / Future"]),
             ]
+
+            question_map_panel = st.container(border=True)
+            with question_map_panel:
+                top_cols = st.columns([0.78, 0.22])
+                with top_cols[0]:
+                    render_nc_section_title(
+                        "Question Map",
+                        "Choose one layer at a time.",
+                    )
+                with top_cols[1]:
+                    hide_answers = st.toggle(
+                        "Hide answers",
+                        value=False,
+                        key="hide_answers_newchat",
+                    )
+
+                selected_section = st.radio(
+                    "Question Map section",
+                    [section for section, _ in ladder],
+                    horizontal=True,
+                    label_visibility="collapsed",
+                    key="root_qm_section",
+                )
 
             for section, cat_keys in ladder:
                 qs = []
@@ -4258,12 +4551,7 @@ def page_new_chat() -> None:
                 if not qs:
                     continue
 
-                open_section = st.toggle(
-                    section,
-                    value=(section == "Orientation"),
-                    key=f"sec_{section}"
-                )
-
+                open_section = section == selected_section
                 if open_section:
                     for q in qs:
                         visited = q in st.session_state.chat_visited_questions
@@ -4271,7 +4559,11 @@ def page_new_chat() -> None:
 
                         button_label = f"✓ {q}" if visited else q
 
-                        if st.button(button_label, key=f"q_{section}_{q}", type="secondary"):
+                        if question_map_panel.button(
+                            button_label,
+                            key=f"q_{section}_{q}",
+                            type="secondary",
+                        ):
                             st.session_state.chat_visited_questions.add(q)
 
                             if is_open:
@@ -4287,32 +4579,33 @@ def page_new_chat() -> None:
                                 st.rerun()
 
                             try:
-                                with st.spinner("Generating details... please wait."):
-                                    resp = fetch_study(q, mode="focused")
-                                    answer = normalize_whitespace_for_readability(
-                                        normalize_mojibake(resp.get("answer", "") or "")
-                                    ).strip() or "No answer generated."
+                                with question_map_panel:
+                                    with st.spinner("Generating details... please wait."):
+                                        resp = fetch_study(q, mode="focused")
+                                        answer = normalize_whitespace_for_readability(
+                                            normalize_mojibake(resp.get("answer", "") or "")
+                                        ).strip() or "No answer generated."
 
-                                    followups = resp.get("followups") or []
+                                        followups = resp.get("followups") or []
 
-                                    st.session_state.chat_answers[q] = {
-                                        "text": answer,
-                                        "incomplete": bool(resp.get("incomplete")),
-                                        "stop_reason": resp.get("stop_reason") or None,
-                                        "prompt": q,
-                                        "mode": "deep",
-                                    }
-                                    st.session_state.chat_followups[q] = followups
-                                    st.session_state.chat_open_questions.add(q)
-                                    _sync_chat_root_snapshot()
-                                    _persist_new_chat_session()
+                                        st.session_state.chat_answers[q] = {
+                                            "text": answer,
+                                            "incomplete": bool(resp.get("incomplete")),
+                                            "stop_reason": resp.get("stop_reason") or None,
+                                            "prompt": q,
+                                            "mode": "deep",
+                                        }
+                                        st.session_state.chat_followups[q] = followups
+                                        st.session_state.chat_open_questions.add(q)
+                                        _sync_chat_root_snapshot()
+                                        _persist_new_chat_session()
 
                                 st.rerun()
 
                             except Exception as e:
-                                st.error(f"Error calling /study/ai: {e}")
+                                question_map_panel.error(f"Error calling /study/ai: {e}")
 
-                        if q in st.session_state.chat_open_questions:
+                        if q in st.session_state.chat_open_questions and not hide_answers:
                             answer_obj = st.session_state.chat_answers.get(q, {})
                             raw_answer = ""
 
@@ -4324,15 +4617,20 @@ def page_new_chat() -> None:
                             if raw_answer:
                                 clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
 
-                                _render_nc_ai_bubble(
-                                    "#### Answer\n\n" + (clean_answer or raw_answer),
-                                    "",
-                                )
-
                                 followups = embedded_followups or st.session_state.chat_followups.get(q, [])
-                                if followups:
-                                    st.markdown("#### Suggested follow-ups")
-                                    render_followup_links("chat", followups, st.session_state.chat_active_id, target="_blank")
+                                with question_map_panel:
+                                    _render_nc_ai_bubble(
+                                        "#### Answer\n\n" + (clean_answer or raw_answer),
+                                        "",
+                                    )
+                                    if followups:
+                                        render_nc_section_title("Suggested Follow-ups")
+                                        render_followup_links(
+                                            "chat",
+                                            followups,
+                                            st.session_state.chat_active_id,
+                                            target="_blank",
+                                        )
 
                                 is_incomplete = False
                                 if isinstance(answer_obj, dict):
@@ -4394,7 +4692,7 @@ def page_new_chat() -> None:
 
                                             st.rerun()
 
-                                st.markdown("---")
+                                question_map_panel.markdown("---")
 
             st.markdown(
                 f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{root_ts}</div>",
@@ -4442,7 +4740,7 @@ def page_new_chat() -> None:
                             show_followups = bool(direct_payload.get("show_followups", True))
                             followups = embedded_followups or (direct_payload.get("followups") or [])
                             if show_followups and followups:
-                                st.markdown("#### Suggested follow-ups")
+                                render_nc_section_title("Suggested Follow-ups")
                                 render_followup_links("chat", followups, st.session_state.chat_active_id)
                     else:
                             st.caption("No direct answer generated.")
