@@ -558,21 +558,171 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data
   line-height: 1.65;
 }
 .ini-nc-intro-copy {
-  margin: 2px 0 8px 30px;
-  padding: 14px 16px;
+  margin: 0;
+  min-height: 0;
+  padding: 13px 14px;
   border: 1px solid #eef0f4;
   border-radius: 14px;
   background: #ffffff;
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035);
-  color: #3f4858;
-  font-size: 14px;
-  line-height: 1.65;
+  color: #17211f;
+  font-size: 13px;
+  line-height: 1.55;
 }
 .ini-nc-intro-copy p {
   margin: 0 0 10px;
 }
 .ini-nc-intro-copy p:last-child {
   margin-bottom: 0;
+}
+.ini-nc-followup-panel .ini-topic-profile__grid {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+a.ini-nc-followup-panel__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 0;
+  padding: 13px 14px;
+  border: 1px solid #f0f2f6;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035);
+  color: #17211f !important;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+  text-decoration: none !important;
+}
+a.ini-nc-followup-panel__item:hover {
+  border-color: #d9dee7;
+  background: #fbfcff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+}
+.ini-nc-followup-panel__arrow {
+  flex: 0 0 auto;
+  margin-left: 14px;
+  color: #667085;
+  font-size: 16px;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker) {
+  position: relative !important;
+  margin: 12px 0 20px !important;
+  padding: 18px !important;
+  border: 1px solid #eceff4 !important;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%) !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.055) !important;
+}
+.st-key-root_question_map_panel,
+div[class*="st-key-branch_question_map_panel_"] {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%) !important;
+  border: 1px solid #eceff4 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.055) !important;
+}
+.st-key-root_question_map_content,
+div[class*="st-key-branch_question_map_content_"] {
+  margin-top: 2px;
+  padding: 12px !important;
+  border: 1px solid #edf0f4 !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker) > div {
+  background: transparent !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
+  [data-testid="stCheckbox"] {
+  width: fit-content;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid #eef0f4;
+  border-radius: 12px;
+  background: #ffffff;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
+  [data-testid="stRadio"] {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
+  [data-testid="stRadio"] label input[type="radio"] {
+  display: none !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
+  [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+  border-color: #f51b3f !important;
+  background: #f51b3f !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(245, 27, 63, 0.18) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
+  [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {
+  color: #ffffff !important;
+}
+.st-key-root_question_map_content [data-testid="stRadio"] label input[type="radio"],
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label input[type="radio"] {
+  display: none !important;
+}
+.st-key-root_question_map_content [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked),
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+  border-color: #f51b3f !important;
+  background: #f51b3f !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(245, 27, 63, 0.18) !important;
+}
+.st-key-root_question_map_content [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p,
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {
+  color: #ffffff !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
+  div.stButton > button {
+  margin: 7px 0 !important;
+  padding: 14px 15px !important;
+  border-color: #edf0f4 !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
+  .ini-nc-qmap-marker {
+  min-height: 34px;
+  margin: 0;
+}
+.ini-topic-profile.ini-nc-intro-panel {
+  padding-bottom: 52px;
+}
+.ini-nc-intro-panel .ini-topic-profile__title {
+  color: #17211f;
+}
+.ini-nc-intro-panel .ini-topic-profile__mark {
+  display: none;
+}
+.ini-topic-profile__title,
+.ini-nc-section-title {
+  gap: 0;
+  color: #17211f;
+}
+.ini-topic-profile__mark,
+.ini-nc-section-title__mark {
+  display: none;
+}
+.ini-nc-section-title {
+  width: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+div[class*="st-key-nc_intro_more_button_"] {
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  margin: -54px 0 18px 18px;
 }
 div[class*="st-key-nc_intro_more_button_"] button {
   min-height: 0 !important;
@@ -692,6 +842,21 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"]) div
   border-color: #f8a1b0 !important;
   background: #fff7f8 !important;
   box-shadow: 0 8px 20px rgba(245, 27, 63, 0.08) !important;
+}
+.st-key-root_question_map_content [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div > div:first-child,
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div > div:first-child {
+  display: none !important;
+}
+.st-key-root_question_map_content [data-testid="stRadio"] label[data-selected="true"],
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label[data-selected="true"] {
+  border-color: #f51b3f !important;
+  background: #f51b3f !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(245, 27, 63, 0.18) !important;
+}
+.st-key-root_question_map_content [data-testid="stRadio"] label[data-selected="true"] p,
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label[data-selected="true"] p {
+  color: #ffffff !important;
 }
 
 </style>
@@ -1800,10 +1965,61 @@ def render_topic_profile(rows: list[tuple[str, str]]) -> None:
     )
 
 
-def render_nc_section_title(title: str, subtitle: str = "") -> None:
+def render_nc_followup_panel(
+    followups: list[str],
+    sid: Optional[str] = None,
+    target: Optional[str] = None,
+) -> None:
+    cleaned: list[str] = []
+    seen = set()
+
+    for followup in followups or []:
+        item = clean_followup_text(followup)
+        dedupe_key = re.sub(r"\s+", " ", item.lower()).strip()
+        if item and dedupe_key not in seen:
+            seen.add(dedupe_key)
+            cleaned.append(item)
+
+    if not cleaned:
+        return
+
+    if target is None:
+        target = "_blank"
+
+    cards = "".join(
+        (
+            f'<a class="ini-nc-followup-panel__item" href="{_chat_branch_href(sid, followup)}" '
+            f'target="{target}">'
+            f'<span>{index}. {escape(followup)}</span>'
+            '<span class="ini-nc-followup-panel__arrow">&rarr;</span>'
+            '</a>'
+        )
+        for index, followup in enumerate(cleaned, start=1)
+    )
     st.markdown(
         (
-            '<div class="ini-nc-section-title">'
+            '<div class="ini-topic-profile ini-nc-followup-panel">'
+            '<div class="ini-topic-profile__title">'
+            '<span>Suggested Follow-ups</span>'
+            '</div>'
+            f'<div class="ini-topic-profile__grid">{cards}</div>'
+            '</div>'
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_nc_section_title(
+    title: str,
+    subtitle: str = "",
+    card_class: str = "",
+) -> None:
+    class_name = "ini-nc-section-title"
+    if card_class:
+        class_name = f"{class_name} {card_class}"
+    st.markdown(
+        (
+            f'<div class="{class_name}">'
             '<span class="ini-nc-section-title__mark"></span>'
             f"<span>{escape(title)}</span>"
             "</div>"
@@ -1823,18 +2039,23 @@ def render_nc_intro_preview(body: str) -> None:
         return
 
     parts = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
-    def render_intro_parts(items: list[str]) -> None:
+    def intro_html(items: list[str]) -> str:
         html_parts = []
         for item in items:
             safe_item = escape(item).replace("\n", "<br>")
             html_parts.append(f"<p>{safe_item}</p>")
-        st.markdown(
-            f'<div class="ini-nc-intro-copy">{"".join(html_parts)}</div>',
-            unsafe_allow_html=True,
+        return (
+            '<div class="ini-topic-profile ini-nc-intro-panel">'
+            '<div class="ini-topic-profile__title">'
+            '<span class="ini-topic-profile__mark"></span>'
+            '<span>Introduction</span>'
+            '</div>'
+            f'<div class="ini-topic-profile__item ini-nc-intro-copy">{"".join(html_parts)}</div>'
+            '</div>'
         )
 
     if len(parts) <= 1:
-        render_intro_parts(parts)
+        st.markdown(intro_html(parts), unsafe_allow_html=True)
         return
 
     # The reading surface stays singular. More expands this same card rather
@@ -1843,8 +2064,7 @@ def render_nc_intro_preview(body: str) -> None:
     open_key = f"nc_intro_more_open_{control_id}"
     button_key = f"nc_intro_more_button_{control_id}"
     visible_parts = parts if st.session_state.get(open_key) else parts[:1]
-    render_intro_parts(visible_parts)
-
+    st.markdown(intro_html(visible_parts), unsafe_allow_html=True)
     if st.button(
         "Show less" if st.session_state.get(open_key) else "More",
         key=button_key,
@@ -2420,17 +2640,13 @@ def page_new_chat() -> None:
 
                 render_topic_profile(profile_rows)
                 if intro_body:
-                    with st.container(border=True):
-                        render_nc_section_title(
-                            "Introduction",
-                            "A clear starting point before the question ladder.",
-                        )
-                        render_nc_intro_preview(intro_body)
+                    render_nc_intro_preview(intro_body)
 
                 if intro_followups:
-                    with st.container(border=True):
-                        render_nc_section_title("Suggested Follow-ups")
-                        render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
+                    render_nc_followup_panel(
+                        intro_followups,
+                        st.session_state.chat_active_id,
+                    )
 
             branch_answers = branch.setdefault("answers", {})
             branch_followups = branch.setdefault("followups", {})
@@ -2449,28 +2665,40 @@ def page_new_chat() -> None:
                 ("Advanced / Future", ["Advanced / Future"]),
             ]
 
-            question_map_panel = st.container(border=True)
+            question_map_panel = st.container(
+                border=True,
+                key=f"branch_question_map_panel_{branch_idx}",
+            )
             with question_map_panel:
-                top_cols = st.columns([0.78, 0.22])
-                with top_cols[0]:
+                with st.container(
+                    horizontal=True,
+                    horizontal_alignment="distribute",
+                    vertical_alignment="center",
+                    gap="small",
+                    key=f"branch_qmap_header_{branch_idx}",
+                ):
                     render_nc_section_title(
                         "Question Map",
-                        "Choose one layer at a time.",
+                        card_class="ini-nc-qmap-marker",
                     )
-                with top_cols[1]:
                     hide_answers = st.toggle(
                         "Hide answers",
                         value=False,
                         key=f"branch_hide_answers_{branch_idx}",
                     )
 
-                selected_section = st.radio(
-                    "Question Map section",
-                    [section for section, _ in ladder],
-                    horizontal=True,
-                    label_visibility="collapsed",
-                    key=f"branch_{branch_idx}_qm_section",
+                question_map_content = st.container(
+                    border=True,
+                    key=f"branch_question_map_content_{branch_idx}",
                 )
+                with question_map_content:
+                    selected_section = st.radio(
+                        "Question Map section",
+                        [section for section, _ in ladder],
+                        horizontal=True,
+                        label_visibility="collapsed",
+                        key=f"branch_{branch_idx}_qm_section",
+                    )
 
             for section, cat_keys in ladder:
                 qs = []
@@ -2491,7 +2719,7 @@ def page_new_chat() -> None:
                         is_open = q in branch_open_questions
                         button_label = f"✓ {q}" if visited else q
 
-                        if question_map_panel.button(
+                        if question_map_content.button(
                             button_label,
                             key=f"branch_{branch_idx}_q_{section}_{q}",
                             type="secondary",
@@ -2515,7 +2743,7 @@ def page_new_chat() -> None:
                                 st.rerun()
 
                             try:
-                                with question_map_panel:
+                                with question_map_content:
                                     with st.spinner("Generating details... please wait."):
                                         resp = fetch_study(q, mode="focused")
                                         answer = normalize_whitespace_for_readability(
@@ -2541,7 +2769,7 @@ def page_new_chat() -> None:
                                 st.rerun()
 
                             except Exception as e:
-                                question_map_panel.error(f"Error calling /study/ai: {e}")
+                                question_map_content.error(f"Error calling /study/ai: {e}")
 
                         if q in branch_open_questions and not hide_answers:
                             answer_obj = branch_answers.get(q, {})
@@ -2555,7 +2783,7 @@ def page_new_chat() -> None:
                                 clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
 
                                 followups = embedded_followups or branch_followups.get(q, [])
-                                with question_map_panel:
+                                with question_map_content:
                                     _render_nc_ai_bubble(
                                         "##### Answer\n\n" + (clean_answer or raw_answer),
                                         "",
@@ -4586,17 +4814,13 @@ def page_new_chat() -> None:
 
                 render_topic_profile(profile_rows)
                 if intro_body:
-                    with st.container(border=True):
-                        render_nc_section_title(
-                            "Introduction",
-                            "A clear starting point before the question ladder.",
-                        )
-                        render_nc_intro_preview(intro_body)
+                    render_nc_intro_preview(intro_body)
 
                 if intro_followups:
-                    with st.container(border=True):
-                        render_nc_section_title("Suggested Follow-ups")
-                        render_followup_links("chat", intro_followups, st.session_state.chat_active_id)
+                    render_nc_followup_panel(
+                        intro_followups,
+                        st.session_state.chat_active_id,
+                    )
 
             cats = data.get("categories") or {}
 
@@ -4610,28 +4834,40 @@ def page_new_chat() -> None:
                 ("Advanced / Future", ["Advanced / Future"]),
             ]
 
-            question_map_panel = st.container(border=True)
+            question_map_panel = st.container(
+                border=True,
+                key="root_question_map_panel",
+            )
             with question_map_panel:
-                top_cols = st.columns([0.78, 0.22])
-                with top_cols[0]:
+                with st.container(
+                    horizontal=True,
+                    horizontal_alignment="distribute",
+                    vertical_alignment="center",
+                    gap="small",
+                    key="root_qmap_header",
+                ):
                     render_nc_section_title(
                         "Question Map",
-                        "Choose one layer at a time.",
+                        card_class="ini-nc-qmap-marker",
                     )
-                with top_cols[1]:
                     hide_answers = st.toggle(
                         "Hide answers",
                         value=False,
                         key="hide_answers_newchat",
                     )
 
-                selected_section = st.radio(
-                    "Question Map section",
-                    [section for section, _ in ladder],
-                    horizontal=True,
-                    label_visibility="collapsed",
-                    key="root_qm_section",
+                question_map_content = st.container(
+                    border=True,
+                    key="root_question_map_content",
                 )
+                with question_map_content:
+                    selected_section = st.radio(
+                        "Question Map section",
+                        [section for section, _ in ladder],
+                        horizontal=True,
+                        label_visibility="collapsed",
+                        key="root_qm_section",
+                    )
 
             for section, cat_keys in ladder:
                 qs = []
@@ -4654,7 +4890,7 @@ def page_new_chat() -> None:
 
                         button_label = f"✓ {q}" if visited else q
 
-                        if question_map_panel.button(
+                        if question_map_content.button(
                             button_label,
                             key=f"q_{section}_{q}",
                             type="secondary",
@@ -4674,7 +4910,7 @@ def page_new_chat() -> None:
                                 st.rerun()
 
                             try:
-                                with question_map_panel:
+                                with question_map_content:
                                     with st.spinner("Generating details... please wait."):
                                         resp = fetch_study(q, mode="focused")
                                         answer = normalize_whitespace_for_readability(
@@ -4698,7 +4934,7 @@ def page_new_chat() -> None:
                                 st.rerun()
 
                             except Exception as e:
-                                question_map_panel.error(f"Error calling /study/ai: {e}")
+                                question_map_content.error(f"Error calling /study/ai: {e}")
 
                         if q in st.session_state.chat_open_questions and not hide_answers:
                             answer_obj = st.session_state.chat_answers.get(q, {})
@@ -4713,7 +4949,7 @@ def page_new_chat() -> None:
                                 clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
 
                                 followups = embedded_followups or st.session_state.chat_followups.get(q, [])
-                                with question_map_panel:
+                                with question_map_content:
                                     _render_nc_ai_bubble(
                                         "#### Answer\n\n" + (clean_answer or raw_answer),
                                         "",
