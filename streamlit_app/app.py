@@ -380,12 +380,12 @@ button[kind="secondary"]{
 
 
 div[data-testid="stVerticalBlockBorderWrapper"]{
-  background:#ffffff !important;
-  border:1px solid #e5e7eb !important;
-  border-radius:22px !important;
-  padding:22px 26px !important;
-  margin:18px 0 28px 0 !important;
-  box-shadow:0 6px 22px rgba(15,23,42,0.08) !important;
+  background:linear-gradient(180deg, #ffffff 0%, #fbfcff 100%) !important;
+  border:1px solid #eceff4 !important;
+  border-radius:18px !important;
+  padding:18px !important;
+  margin:14px 0 20px 0 !important;
+  box-shadow:0 12px 32px rgba(15,23,42,0.055) !important;
   overflow:hidden !important;
 }
 
@@ -502,6 +502,78 @@ div.stButton > button:hover {
   font-size: 13px;
   line-height: 1.45;
 }
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) {
+  position: relative !important;
+  margin: 16px 0 22px !important;
+  padding: 20px !important;
+  border: 1px solid #e8ebf1 !important;
+  border-radius: 20px !important;
+  background: linear-gradient(145deg, #ffffff 0%, #fbfcff 72%, #fff7f8 100%) !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.065) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 20px;
+  height: 3px;
+  border-radius: 0 0 99px 99px;
+  background: linear-gradient(90deg, #f51b3f 0%, #ff8ba0 42%, rgba(255, 139, 160, 0) 82%);
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) > div {
+  background: transparent !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) .ini-nc-section-title {
+  margin-top: 0;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) .ini-nc-section-subtitle {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef0f4;
+}
+.ini-nc-section-title {
+  width: fit-content;
+  padding: 7px 11px;
+  border: 1px solid #ffd4dd;
+  border-radius: 12px;
+  background: #fff4f6;
+  color: #f51b3f;
+  font-size: 14px;
+  font-weight: 850;
+}
+.ini-nc-section-title__mark {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 4px #f51b3f;
+}
+.ini-nc-section-title__mark::after {
+  display: none;
+}
+.ini-nc-section-subtitle {
+  margin-left: 30px;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data-testid="stMarkdownContainer"] > p {
+  color: #3f4858;
+  line-height: 1.65;
+}
+.ini-nc-intro-copy {
+  margin: 2px 0 8px 30px;
+  padding: 14px 16px;
+  border: 1px solid #eef0f4;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035);
+  color: #3f4858;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.ini-nc-intro-copy p {
+  margin: 0 0 10px;
+}
+.ini-nc-intro-copy p:last-child {
+  margin-bottom: 0;
+}
 div[class*="st-key-nc_intro_more_button_"] button {
   min-height: 0 !important;
   padding: 2px 0 !important;
@@ -606,6 +678,20 @@ a.ini_nc_followup_link:hover {
   border-color: #ffc8d3 !important;
   background: #fff1f4 !important;
   color: #f51b3f !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"]) {
+  background: linear-gradient(145deg, #ffffff 0%, #fbfcff 70%, #faf8ff 100%) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"]) div.stButton > button {
+  padding: 13px 15px !important;
+  border-color: #e9ecf2 !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"]) div.stButton > button:hover {
+  border-color: #f8a1b0 !important;
+  background: #fff7f8 !important;
+  box-shadow: 0 8px 20px rgba(245, 27, 63, 0.08) !important;
 }
 
 </style>
@@ -1737,20 +1823,27 @@ def render_nc_intro_preview(body: str) -> None:
         return
 
     parts = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    def render_intro_parts(items: list[str]) -> None:
+        html_parts = []
+        for item in items:
+            safe_item = escape(item).replace("\n", "<br>")
+            html_parts.append(f"<p>{safe_item}</p>")
+        st.markdown(
+            f'<div class="ini-nc-intro-copy">{"".join(html_parts)}</div>',
+            unsafe_allow_html=True,
+        )
+
     if len(parts) <= 1:
-        st.markdown(text)
+        render_intro_parts(parts)
         return
 
-    st.markdown(parts[0])
-
-    # Keep the introduction control intentionally quiet: it is a reveal action,
-    # not a separate UI feature that needs an expander frame or icon.
+    # The reading surface stays singular. More expands this same card rather
+    # than adding a second content box beneath the preview.
     control_id = abs(hash(text))
     open_key = f"nc_intro_more_open_{control_id}"
     button_key = f"nc_intro_more_button_{control_id}"
-
-    if st.session_state.get(open_key):
-        st.markdown("\n\n".join(parts[1:]))
+    visible_parts = parts if st.session_state.get(open_key) else parts[:1]
+    render_intro_parts(visible_parts)
 
     if st.button(
         "Show less" if st.session_state.get(open_key) else "More",
