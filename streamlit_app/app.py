@@ -858,6 +858,21 @@ div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label[
 div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label[data-selected="true"] p {
   color: #ffffff !important;
 }
+.st-key-root_question_map_panel [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div > div:first-child,
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div > div:first-child {
+  display: none !important;
+}
+.st-key-root_question_map_panel [data-testid="stRadio"] label[data-selected="true"],
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"] label[data-selected="true"] {
+  border-color: #f51b3f !important;
+  background: #f51b3f !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(245, 27, 63, 0.18) !important;
+}
+.st-key-root_question_map_panel [data-testid="stRadio"] label[data-selected="true"] p,
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"] label[data-selected="true"] p {
+  color: #ffffff !important;
+}
 
 </style>
 """
@@ -2687,18 +2702,14 @@ def page_new_chat() -> None:
                         key=f"branch_hide_answers_{branch_idx}",
                     )
 
-                question_map_content = st.container(
-                    border=True,
-                    key=f"branch_question_map_content_{branch_idx}",
+                question_map_content = question_map_panel
+                selected_section = st.radio(
+                    "Question Map section",
+                    [section for section, _ in ladder],
+                    horizontal=True,
+                    label_visibility="collapsed",
+                    key=f"branch_{branch_idx}_qm_section",
                 )
-                with question_map_content:
-                    selected_section = st.radio(
-                        "Question Map section",
-                        [section for section, _ in ladder],
-                        horizontal=True,
-                        label_visibility="collapsed",
-                        key=f"branch_{branch_idx}_qm_section",
-                    )
 
             for section, cat_keys in ladder:
                 qs = []
@@ -4856,18 +4867,14 @@ def page_new_chat() -> None:
                         key="hide_answers_newchat",
                     )
 
-                question_map_content = st.container(
-                    border=True,
-                    key="root_question_map_content",
+                question_map_content = question_map_panel
+                selected_section = st.radio(
+                    "Question Map section",
+                    [section for section, _ in ladder],
+                    horizontal=True,
+                    label_visibility="collapsed",
+                    key="root_qm_section",
                 )
-                with question_map_content:
-                    selected_section = st.radio(
-                        "Question Map section",
-                        [section for section, _ in ladder],
-                        horizontal=True,
-                        label_visibility="collapsed",
-                        key="root_qm_section",
-                    )
 
             for section, cat_keys in ladder:
                 qs = []
