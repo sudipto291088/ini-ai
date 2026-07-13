@@ -3039,7 +3039,7 @@ def page_new_chat() -> None:
         st.markdown(
             f"""
             <div class="{class_names}" style="display:flex; justify-content:flex-end; margin: 10px 0 14px 0;">
-            <div style="
+            <div class="nc-user-bubble__content" style="
                 max-width: 68%;
                 background: #f3f4f6;
                 color: #111827;
@@ -3050,7 +3050,7 @@ def page_new_chat() -> None:
                 font-size: 14px;
                 box-shadow: 0 1px 2px rgba(15,23,42,0.04);
             ">
-                {prompt}
+                <span class="nc-user-bubble__prompt">{prompt}</span>
                 {ts_html}
             </div>
             </div>
@@ -3642,6 +3642,108 @@ def page_new_chat() -> None:
                       border-color: rgba(245, 27, 63, 0.45);
                       color: #f51b3f;
                     }
+                    #ini-nc-scroll-controls button[title="Your queries"] {
+                      border-color: #f51b3f;
+                      background: #f51b3f;
+                      color: #ffffff;
+                    }
+                    #ini-nc-scroll-controls button[title="Your queries"]:hover {
+                      border-color: #d91435;
+                      background: #d91435;
+                      color: #ffffff;
+                    }
+                    #ini-nc-query-navigator {
+                      position: fixed;
+                      inset: 0;
+                      z-index: 2147483001;
+                      display: grid;
+                      place-items: center;
+                      padding: 22px;
+                      background: rgba(15, 23, 42, 0.24);
+                      backdrop-filter: blur(4px);
+                    }
+                    #ini-nc-query-navigator__panel {
+                      width: min(500px, 100%);
+                      max-height: min(680px, calc(100vh - 44px));
+                      overflow: auto;
+                      padding: 20px;
+                      border: 1px solid #e7eaf0;
+                      border-radius: 20px;
+                      background: #ffffff;
+                      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+                    }
+                    .ini-nc-query-navigator__header {
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                      gap: 16px;
+                      margin-bottom: 5px;
+                    }
+                    .ini-nc-query-navigator__title {
+                      margin: 0;
+                      color: #111827;
+                      font: 700 18px/1.3 "Aptos", "Segoe UI", sans-serif;
+                    }
+                    .ini-nc-query-navigator__caption {
+                      margin: 0 0 16px;
+                      color: #6b7280;
+                      font: 400 13px/1.45 "Aptos", "Segoe UI", sans-serif;
+                    }
+                    .ini-nc-query-navigator__close {
+                      width: 32px;
+                      height: 32px;
+                      border: 1px solid #e5e7eb;
+                      border-radius: 10px;
+                      background: #ffffff;
+                      color: #4b5563;
+                      font: 600 18px/1 "Aptos", "Segoe UI", sans-serif;
+                      cursor: pointer;
+                    }
+                    .ini-nc-query-navigator__item {
+                      display: flex;
+                      align-items: center;
+                      gap: 10px;
+                      width: 100%;
+                      margin: 0;
+                      padding: 12px 4px;
+                      border: 0;
+                      border-bottom: 1px solid #edf0f4;
+                      border-radius: 10px;
+                      background: transparent;
+                      color: #374151;
+                      text-align: left;
+                      font: 400 14px/1.45 "Aptos", "Segoe UI", sans-serif;
+                      cursor: pointer;
+                      transition: background 120ms ease, padding 120ms ease;
+                    }
+                    .ini-nc-query-navigator__item:hover {
+                      padding-left: 10px;
+                      padding-right: 10px;
+                      background: #f7f8fa;
+                    }
+                    .ini-nc-query-navigator__number {
+                      display: grid;
+                      flex: 0 0 auto;
+                      place-items: center;
+                      width: 22px;
+                      height: 22px;
+                      border-radius: 999px;
+                      background: #fff1f3;
+                      color: #f51b3f;
+                      font: 700 12px/1 "Aptos", "Segoe UI", sans-serif;
+                    }
+                    .ini-nc-query-navigator__label {
+                      flex: 1 1 auto;
+                      min-width: 0;
+                      overflow: hidden;
+                      text-overflow: ellipsis;
+                      white-space: nowrap;
+                    }
+                    .ini-nc-query-navigator__arrow {
+                      flex: 0 0 auto;
+                      color: #9ca3af;
+                      font: 500 17px/1 "Aptos", "Segoe UI", sans-serif;
+                    }
                     @media (max-width: 760px) {
                       #ini-nc-scroll-controls {
                         right: 10px;
@@ -3695,6 +3797,73 @@ def page_new_chat() -> None:
                   }
                 };
 
+                const openQueryNavigator = () => {
+                  doc.getElementById('ini-nc-query-navigator')?.remove();
+                  const queries = [...doc.querySelectorAll('.nc-user-bubble')]
+                    .map((bubble) => ({
+                      bubble,
+                      text: bubble.querySelector('.nc-user-bubble__prompt')?.innerText?.trim() || ''
+                    }))
+                    .filter(({ text }) => text);
+
+                  const overlay = doc.createElement('div');
+                  overlay.id = 'ini-nc-query-navigator';
+                  const panel = doc.createElement('section');
+                  panel.id = 'ini-nc-query-navigator__panel';
+                  panel.setAttribute('role', 'dialog');
+                  panel.setAttribute('aria-modal', 'true');
+                  panel.setAttribute('aria-label', 'Your queries');
+
+                  const header = doc.createElement('div');
+                  header.className = 'ini-nc-query-navigator__header';
+                  const title = doc.createElement('h2');
+                  title.className = 'ini-nc-query-navigator__title';
+                  title.textContent = 'Your queries';
+                  const close = doc.createElement('button');
+                  close.className = 'ini-nc-query-navigator__close';
+                  close.type = 'button';
+                  close.setAttribute('aria-label', 'Close query list');
+                  close.textContent = '×';
+                  header.append(title, close);
+                  panel.append(header);
+
+                  const caption = doc.createElement('p');
+                  caption.className = 'ini-nc-query-navigator__caption';
+                  caption.textContent = queries.length
+                    ? 'Choose a query to jump directly to it.'
+                    : 'Your queries will appear here as the conversation grows.';
+                  panel.append(caption);
+
+                  queries.forEach(({ bubble, text }, index) => {
+                    const item = doc.createElement('button');
+                    item.className = 'ini-nc-query-navigator__item';
+                    item.type = 'button';
+                    const number = doc.createElement('span');
+                    number.className = 'ini-nc-query-navigator__number';
+                    number.textContent = String(index + 1);
+                    const label = doc.createElement('span');
+                    label.className = 'ini-nc-query-navigator__label';
+                    label.textContent = text;
+                    const arrow = doc.createElement('span');
+                    arrow.className = 'ini-nc-query-navigator__arrow';
+                    arrow.textContent = '→';
+                    item.append(number, label, arrow);
+                    item.addEventListener('click', () => {
+                      overlay.remove();
+                      bubble.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+                    panel.append(item);
+                  });
+
+                  const dismiss = () => overlay.remove();
+                  close.addEventListener('click', dismiss);
+                  overlay.addEventListener('click', (event) => {
+                    if (event.target === overlay) dismiss();
+                  });
+                  overlay.append(panel);
+                  doc.body.append(overlay);
+                };
+
                 const wrap = doc.createElement('div');
                 wrap.id = 'ini-nc-scroll-controls';
                 const actions = [
@@ -3703,6 +3872,7 @@ def page_new_chat() -> None:
                   ['Page down', '⇟', () => applyScroll('down')],
                   ['End', '↓', () => applyScroll('end')],
                 ];
+                actions.push(['Your queries', 'Q', openQueryNavigator]);
                 for (const [title, label, action] of actions) {
                   const btn = doc.createElement('button');
                   btn.type = 'button';
