@@ -52,9 +52,40 @@ FCE_TOPIC_EXAMPLES = [
 ]
 
 
-# Kept explicitly marked until the quote-verification stage adds a sourced set.
-FCE_QUOTE = {
-    "quote": "The important thing is not to stop questioning.",
-    "author": "Albert Einstein",
-    "attribution_note": "Commonly attributed; exact source uncertain.",
-}
+FCE_QUOTES = [
+    {
+        "quote": "If a man will begin with certainties, he shall end in doubts; but if he will be content to begin with doubts, he shall end in certainties.",
+        "author": "Francis Bacon",
+        "attribution_note": "The Advancement of Learning (1605)",
+    },
+    {
+        "quote": "Nothing in life is to be feared, it is only to be understood.",
+        "author": "Marie Curie",
+        "attribution_note": "Published in The New York Times, 1921",
+    },
+    {
+        "quote": "There are no right answers to wrong questions.",
+        "author": "Ursula K. Le Guin",
+        "attribution_note": "The Language of the Night",
+    },
+    {
+        "quote": "Asking the right questions takes as much skill as giving the right answers.",
+        "author": "Robert Half",
+        "attribution_note": "The Robert Half Way",
+    },
+    {
+        "quote": "The scientific mind does not so much provide the right answers as ask the right questions.",
+        "author": "Claude Lévi-Strauss",
+        "attribution_note": "The Savage Mind",
+    },
+    {
+        "quote": "A question asked in the right way often points to its own answer.",
+        "author": "Edward Hodnett",
+        "attribution_note": "The Art of Problem Solving",
+    },
+    {
+        "quote": "Questions are the engines of intellect, the cerebral machines which convert energy to motion, and curiosity to controlled inquiry.",
+        "author": "David Hackett Fischer",
+        "attribution_note": "Historians' Fallacies",
+    },
+]

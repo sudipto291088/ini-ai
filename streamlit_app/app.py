@@ -23,7 +23,7 @@ from storage_sqlite import (
 )
 from time_utils import browser_local_now
 from topic_profile import extract_topic_profile
-from fce_content import FCE_MESSAGES, FCE_QUOTE, FCE_TOPIC_EXAMPLES
+from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
 
 
@@ -1351,6 +1351,9 @@ if "fce_pending_action" not in st.session_state:
 
 if "fce_force_open" not in st.session_state:
     st.session_state.fce_force_open = False
+
+if "fce_quote" not in st.session_state:
+    st.session_state.fce_quote = secrets.choice(FCE_QUOTES)
 
 
 def _capture_fce_action() -> None:
@@ -6375,7 +6378,7 @@ if st.session_state.fce_static_open:
     fce_action = render_fce(
         messages=FCE_MESSAGES,
         topics=FCE_TOPIC_EXAMPLES,
-        quote=FCE_QUOTE,
+        quote=st.session_state.fce_quote,
         icon_data=fce_icon_data,
         force_open=st.session_state.fce_force_open,
         on_action_change=_capture_fce_action,
