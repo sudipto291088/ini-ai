@@ -464,7 +464,7 @@ div.stButton > button:hover {
 }
 .ini-topic-profile__value {
   color: #17211f;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.4;
 }
 @media (max-width: 700px) {
@@ -566,7 +566,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data
   background: transparent;
   box-shadow: none;
   color: #17211f;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.55;
 }
 .ini-nc-intro-copy p {
@@ -594,7 +594,7 @@ a.ini-nc-followup-panel__item {
   background: #f7f8fa;
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035);
   color: #17211f !important;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   line-height: 1.45;
   text-decoration: none !important;
@@ -619,7 +619,8 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker) {
   background: #ffffff !important;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.055) !important;
 }
-.st-key-root_response_card {
+.st-key-root_response_card,
+div[class*="st-key-branch_response_card_"] {
   width: min(1180px, 100%) !important;
   margin: 14px 0 20px !important;
   padding: 18px !important;
@@ -628,7 +629,8 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker) {
   background: #ffffff !important;
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.045) !important;
 }
-.st-key-root_response_card > div {
+.st-key-root_response_card > div,
+div[class*="st-key-branch_response_card_"] > div {
   background: transparent !important;
 }
 .st-key-root_question_map_panel,
@@ -705,6 +707,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   div.stButton > button {
   margin: 7px 0 !important;
   padding: 14px 15px !important;
+  font-size: 14px !important;
   border-color: #edf0f4 !important;
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035) !important;
 }
@@ -753,7 +756,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) 
 div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] {
   padding: 14px 16px !important;
   color: #3f4858 !important;
-  font-size: 14px !important;
+  font-size: 15px !important;
   line-height: 1.6 !important;
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) .ini_ai_inner h4 {
@@ -2745,6 +2748,41 @@ def page_new_chat() -> None:
             _append_illustrate_branch(topic_text.strip(), data)
             _persist_new_chat_session(current_sid)
 
+    def _render_simple_response(
+        response_card_key: str,
+        text: str,
+        ts: str,
+        followups: Optional[List[str]] = None,
+    ) -> None:
+        with st.container(border=True, key=response_card_key):
+            _render_nc_ai_bubble(text, "")
+
+            if followups:
+                render_nc_section_title("Suggested Follow-ups")
+                render_followup_links(
+                    "chat",
+                    followups,
+                    st.session_state.chat_active_id,
+                )
+
+            st.markdown(
+                f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{ts or now_label()}</div>",
+                unsafe_allow_html=True,
+            )
+
+    def _render_branch_simple_response(
+        branch_idx: int,
+        text: str,
+        ts: str,
+        followups: Optional[List[str]] = None,
+    ) -> None:
+        _render_simple_response(
+            f"branch_response_card_{branch_idx}",
+            text,
+            ts,
+            followups,
+        )
+
     def _render_branch_question_map(branch_idx: int, branch: Dict[str, Any]) -> None:
 
         
@@ -2752,7 +2790,7 @@ def page_new_chat() -> None:
         if not isinstance(data, dict) or not data.get("categories"):
             return
 
-        with st.container():
+        with st.container(border=True, key=f"branch_response_card_{branch_idx}"):
             branch_ts = branch.get("ts") or now_label()
 
             intro = (branch.get("intro") or "").strip()
@@ -4718,10 +4756,11 @@ def page_new_chat() -> None:
             st.session_state.chat_root_illustrate.get("ts", "") if isinstance(st.session_state.chat_root_illustrate, dict) else "",
 )
 
-        _render_nc_ai_bubble(
-    "### Illustrations\n\n" + (illustrate_data.get("illustration_text") or ""),
-    illustrate_data.get("ts") or "",
-)
+        _render_simple_response(
+            "root_response_card",
+            "### Illustrations\n\n" + (illustrate_data.get("illustration_text") or ""),
+            illustrate_data.get("ts") or "",
+        )
 
         if st.session_state.chat_branch_answers:
             root_has_open_answer_divider = any(
@@ -4748,9 +4787,10 @@ def page_new_chat() -> None:
                         illustration_text = (illustrate_payload.get("illustration_text") or "").strip()
 
                     if illustration_text:
-                        _render_nc_ai_bubble(
+                        _render_branch_simple_response(
+                            idx - 1,
                             illustration_text,
-                            illustrate_payload.get("ts", "")
+                            illustrate_payload.get("ts", ""),
                         )
                     else:
                         st.caption("No illustration generated.")
@@ -4760,24 +4800,15 @@ def page_new_chat() -> None:
                     raw_answer = (direct_payload.get("text") or "").strip() if isinstance(direct_payload, dict) else ""
 
                     if raw_answer:
-
                         clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
-
-                        _render_nc_ai_bubble(
-                            clean_answer or raw_answer,
-                            direct_payload.get("ts") or ""
-                        )
-
                         show_followups = bool(direct_payload.get("show_followups", True))
                         followups = embedded_followups or (direct_payload.get("followups") or [])
-
-                        if show_followups and followups:
-                            render_nc_section_title("Suggested Follow-ups")
-                            render_followup_links(
-                                "chat",
-                                followups,
-                                st.session_state.chat_active_id
-                            )
+                        _render_branch_simple_response(
+                            idx - 1,
+                            clean_answer or raw_answer,
+                            direct_payload.get("ts") or "",
+                            followups if show_followups else None,
+                        )
 
                     else:
                         st.caption("No direct answer generated.")
@@ -4804,14 +4835,15 @@ def page_new_chat() -> None:
         raw_answer = (direct_answer.get("text") or "").strip()
         clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
 
-        _render_nc_ai_bubble(clean_answer or raw_answer, direct_answer.get("ts") or now_label())
-
         show_followups = bool(direct_answer.get("show_followups", True))
         followups = embedded_followups or (direct_answer.get("followups") or [])
 
-        if show_followups and followups:
-            render_nc_section_title("Suggested Follow-ups")
-            render_followup_links("chat", followups, st.session_state.chat_active_id)
+        _render_simple_response(
+            "root_response_card",
+            clean_answer or raw_answer,
+            direct_answer.get("ts") or now_label(),
+            followups if show_followups else None,
+        )
 
         is_incomplete = bool(direct_answer.get("incomplete"))
 
@@ -5140,7 +5172,11 @@ def page_new_chat() -> None:
                         illustration_text = (illustrate_payload.get("illustration_text") or "").strip()
 
                     if illustration_text:
-                        _render_nc_ai_bubble(illustration_text, item.get("ts") or "")
+                        _render_branch_simple_response(
+                            idx - 1,
+                            illustration_text,
+                            item.get("ts") or "",
+                        )
                     else:
                         st.caption("No illustration generated.")
 
@@ -5150,16 +5186,17 @@ def page_new_chat() -> None:
 
 
                     if raw_answer:
-                            clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
-                            _render_nc_ai_bubble(clean_answer or raw_answer, direct_payload.get("ts") or "")
-
-                            show_followups = bool(direct_payload.get("show_followups", True))
-                            followups = embedded_followups or (direct_payload.get("followups") or [])
-                            if show_followups and followups:
-                                render_nc_section_title("Suggested Follow-ups")
-                                render_followup_links("chat", followups, st.session_state.chat_active_id)
+                        clean_answer, embedded_followups = split_answer_and_embedded_followups(raw_answer)
+                        show_followups = bool(direct_payload.get("show_followups", True))
+                        followups = embedded_followups or (direct_payload.get("followups") or [])
+                        _render_branch_simple_response(
+                            idx - 1,
+                            clean_answer or raw_answer,
+                            direct_payload.get("ts") or "",
+                            followups if show_followups else None,
+                        )
                     else:
-                            st.caption("No direct answer generated.")
+                        st.caption("No direct answer generated.")
 
                 
                         
