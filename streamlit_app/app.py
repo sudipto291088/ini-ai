@@ -23,6 +23,8 @@ from storage_sqlite import (
 )
 from time_utils import browser_local_now
 from topic_profile import extract_topic_profile
+from fce_content import FCE_MESSAGES, FCE_QUOTE, FCE_TOPIC_EXAMPLES
+from fce_component import render_fce
 
 
 
@@ -1338,6 +1340,22 @@ if "api_base" not in st.session_state:
 
 if "page" not in st.session_state:
     st.session_state.page = "New Chat"
+
+# Stage 2 of the First Conversation Experience: session-only display until
+# browser persistence is added and tested in the next stage.
+if "fce_static_open" not in st.session_state:
+    st.session_state.fce_static_open = True
+
+if "fce_pending_action" not in st.session_state:
+    st.session_state.fce_pending_action = None
+
+
+def _capture_fce_action() -> None:
+    """Persist a CCv2 trigger before any Streamlit refresh can replace it."""
+    component_state = st.session_state.get("ini_fce")
+    action = getattr(component_state, "action", None)
+    if action:
+        st.session_state.fce_pending_action = action
 
 if "chat" not in st.session_state:
     st.session_state.chat = {"topic": "", "interrogate": None, "illustrate": None}
@@ -3644,13 +3662,13 @@ def page_new_chat() -> None:
                     }
                     #ini-nc-scroll-controls button[title="Your queries"] {
                       border-color: #f51b3f;
-                      background: #f51b3f;
-                      color: #ffffff;
+                      background: rgba(255, 255, 255, 0.94);
+                      color: #f51b3f;
                     }
                     #ini-nc-scroll-controls button[title="Your queries"]:hover {
                       border-color: #d91435;
-                      background: #d91435;
-                      color: #ffffff;
+                      background: #ffffff;
+                      color: #d91435;
                     }
                     #ini-nc-query-navigator {
                       position: fixed;
@@ -3897,6 +3915,8 @@ def page_new_chat() -> None:
 
         icon_path = Path(__file__).with_name("ini_icon.png")
         icon_data = base64.b64encode(icon_path.read_bytes()).decode("ascii")
+        hour = datetime.now().hour
+        greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening"
 
         st.markdown(
             f"""
@@ -3962,11 +3982,20 @@ def page_new_chat() -> None:
             }}
 
             .nc-landing-heading {{
-                margin: 22px auto 0;
+                margin: 10px auto 0;
                 color: #111827;
                 font-size: 30px;
                 font-weight: 760;
                 line-height: 1.2;
+                text-align: center;
+            }}
+
+            .nc-landing-greeting {{
+                margin: 20px auto 0;
+                color: #4b5563;
+                font-size: 16px;
+                font-weight: 600;
+                line-height: 1.35;
                 text-align: center;
             }}
 
@@ -4280,6 +4309,7 @@ def page_new_chat() -> None:
               <span class="nc-landing-wordmark nc-landing-wordmark-dot nc-landing-wordmark-accent">.</span>
               <span class="nc-landing-wordmark nc-landing-wordmark-accent">ai</span>
             </div>
+            <div class="nc-landing-greeting">{greeting}, Boss.</div>
             <div class="nc-landing-heading">What would you like to understand?</div>
             <div class="nc-landing-subtitle">Begin with a topic, question, or idea.</div>
             """,
@@ -6317,3 +6347,38 @@ elif st.session_state.page == "My New Learning":
     page_my_new_learning()
 else:
     page_new_project()
+
+
+# =========================
+# First Conversation Experience — static shell (Stage 2)
+# =========================
+fce_action = st.session_state.fce_pending_action
+if fce_action:
+    st.session_state.fce_pending_action = None
+    st.session_state.fce_static_open = False
+    if fce_action == "go-introduction":
+        _reset_query_to_page("home")
+    elif fce_action == "go-chat":
+        _reset_query_to_page("chat")
+    st.rerun()
+
+if st.session_state.fce_static_open:
+    fce_icon_path = Path(__file__).with_name("ini_icon.png")
+    fce_icon_data = "data:image/png;base64," + base64.b64encode(
+        fce_icon_path.read_bytes()
+    ).decode("ascii")
+    fce_action = render_fce(
+        messages=FCE_MESSAGES,
+        topics=FCE_TOPIC_EXAMPLES,
+        quote=FCE_QUOTE,
+        icon_data=fce_icon_data,
+        on_action_change=_capture_fce_action,
+    )
+
+    if fce_action:
+        st.session_state.fce_static_open = False
+        if fce_action == "go-introduction":
+            _reset_query_to_page("home")
+        elif fce_action == "go-chat":
+            _reset_query_to_page("chat")
+        st.rerun()
