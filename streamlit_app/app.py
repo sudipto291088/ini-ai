@@ -422,7 +422,7 @@ div.stButton > button:hover {
   padding: 18px;
   border: 1px solid #eceff4;
   border-radius: 18px;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  background: #ffffff;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.055);
 }
 .ini-topic-profile__title {
@@ -452,7 +452,7 @@ div.stButton > button:hover {
   padding: 13px 14px;
   border: 1px solid #f0f2f6;
   border-radius: 14px;
-  background: #ffffff;
+  background: #f7f8fa;
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035);
 }
 .ini-topic-profile__label {
@@ -560,11 +560,11 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data
 .ini-nc-intro-copy {
   margin: 0;
   min-height: 0;
-  padding: 13px 14px;
-  border: 1px solid #eef0f4;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   color: #17211f;
   font-size: 13px;
   line-height: 1.55;
@@ -576,7 +576,10 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data
   margin-bottom: 0;
 }
 .ini-nc-followup-panel .ini-topic-profile__grid {
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 10px;
 }
 a.ini-nc-followup-panel__item {
@@ -584,14 +587,15 @@ a.ini-nc-followup-panel__item {
   align-items: center;
   justify-content: space-between;
   min-height: 0;
-  padding: 13px 14px;
+  max-width: min(100%, 560px);
+  padding: 10px 13px;
   border: 1px solid #f0f2f6;
-  border-radius: 14px;
-  background: #ffffff;
+  border-radius: 999px;
+  background: #f7f8fa;
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035);
   color: #17211f !important;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 400;
   line-height: 1.45;
   text-decoration: none !important;
 }
@@ -612,12 +616,24 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker) {
   padding: 18px !important;
   border: 1px solid #eceff4 !important;
   border-radius: 18px !important;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%) !important;
+  background: #ffffff !important;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.055) !important;
+}
+.st-key-root_response_card {
+  width: min(1180px, 100%) !important;
+  margin: 14px 0 20px !important;
+  padding: 18px !important;
+  border: 1px solid #eef0f3 !important;
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.045) !important;
+}
+.st-key-root_response_card > div {
+  background: transparent !important;
 }
 .st-key-root_question_map_panel,
 div[class*="st-key-branch_question_map_panel_"] {
-  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%) !important;
+  background: #ffffff !important;
   border: 1px solid #eceff4 !important;
   border-radius: 18px !important;
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.055) !important;
@@ -656,6 +672,10 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   display: none !important;
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
+  [data-testid="stRadio"] div[role="radiogroup"] label:not(:has(input:checked)) {
+  background: #f7f8fa !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   [data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
   border-color: #f51b3f !important;
   background: #f51b3f !important;
@@ -692,6 +712,85 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   .ini-nc-qmap-marker {
   min-height: 34px;
   margin: 0;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) {
+  margin: 8px 0 6px !important;
+  padding: 0 !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.03) !important;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker):hover {
+  border-color: #d8dee7 !important;
+  background: #f7f8fa !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05) !important;
+}
+div[class*="st-key-qmap_answer_card_"] {
+  margin: 8px 0 6px !important;
+  padding: 0 !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.03) !important;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+div[class*="st-key-qmap_answer_card_"]:hover {
+  border-color: #d8dee7 !important;
+  background: #f7f8fa !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05) !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) > div,
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) .ini_ai_inner,
+div[class*="st-key-qmap_answer_card_"] > div,
+div[class*="st-key-qmap_answer_card_"] .ini_ai_inner {
+  background: transparent !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) .ini_ai_inner {
+  padding: 16px 18px 14px !important;
+}
+div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] {
+  padding: 14px 16px !important;
+  color: #3f4858 !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) .ini_ai_inner h4 {
+  margin: 0 0 10px !important;
+  color: #17211f !important;
+  font-size: 13px !important;
+  font-weight: 750 !important;
+}
+div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] h4 {
+  margin: 0 0 8px !important;
+  color: #17211f !important;
+  font-size: 14px !important;
+  font-weight: 650 !important;
+}
+div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] p {
+  margin: 0 0 10px !important;
+}
+.ini-nc-qmap-answer-marker {
+  display: none !important;
+}
+.ini_ai_inner {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 14px 16px 10px;
+  animation: fadeIn 0.18s ease;
+  line-height: 1.65;
+}
+.ini_ai_inner ul,
+.ini_ai_inner ol {
+  padding-left: 22px;
+}
+.ini_ai_inner li {
+  margin-bottom: 6px;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .ini-topic-profile.ini-nc-intro-panel {
   padding-bottom: 52px;
@@ -2274,8 +2373,16 @@ with st.sidebar:
         _render_clock_tile()
         st.caption("Tip: install 'streamlit-autorefresh' to enable a live-updating clock.")
 
-    st.markdown("## InI.ai")
-    st.markdown('<span class="badge">v0.1.3 • AI Tutor</span>', unsafe_allow_html=True)
+    sidebar_icon_path = Path(__file__).with_name("ini_icon.png")
+    sidebar_icon_data = base64.b64encode(sidebar_icon_path.read_bytes()).decode("ascii")
+    st.markdown(
+        f'''<div style="display:flex; align-items:center; gap:7px; margin:4px 0 10px;">
+              <img src="data:image/png;base64,{sidebar_icon_data}" alt="InI.ai" style="width:24px; height:24px; object-fit:contain;">
+              <span style="font-size:20px; font-weight:700; letter-spacing:0.1px; color:var(--ink);">InI.ai</span>
+            </div>''',
+        unsafe_allow_html=True,
+    )
+    st.markdown('<span class="badge">v0.1.3 &middot; Question Intelligence</span>', unsafe_allow_html=True)
 
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750; margin-top:10px;">Navigation</div>', unsafe_allow_html=True)
     intro_nav_href = _private_href(page="home")
@@ -2798,6 +2905,7 @@ def page_new_chat() -> None:
                                     _render_nc_ai_bubble(
                                         "##### Answer\n\n" + (clean_answer or raw_answer),
                                         "",
+                                        answer_card_key=f"qmap_answer_card_{abs(hash(f'branch:{branch_idx}:{q}'))}",
                                     )
                                     if followups:
                                         render_nc_section_title("Suggested Follow-ups")
@@ -2916,13 +3024,16 @@ def page_new_chat() -> None:
 
 
 
-    def _render_nc_ai_bubble(text: str, ts: str = "") -> None:
+    def _render_nc_ai_bubble(
+        text: str,
+        ts: str = "",
+        answer_card_key: str = "",
+    ) -> None:
         body = (text or "").strip()
         if not body:
             return
 
         body = re.sub(r"<[^>]+>", "", body)
-
         # =========================
         # Highlight Engine
         # =========================
@@ -2957,48 +3068,13 @@ def page_new_chat() -> None:
 
         body = apply_highlights(body)
 
-        with st.container(border=True):
-            
-            st.markdown(
-                """
-                <style>
-                .ini_ai_inner{
-                    background:#ffffff;
-                    border-radius:18px;
-                    padding:14px 16px 10px 16px;
-                    animation: fadeIn 0.18s ease;
-                    line-height:1.65;
-                }
-
-                .ini_ai_inner ul,
-                .ini_ai_inner ol{
-                    padding-left:22px;
-                }
-
-                .ini_ai_inner li{
-                    margin-bottom:6px;
-                }
-
-                @keyframes fadeIn{
-                    from{
-                        opacity:0;
-                        transform:translateY(4px);
-                    }
-                    to{
-                        opacity:1;
-                        transform:translateY(0px);
-                    }
-                }
-                </style>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            st.markdown('<div class="ini_ai_inner">', unsafe_allow_html=True)
-
+        answer_container = (
+            st.container(border=True, key=answer_card_key)
+            if answer_card_key
+            else st.container(border=True)
+        )
+        with answer_container:
             st.markdown(body, unsafe_allow_html=True)
-
-            st.markdown('</div>', unsafe_allow_html=True)
 
             if ts:
                 st.markdown(
@@ -4420,6 +4496,7 @@ def page_new_chat() -> None:
                 ) div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
                     left: 50%;
                     width: calc(100% - 12px);
+                    transform: translateX(-50%);
                 }
 
                 [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
@@ -4811,7 +4888,7 @@ def page_new_chat() -> None:
 
 
 
-        with st.container():
+        with st.container(border=True, key="root_response_card"):
             root_ts = (
                 st.session_state.chat_root_interrogate.get("ts", "")
                 if isinstance(st.session_state.chat_root_interrogate, dict)
@@ -4960,6 +5037,7 @@ def page_new_chat() -> None:
                                     _render_nc_ai_bubble(
                                         "#### Answer\n\n" + (clean_answer or raw_answer),
                                         "",
+                                        answer_card_key=f"qmap_answer_card_{abs(hash(f'root:{section}:{q}'))}",
                                     )
                                     if followups:
                                         render_nc_section_title("Suggested Follow-ups")
