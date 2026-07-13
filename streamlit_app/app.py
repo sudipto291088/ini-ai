@@ -1349,6 +1349,9 @@ if "fce_static_open" not in st.session_state:
 if "fce_pending_action" not in st.session_state:
     st.session_state.fce_pending_action = None
 
+if "fce_force_open" not in st.session_state:
+    st.session_state.fce_force_open = False
+
 
 def _capture_fce_action() -> None:
     """Persist a CCv2 trigger before any Streamlit refresh can replace it."""
@@ -2546,6 +2549,11 @@ if st.session_state.rename_session_sid:
 # =========================
 
 def page_home():
+    if st.button("Replay Welcome", key="replay_fce_welcome"):
+        st.session_state.fce_static_open = True
+        st.session_state.fce_force_open = True
+        st.rerun()
+
     st.markdown(
         """
 # Welcome to InI.ai
@@ -3915,9 +3923,6 @@ def page_new_chat() -> None:
 
         icon_path = Path(__file__).with_name("ini_icon.png")
         icon_data = base64.b64encode(icon_path.read_bytes()).decode("ascii")
-        hour = datetime.now().hour
-        greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening"
-
         st.markdown(
             f"""
             <style>
@@ -4309,7 +4314,6 @@ def page_new_chat() -> None:
               <span class="nc-landing-wordmark nc-landing-wordmark-dot nc-landing-wordmark-accent">.</span>
               <span class="nc-landing-wordmark nc-landing-wordmark-accent">ai</span>
             </div>
-            <div class="nc-landing-greeting">{greeting}, Boss.</div>
             <div class="nc-landing-heading">What would you like to understand?</div>
             <div class="nc-landing-subtitle">Begin with a topic, question, or idea.</div>
             """,
@@ -6356,6 +6360,7 @@ fce_action = st.session_state.fce_pending_action
 if fce_action:
     st.session_state.fce_pending_action = None
     st.session_state.fce_static_open = False
+    st.session_state.fce_force_open = False
     if fce_action == "go-introduction":
         _reset_query_to_page("home")
     elif fce_action == "go-chat":
@@ -6372,6 +6377,7 @@ if st.session_state.fce_static_open:
         topics=FCE_TOPIC_EXAMPLES,
         quote=FCE_QUOTE,
         icon_data=fce_icon_data,
+        force_open=st.session_state.fce_force_open,
         on_action_change=_capture_fce_action,
     )
 

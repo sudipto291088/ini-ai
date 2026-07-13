@@ -50,6 +50,12 @@ _FCE_COMPONENT = st.components.v2.component(
       const root = parentElement.querySelector('#ini-fce-root');
       if (!root) return;
 
+      if (localStorage.getItem('ini_fce_seen') === '1' && !data.force_open) {
+        root.innerHTML = '';
+        setTriggerValue('action', 'seen');
+        return;
+      }
+
       const host = root.getRootNode().host;
       const originalHostStyle = host.getAttribute('style');
       Object.assign(host.style, { position: 'fixed', inset: '0', zIndex: '2147483000', pointerEvents: 'auto' });
@@ -122,6 +128,7 @@ _FCE_COMPONENT = st.components.v2.component(
           : transcriptMarkup();
         const canGoBack = progress && progress.index > 0 && progress.index < data.messages.length - 1;
         const footer = end ? '' : `<footer class="ini-fce-footer">${all ? '<div></div>' : `<div class="ini-fce-controls">${canGoBack ? '<button class="ini-fce-button" type="button" data-action="back">Previous</button>' : ''}<button class="ini-fce-button" type="button" data-action="skip">Skip Introduction</button><button class="ini-fce-button" type="button" data-action="show-all">Show Everything</button></div>`}<button class="ini-fce-button" type="button" data-action="skip-end">Skip to End</button></footer>`;
+        if (Date.now() >= state.visibleAt) localStorage.setItem('ini_fce_seen', '1');
         root.innerHTML = `<section class="ini-fce-overlay${Date.now() >= state.visibleAt ? ' is-visible' : ''}" role="dialog" aria-modal="true" aria-label="Welcome to InI.ai" style="left:${sidebarWidth}px"><div class="ini-fce-panel"><header class="ini-fce-header"><div class="ini-fce-brand"><img src="${escapeHtml(data.icon_data)}" alt="InI.ai icon"> <span>InI.ai</span></div><button class="ini-fce-close" type="button" aria-label="Close First Conversation Experience" data-action="close">×</button></header><main class="ini-fce-body"><div class="ini-fce-transcript">${content}</div></main>${footer}</div></section>`;
         root.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', (event) => {
           event.stopPropagation();
@@ -191,6 +198,7 @@ def render_fce(
     topics: List[str],
     quote: Dict[str, Optional[str]],
     icon_data: str,
+    force_open: bool = False,
     key: str = "ini_fce",
     on_action_change: Optional[Callable[[], None]] = None,
 ) -> Optional[str]:
@@ -202,6 +210,7 @@ def render_fce(
             "topics": topics,
             "quote": quote,
             "icon_data": icon_data,
+            "force_open": force_open,
         },
         on_action_change=on_action_change or (lambda: None),
     )
