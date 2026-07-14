@@ -2370,6 +2370,16 @@ if session_action and session_sid:
 # Sidebar
 # =========================
 with st.sidebar:
+    sidebar_logo_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
+    sidebar_logo_data = base64.b64encode(sidebar_logo_path.read_bytes()).decode("ascii")
+    st.markdown(
+        f'''<div style="display:flex; align-items:center; justify-content:center; margin:9px 0 18px; padding:2px 0;">
+              <img src="data:image/png;base64,{sidebar_logo_data}" alt="" style="display:block; width:40px; height:66px; object-fit:contain; margin-right:2px; filter:drop-shadow(0 3px 6px rgba(245,27,63,.12));">
+              <span style="font-size:33px; font-weight:700; line-height:1; letter-spacing:-1.25px; color:#0f172a;">InI<span style="color:#f51b3f;">.ai</span></span>
+            </div>''',
+        unsafe_allow_html=True,
+    )
+
     def _render_clock_tile():
         cp = clock_parts()
         st.markdown(
@@ -2400,16 +2410,7 @@ with st.sidebar:
         _render_clock_tile()
         st.caption("Tip: install 'streamlit-autorefresh' to enable a live-updating clock.")
 
-    sidebar_icon_path = Path(__file__).with_name("ini_icon.png")
-    sidebar_icon_data = base64.b64encode(sidebar_icon_path.read_bytes()).decode("ascii")
-    st.markdown(
-        f'''<div style="display:flex; align-items:center; gap:7px; margin:4px 0 10px;">
-              <img src="data:image/png;base64,{sidebar_icon_data}" alt="InI.ai" style="width:24px; height:24px; object-fit:contain;">
-              <span style="font-size:20px; font-weight:700; letter-spacing:0.1px; color:var(--ink);">InI.ai</span>
-            </div>''',
-        unsafe_allow_html=True,
-    )
-    st.markdown('<span class="badge">v0.1.3 &middot; Question Intelligence</span>', unsafe_allow_html=True)
+    st.markdown('<span class="badge" style="margin-left:11px;">v0.1.3 &middot; Question Intelligence</span>', unsafe_allow_html=True)
 
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750; margin-top:10px;">Navigation</div>', unsafe_allow_html=True)
     intro_nav_href = _private_href(page="home")
@@ -3924,7 +3925,7 @@ def page_new_chat() -> None:
         if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
             st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
 
-        icon_path = Path(__file__).with_name("ini_icon.png")
+        icon_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
         icon_data = base64.b64encode(icon_path.read_bytes()).decode("ascii")
         st.markdown(
             f"""
@@ -3968,7 +3969,8 @@ def page_new_chat() -> None:
                 height: 70px;
                 object-fit: contain;
                 flex: 0 0 70px;
-                margin-right: -4px;
+                margin-right: -14px;
+                transform: translateX(10px);
             }}
 
             .nc-landing-wordmark {{
@@ -6371,7 +6373,7 @@ if fce_action:
     st.rerun()
 
 if st.session_state.fce_static_open:
-    fce_icon_path = Path(__file__).with_name("ini_icon.png")
+    fce_icon_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
     fce_icon_data = "data:image/png;base64," + base64.b64encode(
         fce_icon_path.read_bytes()
     ).decode("ascii")
