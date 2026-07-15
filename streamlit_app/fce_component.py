@@ -11,7 +11,7 @@ _FCE_COMPONENT = st.components.v2.component(
     html='<div id="ini-fce-root" aria-live="polite"></div>',
     css="""
     #ini-fce-root { font-family: Aptos, "Segoe UI", system-ui, sans-serif; }
-    .ini-fce-overlay { position: fixed; inset: 0 0 0 auto; display: grid; place-items: center; padding: 28px; box-sizing: border-box; background: rgba(16, 24, 40, .13); backdrop-filter: blur(3px); z-index: 1; opacity: 0; transition: opacity 420ms ease; pointer-events: none; }
+    .ini-fce-overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 28px; box-sizing: border-box; background: rgba(16, 24, 40, .34); backdrop-filter: blur(3px); z-index: 1; opacity: 0; transition: opacity 420ms ease; pointer-events: none; }
     .ini-fce-overlay.is-visible { opacity: 1; pointer-events: auto; }
     .ini-fce-panel { width: min(60vw, 810px); max-height: min(82vh, 790px); box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(226,232,240,.92); border-radius: 22px; background: rgba(255,255,255,.985); color: #1b2432; box-shadow: 0 28px 72px rgba(15,23,42,.20); }
     .ini-fce-header { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; padding: 22px 30px; }
@@ -69,8 +69,6 @@ _FCE_COMPONENT = st.components.v2.component(
       state.hold = false;
       const saveFlow = () => sessionStorage.setItem(flowStorageKey, JSON.stringify({ view: state.view, startedAt: state.startedAt, visibleAt: state.visibleAt }));
       saveFlow();
-      const sidebar = document.querySelector('[data-testid="stSidebar"]');
-      const sidebarWidth = sidebar && sidebar.offsetParent !== null ? sidebar.getBoundingClientRect().width : 0;
       const escapeHtml = (value) => String(value || '').replace(/[&<>'"]/g, (character) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
       const textMarkup = (message, text, isTyping) => `<p class="ini-fce-message ${escapeHtml(message.emphasis || '')}">${escapeHtml(text)}${isTyping ? '<span class="ini-fce-caret" aria-hidden="true"></span>' : ''}</p>`;
       const quoteMarkup = () => `<section class="ini-fce-quote"><div class="ini-fce-quote-text">“${escapeHtml(data.quote.quote)}”</div><div class="ini-fce-quote-author">— ${escapeHtml(data.quote.author)}</div>${data.quote.attribution_note ? `<div class="ini-fce-quote-note">${escapeHtml(data.quote.attribution_note)}</div>` : ''}</section>`;
@@ -129,7 +127,7 @@ _FCE_COMPONENT = st.components.v2.component(
         const canGoBack = progress && progress.index > 0 && progress.index < data.messages.length - 1;
         const footer = end ? '' : `<footer class="ini-fce-footer">${all ? '<div></div>' : `<div class="ini-fce-controls">${canGoBack ? '<button class="ini-fce-button" type="button" data-action="back">Previous</button>' : ''}<button class="ini-fce-button" type="button" data-action="skip">Skip Introduction</button><button class="ini-fce-button" type="button" data-action="show-all">Show Everything</button></div>`}<button class="ini-fce-button" type="button" data-action="skip-end">Skip to End</button></footer>`;
         if (Date.now() >= state.visibleAt) localStorage.setItem('ini_fce_seen', '1');
-        root.innerHTML = `<section class="ini-fce-overlay${Date.now() >= state.visibleAt ? ' is-visible' : ''}" role="dialog" aria-modal="true" aria-label="Welcome to InI.ai" style="left:${sidebarWidth}px"><div class="ini-fce-panel"><header class="ini-fce-header"><div class="ini-fce-brand"><img src="${escapeHtml(data.icon_data)}" alt="InI.ai icon"> <span>InI.ai</span></div><button class="ini-fce-close" type="button" aria-label="Close First Conversation Experience" data-action="close">×</button></header><main class="ini-fce-body"><div class="ini-fce-transcript">${content}</div></main>${footer}</div></section>`;
+        root.innerHTML = `<section class="ini-fce-overlay${Date.now() >= state.visibleAt ? ' is-visible' : ''}" role="dialog" aria-modal="true" aria-label="Welcome to InI.ai"><div class="ini-fce-panel"><header class="ini-fce-header"><div class="ini-fce-brand"><img src="${escapeHtml(data.icon_data)}" alt="InI.ai icon"> <span>InI.ai</span></div><button class="ini-fce-close" type="button" aria-label="Close First Conversation Experience" data-action="close">×</button></header><main class="ini-fce-body"><div class="ini-fce-transcript">${content}</div></main>${footer}</div></section>`;
         root.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', (event) => {
           event.stopPropagation();
           const action = button.dataset.action;

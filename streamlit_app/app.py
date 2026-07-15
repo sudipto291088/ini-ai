@@ -3501,16 +3501,44 @@ def page_new_chat() -> None:
         return True
 
     def _render_new_chat_generation_placeholder() -> None:
+        generation_icon_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
+        generation_icon_data = base64.b64encode(
+            generation_icon_path.read_bytes()
+        ).decode("ascii")
         st.markdown(
-            """
+            f"""
+            <style>
+            .nc-generation-placeholder .nc-generation-copy {{
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin: 0;
+                color: #5f6b7c;
+                font-size: 16px;
+                font-weight: 500;
+                line-height: 1.4;
+            }}
+
+            .nc-generation-placeholder img.nc-generation-icon {{
+                width: 15px !important;
+                height: 25px !important;
+                max-width: 15px !important;
+                max-height: 25px !important;
+                display: block;
+                flex: 0 0 auto;
+                object-fit: contain;
+                animation: nc-generation-icon-breathe 1.45s ease-in-out infinite;
+            }}
+
+            @keyframes nc-generation-icon-breathe {{
+                0%, 100% {{ opacity: 0.42; transform: scale(0.92); }}
+                50% {{ opacity: 1; transform: scale(1); }}
+            }}
+            </style>
             <div class="nc-generation-placeholder">
-              <div class="nc-generation-label">
-                <span class="nc-generation-mark"></span>
-                <span>InI.ai</span>
-              </div>
               <div class="nc-generation-copy">
-                <span class="nc-generation-pulse"></span>
-                Generating answer... may take some time.
+                <img class="nc-generation-icon" src="data:image/png;base64,{generation_icon_data}" alt="">
+                Generating response....may take some time.
               </div>
             </div>
             """,
@@ -3559,6 +3587,8 @@ def page_new_chat() -> None:
         with generation_slot.container():
             _render_new_chat_generation_placeholder()
 
+        _render_new_chat_bottom_uib()
+
         components.html(
             """
             <script>
@@ -3577,7 +3607,6 @@ def page_new_chat() -> None:
             scrolling=False,
         )
 
-        _render_new_chat_bottom_uib()
         _generate_pending_new_chat_response(generation_slot)
 
     def _render_nc_latest_scroll_target() -> None:
@@ -4557,53 +4586,37 @@ def page_new_chat() -> None:
 
             .nc-generation-placeholder {
                 width: min(100%, 920px);
-                min-height: 92px;
+                min-height: 0;
                 margin: 14px 0 20px;
-                padding: 17px 19px;
-                border: 1px solid #e1e6e5;
-                border-radius: 12px;
-                background: #ffffff;
-                box-shadow: 0 4px 16px rgba(15, 23, 42, 0.055);
-            }
-
-            .nc-generation-label {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                color: #374151;
-                font-size: 13px;
-                font-weight: 750;
-            }
-
-            .nc-generation-mark {
-                width: 16px;
-                height: 16px;
-                display: inline-block;
-                border-radius: 5px;
-                background: #f51b3f;
-                clip-path: polygon(50% 0%, 98% 38%, 80% 100%, 20% 100%, 2% 38%);
+                padding: 4px 0;
+                border: 0;
+                border-radius: 0;
+                background: transparent;
+                box-shadow: none;
             }
 
             .nc-generation-copy {
                 display: flex;
                 align-items: center;
-                gap: 9px;
-                margin-top: 16px;
-                color: #667085;
-                font-size: 14px;
+                gap: 10px;
+                margin: 0;
+                color: #5f6b7c;
+                font-size: 16px;
+                font-weight: 500;
+                line-height: 1.4;
             }
 
-            .nc-generation-pulse {
-                width: 8px;
-                height: 8px;
-                display: inline-block;
-                border-radius: 50%;
-                background: #f51b3f;
-                animation: nc-generation-pulse 1.2s ease-in-out infinite;
+            .nc-generation-icon {
+                width: 15px;
+                height: 25px;
+                display: block;
+                flex: 0 0 auto;
+                object-fit: contain;
+                animation: nc-generation-icon-breathe 1.45s ease-in-out infinite;
             }
 
-            @keyframes nc-generation-pulse {
-                0%, 100% { opacity: 0.35; transform: scale(0.85); }
+            @keyframes nc-generation-icon-breathe {
+                0%, 100% { opacity: 0.42; transform: scale(0.92); }
                 50% { opacity: 1; transform: scale(1); }
             }
 
@@ -4798,33 +4811,34 @@ def page_new_chat() -> None:
         composer_revision = st.session_state._nc_bottom_composer_revision
         composer_key = f"chat_bottom_topic_input_{composer_revision}"
 
-        input_col, int_col, ill_col = st.columns(
-            [8.5, 1.4, 1.4],
-            gap="small"
-        )
-
-        with input_col:
-            st.text_input(
-                "NC_BOTTOM_TOPIC",
-                key=composer_key,
-                label_visibility="collapsed",
-                placeholder="Ask InI anything to continue...",
-                on_change=_request_chat_bottom_enter_submit,
+        with st.container(key="nc_bottom_composer"):
+            input_col, int_col, ill_col = st.columns(
+                [8.5, 1.4, 1.4],
+                gap="small"
             )
 
-        with int_col:
-            run = st.button(
-                "Interrogate",
-                key="nc_bottom_interrogate",
-                use_container_width=True,
-            )
+            with input_col:
+                st.text_input(
+                    "NC_BOTTOM_TOPIC",
+                    key=composer_key,
+                    label_visibility="collapsed",
+                    placeholder="Ask InI anything to continue...",
+                    on_change=_request_chat_bottom_enter_submit,
+                )
 
-        with ill_col:
-            illustrate_run = st.button(
-                "Illustrate",
-                key="nc_bottom_illustrate",
-                use_container_width=True,
-            )
+            with int_col:
+                run = st.button(
+                    "Interrogate",
+                    key="nc_bottom_interrogate",
+                    use_container_width=True,
+                )
+
+            with ill_col:
+                illustrate_run = st.button(
+                    "Illustrate",
+                    key="nc_bottom_illustrate",
+                    use_container_width=True,
+                )
 
         if illustrate_run:
             _queue_new_chat_request(
@@ -4837,6 +4851,30 @@ def page_new_chat() -> None:
                 st.session_state.get(composer_key, ""),
                 "interrogate",
             )
+
+        # A request rerun can leave a previous fixed composer mounted beside
+        # this current one. Keep the current (last-rendered) owned composer
+        # and remove only those stale complete composer nodes.
+        components.html(
+            """
+            <script>
+            (() => {
+              const clean = () => {
+                const doc = window.parent.document;
+                const composers = Array.from(
+                  doc.querySelectorAll('.st-key-nc_bottom_composer')
+                );
+                composers.slice(0, -1).forEach((composer) => composer.remove());
+              };
+              clean();
+              requestAnimationFrame(clean);
+              setTimeout(clean, 80);
+            })();
+            </script>
+            """,
+            height=0,
+            scrolling=False,
+        )
 
     # Auto-run FUQ opened in a new tab for New Chat
     if chat_q and st.session_state.chat_seed_done != chat_q:
@@ -4908,10 +4946,6 @@ def page_new_chat() -> None:
                 or ""
             )
         active_chat_title = active_chat_title or "New Chat"
-        st.markdown(
-            f'<div class="bigtitle">{escape(active_chat_title)}</div>',
-            unsafe_allow_html=True,
-        )
         st.caption(
             "Explore the key ideas, profile and question ladder for this topic."
         )
