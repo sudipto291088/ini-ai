@@ -1,6 +1,7 @@
 import unittest
 
 from api.interrogate import interrogate
+from api.intent_layer import detect_intent
 
 
 class ConversationEngineTests(unittest.TestCase):
@@ -68,7 +69,30 @@ class ConversationEngineTests(unittest.TestCase):
             with self.subTest(message=message):
                 result = interrogate(message)
                 self.assertEqual(result["response_mode"], "conversation")
-                self.assertEqual(result["categories"], {})
+
+    def test_freeform_chat_request_stays_conversational(self):
+        result = interrogate("nothin lets just talk")
+        self.assertEqual(result["response_mode"], "conversation")
+        self.assertFalse(result.get("categories"))
+
+    def test_correction_about_question_map_stays_conversational(self):
+        result = interrogate("why are you going to generate a question map for that?")
+        self.assertEqual(result["response_mode"], "conversation")
+        self.assertFalse(result.get("categories"))
+
+    def test_explicit_question_map_command_is_not_live_data(self):
+        result = interrogate("generate a question map for quad core")
+        self.assertTrue(result.get("categories"))
+        self.assertNotEqual(result.get("intent"), "direct_factual_query")
+
+    def test_ambiguous_continuation_does_not_become_a_question_map(self):
+        result = detect_intent("what else")
+        self.assertEqual(result["intent"], "clarify")
+        self.assertFalse(result["should_interrogate"])
+
+    def test_explicit_question_map_for_ambiguous_words_still_obeys_command(self):
+        result = interrogate("generate a question map for what else")
+        self.assertTrue(result.get("categories"))
 
 
 if __name__ == "__main__":

@@ -3775,13 +3775,66 @@ def page_new_chat() -> None:
 
     def _looks_like_live_local_query(text: str) -> bool:
         s = (text or "").strip().lower()
-        markers = {
-            "today", "current", "latest", "now",
-            "gas", "petrol", "diesel", "water rate", "electricity rate",
-            "price", "rate", "cost", "weather", "temperature",
-            "maryland", "dc", "usa", "us", "near me", "local",
+        phrases = {
+            "water rate", "electricity rate", "near me",
         }
-        return any(m in s for m in markers)
+        words = set(re.findall(r"[a-z0-9]+", s))
+        markers = {
+            "today", "current", "latest", "now", "gas", "petrol", "diesel",
+            "price", "rate", "cost", "weather", "temperature", "maryland",
+            "dc", "usa", "local",
+        }
+        return bool(words & markers) or any(phrase in s for phrase in phrases)
+
+    def _looks_like_ini_version_query(text: str) -> bool:
+        s = re.sub(r"[^a-z0-9. ]+", " ", (text or "").lower()).strip()
+        return bool(
+            re.search(r"\bv0\.1\.4\b", s)
+            or re.search(r"\b(your|ini|yourself)\b.*\b(version|update|release|improved)\b", s)
+            or re.search(r"\b(version|update|release)\b.*\b(your|ini|yourself)\b", s)
+        )
+
+    def _is_ambiguous_context_followup(text: str) -> bool:
+        s = re.sub(r"[^a-z0-9 ]+", " ", (text or "").lower()).strip()
+        return bool(
+            s in {
+                "what else", "anything else", "tell me more", "what more",
+                "go on", "continue",
+            }
+            or re.match(r"^(more|what|how) (about|on) (it|this|that|the topic)$", s)
+        )
+
+    def _latest_meaningful_chat_topic() -> str:
+        """Recover the active subject while ignoring ambiguous follow-up branches."""
+        for item in reversed(st.session_state.chat_branch_answers or []):
+            if not isinstance(item, dict):
+                continue
+            interrogate_payload = item.get("interrogate") or {}
+            if (
+                item.get("kind") == "interrogate"
+                and isinstance(interrogate_payload, dict)
+                and interrogate_payload.get("intent") == "clarify"
+            ):
+                # Older builds could persist a full Question Map even though
+                # the intent layer had classified the message as clarification.
+                continue
+            candidate = str(item.get("topic") or "").strip()
+            if candidate and not _is_ambiguous_context_followup(candidate):
+                return re.sub(
+                    r"^(?:please\s+)?(?:generate|create|build|make)\s+(?:me\s+)?(?:a\s+)?(?:question map|qmap)\s+(?:for|on|about)\s+",
+                    "",
+                    candidate,
+                    flags=re.IGNORECASE,
+                ).strip() or candidate
+
+        for candidate in (
+            st.session_state.get("chat_root_topic"),
+            (st.session_state.get("chat") or {}).get("topic"),
+        ):
+            candidate = str(candidate or "").strip()
+            if candidate and not _is_ambiguous_context_followup(candidate):
+                return candidate
+        return ""
 
     def _dedupe_followups(items: list[str]) -> list[str]:
         out: list[str] = []
@@ -3864,7 +3917,13 @@ def page_new_chat() -> None:
         topic_text: str,
         show_spinner: bool = True,
     ) -> None:
-        if not isinstance(st.session_state.get("chat_active_discussion"), dict):
+        # Context-dependent phrases must remain verbatim. Otherwise the fuzzy
+        # follow-up resolver can expand "what else" into an older suggested
+        # question merely because that question contains the same words.
+        if (
+            not _is_ambiguous_context_followup(topic_text)
+            and not isinstance(st.session_state.get("chat_active_discussion"), dict)
+        ):
             topic_text = _resolve_typed_followup(topic_text)
         display_topic_text = topic_text.strip()
         prior_response_mode = _latest_response_mode()
@@ -3873,6 +3932,12 @@ def page_new_chat() -> None:
         start_discussion_topic = ""
         discussion_answer_request: Optional[Dict[str, Any]] = None
         discussion_freeform_followup = False
+        ini_version_query = _looks_like_ini_version_query(display_topic_text)
+        contextual_followup_topic = (
+            _latest_meaningful_chat_topic()
+            if _is_ambiguous_context_followup(display_topic_text)
+            else ""
+        )
         active_carm_context = st.session_state.get("chat_active_carm_context")
         used_active_carm_context = False
 
@@ -4068,7 +4133,25 @@ def page_new_chat() -> None:
                 else nullcontext()
             )
             with spinner_context:
-                if start_discussion_topic:
+                if ini_version_query:
+                    data = {
+                        "categories": {},
+                        "followups": [],
+                        "intent": "ini_version_info",
+                        "should_answer_direct": False,
+                        "response_mode": "conversation",
+                        "context_intent": "ini_product",
+                        "needs_clarification": False,
+                        "suppress_profile": False,
+                        "reply": (
+                            "InI.ai v0.1.4 improves conversational intelligence and context switching, "
+                            "adds guided Discussion Mode, preserves every submitted query, refines the "
+                            "response-card experience and generation states, strengthens the First "
+                            "Conversation Experience, and polishes InI branding and navigation. It was "
+                            "released on July 17, 2026."
+                        ),
+                    }
+                elif start_discussion_topic:
                     existing_discussion = st.session_state.get("chat_active_discussion")
                     if not isinstance(existing_discussion, dict) or (
                         existing_discussion.get("topic") != start_discussion_topic
@@ -4156,6 +4239,21 @@ def page_new_chat() -> None:
                         ),
                     }
                     topic_text = qm_discussion_topic
+                elif contextual_followup_topic:
+                    data = {
+                        "categories": {},
+                        "followups": [],
+                        "intent": "context_clarification",
+                        "should_answer_direct": False,
+                        "response_mode": "conversation",
+                        "context_intent": "active_topic",
+                        "needs_clarification": True,
+                        "suppress_profile": True,
+                        "reply": (
+                            f"What would you like to explore further about {contextual_followup_topic}—"
+                            "how it works, its performance, practical uses, or another aspect?"
+                        ),
+                    }
                 elif discussion_freeform_followup:
                     discussion_topic = (
                         (st.session_state.get("chat_active_discussion") or {}).get("topic")
@@ -4319,6 +4417,7 @@ def page_new_chat() -> None:
                             "continue_discussion",
                             "discussion_option_clarification",
                             "question_map_confirmation",
+                            "context_clarification",
                         }
                     ):
                         st.session_state.chat_study_mode_established = False

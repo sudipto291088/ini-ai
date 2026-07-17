@@ -385,6 +385,10 @@ def _is_smalltalk(text: str) -> bool:
         r"^how can you help\b",
         r"^what should i call you\b",
         r"^who are you\b",
+        r"^(nothing|nothin|nothing much|nothin much)?\s*(lets|let us) just talk\b",
+        r"^(nothing|nothin|nothing much|nothin much)\b",
+        r"^why are you (going to|trying to|offering to|asking to)\b",
+        r"^(are you|you are) (ok|okay|alright|fine|still not perfect)\b",
     )
     return any(re.match(pattern, s) for pattern in relational_patterns)
 
@@ -395,6 +399,21 @@ def _looks_like_contextual_utterance(text: str) -> bool:
     words = set(s.split())
     if not s or len(s.split()) > 18:
         return False
+
+    # These phrases have no stable meaning without the immediately preceding
+    # answer. Treating them as fresh subjects creates nonsensical Question Maps.
+    contextual_followups = {
+        "what else",
+        "anything else",
+        "tell me more",
+        "what more",
+        "go on",
+        "continue",
+    }
+    if s in contextual_followups or re.match(
+        r"^(more|what|how) (about|on) (it|this|that|the topic)$", s
+    ):
+        return True
 
     deictic_words = {"it", "this", "that", "those", "there", "thing"}
     continuation_words = {
@@ -448,7 +467,11 @@ def _looks_like_direct_factual_query(text: str) -> bool:
         return True
 
     # keyword based factual query
-    if any(word in s for word in DIRECT_FACTUAL_KEYWORDS):
+    factual_words = set(s.split())
+    if any(
+        (keyword in factual_words if " " not in keyword else keyword in s)
+        for keyword in DIRECT_FACTUAL_KEYWORDS
+    ):
         return True
 
     # short fragment queries
@@ -641,6 +664,18 @@ def detect_intent(text: str) -> Dict[str, Any]:
             "should_answer_direct": False,
             "mode_hint": "deep",
             "confidence": 0.92,
+        }
+
+    if re.search(r"\b(generate|create|build|make)\b.*\b(question map|qmap)\b", s):
+        return {
+            "intent": "topic_explore",
+            "response_intent": "explore",
+            "reply": "",
+            "followups": [],
+            "should_interrogate": True,
+            "should_answer_direct": False,
+            "mode_hint": mode,
+            "confidence": 0.99,
         }
 
     if _looks_like_contextual_utterance(raw):
