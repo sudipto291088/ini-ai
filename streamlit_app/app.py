@@ -2739,7 +2739,7 @@ with st.sidebar:
         _render_clock_tile()
         st.caption("Tip: install 'streamlit-autorefresh' to enable a live-updating clock.")
 
-    st.markdown('<span class="badge" style="margin-left:11px;">v0.1.3 &middot; Question Intelligence</span>', unsafe_allow_html=True)
+    st.markdown('<span class="badge" style="margin-left:11px;">v0.1.4 &middot; Question Intelligence</span>', unsafe_allow_html=True)
 
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750; margin-top:10px;">Navigation</div>', unsafe_allow_html=True)
     intro_nav_href = _private_href(page="home")
@@ -2929,18 +2929,22 @@ The primary learning experience.
 
 ---
 
-## What's New in v0.1.3
+## What's New in v0.1.4
 
-Released: July 10, 2026
+Released: July 17, 2026
 
-New Chat now has a clearer learning flow:
+InI.ai now feels more conversational, polished, and context-aware:
 
-- **Structured response panels:** Topic Profile, Introduction, Suggested Follow-ups, and Question Map are presented as distinct reading sections.
-- **Focused Question Map:** Choose one learning layer at a time, then open a question to see its answer directly beneath it inside the same Question Map panel.
-- **Answer visibility control:** Hide and reveal opened answers without losing your place.
-- **Cleaner introductions:** A compact preview keeps the first response easy to scan, with a simple More / Show less control for the full explanation.
+- **Conversational intelligence:** InI can handle greetings, clarifying replies, practical requests, and natural follow-up questions without forcing every message into a Question Map.
+- **Smoother context switching:** Conversations can move from casual chat to a learning topic and back again while retaining context and a compact Topic Profile.
+- **Discussion mode:** Users can discuss a topic before generating a Question Map, continue through three guided discussion directions, and navigate between concise answers.
+- **Refined response design:** A polished primary response surface now contains clean secondary sections and quieter tertiary cards with improved typography, spacing, shadows, and alignment.
+- **Persistent query history:** Every submitted query remains recorded, with a dedicated query navigator for quickly returning to earlier prompts.
+- **Improved generation states:** Context-aware Thinking and Generating response indicators use the InI icon while keeping the active input bar stable.
+- **First Conversation Experience:** The cinematic welcome flow now appears once, supports replay, uses smoother pacing, and presents broader verified quotations.
+- **Brand and navigation polish:** The new InI identity, sidebar presentation, version badge, navigation cards, and floating controls have been visually refined.
 
-These changes make InI's first response more structured, calmer to read, and easier to explore step by step.
+These changes move InI beyond a static question generator toward a more natural Question Engine that can clarify intent, hold context, and guide learning without losing the user.
 
 ---
 
@@ -2960,7 +2964,7 @@ Current modes:
 
 ### Current Version
 
-Version: v0.1.3
+Version: v0.1.4
 
 The platform is under active development and new features are being added regularly.
 
@@ -3868,6 +3872,7 @@ def page_new_chat() -> None:
         qm_discussion_topic = ""
         start_discussion_topic = ""
         discussion_answer_request: Optional[Dict[str, Any]] = None
+        discussion_freeform_followup = False
         active_carm_context = st.session_state.get("chat_active_carm_context")
         used_active_carm_context = False
 
@@ -3968,6 +3973,31 @@ def page_new_chat() -> None:
                         )
                         if cached_answer:
                             discussion_answer_request["reuse_answer"] = cached_answer
+
+            if (
+                discussion_answer_request is None
+                and not start_discussion_topic
+                and re.search(
+                    r"\b(you|your|yours|we|our|ours|this|that|it)\b",
+                    normalized_discussion_reply,
+                )
+                and len(normalized_discussion_reply.split()) <= 24
+            ):
+                discussion_freeform_followup = True
+
+        if not discussion_freeform_followup:
+            general_reply = re.sub(
+                r"[^a-z0-9 ]+", " ", display_topic_text.lower()
+            ).strip()
+            if (
+                re.search(r"\b(you|your|yours|we|our|ours|this|that|it)\b", general_reply)
+                and len(general_reply.split()) <= 24
+                and not re.search(
+                    r"\b(question map|qmap|generate|create|build|teach me|explain)\b",
+                    general_reply,
+                )
+            ):
+                discussion_freeform_followup = True
 
         # A short reply such as "VSCode" answers InI's previous MCP-host
         # clarification; it must not be misrouted as a brand-new learning topic.
@@ -4126,6 +4156,33 @@ def page_new_chat() -> None:
                         ),
                     }
                     topic_text = qm_discussion_topic
+                elif discussion_freeform_followup:
+                    discussion_topic = (
+                        (st.session_state.get("chat_active_discussion") or {}).get("topic")
+                        or st.session_state.chat.get("topic")
+                        or st.session_state.get("chat_root_topic")
+                        or "the active conversation"
+                    )
+                    data = {
+                        "categories": {},
+                        "followups": [],
+                        "intent": "discussion_freeform_followup",
+                        "should_answer_direct": True,
+                        "response_mode": "conversation",
+                        "context_intent": "active_discussion",
+                        "needs_clarification": False,
+                        "suppress_profile": False,
+                        "direct_answer_prompt": (
+                            f"Continue the active conversation about {discussion_topic}. "
+                            f"The user said: {display_topic_text}\n"
+                            "Respond naturally to what they mean in this conversation. Preserve context, "
+                            "use a warm concise tone, and briefly bridge the change from the previous topic "
+                            "when the user moves back into casual conversation. Do not sound as though a new "
+                            "conversation has started. Do not create an Introduction, Suggested Follow-ups, "
+                            "or Question Map. If the message is about you, answer as InI rather than defining "
+                            "the user's words."
+                        ),
+                    }
                 else:
                     data = fetch_interrogate(topic_text.strip())
                 st.session_state.chat["topic"] = topic_text.strip()
