@@ -6,7 +6,7 @@ import base64
 from contextlib import nullcontext
 from html import escape
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 from pathlib import Path
 
@@ -23,6 +23,7 @@ from storage_sqlite import (
 )
 from time_utils import browser_local_now
 from topic_profile import extract_topic_profile
+from response_profile import build_response_profile
 from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
 
@@ -178,6 +179,42 @@ span{
 
 div[data-testid="stSidebar"] .block-container{
   padding-top: 1rem;
+}
+
+/* Sidebar navigation: quiet, card-like controls rather than button chrome. */
+.ini-sidebar-nav{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:7px;
+}
+.ini-sidebar-nav-card{
+  display:flex;
+  align-items:center;
+  min-height:42px;
+  padding:9px 12px;
+  border:1px solid #e3e6ea;
+  border-radius:12px;
+  background:#ffffff;
+  color:var(--ink) !important;
+  font-size:13px;
+  font-weight:650;
+  line-height:1.25;
+  text-decoration:none !important;
+  box-shadow:0 2px 7px rgba(15,23,42,.045);
+  transition:background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+.ini-sidebar-nav-card:hover{
+  border-color:#d7dce2;
+  background:#f6f7f8;
+  box-shadow:0 5px 14px rgba(15,23,42,.075);
+  transform:translateY(-1px);
+  text-decoration:none !important;
+}
+.ini-sidebar-nav-card.is-active{
+  border-color:#d9dde2;
+  background:#f1f3f5;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9), 0 2px 7px rgba(15,23,42,.035);
 }
 
 /* Prevent Continue wrapping */
@@ -469,8 +506,45 @@ div.stButton > button:hover {
   font-size: 14px;
   line-height: 1.4;
 }
+.ini-topic-profile.ini-conversation-profile {
+  height: 100%;
+  min-height: 176px;
+  margin: 0;
+  padding: 14px;
+  border-radius: 16px;
+  box-shadow: 0 9px 24px rgba(15, 23, 42, 0.045);
+}
+.ini-conversation-profile .ini-topic-profile__title {
+  margin-bottom: 10px;
+  color: #17211f;
+  font-size: 12px;
+}
+.ini-conversation-profile .ini-topic-profile__grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.ini-conversation-profile .ini-topic-profile__item {
+  min-height: 58px;
+  padding: 9px 10px;
+  border-radius: 11px;
+  box-shadow: none;
+}
+.ini-conversation-profile .ini-topic-profile__item:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.ini-conversation-profile .ini-topic-profile__label {
+  margin-bottom: 3px;
+  font-size: 8px;
+}
+.ini-conversation-profile .ini-topic-profile__value {
+  font-size: 11px;
+  line-height: 1.3;
+}
 @media (max-width: 700px) {
   .ini-topic-profile__grid { grid-template-columns: 1fr; }
+  .ini-conversation-profile .ini-topic-profile__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .ini-nc-section-title {
@@ -622,18 +696,211 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker) {
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.055) !important;
 }
 .st-key-root_response_card,
-div[class*="st-key-branch_response_card_"] {
+div[class*="st-key-branch_response_card_"]:not([class*="_row"]):not([class*="_clarification_cta_"]) {
   width: min(1180px, 100%) !important;
-  margin: 14px 0 20px !important;
+  margin: 0 !important;
   padding: 18px !important;
-  border: 1px solid #eef0f3 !important;
+  border: 0 !important;
   border-radius: 20px !important;
   background: #ffffff !important;
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.045) !important;
 }
 .st-key-root_response_card > div,
-div[class*="st-key-branch_response_card_"] > div {
+div[class*="st-key-branch_response_card_"]:not([class*="_row"]):not([class*="_clarification_cta_"]) > div {
   background: transparent !important;
+}
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-carm-response-surface) {
+  border: 0 !important;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(245, 27, 63, 0.035), transparent 28%),
+    #ffffff !important;
+  box-shadow:
+    0 22px 52px rgba(15, 23, 42, 0.075),
+    0 2px 7px rgba(15, 23, 42, 0.035) !important;
+}
+.ini-carm-response-surface {
+  display: none;
+}
+div[class*="st-key-root_response_card_row"],
+div[class*="st-key-branch_response_card_"][class*="_row"] {
+  width: min(1220px, 100%) !important;
+  margin: 14px 0 20px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+}
+.ini-response-avatar {
+  width: 18px !important;
+  height: 30px !important;
+  min-width: 18px !important;
+  max-width: 18px !important;
+  object-fit: contain;
+  display: block;
+  margin: 18px 0 0 1px;
+  filter: drop-shadow(0 3px 7px rgba(245, 27, 63, 0.16));
+}
+.ini-qmap-avatar-anchor {
+  position: relative;
+  height: 0;
+  overflow: visible;
+  z-index: 3;
+}
+.ini-qmap-avatar-anchor img {
+  position: absolute;
+  top: 18px;
+  left: -27px;
+  width: 18px !important;
+  height: 30px !important;
+  max-width: 18px !important;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 7px rgba(245, 27, 63, 0.16));
+}
+.ini-casual-response-copy {
+  display: none;
+}
+div[data-testid="stColumn"]:has(.ini-casual-response-copy) {
+  padding: 13px 10px 10px 3px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+div[data-testid="stColumn"]:has(.ini-casual-response-copy) p {
+  margin: 0 !important;
+  color: #273142 !important;
+  font-size: 16px !important;
+  line-height: 1.65 !important;
+  font-weight: 400 !important;
+}
+div[class*="clarification_cta"] button {
+  min-width: 150px !important;
+  justify-content: flex-start !important;
+  padding: 10px 15px !important;
+  border: 1px solid #e3e7ed !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.085) !important;
+  color: #273142 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease !important;
+}
+div[class*="clarification_cta"] [data-testid="stElementContainer"],
+div[class*="clarification_cta"] [data-testid="stButton"] {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+div[class*="discussion_question_"] button {
+  width: 100% !important;
+  max-width: 100% !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+  padding: 14px 16px !important;
+  border: 0 !important;
+  border-radius: 15px !important;
+  background: #ffffff !important;
+  color: #263142 !important;
+  font-size: 15px !important;
+  font-weight: 450 !important;
+  box-shadow: 0 13px 30px rgba(15, 23, 42, 0.13) !important;
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease !important;
+}
+div[class*="discussion_question_"] button:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 17px 38px rgba(15, 23, 42, 0.16) !important;
+}
+div[class*="discussion_question_"] button p {
+  width: 100% !important;
+  margin: 0 !important;
+  text-align: left !important;
+}
+div[class*="discussion_question_"] button > div,
+div[class*="discussion_question_"] button [data-testid="stMarkdownContainer"] {
+  width: 100% !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+div[class*="discussion_question_"] [data-testid="stElementContainer"],
+div[class*="discussion_question_"] [data-testid="stButton"] {
+  width: 100% !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.ini-discussion-question-inner {
+  margin-bottom: 12px;
+  padding: 13px 15px;
+  border: 1px solid #e8ebf0;
+  border-radius: 13px;
+  background: #f7f8fa;
+  color: #172033;
+  font-size: 15px;
+  line-height: 1.55;
+}
+div[class*="discussion_answer_card_"] {
+  border: 1px solid #e7eaf0 !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.065) !important;
+  padding: 18px !important;
+}
+div[class*="st-key-discussion_more_"] [data-testid="stElementContainer"],
+div[class*="st-key-discussion_explain_"] [data-testid="stElementContainer"],
+div[class*="st-key-discussion_previous_"] [data-testid="stElementContainer"],
+div[class*="st-key-discussion_next_"] [data-testid="stElementContainer"],
+div[class*="st-key-discussion_more_"] [data-testid="stButton"],
+div[class*="st-key-discussion_explain_"] [data-testid="stButton"],
+div[class*="st-key-discussion_previous_"] [data-testid="stButton"],
+div[class*="st-key-discussion_next_"] [data-testid="stButton"] {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+div[class*="st-key-discussion_more_"] button,
+div[class*="st-key-discussion_explain_"] button,
+div[class*="st-key-discussion_previous_"] button,
+div[class*="st-key-discussion_next_"] button {
+  min-width: 0 !important;
+  width: auto !important;
+  height: 36px !important;
+  padding: 7px 13px !important;
+  border: 1px solid #e1e5eb !important;
+  border-radius: 11px !important;
+  background: #ffffff !important;
+  color: #465164 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.065) !important;
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease !important;
+}
+div[class*="st-key-discussion_more_"] button:hover,
+div[class*="st-key-discussion_explain_"] button:hover,
+div[class*="st-key-discussion_previous_"] button:hover,
+div[class*="st-key-discussion_next_"] button:hover {
+  transform: translateY(-1px) !important;
+  border-color: #cfd5de !important;
+  color: #1f2937 !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.09) !important;
+}
+div[class*="clarification_cta"] button:hover {
+  transform: translateY(-1px) !important;
+  border-color: #cbd2dc !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.115) !important;
+  color: #111827 !important;
+}
+div[class*="clarification_cta"] button:focus {
+  box-shadow: 0 0 0 3px rgba(245, 27, 63, 0.10), 0 10px 25px rgba(15, 23, 42, 0.07) !important;
 }
 .st-key-root_question_map_panel,
 div[class*="st-key-branch_question_map_panel_"] {
@@ -1411,6 +1678,20 @@ if "chat_top_topic_input" not in st.session_state:
 if "chat_bottom_topic_input" not in st.session_state:
     st.session_state.chat_bottom_topic_input = ""
 
+if "chat_pending_context_clarification" not in st.session_state:
+    st.session_state.chat_pending_context_clarification = None
+if "chat_pending_qm_confirmation" not in st.session_state:
+    st.session_state.chat_pending_qm_confirmation = None
+if "chat_pending_discussion_action" not in st.session_state:
+    st.session_state.chat_pending_discussion_action = None
+if "chat_active_discussion" not in st.session_state:
+    st.session_state.chat_active_discussion = None
+if "chat_study_mode_established" not in st.session_state:
+    st.session_state.chat_study_mode_established = False
+
+if "chat_active_carm_context" not in st.session_state:
+    st.session_state.chat_active_carm_context = None
+
 if "chat_root_topic" not in st.session_state:
     st.session_state.chat_root_topic = ""
 
@@ -1446,6 +1727,9 @@ if "chat_bottom_enter_submit" not in st.session_state:
 
 if "chat_branch_answers" not in st.session_state:
     st.session_state.chat_branch_answers = []
+
+if "chat_query_log" not in st.session_state:
+    st.session_state.chat_query_log = []
 
 # UIB state
 if "uib_text" not in st.session_state:
@@ -1569,6 +1853,9 @@ def _empty_new_chat_state() -> Dict[str, Any]:
         "chat_seed_done": "",
         "chat_branch_history": [],
         "chat_branch_answers": [],
+        "chat_query_log": [],
+        "chat_active_discussion": None,
+        "chat_study_mode_established": False,
     }
 
 
@@ -1583,6 +1870,10 @@ def _reset_new_chat_state() -> None:
     st.session_state.chat_seed_done = ""
     st.session_state.chat_branch_history = []
     st.session_state.chat_branch_answers = []
+    st.session_state.chat_query_log = []
+    st.session_state.chat_pending_discussion_action = None
+    st.session_state.chat_active_discussion = None
+    st.session_state.chat_study_mode_established = False
     st.session_state.chat_top_topic_input = ""
     st.session_state.chat_bottom_topic_input = ""
 
@@ -1617,6 +1908,9 @@ def _current_new_chat_payload() -> Dict[str, Any]:
         "chat_seed_done": st.session_state.chat_seed_done,
         "chat_branch_history": st.session_state.chat_branch_history,
         "chat_branch_answers": st.session_state.chat_branch_answers,
+        "chat_query_log": st.session_state.chat_query_log,
+        "chat_active_discussion": st.session_state.chat_active_discussion,
+        "chat_study_mode_established": st.session_state.chat_study_mode_established,
 
         "chat_root_topic": st.session_state.chat_root_topic,
         "chat_root_interrogate": st.session_state.chat_root_interrogate,
@@ -1648,6 +1942,12 @@ def _new_chat_title_from_payload(payload: Dict[str, Any]) -> str:
     if visited:
         return str(visited[0]).strip()
 
+    query_log = payload.get("chat_query_log") or []
+    if query_log and isinstance(query_log[0], dict):
+        logged_text = (query_log[0].get("text") or "").strip()
+        if logged_text:
+            return logged_text
+
     return "New Chat Session"
 
 
@@ -1661,6 +1961,7 @@ def _persist_new_chat_session(sid: Optional[str] = None) -> str:
         payload.get("chat_intro"),
         payload.get("chat_answers"),
         payload.get("chat_direct_answer"),
+        payload.get("chat_query_log"),
     ])
 
     if not has_meaningful_content:
@@ -1698,6 +1999,22 @@ def _persist_new_chat_session(sid: Optional[str] = None) -> str:
     return sid
 
 
+def _record_chat_query(text: str, action: str) -> None:
+    """Persist every user submission verbatim, including repeated casual turns."""
+    exact_text = text or ""
+    if not exact_text.strip():
+        return
+
+    st.session_state.chat_query_log.append(
+        {
+            "id": f"query-{secrets.token_urlsafe(8)}",
+            "text": exact_text,
+            "action": (action or "interrogate").strip().lower(),
+            "ts": now_label(),
+        }
+    )
+
+
 def _load_new_chat_session(sid: str) -> bool:
     loaded = load_session(st.session_state.visitor_id, sid)
     if not loaded:
@@ -1729,6 +2046,12 @@ def _load_new_chat_session(sid: str) -> bool:
     st.session_state.chat_seed_done = payload.get("chat_seed_done") or ""
     st.session_state.chat_branch_history = payload.get("chat_branch_history") or []
     st.session_state.chat_branch_answers = payload.get("chat_branch_answers") or []
+    st.session_state.chat_query_log = payload.get("chat_query_log") or []
+    st.session_state.chat_active_discussion = payload.get("chat_active_discussion")
+    st.session_state.chat_study_mode_established = bool(
+        payload.get("chat_study_mode_established", False)
+    )
+    st.session_state.chat_pending_discussion_action = None
     st.session_state.chat_top_topic_input = payload.get("topic") or ""
     st.session_state.chat_bottom_topic_input = ""
     st.session_state.chat_root_topic = payload.get("chat_root_topic") or payload.get("topic") or ""
@@ -2079,7 +2402,7 @@ def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
     return "\n".join(body_lines).strip(), deduped
 
 
-def render_topic_profile(rows: list[tuple[str, str]]) -> None:
+def render_topic_profile(rows: list[tuple[str, str]], compact: bool = False) -> None:
     if not rows:
         return
 
@@ -2092,9 +2415,12 @@ def render_topic_profile(rows: list[tuple[str, str]]) -> None:
         )
         for label, value in rows
     )
+    profile_classes = "ini-topic-profile"
+    if compact:
+        profile_classes += " ini-conversation-profile"
     st.markdown(
         (
-            '<div class="ini-topic-profile">'
+            f'<div class="{profile_classes}">'
             '<div class="ini-topic-profile__title">'
             '<span class="ini-topic-profile__mark"></span>'
             "<span>Topic Profile</span>"
@@ -2373,9 +2699,12 @@ with st.sidebar:
     sidebar_logo_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
     sidebar_logo_data = base64.b64encode(sidebar_logo_path.read_bytes()).decode("ascii")
     st.markdown(
-        f'''<div style="display:flex; align-items:center; justify-content:center; margin:9px 0 18px; padding:2px 0;">
-              <img src="data:image/png;base64,{sidebar_logo_data}" alt="" style="display:block; width:40px; height:66px; object-fit:contain; margin-right:2px; filter:drop-shadow(0 3px 6px rgba(245,27,63,.12));">
-              <span style="font-size:33px; font-weight:700; line-height:1; letter-spacing:-1.25px; color:#0f172a;">InI<span style="color:#f51b3f;">.ai</span></span>
+        f'''<div style="display:flex; align-items:center; justify-content:center; margin:3px 0 18px; padding:2px 0;">
+              <img src="data:image/png;base64,{sidebar_logo_data}" alt="" style="display:block; width:43px; height:70px; object-fit:contain; margin-right:2px; filter:drop-shadow(0 3px 6px rgba(245,27,63,.12));">
+              <div style="display:flex; flex-direction:column; align-items:flex-start; justify-content:center; margin-left:2px;">
+                <span style="font-size:35px; font-weight:700; line-height:1; letter-spacing:-1.3px; color:#0f172a;">InI<span style="color:#f51b3f;">.ai</span></span>
+                <span style="margin-top:5px; font-size:10px; font-weight:500; line-height:1.15; letter-spacing:.12px; color:#667085;">First Question Engine</span>
+              </div>
             </div>''',
         unsafe_allow_html=True,
     )
@@ -2419,14 +2748,14 @@ with st.sidebar:
     project_nav_href = _private_href(page="proj")
     st.markdown(
         f"""
-        <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
-          <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
+        <div class="ini-sidebar-nav">
+          <a class="ini-sidebar-nav-card {'is-active' if page_param == 'home' else ''}"
              href="{intro_nav_href}" target="_self">🏠&nbsp;&nbsp;Introduction</a>
-          <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
+          <a class="ini-sidebar-nav-card {'is-active' if page_param == 'chat' else ''}"
              href="{chat_nav_href}" target="_self">💬&nbsp;&nbsp;New Chat</a>
-          <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
+          <a class="ini-sidebar-nav-card {'is-active' if page_param == 'learn' else ''}"
              href="{learn_nav_href}" target="_self">📚&nbsp;&nbsp;My New Learning</a>
-          <a style="text-decoration:none; border:1px solid var(--stroke); background:var(--card); padding:9px 10px; border-radius:12px; color:var(--ink); font-size:13px; font-weight:650;"
+          <a class="ini-sidebar-nav-card {'is-active' if page_param == 'proj' else ''}"
              href="{project_nav_href}" target="_self">🧩&nbsp;&nbsp;New Project</a>
         </div>
         """,
@@ -2660,11 +2989,28 @@ def page_new_chat() -> None:
 
     def _session_has_existing_root() -> bool:
         return any([
+            st.session_state.chat_root_topic,
             st.session_state.chat_root_interrogate,
             st.session_state.chat_root_illustrate,
             st.session_state.chat_root_intro,
+            st.session_state.chat_root_direct_answer,
             st.session_state.chat_root_answers,
         ])
+
+    def _latest_response_mode() -> str:
+        branches = st.session_state.chat_branch_answers or []
+        if branches:
+            item = branches[-1]
+            if isinstance(item, dict):
+                if item.get("kind") != "direct":
+                    return str(item.get("kind") or "question_map").strip().lower()
+                payload = item.get("direct_answer") or {}
+                if isinstance(payload, dict):
+                    return str(payload.get("response_mode") or "").strip().lower()
+        payload = st.session_state.chat_direct_answer
+        if isinstance(payload, dict):
+            return str(payload.get("response_mode") or "").strip().lower()
+        return ""
 
     def _append_interrogate_branch(topic_text: str, data: Dict[str, Any], intro: str) -> None:
         st.session_state.chat_branch_answers.append(
@@ -2778,26 +3124,258 @@ def page_new_chat() -> None:
             _append_illustrate_branch(topic_text.strip(), data)
             _persist_new_chat_session(current_sid)
 
+    def _profile_for_response(
+        prompt: str,
+        payload: Optional[Dict[str, Any]] = None,
+        mode_override: str = "",
+    ) -> list[tuple[str, str]]:
+        info = payload if isinstance(payload, dict) else {}
+        return build_response_profile(
+            info.get("profile_prompt") or prompt,
+            intent=info.get("intent") or "",
+            response_mode=mode_override or info.get("response_mode") or "",
+            context_intent=info.get("context_intent") or "",
+        )
+
     def _render_simple_response(
         response_card_key: str,
         text: str,
         ts: str,
         followups: Optional[List[str]] = None,
+        clarification_ctas: bool = False,
+        stream_response: bool = False,
+        topic_profile: Optional[List[tuple[str, str]]] = None,
+        compact_profile: bool = False,
+        clarification_title: str = "",
+        response_payload: Optional[Dict[str, Any]] = None,
     ) -> None:
-        with st.container(border=True, key=response_card_key):
-            _render_nc_ai_bubble(text, "")
+        response_icon_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
+        response_icon_data = base64.b64encode(
+            response_icon_path.read_bytes()
+        ).decode("ascii")
 
-            if followups:
-                render_nc_section_title("Suggested Follow-ups")
-                render_followup_links(
-                    "chat",
-                    followups,
-                    st.session_state.chat_active_id,
+        with st.container(
+            horizontal=True,
+            vertical_alignment="top",
+            gap="small",
+            key=f"{response_card_key}_row",
+        ):
+            st.markdown(
+                f'<img class="ini-response-avatar" '
+                f'src="data:image/png;base64,{response_icon_data}" '
+                f'alt="InI">',
+                unsafe_allow_html=True,
+            )
+
+            with st.container(border=False, key=response_card_key):
+                if clarification_ctas or stream_response:
+                    st.markdown('<span class="ini-carm-response-surface"></span>', unsafe_allow_html=True)
+
+                def _render_response_copy() -> None:
+                    if clarification_ctas:
+                        st.markdown(text)
+                    elif stream_response:
+                        stream_text = re.sub(
+                            r"(?m)^(Immediate intent|Start here|Explore next)\s*",
+                            r"### \1\n\n",
+                            text,
+                        )
+                        streamed_keys = st.session_state.setdefault("_carm_streamed_responses", set())
+                        stream_key = f"{response_card_key}:{ts}:{len(stream_text)}"
+                        if stream_key not in streamed_keys:
+                            def _carm_text_stream():
+                                for offset in range(0, len(stream_text), 3):
+                                    yield stream_text[offset:offset + 3]
+                                    time.sleep(0.004)
+
+                            st.write_stream(_carm_text_stream())
+                            streamed_keys.add(stream_key)
+                        else:
+                            st.markdown(stream_text)
+                    else:
+                        st.markdown(text)
+
+                if topic_profile and compact_profile:
+                    reply_col, profile_col = st.columns(
+                        [1.55, 1],
+                        gap="medium",
+                        vertical_alignment="top",
+                    )
+                    with reply_col:
+                        st.markdown(
+                            '<span class="ini-casual-response-copy"></span>',
+                            unsafe_allow_html=True,
+                        )
+                        _render_response_copy()
+                    with profile_col:
+                        render_topic_profile(topic_profile, compact=True)
+                else:
+                    if topic_profile:
+                        render_topic_profile(topic_profile)
+                    _render_response_copy()
+
+                if (
+                    isinstance(response_payload, dict)
+                    and response_payload.get("intent") == "continue_discussion"
+                ):
+                    state = st.session_state.get("chat_active_discussion")
+                    questions = (
+                        list(state.get("questions") or [])[:3]
+                        if isinstance(state, dict)
+                        else []
+                    )
+                    for index, question in enumerate(questions):
+                        if st.button(
+                            f"{index + 1}. {question}",
+                            key=f"discussion_question_{state.get('set_number', 1)}_{index}",
+                            width="stretch",
+                        ):
+                            _queue_new_chat_request(str(index + 1), "interrogate")
+
+                if followups:
+                    if clarification_ctas:
+                        render_nc_section_title(
+                            clarification_title or "Choose the application"
+                        )
+                        with st.container(horizontal=True, gap="small"):
+                            for index, followup in enumerate(followups):
+                                label = next(
+                                    (
+                                        name
+                                        for name in ("Codex", "VS Code", "Claude Desktop", "Cursor")
+                                        if name in followup
+                                    ),
+                                    followup,
+                                )
+                                if st.button(
+                                    label,
+                                    key=f"{response_card_key}_clarification_cta_{index}",
+                                    width="content",
+                                ):
+                                    _queue_new_chat_request(followup, "interrogate")
+                    else:
+                        render_nc_section_title("Suggested Follow-ups")
+                        render_followup_links(
+                            "chat",
+                            followups,
+                            st.session_state.chat_active_id,
+                        )
+
+                st.markdown(
+                    f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{ts or now_label()}</div>",
+                    unsafe_allow_html=True,
                 )
 
+    def _render_question_map_response_icon() -> None:
+        icon_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
+        icon_data = base64.b64encode(icon_path.read_bytes()).decode("ascii")
+        st.markdown(
+            f'<div class="ini-qmap-avatar-anchor">'
+            f'<img src="data:image/png;base64,{icon_data}" alt="InI">'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    def _discussion_questions_for(topic: str, set_number: int = 1) -> List[str]:
+        clean_topic = (topic or "this topic").strip()
+        plural_topic = clean_topic.lower().endswith("s")
+        work_verb = "do" if plural_topic else "does"
+        utility_verb = "are" if plural_topic else "is"
+        if set_number <= 1:
+            return [
+                f"Which direction within {clean_topic} should we explore first—core concepts, mechanisms, applications, or limitations?",
+                f"How {work_verb} {clean_topic} work in practice, and which processes or methods matter most?",
+                f"Where {utility_verb} {clean_topic} most useful, and what trade-offs should someone understand?",
+            ]
+        return [
+            f"What evidence or examples best demonstrate the important ideas in {clean_topic}?",
+            f"What common misconceptions or failure modes appear when people work with {clean_topic}?",
+            f"What advanced or emerging direction in {clean_topic} would be most valuable to examine next?",
+        ]
+
+    def _render_discussion_answer_card(
+        response_key: str,
+        payload: Dict[str, Any],
+    ) -> None:
+        meta = payload.get("discussion_answer") or {}
+        question = (meta.get("question") or payload.get("prompt") or "").strip()
+        answer = (payload.get("text") or "").strip()
+        index = int(meta.get("index", 0))
+        total = int(meta.get("count", 3))
+        expanded_key = f"discussion_expanded_{response_key}"
+        expanded = bool(
+            st.session_state.get(expanded_key, False)
+            or meta.get("expanded_answer", False)
+        )
+        preview = answer if expanded or len(answer) <= 900 else answer[:900].rsplit(" ", 1)[0] + "…"
+
+        response_icon_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
+        response_icon_data = base64.b64encode(response_icon_path.read_bytes()).decode("ascii")
+        with st.container(horizontal=True, vertical_alignment="top", gap="small"):
             st.markdown(
-                f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{ts or now_label()}</div>",
+                f'<img class="ini-response-avatar" src="data:image/png;base64,{response_icon_data}" alt="InI">',
                 unsafe_allow_html=True,
+            )
+            with st.container(border=False, key=f"discussion_answer_card_{response_key}"):
+                st.markdown(
+                    f'<div class="ini-discussion-question-inner"><b>{escape(question)}</b></div>',
+                    unsafe_allow_html=True,
+                )
+                st.markdown(preview)
+                if len(answer) > 900:
+                    if st.button(
+                        "Show less" if expanded else "More",
+                        key=f"discussion_more_{response_key}",
+                        width="content",
+                    ):
+                        st.session_state[expanded_key] = not expanded
+                        st.rerun()
+
+                with st.container(horizontal=True, gap="small"):
+                    if st.button("Explain More", key=f"discussion_explain_{response_key}", width="content"):
+                        _queue_new_chat_request("Explain more", "interrogate")
+                    if index > 0 and st.button(
+                        "Previous Question",
+                        key=f"discussion_previous_{response_key}",
+                        width="content",
+                    ):
+                        _queue_new_chat_request("Previous Question", "interrogate")
+                    if index < total - 1:
+                        if st.button(
+                            "Next Question",
+                            key=f"discussion_next_{response_key}",
+                            width="content",
+                        ):
+                            _queue_new_chat_request("Next Question", "interrogate")
+                    elif st.button(
+                        "Next Question Set",
+                        key=f"discussion_next_set_{response_key}",
+                        width="content",
+                    ):
+                        _queue_new_chat_request("Next Question Set", "interrogate")
+
+                st.markdown(
+                    f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{payload.get('ts') or now_label()}</div>",
+                    unsafe_allow_html=True,
+                )
+
+    def _render_active_discussion_panel() -> None:
+        state = st.session_state.get("chat_active_discussion")
+        if not isinstance(state, dict) or not state.get("questions"):
+            return
+        questions = list(state.get("questions") or [])[:3]
+        st.markdown('<div class="ini-discussion-panel"><b>Continue Discussion</b></div>', unsafe_allow_html=True)
+        for index, question in enumerate(questions):
+            if st.button(
+                f"{index + 1}. {question}",
+                key=f"discussion_question_{state.get('set_number', 1)}_{index}",
+                width="content",
+            ):
+                _queue_new_chat_request(str(index + 1), "interrogate")
+        awaiting = state.get("awaiting_option_index")
+        if isinstance(awaiting, int) and 0 <= awaiting < len(questions):
+            st.caption(
+                "Type the option you want in the input bar below—for example: core concepts, mechanisms, applications, or limitations."
             )
 
     def _render_branch_simple_response(
@@ -2805,12 +3383,30 @@ def page_new_chat() -> None:
         text: str,
         ts: str,
         followups: Optional[List[str]] = None,
+        clarification_ctas: bool = False,
+        stream_response: bool = False,
+        topic_profile: Optional[List[tuple[str, str]]] = None,
+        compact_profile: bool = False,
+        clarification_title: str = "",
+        response_payload: Optional[Dict[str, Any]] = None,
     ) -> None:
+        if isinstance(response_payload, dict) and response_payload.get("discussion_answer"):
+            _render_discussion_answer_card(
+                f"branch_{branch_idx}",
+                response_payload,
+            )
+            return
         _render_simple_response(
             f"branch_response_card_{branch_idx}",
             text,
             ts,
             followups,
+            clarification_ctas,
+            stream_response,
+            topic_profile,
+            compact_profile,
+            clarification_title,
+            response_payload,
         )
 
     def _render_branch_question_map(branch_idx: int, branch: Dict[str, Any]) -> None:
@@ -2820,6 +3416,7 @@ def page_new_chat() -> None:
         if not isinstance(data, dict) or not data.get("categories"):
             return
 
+        _render_question_map_response_icon()
         with st.container(border=True, key=f"branch_response_card_{branch_idx}"):
             branch_ts = branch.get("ts") or now_label()
 
@@ -3263,12 +3860,174 @@ def page_new_chat() -> None:
         topic_text: str,
         show_spinner: bool = True,
     ) -> None:
-        topic_text = _resolve_typed_followup(topic_text)
+        if not isinstance(st.session_state.get("chat_active_discussion"), dict):
+            topic_text = _resolve_typed_followup(topic_text)
+        display_topic_text = topic_text.strip()
+        prior_response_mode = _latest_response_mode()
+        qm_confirmation_accepted = False
+        qm_discussion_topic = ""
+        start_discussion_topic = ""
+        discussion_answer_request: Optional[Dict[str, Any]] = None
+        active_carm_context = st.session_state.get("chat_active_carm_context")
+        used_active_carm_context = False
+
+        pending_qm = st.session_state.get("chat_pending_qm_confirmation")
+        if isinstance(pending_qm, dict):
+            normalized_reply = re.sub(r"[^a-z0-9 ]+", " ", display_topic_text.lower()).strip()
+            original_topic = (pending_qm.get("topic") or "").strip()
+            if re.match(r"^(yes|yeah|yep|sure|okay|ok|please|go ahead|do it|generate)\b", normalized_reply):
+                if original_topic:
+                    topic_text = original_topic
+                    qm_confirmation_accepted = True
+            elif re.match(r"^(discuss|discussion|talk|explain|lets discuss|let us discuss)\b", normalized_reply):
+                qm_discussion_topic = original_topic
+                st.session_state.chat_study_mode_established = True
+            if qm_confirmation_accepted:
+                st.session_state.chat_study_mode_established = True
+            st.session_state.chat_pending_qm_confirmation = None
+
+        pending_discussion_action = st.session_state.get("chat_pending_discussion_action")
+        if isinstance(pending_discussion_action, dict):
+            action_reply = re.sub(r"[^a-z0-9 ]+", " ", display_topic_text.lower()).strip()
+            action_topic = (pending_discussion_action.get("topic") or "").strip()
+            if re.match(r"^(generate|question map|create|build|make)\b", action_reply):
+                topic_text = action_topic
+                qm_confirmation_accepted = True
+                st.session_state.chat_study_mode_established = True
+            elif re.match(r"^(continue discussion|continue|discuss|discussion)\b", action_reply):
+                start_discussion_topic = action_topic
+                st.session_state.chat_study_mode_established = True
+            st.session_state.chat_pending_discussion_action = None
+
+        active_discussion = st.session_state.get("chat_active_discussion")
+        if isinstance(active_discussion, dict) and not start_discussion_topic:
+            questions = list(active_discussion.get("questions") or [])[:3]
+            normalized_discussion_reply = re.sub(
+                r"[^a-z0-9 ]+", " ", display_topic_text.lower()
+            ).strip()
+            selected_index: Optional[int] = None
+            if re.fullmatch(r"[1-3]", normalized_discussion_reply):
+                candidate = int(normalized_discussion_reply) - 1
+                if candidate < len(questions):
+                    selected_index = candidate
+            elif normalized_discussion_reply == "next question":
+                selected_index = min(int(active_discussion.get("current_index", -1)) + 1, len(questions) - 1)
+            elif normalized_discussion_reply in {"previous question", "previous answer"}:
+                selected_index = max(int(active_discussion.get("current_index", 0)) - 1, 0)
+            elif normalized_discussion_reply == "next question set":
+                next_set = int(active_discussion.get("set_number", 1)) + 1
+                active_discussion.update(
+                    {
+                        "set_number": next_set,
+                        "questions": _discussion_questions_for(
+                            active_discussion.get("topic") or "this topic",
+                            next_set,
+                        ),
+                        "current_index": -1,
+                        "awaiting_option_index": None,
+                    }
+                )
+                st.session_state.chat_active_discussion = active_discussion
+                start_discussion_topic = active_discussion.get("topic") or "this topic"
+            elif normalized_discussion_reply == "explain more":
+                selected_index = int(active_discussion.get("current_index", 0))
+                if 0 <= selected_index < len(questions):
+                    discussion_answer_request = {
+                        "index": selected_index,
+                        "question": questions[selected_index],
+                        "expand": True,
+                    }
+            elif isinstance(active_discussion.get("awaiting_option_index"), int):
+                selected_index = int(active_discussion.get("awaiting_option_index"))
+                if 0 <= selected_index < len(questions):
+                    discussion_answer_request = {
+                        "index": selected_index,
+                        "question": questions[selected_index],
+                        "option": display_topic_text,
+                    }
+                    active_discussion["awaiting_option_index"] = None
+
+            if selected_index is not None and discussion_answer_request is None:
+                if selected_index == 0 and "—" in questions[selected_index]:
+                    active_discussion["awaiting_option_index"] = selected_index
+                    active_discussion["current_index"] = selected_index
+                    st.session_state.chat_active_discussion = active_discussion
+                    discussion_answer_request = {
+                        "index": selected_index,
+                        "question": questions[selected_index],
+                        "clarify_only": True,
+                    }
+                else:
+                    discussion_answer_request = {
+                        "index": selected_index,
+                        "question": questions[selected_index],
+                    }
+                    if normalized_discussion_reply in {"previous question", "previous answer"}:
+                        cached_answer = (active_discussion.get("answers") or {}).get(
+                            str(selected_index)
+                        )
+                        if cached_answer:
+                            discussion_answer_request["reuse_answer"] = cached_answer
+
+        # A short reply such as "VSCode" answers InI's previous MCP-host
+        # clarification; it must not be misrouted as a brand-new learning topic.
+        pending_context = st.session_state.get("chat_pending_context_clarification")
+        if isinstance(pending_context, dict):
+            reply_words = re.findall(r"[A-Za-z0-9+#.-]+", display_topic_text)
+            if 0 < len(reply_words) <= 14:
+                original_request = (pending_context.get("original_request") or "").strip()
+                topic_text = (
+                    f"{original_request} The application or tool specified by the user is "
+                    f"{display_topic_text}."
+                ).strip()
+            st.session_state.chat_pending_context_clarification = None
+
+        # CARM keeps the active practical goal across natural short replies.
+        # This is intentionally semantic/structural rather than a list of
+        # expected values such as operating systems or transport names.
+        elif isinstance(active_carm_context, dict):
+            reply_words = re.findall(r"[A-Za-z0-9+#.-]+", display_topic_text)
+            explicit_new_request = bool(
+                re.match(
+                    r"^(what|who|why|when|where|how|explain|teach|compare|define|tell me|new topic)\b",
+                    display_topic_text,
+                    flags=re.IGNORECASE,
+                )
+                or "?" in display_topic_text
+            )
+            contextual_short_reply = (
+                0 < len(reply_words) <= 14
+                and not explicit_new_request
+            )
+
+            if contextual_short_reply:
+                resolved_request = (
+                    active_carm_context.get("resolved_request")
+                    or active_carm_context.get("original_request")
+                    or ""
+                ).strip()
+                previous_tail = (active_carm_context.get("last_answer") or "").strip()[-1600:]
+                topic_text = (
+                    f"Continue this active practical request: {resolved_request}\n\n"
+                    f"The end of InI's previous answer was:\n{previous_tail}\n\n"
+                    f"The user's latest natural-language reply is: {display_topic_text}\n"
+                    "Interpret that reply as context for the active request, answer what it implies, "
+                    "and do not treat it as a new standalone learning topic."
+                ).strip()
+                used_active_carm_context = True
+            else:
+                st.session_state.chat_active_carm_context = None
 
         if not topic_text.strip():
             return
         try:
             current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
+
+            # Recording is independent of intent and response generation. A
+            # greeting, typo, repeated message, or failed request remains part
+            # of the user's permanent session record exactly as submitted.
+            _record_chat_query(display_topic_text, "interrogate")
+            current_sid = _persist_new_chat_session(current_sid)
 
             st.session_state.chat_popup_sid = None
             _reset_query_to_page("chat")
@@ -3279,7 +4038,96 @@ def page_new_chat() -> None:
                 else nullcontext()
             )
             with spinner_context:
-                data = fetch_interrogate(topic_text.strip())
+                if start_discussion_topic:
+                    existing_discussion = st.session_state.get("chat_active_discussion")
+                    if not isinstance(existing_discussion, dict) or (
+                        existing_discussion.get("topic") != start_discussion_topic
+                    ):
+                        existing_discussion = {
+                            "topic": start_discussion_topic,
+                            "set_number": 1,
+                            "questions": _discussion_questions_for(start_discussion_topic, 1),
+                            "current_index": -1,
+                            "awaiting_option_index": None,
+                            "answers": {},
+                        }
+                    st.session_state.chat_active_discussion = existing_discussion
+                    data = {
+                        "categories": {},
+                        "followups": [],
+                        "intent": "continue_discussion",
+                        "should_answer_direct": False,
+                        "response_mode": "conversation",
+                        "context_intent": "",
+                        "needs_clarification": False,
+                        "reply": "Choose one of the three discussion directions below, or type its number in the input bar.",
+                        "suppress_profile": True,
+                    }
+                elif discussion_answer_request:
+                    discussion_topic = (
+                        (st.session_state.get("chat_active_discussion") or {}).get("topic")
+                        or "this topic"
+                    )
+                    selected_question = discussion_answer_request.get("question") or ""
+                    if discussion_answer_request.get("clarify_only"):
+                        data = {
+                            "categories": {},
+                            "followups": [],
+                            "intent": "discussion_option_clarification",
+                            "should_answer_direct": False,
+                            "response_mode": "conversation",
+                            "context_intent": "",
+                            "needs_clarification": False,
+                            "reply": "Which direction would you like—core concepts, mechanisms, applications, or limitations? Type the option below.",
+                            "suppress_profile": True,
+                        }
+                    elif discussion_answer_request.get("reuse_answer"):
+                        data = {
+                            "categories": {},
+                            "followups": [],
+                            "intent": "discussion_answer",
+                            "should_answer_direct": False,
+                            "response_mode": "discussion_answer",
+                            "context_intent": "",
+                            "needs_clarification": False,
+                            "reply": discussion_answer_request.get("reuse_answer") or "",
+                        }
+                    else:
+                        line_limit = 20 if discussion_answer_request.get("expand") else 10
+                        option_context = discussion_answer_request.get("option") or ""
+                        data = {
+                            "categories": {},
+                            "followups": [],
+                            "intent": "discussion_answer",
+                            "should_answer_direct": True,
+                            "response_mode": "discussion_answer",
+                            "context_intent": "",
+                            "needs_clarification": False,
+                            "direct_answer_prompt": (
+                                f"Answer this discussion question about {discussion_topic}: {selected_question}\n"
+                                + (f"The user selected this direction: {option_context}.\n" if option_context else "")
+                                + f"Use no more than {line_limit} concise lines. Be clear, specific, and conversational."
+                            ),
+                        }
+                elif qm_discussion_topic:
+                    data = {
+                        "categories": {},
+                        "followups": [],
+                        "intent": "topic_discussion",
+                        "should_answer_direct": True,
+                        "response_mode": "conversation",
+                        "context_intent": "",
+                        "needs_clarification": False,
+                        "direct_answer_prompt": (
+                            "Hold a natural, intelligent conversation about "
+                            f"{qm_discussion_topic}. Give a concise orientation, then ask exactly "
+                            "one useful question about which aspect interests the user. Do not create "
+                            "a Question Map and do not sound like a textbook."
+                        ),
+                    }
+                    topic_text = qm_discussion_topic
+                else:
+                    data = fetch_interrogate(topic_text.strip())
                 st.session_state.chat["topic"] = topic_text.strip()
 
                 if "chat_bottom_topic_input" in st.session_state:
@@ -3298,9 +4146,23 @@ def page_new_chat() -> None:
                     followups = data.get("followups") or []
                     intent_name = (data.get("intent") or "").strip().lower()
                     should_answer_direct = bool(data.get("should_answer_direct", False))
+                    response_mode = (data.get("response_mode") or "standard").strip().lower()
+                    context_intent = (data.get("context_intent") or "").strip().lower()
+                    is_live_local_query = (
+                        response_mode not in {"carm", "conversation"}
+                        and _looks_like_live_local_query(topic_text)
+                    )
+
+                    if bool(data.get("needs_clarification")) and response_mode == "carm":
+                        st.session_state.chat_pending_context_clarification = {
+                            "original_request": display_topic_text,
+                            "context_intent": context_intent,
+                        }
+                    else:
+                        st.session_state.chat_pending_context_clarification = None
 
                     if should_answer_direct:
-                        if _looks_like_live_local_query(topic_text):
+                        if is_live_local_query:
                             reply = (
                                 "I can recognize this as a direct factual query, but live or location-specific "
                                 "rates need a current data source. In v0, ask me to explain the topic, or use a "
@@ -3311,22 +4173,33 @@ def page_new_chat() -> None:
                             answer_stop_reason = None
                             mode_name = "focused"
                         else:
-                            direct_resp = fetch_study_full(topic_text.strip(), mode="high", max_rounds=0)
+                            answer_prompt = (data.get("direct_answer_prompt") or topic_text.strip()).strip()
+                            generation_mode = (
+                                "conversation" if response_mode == "conversation" else "carm"
+                            )
+                            direct_resp = fetch_study_full(
+                                answer_prompt,
+                                mode=generation_mode,
+                                max_rounds=1 if generation_mode == "conversation" else 2,
+                            )
                             reply = (direct_resp.get("answer") or "").strip() or "No answer generated."
                             followups = direct_resp.get("followups") or followups
                             answer_incomplete = bool(direct_resp.get("incomplete"))
                             answer_stop_reason = direct_resp.get("stop_reason") or None
-                            mode_name = "high"
+                            mode_name = generation_mode
                     else:
                         reply = (data.get("reply") or "").strip() or "Send a topic to explore."
                         answer_incomplete = False
                         answer_stop_reason = None
                         mode_name = "focused"
 
-                    show_followups = should_answer_direct and not _looks_like_live_local_query(topic_text)
+                    show_followups = (
+                        (should_answer_direct or bool(data.get("needs_clarification")))
+                        and not is_live_local_query
+                    )
 
                     direct_payload = {
-                        "prompt": topic_text.strip(),
+                        "prompt": display_topic_text,
                         "text": reply,
                         "incomplete": answer_incomplete,
                         "stop_reason": answer_stop_reason,
@@ -3334,13 +4207,90 @@ def page_new_chat() -> None:
                         "followups": followups,
                         "intent": intent_name,
                         "should_answer_direct": should_answer_direct,
+                        "response_mode": response_mode,
+                        "context_intent": context_intent,
                         "show_followups": show_followups,
+                        "needs_clarification": bool(data.get("needs_clarification")),
+                        "profile_prompt": qm_discussion_topic or display_topic_text,
+                        "suppress_profile": bool(data.get("suppress_profile", False)),
+                        "show_action_buttons": bool(qm_discussion_topic),
+                        "clarification_title": (
+                            "Choose how to continue" if qm_discussion_topic else ""
+                        ),
+                        "discussion_answer": (
+                            {
+                                "topic": (
+                                    (st.session_state.get("chat_active_discussion") or {}).get("topic")
+                                    or ""
+                                ),
+                                "question": discussion_answer_request.get("question") or "",
+                                "index": int(discussion_answer_request.get("index", 0)),
+                                "count": len(
+                                    (st.session_state.get("chat_active_discussion") or {}).get("questions")
+                                    or []
+                                ),
+                                "expanded_answer": bool(discussion_answer_request.get("expand")),
+                            }
+                            if discussion_answer_request and not discussion_answer_request.get("clarify_only")
+                            else None
+                        ),
                         "ts": now_label(),
                     }
 
+                    if qm_discussion_topic:
+                        direct_payload["followups"] = [
+                            "Generate a Question Map",
+                            "Continue Discussion",
+                        ]
+                        direct_payload["show_followups"] = True
+                        st.session_state.chat_pending_discussion_action = {
+                            "topic": qm_discussion_topic,
+                        }
+                    elif discussion_answer_request and not discussion_answer_request.get("clarify_only"):
+                        active_state = st.session_state.get("chat_active_discussion") or {}
+                        answer_index = int(discussion_answer_request.get("index", 0))
+                        active_state["current_index"] = answer_index
+                        active_state["awaiting_option_index"] = None
+                        answers = active_state.setdefault("answers", {})
+                        answers[str(answer_index)] = reply
+                        st.session_state.chat_active_discussion = active_state
+
+                    if (
+                        response_mode == "conversation"
+                        and intent_name not in {
+                            "topic_discussion",
+                            "continue_discussion",
+                            "discussion_option_clarification",
+                            "question_map_confirmation",
+                        }
+                    ):
+                        st.session_state.chat_study_mode_established = False
+
+                    if response_mode == "carm" and not bool(data.get("needs_clarification")):
+                        if used_active_carm_context and isinstance(active_carm_context, dict):
+                            base_request = (
+                                active_carm_context.get("resolved_request")
+                                or active_carm_context.get("original_request")
+                                or ""
+                            ).strip()
+                            resolved_request = (
+                                f"{base_request} User additionally specified: {display_topic_text}."
+                            ).strip()
+                        else:
+                            resolved_request = topic_text.strip()
+
+                        st.session_state.chat_active_carm_context = {
+                            "original_request": resolved_request,
+                            "resolved_request": resolved_request[-2400:],
+                            "last_answer": reply[-3200:],
+                            "context_intent": context_intent,
+                        }
+                    elif response_mode != "carm":
+                        st.session_state.chat_active_carm_context = None
+
                     if has_existing_root:
                         _append_nc_message(
-                            topic_text.strip(),
+                            display_topic_text,
                             direct_payload,
                             "direct",
                         )
@@ -3350,8 +4300,8 @@ def page_new_chat() -> None:
                     
 
 
-                    st.session_state.chat["topic"] = topic_text.strip()
-                    st.session_state.chat_root_topic = topic_text.strip()
+                    st.session_state.chat["topic"] = display_topic_text
+                    st.session_state.chat_root_topic = display_topic_text
                     st.session_state.chat["interrogate"] = None
                     st.session_state.chat["illustrate"] = None
                     st.session_state.chat_intro = ""
@@ -3378,7 +4328,53 @@ def page_new_chat() -> None:
                 # -------------------------------------------------
                 # Real topic -> question-map path
                 # -------------------------------------------------
+                st.session_state.chat_pending_context_clarification = None
+                st.session_state.chat_active_carm_context = None
+                explicit_qm_request = bool(
+                    re.search(
+                        r"\b(question\s*map|qmap|qm)\b|\b(generate|create|build|make)\b.*\bmap\b",
+                        display_topic_text,
+                        flags=re.IGNORECASE,
+                    )
+                )
+                if (
+                    has_existing_root
+                    and prior_response_mode == "conversation"
+                    and not st.session_state.chat_study_mode_established
+                    and not explicit_qm_request
+                    and not qm_confirmation_accepted
+                ):
+                    clarification_text = (
+                        f"That sounds like a shift to a learning topic. Would you like me to "
+                        f"generate a Question Map for {display_topic_text}, or discuss it with you first?"
+                    )
+                    clarification_payload = {
+                        "prompt": display_topic_text,
+                        "text": clarification_text,
+                        "incomplete": False,
+                        "stop_reason": None,
+                        "mode": "conversation",
+                        "followups": ["Generate Question Map", "Discuss this topic"],
+                        "intent": "question_map_confirmation",
+                        "should_answer_direct": True,
+                        "response_mode": "conversation",
+                        "context_intent": "",
+                        "show_followups": True,
+                        "needs_clarification": True,
+                        "suppress_profile": True,
+                        "clarification_title": "Choose how to continue",
+                        "ts": now_label(),
+                    }
+                    st.session_state.chat_pending_qm_confirmation = {
+                        "topic": display_topic_text,
+                    }
+                    _append_nc_message(display_topic_text, clarification_payload, "direct")
+                    _persist_new_chat_session(current_sid)
+                    st.rerun()
+                    return
+                st.session_state.chat_active_discussion = None
                 if has_existing_root:
+                    st.session_state.chat_study_mode_established = True
                     intro_resp = fetch_study_full(topic_text.strip(), mode="intro", max_rounds=0)
                     intro = intro_resp.get("answer", "").strip()
                     _append_interrogate_branch(topic_text.strip(), data, intro)
@@ -3387,6 +4383,7 @@ def page_new_chat() -> None:
                     return
 
                 st.session_state.chat["topic"] = topic_text.strip()
+                st.session_state.chat_study_mode_established = True
                 st.session_state.chat_root_topic = topic_text.strip()
                 st.session_state.chat["interrogate"] = data
 
@@ -3427,6 +4424,8 @@ def page_new_chat() -> None:
             return
         try:
             current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
+            _record_chat_query(topic_text, "illustrate")
+            current_sid = _persist_new_chat_session(current_sid)
 
             if current_sid and st.session_state.chat_loaded_sid == current_sid and _session_has_existing_root():
                 _run_new_chat_branch_illustrate(topic_text.strip())
@@ -3475,6 +4474,30 @@ def page_new_chat() -> None:
         except Exception as e:
             st.error(f"Error calling /illustrate: {e}")
 
+    def _looks_like_casual_generation(prompt: str) -> bool:
+        raw_prompt = (prompt or "").lower().replace("’", "'").replace("'", "")
+        normalized = re.sub(r"[^a-z0-9 ]+", " ", raw_prompt)
+        normalized = re.sub(r"\s+", " ", normalized).strip()
+        casual_patterns = (
+            r"^(hi|hello|hey|hiya|yo|sup|good morning|good afternoon|good evening)\b",
+            r"^(how are you|how you doing|how are things|how are things going)\b",
+            r"^(hows|how is) (it|life|everything)\b",
+            r"^(whats|what is) up\b",
+            r"^what are you (doing|up to)\b",
+            r"^(thanks|thank you|bye|goodbye|see you)\b",
+            r"^(who are you|what can you do|how can you help)\b",
+        )
+        return any(re.match(pattern, normalized) for pattern in casual_patterns)
+
+    def _is_explicit_qm_prompt(prompt: str) -> bool:
+        return bool(
+            re.search(
+                r"\b(question\s*map|qmap|qm)\b|\b(generate|create|build|make)\b.*\bmap\b",
+                prompt or "",
+                flags=re.IGNORECASE,
+            )
+        )
+
     def _queue_new_chat_request(topic_text: str, action: str) -> bool:
         prompt = (topic_text or "").strip()
         action = (action or "interrogate").strip().lower()
@@ -3488,10 +4511,48 @@ def page_new_chat() -> None:
         ):
             return False
 
+        pending_qm_choice = st.session_state.get("chat_pending_qm_confirmation")
+        normalized_choice = re.sub(r"[^a-z0-9 ]+", " ", prompt.lower()).strip()
+        discussing_choice = bool(
+            isinstance(pending_qm_choice, dict)
+            and re.match(r"^(discuss|discussion|talk|explain|lets discuss|let us discuss)\b", normalized_choice)
+        )
+        active_discussion_state = st.session_state.get("chat_active_discussion")
+        discussion_interaction = bool(
+            isinstance(active_discussion_state, dict)
+            and (
+                re.fullmatch(r"[1-3]", normalized_choice)
+                or normalized_choice in {
+                    "explain more",
+                    "previous question",
+                    "previous answer",
+                    "next question",
+                    "next question set",
+                }
+                or isinstance(active_discussion_state.get("awaiting_option_index"), int)
+            )
+        )
+        interpreting_topic_shift = bool(
+            _latest_response_mode() == "conversation"
+            and not isinstance(pending_qm_choice, dict)
+            and not _is_explicit_qm_prompt(prompt)
+            and not _looks_like_casual_generation(prompt)
+        )
+
         st.session_state._nc_pending_request = {
             "prompt": prompt,
             "action": action,
             "ts": now_label(),
+            "status_mode": (
+                "thinking"
+                if (
+                    _looks_like_casual_generation(prompt)
+                    or discussing_choice
+                    or discussion_interaction
+                    or interpreting_topic_shift
+                )
+                else "generating"
+            ),
         }
         st.session_state._nc_bottom_composer_revision += 1
         st.session_state.chat_top_enter_submit = False
@@ -3500,22 +4561,31 @@ def page_new_chat() -> None:
         st.rerun()
         return True
 
-    def _render_new_chat_generation_placeholder() -> None:
+    def _render_new_chat_generation_placeholder(
+        action: str = "interrogate",
+        status_mode: str = "generating",
+    ) -> None:
         generation_icon_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
         generation_icon_data = base64.b64encode(
             generation_icon_path.read_bytes()
         ).decode("ascii")
+        status_copy = "Creating illustration..." if action == "illustrate" else (
+            "Thinking..."
+            if status_mode == "thinking"
+            else "Generating response... may take some time."
+        )
         st.markdown(
             f"""
             <style>
             .nc-generation-placeholder .nc-generation-copy {{
                 display: flex;
                 align-items: center;
-                gap: 10px;
+                gap: 9px;
                 margin: 0;
-                color: #5f6b7c;
-                font-size: 16px;
-                font-weight: 500;
+                color: #4b5565;
+                font-size: 17px;
+                font-weight: 520;
+                letter-spacing: -0.01em;
                 line-height: 1.4;
             }}
 
@@ -3527,18 +4597,20 @@ def page_new_chat() -> None:
                 display: block;
                 flex: 0 0 auto;
                 object-fit: contain;
-                animation: nc-generation-icon-breathe 1.45s ease-in-out infinite;
+                filter: drop-shadow(0 3px 7px rgba(245, 27, 63, 0.18));
+                animation: nc-generation-icon-think 1.18s ease-in-out infinite;
             }}
 
-            @keyframes nc-generation-icon-breathe {{
-                0%, 100% {{ opacity: 0.42; transform: scale(0.92); }}
-                50% {{ opacity: 1; transform: scale(1); }}
+            @keyframes nc-generation-icon-think {{
+                0%, 100% {{ opacity: 0.30; transform: scale(0.94); }}
+                46% {{ opacity: 1; transform: scale(1.025); }}
+                62% {{ opacity: 0.72; transform: scale(1); }}
             }}
             </style>
             <div class="nc-generation-placeholder">
               <div class="nc-generation-copy">
                 <img class="nc-generation-icon" src="data:image/png;base64,{generation_icon_data}" alt="">
-                Generating response....may take some time.
+                <span>{status_copy}</span>
               </div>
             </div>
             """,
@@ -3552,6 +4624,7 @@ def page_new_chat() -> None:
 
         prompt = (pending.get("prompt") or "").strip()
         action = (pending.get("action") or "interrogate").strip().lower()
+        status_mode = (pending.get("status_mode") or "generating").strip().lower()
         if not prompt:
             st.session_state._nc_pending_request = None
             return
@@ -3559,7 +4632,7 @@ def page_new_chat() -> None:
         st.session_state._nc_generating = True
         try:
             with generation_slot.container():
-                _render_new_chat_generation_placeholder()
+                _render_new_chat_generation_placeholder(action, status_mode)
                 if action == "illustrate":
                     _run_new_chat_illustrate(prompt, show_spinner=False)
                 else:
@@ -3585,7 +4658,10 @@ def page_new_chat() -> None:
 
         generation_slot = st.empty()
         with generation_slot.container():
-            _render_new_chat_generation_placeholder()
+            _render_new_chat_generation_placeholder(
+                (pending.get("action") or "interrogate").strip().lower(),
+                (pending.get("status_mode") or "generating").strip().lower(),
+            )
 
         _render_new_chat_bottom_uib()
 
@@ -4986,7 +6062,10 @@ def page_new_chat() -> None:
 
         generation_slot = st.empty()
         with generation_slot.container():
-            _render_new_chat_generation_placeholder()
+            _render_new_chat_generation_placeholder(
+                (pending_new_chat_request.get("action") or "interrogate").strip().lower(),
+                (pending_new_chat_request.get("status_mode") or "generating").strip().lower(),
+            )
 
         _render_new_chat_bottom_uib()
         _generate_pending_new_chat_response(generation_slot)
@@ -5003,6 +6082,10 @@ def page_new_chat() -> None:
             "root_response_card",
             "### Illustrations\n\n" + (illustrate_data.get("illustration_text") or ""),
             illustrate_data.get("ts") or "",
+            topic_profile=_profile_for_response(
+                st.session_state.chat_root_topic or st.session_state.chat.get("topic") or "",
+                mode_override="illustration",
+            ),
         )
 
         if st.session_state.chat_branch_answers:
@@ -5034,6 +6117,10 @@ def page_new_chat() -> None:
                             idx - 1,
                             illustration_text,
                             illustrate_payload.get("ts", ""),
+                            topic_profile=_profile_for_response(
+                                topic,
+                                mode_override="illustration",
+                            ),
                         )
                     else:
                         st.caption("No illustration generated.")
@@ -5051,6 +6138,25 @@ def page_new_chat() -> None:
                             clean_answer or raw_answer,
                             direct_payload.get("ts") or "",
                             followups if show_followups else None,
+                            bool(
+                                direct_payload.get("needs_clarification")
+                                or direct_payload.get("show_action_buttons")
+                            ),
+                            (
+                                direct_payload.get("response_mode") in {"carm", "conversation"}
+                                and not bool(direct_payload.get("needs_clarification"))
+                            ),
+                            topic_profile=(
+                                None
+                                if direct_payload.get("suppress_profile")
+                                else _profile_for_response(topic, direct_payload)
+                            ),
+                            compact_profile=(
+                                direct_payload.get("response_mode") == "conversation"
+                                and not direct_payload.get("suppress_profile")
+                            ),
+                            clarification_title=direct_payload.get("clarification_title") or "",
+                            response_payload=direct_payload,
                         )
 
                     else:
@@ -5086,13 +6192,124 @@ def page_new_chat() -> None:
             clean_answer or raw_answer,
             direct_answer.get("ts") or now_label(),
             followups if show_followups else None,
+            bool(
+                direct_answer.get("needs_clarification")
+                or direct_answer.get("show_action_buttons")
+            ),
+            (
+                direct_answer.get("response_mode") in {"carm", "conversation"}
+                and not bool(direct_answer.get("needs_clarification"))
+            ),
+            topic_profile=(
+                None
+                if direct_answer.get("suppress_profile")
+                else _profile_for_response(
+                    direct_answer.get("prompt") or st.session_state.chat.get("topic") or "",
+                    direct_answer,
+                )
+            ),
+            compact_profile=(
+                direct_answer.get("response_mode") == "conversation"
+                and not direct_answer.get("suppress_profile")
+            ),
+            clarification_title=direct_answer.get("clarification_title") or "",
+            response_payload=direct_answer,
         )
+
+        # Direct/conversational roots have the same persistent branch timeline
+        # as Question Map roots. Render every saved turn instead of showing only
+        # the first casual query after a rerun or reload.
+        if st.session_state.chat_branch_answers:
+            st.markdown("---")
+            total_branches = len(st.session_state.chat_branch_answers)
+            for idx, item in enumerate(st.session_state.chat_branch_answers, start=1):
+                kind = (item.get("kind") or "interrogate").strip().lower()
+                topic = (
+                    item.get("topic")
+                    or item.get("prompt")
+                    or f"Continued topic {idx}"
+                ).strip()
+                ts = (item.get("ts") or "").strip()
+
+                if idx == total_branches:
+                    _render_nc_latest_scroll_target()
+
+                _render_nc_user_bubble(topic, ts)
+
+                if kind == "illustrate":
+                    illustrate_payload = item.get("illustrate") or {}
+                    illustration_text = (
+                        (illustrate_payload.get("illustration_text") or "").strip()
+                        if isinstance(illustrate_payload, dict)
+                        else ""
+                    )
+                    if illustration_text:
+                        _render_branch_simple_response(
+                            idx - 1,
+                            illustration_text,
+                            illustrate_payload.get("ts", ""),
+                            topic_profile=_profile_for_response(
+                                topic,
+                                mode_override="illustration",
+                            ),
+                        )
+                    else:
+                        st.caption("No illustration generated.")
+                elif kind == "direct":
+                    branch_payload = item.get("direct_answer") or {}
+                    raw_branch_answer = (
+                        (branch_payload.get("text") or "").strip()
+                        if isinstance(branch_payload, dict)
+                        else ""
+                    )
+                    if raw_branch_answer:
+                        clean_branch_answer, embedded_branch_followups = (
+                            split_answer_and_embedded_followups(raw_branch_answer)
+                        )
+                        branch_followups = embedded_branch_followups or (
+                            branch_payload.get("followups") or []
+                        )
+                        show_branch_followups = bool(
+                            branch_payload.get("show_followups", True)
+                        )
+                        _render_branch_simple_response(
+                            idx - 1,
+                            clean_branch_answer or raw_branch_answer,
+                            branch_payload.get("ts") or ts,
+                            branch_followups if show_branch_followups else None,
+                            bool(
+                                branch_payload.get("needs_clarification")
+                                or branch_payload.get("show_action_buttons")
+                            ),
+                            (
+                                branch_payload.get("response_mode")
+                                in {"carm", "conversation"}
+                                and not bool(branch_payload.get("needs_clarification"))
+                            ),
+                            topic_profile=(
+                                None
+                                if branch_payload.get("suppress_profile")
+                                else _profile_for_response(topic, branch_payload)
+                            ),
+                            compact_profile=(
+                                branch_payload.get("response_mode") == "conversation"
+                                and not branch_payload.get("suppress_profile")
+                            ),
+                            clarification_title=branch_payload.get("clarification_title") or "",
+                            response_payload=branch_payload,
+                        )
+                    else:
+                        st.caption("No direct answer generated.")
+                else:
+                    _render_branch_question_map(idx - 1, item)
+
+                st.markdown("---")
 
         is_incomplete = bool(direct_answer.get("incomplete"))
 
         
 
-        if is_incomplete:
+        if is_incomplete and direct_answer.get("response_mode") != "carm":
                 direct_key = "__chat_direct_answer__"
 
                 if st.button("Continue", key="nc_cont_direct_answer"):
@@ -5163,6 +6380,7 @@ def page_new_chat() -> None:
 
 
 
+        _render_question_map_response_icon()
         with st.container(border=True, key="root_response_card"):
             root_ts = (
                 st.session_state.chat_root_interrogate.get("ts", "")
@@ -5419,6 +6637,10 @@ def page_new_chat() -> None:
                             idx - 1,
                             illustration_text,
                             item.get("ts") or "",
+                            topic_profile=_profile_for_response(
+                                topic,
+                                mode_override="illustration",
+                            ),
                         )
                     else:
                         st.caption("No illustration generated.")
@@ -5437,6 +6659,17 @@ def page_new_chat() -> None:
                             clean_answer or raw_answer,
                             direct_payload.get("ts") or "",
                             followups if show_followups else None,
+                            topic_profile=(
+                                None
+                                if direct_payload.get("suppress_profile")
+                                else _profile_for_response(topic, direct_payload)
+                            ),
+                            compact_profile=(
+                                direct_payload.get("response_mode") == "conversation"
+                                and not direct_payload.get("suppress_profile")
+                            ),
+                            clarification_title=direct_payload.get("clarification_title") or "",
+                            response_payload=direct_payload,
                         )
                     else:
                         st.caption("No direct answer generated.")

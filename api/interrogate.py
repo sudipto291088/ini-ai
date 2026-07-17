@@ -4,6 +4,8 @@ import json
 import re
 from typing import Dict, List, Tuple, Any, Optional
 
+from api.context_mode import build_carm_answer_prompt, classify_context
+from api.conversation_engine import build_conversation_prompt
 from api.intent_layer import detect_intent
 
 
@@ -40,6 +42,12 @@ def _llm_is_enabled() -> bool:
 # Keep robust extraction so: "tell me about AI" -> "AI"
 # ------------------------------------------------------------
 PREFIX_PATTERNS = [
+    r"^help me decide between\s+",
+    r"^help me choose between\s+",
+    r"^quiz me (?:on|about)\s+",
+    r"^compare\s+",
+    r"^give me (?:a )?(?:worked |real-world |real world )?examples? (?:of|about|for)\s+",
+    r"^show me (?:a )?(?:worked |real-world |real world )?examples? (?:of|about|for)\s+",
     r"^can you\s+",
     r"^could you please\s+",
     r"^could you explain\s+",
@@ -79,6 +87,20 @@ def extract_topic(user_text: str) -> str:
 
     lowered = text.lower()
 
+    # Normalize natural, imperfectly worded local MCP requests into a clear
+    # subject while preserving the user's actual setup intent.
+    mentions_mcp = "mcp" in lowered or "model context protocol" in lowered
+    mentions_local = any(
+        cue in lowered
+        for cue in ("local", "on my computer", "on the computer", "local system")
+    )
+    mentions_setup = any(
+        cue in lowered
+        for cue in ("add", "install", "set up", "setup", "configure", "run")
+    )
+    if mentions_mcp and mentions_local and mentions_setup:
+        return "Setting up an MCP server locally"
+
     # Strip common leading phrases (imperative)
     for pat in PREFIX_PATTERNS:
         if re.search(pat, lowered):
@@ -96,6 +118,8 @@ def extract_topic(user_text: str) -> str:
         return "Artificial Intelligence"
     if text.lower() in ["ml", "machine learning"]:
         return "Machine Learning"
+    if text.lower() == "mcp":
+        return "Model Context Protocol (MCP)"
 
     if len(text) <= 4 and text.isalpha():
         return text.upper()
@@ -458,6 +482,10 @@ def _is_llm_topic(topic: str) -> bool:
         "cloud computing",
         "docker",
         "kubernetes",
+        "mcp",
+        "mcp server",
+        "model context protocol",
+        "local mcp server",
         "quantum computing",
         "qis",
         "quantum information science",
@@ -563,7 +591,11 @@ def _extract_json_object(text: str) -> Optional[dict]:
         return None
 
 
-def _llm_generate_questions_only(topic: str, topic_type: str) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
+def _llm_generate_questions_only(
+    topic: str,
+    topic_type: str,
+    response_intent: str = "explore",
+) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
     """
     One LLM call (AI/ML only):
     - Generates a brief summary
@@ -578,8 +610,29 @@ Your job is to generate the RIGHT QUESTIONS that guide a learner
 from beginner understanding to advanced insight.
 
 TOPIC: {topic}
+LEARNER INTENT: {response_intent}
+
+INTENT ADAPTATION
+
+- explain: emphasize definitions, mental models, causes, and mechanisms
+- compare: contrast alternatives using shared criteria, trade-offs, and boundaries
+- teach: scaffold from foundations to independent application
+- quiz: progressively test recall, reasoning, and application
+- example: prioritize concrete scenarios, worked cases, and transfer
+- decide: surface decision criteria, evidence, risks, and context-dependent choices
+- explore: use the balanced learning progression below
 
 QUESTION DESIGN PRINCIPLES
+
+If the topic concerns MCP or a local MCP server, ensure the learning path covers:
+- what Model Context Protocol (MCP) is and the difference between an MCP host,
+  client, and server
+- what "running an MCP server locally" can mean in practical terms
+- prerequisites and choosing an existing server versus building one
+- local process/stdio and remote HTTP transport choices
+- registering the server in the chosen MCP host's configuration
+- environment variables, file and tool permissions, testing, logs, and security
+- platform-specific configuration details without inventing universal paths or commands
 
 Questions must follow a LEARNING LADDER:
 
@@ -817,7 +870,11 @@ def _normalize_category_keys(cats: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-def _llm_generate_questions_only_rescue(topic: str, topic_type: str) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
+def _llm_generate_questions_only_rescue(
+    topic: str,
+    topic_type: str,
+    response_intent: str = "explore",
+) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
     """
     Smaller rescue pass for AI/ML topics when the main JSON question-map fails.
     Keeps LLM-generated questions, but with a lighter prompt.
@@ -826,6 +883,10 @@ def _llm_generate_questions_only_rescue(topic: str, topic_type: str) -> Tuple[Li
 Return STRICT JSON only.
 
 Topic: {topic}
+Learner intent: {response_intent}
+
+Adapt the questions to that intent: explain mechanisms, compare shared criteria,
+teach progressively, quiz understanding, illustrate with cases, or support a decision.
 
 Use EXACTLY these category keys:
 - Orientation
@@ -979,6 +1040,7 @@ def attach_answers(categories: Dict[str, List[str]], topic: str, topic_type: str
 # ------------------------------------------------------------
 def interrogate(text: str) -> Dict[str, Any]:
     intent = detect_intent(text)
+    response_intent = str(intent.get("response_intent") or "explore")
 
     if intent.get("intent") == "empty":
         return {
@@ -995,6 +1057,50 @@ def interrogate(text: str) -> Dict[str, Any]:
             "llm_used": False,
             "intent": intent.get("intent", "empty"),
             "mode_hint": intent.get("mode_hint", "deep"),
+        }
+
+    context = classify_context(text)
+    if context.get("response_mode") == "carm":
+        context_intent = context.get("context_intent", "practical")
+
+        if context.get("clarification_required"):
+            return {
+                "topic": extract_topic(text),
+                "topic_type": context_intent,
+                "categories": {},
+                "notes": ["CARM requested one material clarification before answering."],
+                "summary": [],
+                "confidence": 0.94,
+                "needs_clarification": True,
+                "clarifying_question": context.get("clarification_question", ""),
+                "reply": context.get("clarification_question", ""),
+                "followups": context.get("clarification_options", []),
+                "llm_used": False,
+                "intent": "clarify",
+                "response_mode": "carm",
+                "context_intent": context_intent,
+                "mode_hint": "focused",
+                "should_answer_direct": False,
+            }
+
+        return {
+            "topic": extract_topic(text),
+            "topic_type": context_intent,
+            "categories": {},
+            "notes": ["CARM selected an immediate-answer response."],
+            "summary": [],
+            "confidence": 0.92,
+            "needs_clarification": False,
+            "clarifying_question": "",
+            "reply": "",
+            "followups": [],
+            "llm_used": False,
+            "intent": "practical_request",
+            "response_mode": "carm",
+            "context_intent": context_intent,
+            "direct_answer_prompt": build_carm_answer_prompt(text, context_intent),
+            "mode_hint": "focused",
+            "should_answer_direct": True,
         }
 
     # ------------------------------------------------------------
@@ -1026,10 +1132,21 @@ def interrogate(text: str) -> Dict[str, Any]:
         and any(sig in raw_text_lower for sig in EDUCATIONAL_SIGNALS)
     )
 
-    if (
-        not intent.get("should_interrogate", False)
-        and not looks_educational
+    # Explicit conversational and direct-answer intents must win over the
+    # educational-signal fallback. Otherwise words such as "how" in a natural
+    # greeting can incorrectly create a Question Map.
+    intent_name = str(intent.get("intent") or "").strip().lower()
+    intent_is_explicitly_handled = intent_name not in {"", "clarify", "topic_explore"}
+
+    if not intent.get("should_interrogate", False) and (
+        intent_is_explicitly_handled or not looks_educational
     ):
+        conversational_intents = {
+            "greeting", "thanks", "farewell", "help", "affirmation",
+            "negative", "smalltalk", "clarify",
+        }
+        use_conversation_engine = intent_name in conversational_intents
+
         return {
             "topic": "",
             "topic_type": intent.get("intent", "conversation"),
@@ -1039,12 +1156,20 @@ def interrogate(text: str) -> Dict[str, Any]:
             "confidence": float(intent.get("confidence", 0.8)),
             "needs_clarification": False,
             "clarifying_question": "",
-            "reply": intent.get("reply", ""),
-            "followups": intent.get("followups", []),
+            "reply": "" if use_conversation_engine else intent.get("reply", ""),
+            "followups": [] if use_conversation_engine else intent.get("followups", []),
             "llm_used": False,
             "intent": intent.get("intent", "conversation"),
             "mode_hint": intent.get("mode_hint", "deep"),
-            "should_answer_direct": bool(intent.get("should_answer_direct", False)),
+            "should_answer_direct": (
+                True if use_conversation_engine
+                else bool(intent.get("should_answer_direct", False))
+            ),
+            "response_mode": "conversation" if use_conversation_engine else "standard",
+            "direct_answer_prompt": (
+                build_conversation_prompt(text, intent_name)
+                if use_conversation_engine else ""
+            ),
         }
 
     clean_topic = extract_topic(text)
@@ -1070,11 +1195,17 @@ def interrogate(text: str) -> Dict[str, Any]:
         }
 
     topic_type, confidence = detect_topic_type(clean_topic)
+    intent_topic_types = {
+        "compare": "comparison",
+        "decide": "decision",
+        "teach": "how_to",
+    }
+    topic_type = intent_topic_types.get(response_intent, topic_type)
 
     # AI topic: LLM questions-only (answers on click via /answer)
     use_llm = (
     _llm_is_enabled()
-    and _is_llm_topic(clean_topic)
+    and (_is_llm_topic(clean_topic) or response_intent != "explore")
     and (generate_dynamic_answer_result is not None)
 )
 
@@ -1088,6 +1219,7 @@ def interrogate(text: str) -> Dict[str, Any]:
             summary, llm_categories = _llm_generate_questions_only(
                 clean_topic,
                 topic_type,
+                response_intent,
             )
 
             if _question_map_counts_ok(llm_categories):
@@ -1104,6 +1236,7 @@ def interrogate(text: str) -> Dict[str, Any]:
             summary, llm_categories = _llm_generate_questions_only_rescue(
                 clean_topic,
                 topic_type,
+                response_intent,
             )
 
         # STEP 3: If we got a VALID full map → proceed normally
@@ -1125,6 +1258,7 @@ def interrogate(text: str) -> Dict[str, Any]:
                 repair_summary, repair_categories = _llm_generate_questions_only_rescue(
                     clean_topic,
                     topic_type,
+                    response_intent,
                 )
 
                 for cat in CATEGORY_ORDER:
@@ -1146,6 +1280,7 @@ def interrogate(text: str) -> Dict[str, Any]:
                 ],
                 "llm_used": True,
                 "intent": intent.get("intent", "topic_explore"),
+                "response_intent": response_intent,
                 "mode_hint": intent.get("mode_hint", "deep"),
                 "followups": intent.get("followups", []),
                 "reply": "",
@@ -1168,6 +1303,7 @@ def interrogate(text: str) -> Dict[str, Any]:
             "llm_used": False,
             "needs_clarification": False,
             "intent": intent.get("intent", "topic_explore"),
+            "response_intent": response_intent,
             "mode_hint": intent.get("mode_hint", "deep"),
             "followups": intent.get("followups", []),
             "reply": "",
@@ -1189,6 +1325,7 @@ def interrogate(text: str) -> Dict[str, Any]:
         ],
         "llm_used": False,
         "intent": intent.get("intent", "topic_explore"),
+        "response_intent": response_intent,
         "mode_hint": intent.get("mode_hint", "deep"),
         "followups": intent.get("followups", []),
         "reply": "",

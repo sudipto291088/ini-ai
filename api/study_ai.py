@@ -42,6 +42,8 @@ def _normalize_mode(raw: Optional[str]) -> str:
       - high (overview)
       - quiz
       - focused (FUQ-style direct deep bullets)
+      - carm (context-aware immediate practical answer)
+      - conversation (short natural conversational turn)
     Accept common aliases.
     """
     if not raw:
@@ -73,6 +75,10 @@ def _normalize_mode(raw: Optional[str]) -> str:
         "fuq": "focused",
         "bullet": "focused",
         "bullets": "focused",
+        "carm": "carm",
+        "context": "carm",
+        "conversation": "conversation",
+        "chat": "conversation",
     }
     return alias.get(m, "deep")
 
@@ -120,6 +126,27 @@ def _build_instruction(mode: str) -> str:
             "- When clarification is required, use no more than 60 words and stop after the question.\n"
             "- Never invent current, local, or live facts.\n"
             "- End with 2 suggested follow-up questions.\n"
+        )
+
+    if mode == "carm":
+        return (
+            "You are InI in Context-Aware Response Mode.\n"
+            "Answer the practical request immediately and obey the response contract embedded in the user input.\n"
+            "- Accuracy is more important than appearing comprehensive.\n"
+            "- Never invent commands, flags, packages, paths, URLs, or system requirements.\n"
+            "- Keep the complete response under 400 words.\n"
+            "- Do not create a Question Map.\n"
+            "- Do not add a conclusion or Suggested Follow-ups after the requested final section.\n"
+        )
+
+    if mode == "conversation":
+        return (
+            "You are InI holding a natural conversation.\n"
+            "- Return only the next conversational turn.\n"
+            "- Keep it under 70 words with no headings, bullets, or Question Map.\n"
+            "- Ask at most one cross-question.\n"
+            "- Explain uncertainty naturally instead of using a generic rejection.\n"
+            "- Do not repeat stock wording.\n"
         )
 
     if mode == "quiz":

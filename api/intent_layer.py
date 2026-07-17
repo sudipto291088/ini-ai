@@ -22,6 +22,12 @@ def _normalize_compact(text: str) -> str:
     return s.strip()
 
 
+def _normalize_expressive(text: str) -> str:
+    """Normalize casual emphasis (heyyy/hellooo/noooo) for intent matching."""
+    s = _normalize_compact(text)
+    return re.sub(r"([a-z])\1{2,}", r"\1", s)
+
+
 def _contains_phrase(text: str, phrases: Iterable[str]) -> bool:
     s = _normalize_compact(text)
     return s in {_normalize_compact(p) for p in phrases}
@@ -51,6 +57,8 @@ GREETING_PHRASES = {
     "nice to see you", "nice seeing you", "whats up", "what's up",
     "how are you", "how are you doing", "how you doing", "how r u",
     "how are things", "hows it going", "how's it going", "how is it going",
+    "hows everything going", "how's everything going", "how is everything going",
+    "how are things going", "how is everything", "hows everything",
     "hows life", "how's life", "how is life", "whats going on", "what's going on",
     "anything new", "hey whats up", "hello whats up", "hey whats going on",
     "hello whats going on", "hey there cg", "hello there cg", "hi there cg",
@@ -59,6 +67,12 @@ GREETING_PHRASES = {
     "you there", "yo there", "hey assistant", "hello assistant", "hi assistant",
     "hey ai", "hello ai", "hi ai", "what up", "wassup", "wsup",
     "hru", "how u doing", "how are ya", "how ya doing", "how you been",
+}
+
+GREETING_OPENERS = {
+    "hi", "hello", "hey", "hiya", "greetings", "namaste", "hola",
+    "bonjour", "good morning", "good afternoon", "good evening",
+    "hi there", "hello there", "hey there",
 }
 
 THANKS_PHRASES = {
@@ -170,6 +184,12 @@ TECHNICAL_TOPIC_PHRASES = {
     "xgboost",
     "docker",
     "kubernetes",
+    "mcp",
+    "mcp server",
+    "model context protocol",
+    "local mcp server",
+    "mcp server in local system",
+    "mcp server on my computer",
     "sql",
     "time series",
     "time series forecasting",
@@ -202,6 +222,32 @@ QUIZ_CUES = {
     "ask me questions", "challenge me", "give me a quiz",
 }
 
+COMPARE_CUES = {
+    "compare", "comparison", "difference between", "differences between",
+    "versus", "vs", "pros and cons", "trade-offs", "tradeoffs",
+}
+
+DECIDE_CUES = {
+    "help me decide", "help me choose", "which should i", "should i choose",
+    "should i use", "which is better", "recommend between", "pick between",
+}
+
+EXAMPLE_CUES = {
+    "give me an example", "give me examples", "show me an example",
+    "show me examples", "worked example", "real world example",
+    "real-world example", "use case", "use cases",
+}
+
+TEACH_CUES = {
+    "teach me", "teach me about", "help me learn", "i want to learn",
+    "lesson on", "walk me through", "from scratch", "step by step",
+}
+
+EXPLAIN_CUES = {
+    "explain", "explain to me", "help me understand", "how does",
+    "how do", "why does", "why do", "what is", "what are",
+}
+
 OVERVIEW_CUES = {
     "overview", "high level", "summary", "briefly", "quick intro",
     "introduction", "birds eye", "big picture", "in short",
@@ -211,6 +257,7 @@ TOPIC_CUES = {
     "explain", "tell", "teach", "learn", "why", "how", "compare",
     "difference", "versus", "vs", "roadmap", "guide", "steps", "deep",
     "architecture", "system", "model", "algorithm", "concept", "theory",
+    "install", "installation", "setup", "set up", "configure", "configuration",
     "workflow", "pipeline", "framework", "fundamentals", "basics",
     "beginner", "advanced", "mechanism", "working", "internals","so teach me", "i want to learn", "i want to understand", "i want to know about", "can you explain", "can you tell me about", "can you teach me", "can you help me understand", "i want to learn about", 
     "i want to understand", "i want to know about", "explain to me", "tell me about", "teach me about", "help me understand", "what is", "what are", "who is", "who are", "when is", "when are", "where is", "where are", "how much", "how many", "how old", "which is", "which are",
@@ -236,14 +283,66 @@ def _detect_mode(text: str) -> str:
     return "deep"
 
 
+def _detect_response_intent(text: str) -> str:
+    """Detect how the learner wants the topic handled, not only what it is."""
+    s = f" {_normalize_compact(text)} "
+    ordered_cues = (
+        ("quiz", QUIZ_CUES),
+        ("decide", DECIDE_CUES),
+        ("compare", COMPARE_CUES),
+        ("example", EXAMPLE_CUES),
+        ("teach", TEACH_CUES),
+        ("explain", EXPLAIN_CUES),
+    )
+    for intent_name, cues in ordered_cues:
+        if any(f" {_normalize_compact(cue)} " in s for cue in cues):
+            return intent_name
+    return "explore"
+
+
 def _is_greeting(text: str) -> bool:
-    s = _normalize_compact(text)
-    return _contains_phrase(s, GREETING_PHRASES)
+    s = _normalize_expressive(text)
+    if _contains_phrase(s, GREETING_PHRASES):
+        return True
+
+    # Natural wellbeing questions often carry harmless time modifiers. Treat
+    # them as conversation rather than mistaking "today" for a live-data cue.
+    wellbeing_starts = {
+        "how are you", "how are you doing", "how you doing", "how r u",
+        "how are things", "hows it going", "how is it going",
+        "hows everything going", "how is everything going", "how are things going",
+        "how have you been", "how you been",
+    }
+    benign_suffix_words = {
+        "today", "now", "lately", "this", "morning", "afternoon", "evening",
+        "ini", "friend", "buddy",
+    }
+    for phrase in wellbeing_starts:
+        if s.startswith(phrase + " "):
+            suffix_words = set(s[len(phrase):].strip().split())
+            if suffix_words and suffix_words <= benign_suffix_words:
+                return True
+
+    # Accept natural compound greetings such as "Hello, how are you doing?"
+    # without swallowing educational requests such as "Hello, explain AI".
+    normalized_greetings = {_normalize_compact(p) for p in GREETING_PHRASES}
+    for opener in sorted(GREETING_OPENERS, key=len, reverse=True):
+        normalized_opener = _normalize_compact(opener)
+        if s.startswith(normalized_opener + " "):
+            remainder = s[len(normalized_opener):].strip()
+            remainder = re.sub(r"^(ini|cg|friend|buddy)\s+", "", remainder)
+            if remainder in normalized_greetings:
+                return True
+
+    return False
 
 
 def _is_thanks(text: str) -> bool:
     s = _normalize_compact(text)
-    return _contains_phrase(s, THANKS_PHRASES)
+    return (
+        _contains_phrase(s, THANKS_PHRASES)
+        or bool(re.match(r"^(thanks|thank you|thx|ty)\b", s))
+    )
 
 
 def _is_farewell(text: str) -> bool:
@@ -267,8 +366,42 @@ def _is_negative(text: str) -> bool:
 
 
 def _is_smalltalk(text: str) -> bool:
+    s = _normalize_expressive(text)
+    if _contains_phrase(s, SMALLTALK_PHRASES):
+        return True
+
+    words = set(s.split())
+    if len(s.split()) <= 18:
+        testing_words = {"test", "testing", "check", "checking", "trying"}
+        conversational_targets = {"you", "this", "it", "things"}
+        if words & testing_words and words & conversational_targets:
+            return True
+
+    # Relational/identity and capability questions are conversation turns,
+    # not educational subjects that need a Question Map.
+    relational_patterns = (
+        r"^(can|may|should|could) i call you\b",
+        r"^(what|which) (can|could|do) you (help|do)\b",
+        r"^how can you help\b",
+        r"^what should i call you\b",
+        r"^who are you\b",
+    )
+    return any(re.match(pattern, s) for pattern in relational_patterns)
+
+
+def _looks_like_contextual_utterance(text: str) -> bool:
+    """Recognize short human continuation/correction language, not exact phrases."""
     s = _normalize_compact(text)
-    return _contains_phrase(s, SMALLTALK_PHRASES)
+    words = set(s.split())
+    if not s or len(s.split()) > 18:
+        return False
+
+    deictic_words = {"it", "this", "that", "those", "there", "thing"}
+    continuation_words = {
+        "again", "still", "already", "doing", "happening", "working",
+        "meant", "mean", "same", "wrong", "right", "instead",
+    }
+    return bool(words & deictic_words) and bool(words & continuation_words)
 
 
 def _is_known_technical_topic(text: str) -> bool:
@@ -351,6 +484,11 @@ def _looks_like_topic(text: str) -> bool:
     if not s:
         return False
 
+    # Explicit learning instructions remain valid even when the user adds
+    # substantial context and the request is longer than a short noun phrase.
+    if _detect_response_intent(text) != "explore":
+        return True
+
     if _is_known_technical_topic(text):
         return True
 
@@ -412,7 +550,7 @@ def detect_intent(text: str) -> Dict[str, Any]:
     if _is_greeting(raw):
         return {
             "intent": "greeting",
-            "reply": "Hey. I am ready. Give me a topic and I will either build a structured question map or answer it directly if it is a simple factual query.",
+            "reply": "Hello. Good to see you. What would you like to understand today?",
             "followups": [
                 "Artificial Intelligence",
                 "Explain transformers",
@@ -505,9 +643,21 @@ def detect_intent(text: str) -> Dict[str, Any]:
             "confidence": 0.92,
         }
 
+    if _looks_like_contextual_utterance(raw):
+        return {
+            "intent": "clarify",
+            "reply": "",
+            "followups": [],
+            "should_interrogate": False,
+            "should_answer_direct": False,
+            "mode_hint": "focused",
+            "confidence": 0.84,
+        }
+
     if _looks_like_direct_factual_query(raw):
         return {
             "intent": "direct_factual_query",
+            "response_intent": _detect_response_intent(raw),
             "reply": "",
             "followups": [],
             "should_interrogate": False,
@@ -519,6 +669,7 @@ def detect_intent(text: str) -> Dict[str, Any]:
     if _looks_like_topic(raw):
         return {
             "intent": "topic_explore",
+            "response_intent": _detect_response_intent(raw),
             "reply": "",
             "followups": [],
             "should_interrogate": True,

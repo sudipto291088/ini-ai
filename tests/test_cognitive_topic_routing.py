@@ -44,6 +44,16 @@ class TechnicalTopicRoutingTests(unittest.TestCase):
                 self.assertEqual(extract_topic(topic), topic)
                 self.assertTrue(_is_llm_topic(topic))
 
+    def test_mcp_topics_route_to_llm(self):
+        for topic in (
+            "MCP server",
+            "Model Context Protocol",
+            "Set up an MCP server locally",
+        ):
+            with self.subTest(topic=topic):
+                self.assertEqual(detect_intent(topic)["intent"], "topic_explore")
+                self.assertTrue(_is_llm_topic(topic))
+
 
 if __name__ == "__main__":
     unittest.main()
