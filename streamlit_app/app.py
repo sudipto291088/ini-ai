@@ -24,6 +24,7 @@ from storage_sqlite import (
 from time_utils import browser_local_now
 from topic_profile import extract_topic_profile
 from response_profile import build_response_profile
+from api.product_knowledge import answer_ini_product_query
 from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
 
@@ -1691,6 +1692,8 @@ if "chat_study_mode_established" not in st.session_state:
 
 if "chat_active_carm_context" not in st.session_state:
     st.session_state.chat_active_carm_context = None
+if "chat_user_profile" not in st.session_state:
+    st.session_state.chat_user_profile = {}
 
 if "chat_root_topic" not in st.session_state:
     st.session_state.chat_root_topic = ""
@@ -1856,6 +1859,7 @@ def _empty_new_chat_state() -> Dict[str, Any]:
         "chat_query_log": [],
         "chat_active_discussion": None,
         "chat_study_mode_established": False,
+        "chat_user_profile": {},
     }
 
 
@@ -1874,6 +1878,7 @@ def _reset_new_chat_state() -> None:
     st.session_state.chat_pending_discussion_action = None
     st.session_state.chat_active_discussion = None
     st.session_state.chat_study_mode_established = False
+    st.session_state.chat_user_profile = {}
     st.session_state.chat_top_topic_input = ""
     st.session_state.chat_bottom_topic_input = ""
 
@@ -1911,6 +1916,7 @@ def _current_new_chat_payload() -> Dict[str, Any]:
         "chat_query_log": st.session_state.chat_query_log,
         "chat_active_discussion": st.session_state.chat_active_discussion,
         "chat_study_mode_established": st.session_state.chat_study_mode_established,
+        "chat_user_profile": st.session_state.chat_user_profile,
 
         "chat_root_topic": st.session_state.chat_root_topic,
         "chat_root_interrogate": st.session_state.chat_root_interrogate,
@@ -2051,6 +2057,7 @@ def _load_new_chat_session(sid: str) -> bool:
     st.session_state.chat_study_mode_established = bool(
         payload.get("chat_study_mode_established", False)
     )
+    st.session_state.chat_user_profile = payload.get("chat_user_profile") or {}
     st.session_state.chat_pending_discussion_action = None
     st.session_state.chat_top_topic_input = payload.get("topic") or ""
     st.session_state.chat_bottom_topic_input = ""
@@ -3796,8 +3803,13 @@ def page_new_chat() -> None:
 
     def _is_ambiguous_context_followup(text: str) -> bool:
         s = re.sub(r"[^a-z0-9 ]+", " ", (text or "").lower()).strip()
+        continuation = re.sub(
+            r"^(?:so|and|okay|ok|well|then)\s+",
+            "",
+            s,
+        ).strip()
         return bool(
-            s in {
+            continuation in {
                 "what else", "anything else", "tell me more", "what more",
                 "go on", "continue",
             }
@@ -3835,6 +3847,46 @@ def page_new_chat() -> None:
             if candidate and not _is_ambiguous_context_followup(candidate):
                 return candidate
         return ""
+
+    def _latest_assistant_conversation_reply() -> str:
+        """Return the latest conversational answer for short-reply resolution."""
+        for item in reversed(st.session_state.chat_branch_answers or []):
+            if not isinstance(item, dict) or item.get("kind") != "direct":
+                continue
+            payload = item.get("direct_answer") or {}
+            if not isinstance(payload, dict):
+                continue
+            if str(payload.get("response_mode") or "").lower() == "conversation":
+                text = str(payload.get("text") or "").strip()
+                if text:
+                    return text
+
+        payload = st.session_state.get("chat_direct_answer")
+        if isinstance(payload, dict) and str(payload.get("response_mode") or "").lower() == "conversation":
+            return str(payload.get("text") or "").strip()
+        return ""
+
+    def _looks_like_answer_to_last_question(text: str, previous_reply: str) -> bool:
+        """Resolve natural fragments against InI's immediately preceding question."""
+        s = re.sub(r"[^a-z0-9+#. -]+", " ", (text or "").lower()).strip()
+        words = re.findall(r"[a-z0-9+#.-]+", s)
+        if not previous_reply or "?" not in previous_reply or not (0 < len(words) <= 14):
+            return False
+        if _is_explicit_qm_prompt(text) or re.match(
+            r"^(new topic|teach me|explain|define|compare|generate|create|build|make)\b", s
+        ):
+            return False
+
+        contextual_starts = (
+            "yes", "no", "yeah", "nope", "maybe", "probably", "not really",
+            "quite", "very", "really", "pretty", "slightly", "a little",
+            "too ", "at ", "in ", "on ", "because ", "mostly ", "just ",
+        )
+        feeling_words = {
+            "comfortable", "uncomfortable", "fine", "good", "bad", "better",
+            "worse", "hot", "cold", "tired", "busy", "okay", "ok",
+        }
+        return s.startswith(contextual_starts) or bool(set(words) & feeling_words) or len(words) == 1
 
     def _dedupe_followups(items: list[str]) -> list[str]:
         out: list[str] = []
@@ -3913,6 +3965,65 @@ def page_new_chat() -> None:
 
         return raw
 
+    def _refresh_chat_user_profile(current_text: str = "") -> Dict[str, Any]:
+        """Remember a self-declared identity as chat context, never as authentication."""
+        profile = dict(st.session_state.get("chat_user_profile") or {})
+        history = [
+            str(item.get("text") or "")
+            for item in (st.session_state.get("chat_query_log") or [])
+            if isinstance(item, dict)
+        ]
+        history.append(current_text or "")
+        normalized_turns = [
+            re.sub(r"[^a-z0-9 ]+", " ", value.lower()).strip()
+            for value in history
+        ]
+
+        creator_declared = any(
+            re.search(r"\bi am\s+sid\b.*\b(?:your\s+)?creator\b", value)
+            for value in normalized_turns
+        )
+        sudipto_declared = any(value == "sudipto" for value in normalized_turns)
+        if creator_declared:
+            profile.update(
+                {
+                    "full_name": "Sudipto",
+                    "preferred_name": "Sid",
+                    "relationship": "creator",
+                    "identity_source": "self_reported",
+                }
+            )
+        elif sudipto_declared and profile.get("preferred_name") == "Sid":
+            profile["full_name"] = "Sudipto"
+
+        st.session_state.chat_user_profile = profile
+        return profile
+
+    def _chat_identity_answer(
+        text: str,
+        profile: Dict[str, Any],
+    ) -> Optional[str]:
+        normalized = re.sub(r"[^a-z0-9 ']+", " ", (text or "").lower()).strip()
+        full_name = str(profile.get("full_name") or "").strip()
+        preferred_name = str(profile.get("preferred_name") or "").strip()
+        if full_name and re.search(
+            r"\b(?:do you (?:know|remember)|what(?:'s| is)|tell me)\s+my\s+(?:full\s+)?name\b",
+            normalized,
+        ):
+            preferred_detail = (
+                f", and you prefer to be called {preferred_name}" if preferred_name else ""
+            )
+            return (
+                f"You identified yourself to me as {full_name}{preferred_detail}. "
+                "I remember that within this conversation."
+            )
+        if preferred_name and re.search(r"\bi am\s+sid\b.*\bcreator\b", normalized):
+            return (
+                f"Yes, {preferred_name}. I remember that you identified yourself as my creator, "
+                f"{full_name or preferred_name}."
+            )
+        return None
+
     def _run_new_chat_interrogate(
         topic_text: str,
         show_spinner: bool = True,
@@ -3932,10 +4043,19 @@ def page_new_chat() -> None:
         start_discussion_topic = ""
         discussion_answer_request: Optional[Dict[str, Any]] = None
         discussion_freeform_followup = False
+        contextual_previous_reply = _latest_assistant_conversation_reply()
+        chat_user_profile = _refresh_chat_user_profile(display_topic_text)
+        ini_product_answer = _chat_identity_answer(
+            display_topic_text,
+            chat_user_profile,
+        ) or answer_ini_product_query(display_topic_text)
         ini_version_query = _looks_like_ini_version_query(display_topic_text)
         contextual_followup_topic = (
             _latest_meaningful_chat_topic()
-            if _is_ambiguous_context_followup(display_topic_text)
+            if (
+                _is_ambiguous_context_followup(display_topic_text)
+                and prior_response_mode != "conversation"
+            )
             else ""
         )
         active_carm_context = st.session_state.get("chat_active_carm_context")
@@ -4064,6 +4184,21 @@ def page_new_chat() -> None:
             ):
                 discussion_freeform_followup = True
 
+        if (
+            not discussion_freeform_followup
+            and _looks_like_answer_to_last_question(
+                display_topic_text,
+                contextual_previous_reply,
+            )
+        ):
+            discussion_freeform_followup = True
+
+        if (
+            _is_ambiguous_context_followup(display_topic_text)
+            and prior_response_mode == "conversation"
+        ):
+            discussion_freeform_followup = True
+
         # A short reply such as "VSCode" answers InI's previous MCP-host
         # clarification; it must not be misrouted as a brand-new learning topic.
         pending_context = st.session_state.get("chat_pending_context_clarification")
@@ -4133,7 +4268,19 @@ def page_new_chat() -> None:
                 else nullcontext()
             )
             with spinner_context:
-                if ini_version_query:
+                if ini_product_answer:
+                    data = {
+                        "categories": {},
+                        "followups": [],
+                        "intent": "ini_product_info",
+                        "should_answer_direct": False,
+                        "response_mode": "conversation",
+                        "context_intent": "ini_product",
+                        "needs_clarification": False,
+                        "suppress_profile": False,
+                        "reply": ini_product_answer,
+                    }
+                elif ini_version_query:
                     data = {
                         "categories": {},
                         "followups": [],
@@ -4272,6 +4419,12 @@ def page_new_chat() -> None:
                         "suppress_profile": False,
                         "direct_answer_prompt": (
                             f"Continue the active conversation about {discussion_topic}. "
+                            + (
+                                f"InI's immediately preceding response was: {contextual_previous_reply}\n"
+                                if contextual_previous_reply
+                                else ""
+                            )
+                            +
                             f"The user said: {display_topic_text}\n"
                             "Respond naturally to what they mean in this conversation. Preserve context, "
                             "use a warm concise tone, and briefly bridge the change from the previous topic "
@@ -4347,6 +4500,10 @@ def page_new_chat() -> None:
                         answer_incomplete = False
                         answer_stop_reason = None
                         mode_name = "focused"
+
+                    # Repair a rare malformed contraction produced by compact
+                    # conversational generations before it reaches the UI.
+                    reply = re.sub(r"\bI[’']l\b", "I'll", reply)
 
                     show_followups = (
                         (should_answer_direct or bool(data.get("needs_clarification")))
@@ -4642,6 +4799,7 @@ def page_new_chat() -> None:
             r"^what are you (doing|up to)\b",
             r"^(thanks|thank you|bye|goodbye|see you)\b",
             r"^(who are you|what can you do|how can you help)\b",
+            r"^(it is |its )?(so |too |very |really |quite |pretty )?(hot|cold|warm|chilly|humid|windy|rainy|uncomfortable)( today| tonight| outside| here)?$",
         )
         return any(re.match(pattern, normalized) for pattern in casual_patterns)
 
@@ -4699,16 +4857,9 @@ def page_new_chat() -> None:
             "prompt": prompt,
             "action": action,
             "ts": now_label(),
-            "status_mode": (
-                "thinking"
-                if (
-                    _looks_like_casual_generation(prompt)
-                    or discussing_choice
-                    or discussion_interaction
-                    or interpreting_topic_shift
-                )
-                else "generating"
-            ),
+            # Every request begins in interpretation. The generation phase is
+            # selected only after this first state has been visibly rendered.
+            "status_mode": "thinking",
         }
         st.session_state._nc_bottom_composer_revision += 1
         st.session_state.chat_top_enter_submit = False
@@ -4728,6 +4879,8 @@ def page_new_chat() -> None:
         status_copy = "Creating illustration..." if action == "illustrate" else (
             "Thinking..."
             if status_mode == "thinking"
+            else "Generating Question Map..."
+            if status_mode == "question_map"
             else "Generating response... may take some time."
         )
         st.markdown(
@@ -4788,7 +4941,37 @@ def page_new_chat() -> None:
         st.session_state._nc_generating = True
         try:
             with generation_slot.container():
-                _render_new_chat_generation_placeholder(action, status_mode)
+                _render_new_chat_generation_placeholder(action, "thinking")
+
+            # Give the interpretation state enough time to be perceived, then
+            # reveal the operation InI has selected. Clarification stays in the
+            # Thinking state because no answer/map generation has begun.
+            time.sleep(0.65)
+            if action == "illustrate":
+                resolved_status = "generating"
+            elif _is_explicit_qm_prompt(prompt) or (
+                st.session_state.chat_study_mode_established
+                and not _looks_like_casual_generation(prompt)
+                and not _looks_like_answer_to_last_question(
+                    prompt,
+                    _latest_assistant_conversation_reply(),
+                )
+            ):
+                resolved_status = "question_map"
+            elif _looks_like_casual_generation(prompt) or _looks_like_answer_to_last_question(
+                prompt,
+                _latest_assistant_conversation_reply(),
+            ) or answer_ini_product_query(prompt):
+                resolved_status = "generating"
+            else:
+                resolved_status = "thinking"
+
+            if resolved_status != "thinking":
+                generation_slot.empty()
+                with generation_slot.container():
+                    _render_new_chat_generation_placeholder(action, resolved_status)
+
+            with generation_slot.container():
                 if action == "illustrate":
                     _run_new_chat_illustrate(prompt, show_spinner=False)
                 else:

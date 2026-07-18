@@ -22,6 +22,13 @@ class ConversationEngineTests(unittest.TestCase):
         self.assertEqual(result["response_mode"], "conversation")
         self.assertEqual(result["followups"], [])
 
+    def test_acknowledgements_never_generate_question_maps(self):
+        for message in ("its ok....", "that's fine", "all good", "no problem"):
+            with self.subTest(message=message):
+                result = interrogate(message)
+                self.assertEqual(result["response_mode"], "conversation")
+                self.assertEqual(result["categories"], {})
+
     def test_wellbeing_question_with_time_word_stays_conversational(self):
         result = interrogate("How are you doing today?")
         self.assertEqual(result["response_mode"], "conversation")
@@ -70,6 +77,11 @@ class ConversationEngineTests(unittest.TestCase):
                 result = interrogate(message)
                 self.assertEqual(result["response_mode"], "conversation")
 
+    def test_personal_weather_observation_stays_conversational(self):
+        result = interrogate("Too hot today")
+        self.assertEqual(result["response_mode"], "conversation")
+        self.assertEqual(result["categories"], {})
+
     def test_freeform_chat_request_stays_conversational(self):
         result = interrogate("nothin lets just talk")
         self.assertEqual(result["response_mode"], "conversation")
@@ -86,9 +98,11 @@ class ConversationEngineTests(unittest.TestCase):
         self.assertNotEqual(result.get("intent"), "direct_factual_query")
 
     def test_ambiguous_continuation_does_not_become_a_question_map(self):
-        result = detect_intent("what else")
-        self.assertEqual(result["intent"], "clarify")
-        self.assertFalse(result["should_interrogate"])
+        for message in ("what else", "so what else", "and what else", "well, anything else"):
+            with self.subTest(message=message):
+                result = detect_intent(message)
+                self.assertEqual(result["intent"], "clarify")
+                self.assertFalse(result["should_interrogate"])
 
     def test_explicit_question_map_for_ambiguous_words_still_obeys_command(self):
         result = interrogate("generate a question map for what else")

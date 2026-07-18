@@ -357,7 +357,18 @@ def _is_help(text: str) -> bool:
 
 def _is_affirmation(text: str) -> bool:
     s = _normalize_compact(text)
-    return _contains_phrase(s, AFFIRM_PHRASES)
+    if _contains_phrase(s, AFFIRM_PHRASES):
+        return True
+
+    # Natural acknowledgements are conversation, not learning topics.
+    return bool(
+        re.match(
+            r"^(?:(?:it is|its|that is|thats|this is|thiss)\s+)?"
+            r"(?:ok|okay|fine|alright|all good|no problem|not a problem)"
+            r"(?:\s+(?:thanks|thank you))?$",
+            s,
+        )
+    )
 
 
 def _is_negative(text: str) -> bool:
@@ -368,6 +379,17 @@ def _is_negative(text: str) -> bool:
 def _is_smalltalk(text: str) -> bool:
     s = _normalize_expressive(text)
     if _contains_phrase(s, SMALLTALK_PHRASES):
+        return True
+
+    # Everyday observations are conversation, not requests for live data or
+    # standalone learning subjects. Location-specific weather questions remain
+    # eligible for the live-data route; personal remarks do not.
+    if re.match(
+        r"^(?:it(?: is|s)?\s+)?(?:so|too|very|really|quite|pretty)?\s*"
+        r"(?:hot|cold|warm|chilly|humid|windy|rainy|uncomfortable)"
+        r"(?:\s+(?:today|tonight|outside|here))?$",
+        s,
+    ):
         return True
 
     words = set(s.split())
@@ -410,7 +432,8 @@ def _looks_like_contextual_utterance(text: str) -> bool:
         "go on",
         "continue",
     }
-    if s in contextual_followups or re.match(
+    continuation = re.sub(r"^(?:so|and|okay|ok|well|then)\s+", "", s).strip()
+    if continuation in contextual_followups or re.match(
         r"^(more|what|how) (about|on) (it|this|that|the topic)$", s
     ):
         return True
