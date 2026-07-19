@@ -1781,6 +1781,8 @@ if "_nc_pending_request" not in st.session_state:
 
 if "_nc_generating" not in st.session_state:
     st.session_state._nc_generating = False
+if "_nc_generating_started_at" not in st.session_state:
+    st.session_state._nc_generating_started_at = 0.0
 
 if "_nc_bottom_composer_revision" not in st.session_state:
     st.session_state._nc_bottom_composer_revision = 0
@@ -1914,6 +1916,7 @@ def _reset_new_chat_state() -> None:
     st.session_state.chat_root_visited_questions = set()
     st.session_state._nc_pending_request = None
     st.session_state._nc_generating = False
+    st.session_state._nc_generating_started_at = 0.0
     st.session_state._nc_bottom_composer_revision += 1
     st.session_state._nc_scroll_to_latest_response = False
     st.session_state.chat_top_enter_submit = False
@@ -4846,6 +4849,17 @@ def page_new_chat() -> None:
         ):
             return False
 
+        # Product facts are deterministic local responses. Sending them
+        # through the asynchronous-looking generation lifecycle only creates
+        # avoidable latency and can leave a stale Thinking placeholder if a
+        # hosted rerun interrupts the transition.
+        if action == "interrogate" and answer_ini_product_query(prompt):
+            st.session_state.chat_top_enter_submit = False
+            st.session_state.chat_bottom_enter_submit = False
+            st.session_state.nc_started = True
+            _run_new_chat_interrogate(prompt, show_spinner=False)
+            return True
+
         pending_qm_choice = st.session_state.get("chat_pending_qm_confirmation")
         normalized_choice = re.sub(r"[^a-z0-9 ]+", " ", prompt.lower()).strip()
         discussing_choice = bool(
@@ -4949,8 +4963,21 @@ def page_new_chat() -> None:
 
     def _generate_pending_new_chat_response(generation_slot: Any) -> None:
         pending = st.session_state._nc_pending_request
-        if not isinstance(pending, dict) or st.session_state._nc_generating:
+        if not isinstance(pending, dict):
             return
+
+        if st.session_state._nc_generating:
+            started_at = float(
+                st.session_state.get("_nc_generating_started_at") or 0.0
+            )
+            # A live run for this session executes serially. If a later rerun
+            # sees this lock, the earlier run was interrupted and cannot clear
+            # it. Recover immediately instead of displaying Thinking forever.
+            if not started_at or (time.time() - started_at) >= 2.0:
+                st.session_state._nc_generating = False
+                st.session_state._nc_generating_started_at = 0.0
+            else:
+                return
 
         prompt = (pending.get("prompt") or "").strip()
         action = (pending.get("action") or "interrogate").strip().lower()
@@ -4960,6 +4987,7 @@ def page_new_chat() -> None:
             return
 
         st.session_state._nc_generating = True
+        st.session_state._nc_generating_started_at = time.time()
         try:
             with generation_slot.container():
                 _render_new_chat_generation_placeholder(action, "thinking")
@@ -5000,6 +5028,7 @@ def page_new_chat() -> None:
         finally:
             st.session_state._nc_pending_request = None
             st.session_state._nc_generating = False
+            st.session_state._nc_generating_started_at = 0.0
 
         st.rerun()
 
