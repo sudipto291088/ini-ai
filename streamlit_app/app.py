@@ -4073,6 +4073,50 @@ def page_new_chat() -> None:
             )
         return None
 
+    def _local_conversation_answer(
+        text: str,
+        profile: Optional[Dict[str, Any]] = None,
+    ) -> Optional[str]:
+        """Handle elementary dialogue acts before any remote backend routing."""
+        normalized = re.sub(r"[^a-z0-9 ]+", " ", (text or "").lower()).strip()
+        active_profile = profile or {}
+        preferred_name = str(active_profile.get("preferred_name") or "").strip()
+        address = f", {preferred_name}" if preferred_name else ""
+
+        introduced = re.match(
+            r"^(?:i am|im|my name is|you can call me|call me)\s+"
+            r"([a-z][a-z0-9 -]{0,39})$",
+            normalized,
+        )
+        non_name_words = {
+            "only", "just", "checking", "testing", "trying", "ready", "fine",
+            "okay", "ok", "here", "back", "done", "tired", "happy", "sad",
+            "going", "working", "learning", "asking", "wondering",
+        }
+        introduced_words = introduced.group(1).split() if introduced else []
+        if (
+            introduced
+            and 1 <= len(introduced_words) <= 4
+            and not (set(introduced_words) & non_name_words)
+        ):
+            name = " ".join(part.capitalize() for part in introduced_words)
+            return f"Nice to meet you, {name}. I’ll remember that in this conversation."
+
+        if normalized in {
+            "cool", "nice", "awesome", "wonderful", "perfect", "great",
+            "all good", "sounds good", "that works",
+        }:
+            return f"Glad to hear it{address}."
+
+        if normalized in {
+            "rest for today", "lets rest for today", "let us rest for today",
+            "done for today", "thats all for today", "that is all for today",
+            "we are done for today", "call it a day",
+        }:
+            return f"Of course{address}. Rest well—we can pick this up next time."
+
+        return None
+
     def _run_new_chat_interrogate(
         topic_text: str,
         show_spinner: bool = True,
@@ -4094,6 +4138,10 @@ def page_new_chat() -> None:
         discussion_freeform_followup = False
         contextual_previous_reply = _latest_assistant_conversation_reply()
         chat_user_profile = _refresh_chat_user_profile(display_topic_text)
+        local_conversation_answer = _local_conversation_answer(
+            display_topic_text,
+            chat_user_profile,
+        )
         ini_product_answer = _chat_identity_answer(
             display_topic_text,
             chat_user_profile,
@@ -4317,7 +4365,19 @@ def page_new_chat() -> None:
                 else nullcontext()
             )
             with spinner_context:
-                if ini_product_answer:
+                if local_conversation_answer:
+                    data = {
+                        "categories": {},
+                        "followups": [],
+                        "intent": "local_conversation",
+                        "should_answer_direct": False,
+                        "response_mode": "conversation",
+                        "context_intent": "conversation",
+                        "needs_clarification": False,
+                        "suppress_profile": False,
+                        "reply": local_conversation_answer,
+                    }
+                elif ini_product_answer:
                     data = {
                         "categories": {},
                         "followups": [],
@@ -4881,7 +4941,11 @@ def page_new_chat() -> None:
         # through the asynchronous-looking generation lifecycle only creates
         # avoidable latency and can leave a stale Thinking placeholder if a
         # hosted rerun interrupts the transition.
-        if action == "interrogate" and answer_ini_product_query(prompt):
+        quick_profile = _refresh_chat_user_profile(prompt)
+        if action == "interrogate" and (
+            _local_conversation_answer(prompt, quick_profile)
+            or answer_ini_product_query(prompt)
+        ):
             st.session_state.chat_top_enter_submit = False
             st.session_state.chat_bottom_enter_submit = False
             st.session_state.nc_started = True
