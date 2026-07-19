@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import re
 import secrets
@@ -9,6 +10,13 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
 from pathlib import Path
+
+# Streamlit Cloud launches this file from ``streamlit_app/``. Add the
+# repository root explicitly so sibling application packages such as ``api``
+# resolve identically in local and hosted environments.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import requests
 import streamlit as st
@@ -24,7 +32,20 @@ from storage_sqlite import (
 from time_utils import browser_local_now
 from topic_profile import extract_topic_profile
 from response_profile import build_response_profile
-from api.product_knowledge import answer_ini_product_query
+# Product knowledge was introduced after the original Streamlit entry point.
+# Keep startup resilient while a deployment rolls between revisions: an older
+# checkout must still render instead of failing before the first frame.
+try:
+    from api.product_knowledge import answer_ini_product_query
+except ModuleNotFoundError as exc:
+    if exc.name != "api.product_knowledge":
+        raise
+
+    def answer_ini_product_query(
+        text: str,
+        user_profile: Optional[Dict[str, Any]] = None,
+    ) -> Optional[str]:
+        return None
 from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
 
