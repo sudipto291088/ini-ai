@@ -87,6 +87,27 @@ class ConversationEngineTests(unittest.TestCase):
         self.assertEqual(result["response_mode"], "conversation")
         self.assertFalse(result.get("categories"))
 
+    def test_self_introductions_are_conversation_not_topics(self):
+        for message in ("I am Sid", "My name is Maya", "You can call me Sam"):
+            with self.subTest(message=message):
+                result = interrogate(message)
+                self.assertEqual(result["response_mode"], "conversation")
+                self.assertEqual(result["intent"], "self_introduction")
+                self.assertFalse(result.get("categories"))
+
+    def test_short_acknowledgements_and_endings_are_conversational(self):
+        expected = {
+            "cool": "affirmation",
+            "rest for today": "farewell",
+            "done for today": "farewell",
+        }
+        for message, intent in expected.items():
+            with self.subTest(message=message):
+                result = interrogate(message)
+                self.assertEqual(result["response_mode"], "conversation")
+                self.assertEqual(result["intent"], intent)
+                self.assertFalse(result.get("categories"))
+
     def test_correction_about_question_map_stays_conversational(self):
         result = interrogate("why are you going to generate a question map for that?")
         self.assertEqual(result["response_mode"], "conversation")

@@ -98,6 +98,9 @@ FAREWELL_PHRASES = {
     "alright bye", "ok bye", "okay bye", "thanks bye", "bye cg", "bye ini",
     "im leaving", "i am leaving", "gotta go", "got to go", "need to go",
     "i have to go", "signing off", "logging off", "wrap it up", "thats all bye",
+    "rest for today", "let us rest for today", "lets rest for today",
+    "done for today", "that is all for today", "thats all for today",
+    "we are done for today", "call it a day",
 }
 
 HELP_PHRASES = {
@@ -122,6 +125,7 @@ AFFIRM_PHRASES = {
     "ok go ahead", "okay go ahead", "yes go ahead", "continue please",
     "please go ahead", "yeah go ahead", "sure go ahead", "lets proceed",
     "let's proceed", "that works", "perfect", "great", "fine go ahead",
+    "cool", "nice", "awesome", "wonderful", "all good",
 }
 
 NEGATIVE_PHRASES = {
@@ -374,6 +378,25 @@ def _is_affirmation(text: str) -> bool:
 def _is_negative(text: str) -> bool:
     s = _normalize_compact(text)
     return _contains_phrase(s, NEGATIVE_PHRASES)
+
+
+def _is_self_introduction(text: str) -> bool:
+    """Recognize a person introducing how they want to be addressed."""
+    s = _normalize_compact(text)
+    match = re.match(
+        r"^(?:i am|im|my name is|you can call me|call me)\s+"
+        r"([a-z][a-z0-9 -]{0,39})$",
+        s,
+    )
+    if not match:
+        return False
+    candidate_words = match.group(1).split()
+    non_name_words = {
+        "only", "just", "checking", "testing", "trying", "ready", "fine",
+        "okay", "ok", "here", "back", "done", "tired", "happy", "sad",
+        "going", "working", "learning", "asking", "wondering",
+    }
+    return 1 <= len(candidate_words) <= 4 and not (set(candidate_words) & non_name_words)
 
 
 def _is_smalltalk(text: str) -> bool:
@@ -672,6 +695,17 @@ def detect_intent(text: str) -> Dict[str, Any]:
             "should_answer_direct": False,
             "mode_hint": "deep",
             "confidence": 0.93,
+        }
+
+    if _is_self_introduction(raw):
+        return {
+            "intent": "self_introduction",
+            "reply": "Nice to meet you. I will remember how you introduced yourself in this conversation.",
+            "followups": [],
+            "should_interrogate": False,
+            "should_answer_direct": False,
+            "mode_hint": "focused",
+            "confidence": 0.98,
         }
 
     if _is_smalltalk(raw):

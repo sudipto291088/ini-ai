@@ -1143,7 +1143,7 @@ def interrogate(text: str) -> Dict[str, Any]:
     ):
         conversational_intents = {
             "greeting", "thanks", "farewell", "help", "affirmation",
-            "negative", "smalltalk", "clarify",
+            "negative", "smalltalk", "self_introduction", "clarify",
         }
         use_conversation_engine = intent_name in conversational_intents
 

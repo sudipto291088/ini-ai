@@ -4003,6 +4003,31 @@ def page_new_chat() -> None:
             for value in history
         ]
 
+        latest_normalized = normalized_turns[-1] if normalized_turns else ""
+        introduced_name = re.match(
+            r"^(?:i am|im|my name is|you can call me|call me)\s+"
+            r"([a-z][a-z0-9 -]{0,39})$",
+            latest_normalized,
+        )
+        non_name_words = {
+            "only", "just", "checking", "testing", "trying", "ready", "fine",
+            "okay", "ok", "here", "back", "done", "tired", "happy", "sad",
+            "going", "working", "learning", "asking", "wondering",
+        }
+        introduced_words = (
+            introduced_name.group(1).split() if introduced_name else []
+        )
+        if (
+            introduced_name
+            and 1 <= len(introduced_words) <= 4
+            and not (set(introduced_words) & non_name_words)
+        ):
+            display_name = " ".join(
+                part.capitalize() for part in introduced_words
+            )
+            profile["preferred_name"] = display_name
+            profile["identity_source"] = "self_reported"
+
         creator_declared = any(
             re.search(r"\bi am\s+sid\b.*\b(?:your\s+)?creator\b", value)
             for value in normalized_turns
@@ -4822,6 +4847,9 @@ def page_new_chat() -> None:
             r"^(whats|what is) up\b",
             r"^what are you (doing|up to)\b",
             r"^(thanks|thank you|bye|goodbye|see you)\b",
+            r"^(i am|im|my name is|you can call me|call me)\s+[a-z][a-z0-9 -]{0,39}$",
+            r"^(cool|nice|awesome|wonderful|perfect|great|all good)$",
+            r"^(rest for today|lets rest for today|let us rest for today|done for today|thats all for today|that is all for today|call it a day)$",
             r"^(who are you|what can you do|how can you help)\b",
             r"^(it is |its )?(so |too |very |really |quite |pretty )?(hot|cold|warm|chilly|humid|windy|rainy|uncomfortable)( today| tonight| outside| here)?$",
         )
