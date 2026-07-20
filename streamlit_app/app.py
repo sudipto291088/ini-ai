@@ -4773,10 +4773,23 @@ def page_new_chat() -> None:
                     and not explicit_qm_request
                     and not qm_confirmation_accepted
                 ):
-                    clarification_topic = (
-                        extract_learning_topic(display_topic_text).strip()
-                        or display_topic_text
-                    )
+                    # Apply extraction until the topic stabilizes. Streamlit
+                    # can retain an already-imported helper across hot reloads;
+                    # repeated application also handles stacked instructions
+                    # such as "can you explain artificial intelligence" even
+                    # when the first pass removes only "can you".
+                    clarification_topic = display_topic_text
+                    for _ in range(4):
+                        extracted_topic = extract_learning_topic(
+                            clarification_topic
+                        ).strip()
+                        if (
+                            not extracted_topic
+                            or extracted_topic.casefold()
+                            == clarification_topic.casefold()
+                        ):
+                            break
+                        clarification_topic = extracted_topic
                     clarification_text = (
                         f"That sounds like a shift to a learning topic. Would you like me to "
                         f"generate a Question Map for {clarification_topic}, or discuss it with you first?"
