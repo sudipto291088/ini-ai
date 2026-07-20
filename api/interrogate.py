@@ -111,11 +111,18 @@ def extract_topic(user_text: str) -> str:
     if mentions_mcp and mentions_local and mentions_setup:
         return "Setting up an MCP server locally"
 
-    # Strip common leading phrases (imperative)
-    for pat in PREFIX_PATTERNS:
-        if re.search(pat, lowered):
-            text = re.sub(pat, "", text, flags=re.IGNORECASE).strip()
-            lowered = text.lower()
+    # Strip chained command phrases. Natural requests often stack them (for
+    # example, "can you explain AI"), so stopping after "can you" leaves
+    # "Explain AI" masquerading as the topic. Limit the passes defensively.
+    for _ in range(4):
+        matched_prefix = False
+        for pat in PREFIX_PATTERNS:
+            if re.search(pat, lowered):
+                text = re.sub(pat, "", text, flags=re.IGNORECASE).strip()
+                lowered = text.lower()
+                matched_prefix = True
+                break
+        if not matched_prefix:
             break
 
     # Handle common "about X"

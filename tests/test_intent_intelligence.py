@@ -78,6 +78,8 @@ def test_topic_extraction_ignores_conversational_lead_ins():
         "Alright, explain spatial artificial intelligence": "Spatial artificial intelligence",
         "okay, tell me about quantum computing": "Quantum computing",
         "well, teach me machine learning": "Machine Learning",
+        "can you explain artificial intelligence": "Artificial intelligence",
+        "could you tell me about cognitive science": "Cognitive science",
     }
 
     for prompt, expected in examples.items():
