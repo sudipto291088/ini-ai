@@ -72,6 +72,18 @@ def test_specialized_intents_extract_clean_topics():
         assert extract_topic(prompt) == expected
 
 
+def test_topic_extraction_ignores_conversational_lead_ins():
+    examples = {
+        "allright, explain spatial artificial intelligence": "Spatial artificial intelligence",
+        "Alright, explain spatial artificial intelligence": "Spatial artificial intelligence",
+        "okay, tell me about quantum computing": "Quantum computing",
+        "well, teach me machine learning": "Machine Learning",
+    }
+
+    for prompt, expected in examples.items():
+        assert extract_topic(prompt) == expected
+
+
 def test_local_mcp_requests_are_treated_as_learning_topics():
     prompts = (
         "MCP server in the local system",

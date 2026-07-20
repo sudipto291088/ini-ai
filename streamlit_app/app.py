@@ -46,6 +46,7 @@ except ModuleNotFoundError as exc:
         user_profile: Optional[Dict[str, Any]] = None,
     ) -> Optional[str]:
         return None
+from api.interrogate import extract_topic as extract_learning_topic
 from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
 
@@ -4772,9 +4773,13 @@ def page_new_chat() -> None:
                     and not explicit_qm_request
                     and not qm_confirmation_accepted
                 ):
+                    clarification_topic = (
+                        extract_learning_topic(display_topic_text).strip()
+                        or display_topic_text
+                    )
                     clarification_text = (
                         f"That sounds like a shift to a learning topic. Would you like me to "
-                        f"generate a Question Map for {display_topic_text}, or discuss it with you first?"
+                        f"generate a Question Map for {clarification_topic}, or discuss it with you first?"
                     )
                     clarification_payload = {
                         "prompt": display_topic_text,
@@ -4794,7 +4799,7 @@ def page_new_chat() -> None:
                         "ts": now_label(),
                     }
                     st.session_state.chat_pending_qm_confirmation = {
-                        "topic": display_topic_text,
+                        "topic": clarification_topic,
                     }
                     _append_nc_message(display_topic_text, clarification_payload, "direct")
                     _persist_new_chat_session(current_sid)

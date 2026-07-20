@@ -82,6 +82,16 @@ def extract_topic(user_text: str) -> str:
     text = user_text.strip()
     text = re.sub(r"\s+", " ", text)
 
+    # Discourse markers belong to the conversation, not to the learning topic.
+    # Remove them before applying command-prefix extraction so natural turns
+    # such as "alright, explain spatial AI" resolve to "Spatial AI".
+    text = re.sub(
+        r"^(?:(?:all\s*right|alright|okay|ok|well|sure|great|cool)\b[\s,;:!.-]*)+",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    ).strip()
+
     # Remove trailing punctuation
     text = re.sub(r"[?.!]+$", "", text).strip()
 
