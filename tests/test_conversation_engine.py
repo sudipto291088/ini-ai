@@ -40,6 +40,7 @@ class ConversationEngineTests(unittest.TestCase):
             "How's everything going?",
             "How are things going?",
             "Hello InI, how are you?",
+            "So what's going on?",
         ):
             with self.subTest(message=message):
                 result = interrogate(message)

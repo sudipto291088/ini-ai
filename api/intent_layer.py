@@ -60,6 +60,7 @@ GREETING_PHRASES = {
     "hows everything going", "how's everything going", "how is everything going",
     "how are things going", "how is everything", "hows everything",
     "hows life", "how's life", "how is life", "whats going on", "what's going on",
+    "so whats going on", "so what's going on", "so what is going on",
     "anything new", "hey whats up", "hello whats up", "hey whats going on",
     "hello whats going on", "hey there cg", "hello there cg", "hi there cg",
     "hey there ini", "hello there ini", "hi there ini", "morning", "evening",

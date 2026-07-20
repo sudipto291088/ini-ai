@@ -4109,6 +4109,12 @@ def page_new_chat() -> None:
             return f"Glad to hear it{address}."
 
         if normalized in {
+            "whats going on", "what is going on", "so whats going on",
+            "so what is going on", "whats up", "what is up", "so whats up",
+        }:
+            return f"I’m here with you{address}. What’s going on?"
+
+        if normalized in {
             "rest for today", "lets rest for today", "let us rest for today",
             "done for today", "thats all for today", "that is all for today",
             "we are done for today", "call it a day",
@@ -4904,7 +4910,7 @@ def page_new_chat() -> None:
             r"^(hi|hello|hey|hiya|yo|sup|good morning|good afternoon|good evening)\b",
             r"^(how are you|how you doing|how are things|how are things going)\b",
             r"^(hows|how is) (it|life|everything)\b",
-            r"^(whats|what is) up\b",
+            r"^(so )?(whats|what is) (up|going on)\b",
             r"^what are you (doing|up to)\b",
             r"^(thanks|thank you|bye|goodbye|see you)\b",
             r"^(i am|im|my name is|you can call me|call me)\s+[a-z][a-z0-9 -]{0,39}$",
@@ -4946,6 +4952,8 @@ def page_new_chat() -> None:
             _local_conversation_answer(prompt, quick_profile)
             or answer_ini_product_query(prompt)
         ):
+            st.session_state._nc_bottom_composer_revision += 1
+            st.session_state.chat_top_topic_input = ""
             st.session_state.chat_top_enter_submit = False
             st.session_state.chat_bottom_enter_submit = False
             st.session_state.nc_started = True
@@ -5099,12 +5107,11 @@ def page_new_chat() -> None:
                 )
             ):
                 resolved_status = "question_map"
-            elif _looks_like_casual_generation(prompt) or _looks_like_answer_to_last_question(
-                prompt,
-                _latest_assistant_conversation_reply(),
-            ) or answer_ini_product_query(prompt):
-                resolved_status = "generating"
             else:
+                # Conversation, clarification, short follow-ups, and unknown
+                # requests remain in interpretation mode. "Generating
+                # response" is reserved for a generation operation that InI
+                # has positively identified, not every ordinary question.
                 resolved_status = "thinking"
 
             if resolved_status != "thinking":
