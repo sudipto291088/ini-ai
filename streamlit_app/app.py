@@ -530,22 +530,9 @@ div.stButton > button:hover {
   line-height: 1.4;
 }
 .ini-nc-prerequisites-panel {
-  position: relative;
-  overflow: hidden;
   padding: 18px 18px 17px;
   border-color: #e9edf3;
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.045);
-}
-.ini-nc-prerequisites-panel::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 22px;
-  width: 42px;
-  height: 2px;
-  border-radius: 999px;
-  background: #f51b3f;
-  opacity: 0.72;
 }
 .ini-nc-prerequisites-panel .ini-topic-profile__title {
   margin-bottom: 11px;
