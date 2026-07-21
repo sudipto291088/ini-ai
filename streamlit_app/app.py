@@ -539,10 +539,10 @@ div.stButton > button:hover {
   color: #17211f;
 }
 .ini-nc-prerequisites-panel__content {
-  padding: 14px 16px;
-  border: 1px solid #eef1f5;
-  border-radius: 14px;
-  background: #f7f8fa;
+  padding: 2px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: #3f4858;
   font-size: 14px;
   line-height: 1.55;
@@ -1019,8 +1019,8 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   margin: 7px 0 !important;
   padding: 14px 15px !important;
   font-size: 14px !important;
-  border-color: #edf0f4 !important;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035) !important;
+  border-color: transparent !important;
+  box-shadow: 0 15px 38px rgba(15, 23, 42, 0.10), 0 3px 10px rgba(15, 23, 42, 0.035) !important;
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   .ini-nc-qmap-marker {
@@ -1030,30 +1030,30 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) {
   margin: 8px 0 6px !important;
   padding: 0 !important;
-  border: 1px solid #e5e7eb !important;
+  border: 1px solid rgba(226, 232, 240, 0.28) !important;
   border-radius: 14px !important;
   background: #ffffff !important;
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.03) !important;
+  box-shadow: 0 15px 38px rgba(15, 23, 42, 0.10), 0 3px 10px rgba(15, 23, 42, 0.035) !important;
   transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker):hover {
-  border-color: #d8dee7 !important;
-  background: #f7f8fa !important;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05) !important;
+  border-color: rgba(226, 232, 240, 0.38) !important;
+  background: #fafbfc !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04) !important;
 }
 div[class*="st-key-qmap_answer_card_"] {
   margin: 8px 0 6px !important;
   padding: 0 !important;
-  border: 1px solid #e5e7eb !important;
+  border: 1px solid rgba(226, 232, 240, 0.28) !important;
   border-radius: 14px !important;
   background: #ffffff !important;
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.03) !important;
+  box-shadow: 0 15px 38px rgba(15, 23, 42, 0.10), 0 3px 10px rgba(15, 23, 42, 0.035) !important;
   transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
 }
 div[class*="st-key-qmap_answer_card_"]:hover {
-  border-color: #d8dee7 !important;
-  background: #f7f8fa !important;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05) !important;
+  border-color: rgba(226, 232, 240, 0.38) !important;
+  background: #fafbfc !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04) !important;
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) > div,
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) .ini_ai_inner,
@@ -1245,16 +1245,19 @@ a.ini_nc_followup_link:hover {
 div[data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"]) {
   background: linear-gradient(145deg, #ffffff 0%, #fbfcff 70%, #faf8ff 100%) !important;
 }
-div[data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"]) div.stButton > button {
+.st-key-root_question_map_panel div.stButton > button,
+div[class*="st-key-branch_question_map_panel_"] div.stButton > button {
   padding: 13px 15px !important;
-  border-color: #e9ecf2 !important;
+  border-color: transparent !important;
   border-radius: 14px !important;
   background: #ffffff !important;
+  box-shadow: 0 15px 38px rgba(15, 23, 42, 0.10), 0 3px 10px rgba(15, 23, 42, 0.035) !important;
 }
-div[data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"]) div.stButton > button:hover {
-  border-color: #f8a1b0 !important;
-  background: #fff7f8 !important;
-  box-shadow: 0 8px 20px rgba(245, 27, 63, 0.08) !important;
+.st-key-root_question_map_panel div.stButton > button:hover,
+div[class*="st-key-branch_question_map_panel_"] div.stButton > button:hover {
+  border-color: transparent !important;
+  background: #f8fafc !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04) !important;
 }
 .st-key-root_question_map_content [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div > div:first-child,
 div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div > div:first-child {
