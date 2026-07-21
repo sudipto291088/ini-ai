@@ -548,15 +548,6 @@ div.stButton > button:hover {
   line-height: 1.55;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.025);
 }
-.ini-nc-prerequisites-panel__eyebrow {
-  display: block;
-  margin-bottom: 5px;
-  color: #7b8493;
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.055em;
-  text-transform: uppercase;
-}
 .ini-topic-profile.ini-conversation-profile {
   height: 100%;
   min-height: 176px;
@@ -2504,7 +2495,6 @@ def render_nc_prerequisites(prerequisites: str) -> None:
             '<span>Prerequisites</span>'
             '</div>'
             '<div class="ini-nc-prerequisites-panel__content">'
-            '<span class="ini-nc-prerequisites-panel__eyebrow">Recommended foundation</span>'
             f'<span>{escape(text)}</span>'
             '</div>'
             '</div>'
