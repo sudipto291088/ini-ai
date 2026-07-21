@@ -30,7 +30,7 @@ from storage_sqlite import (
     rename_session,
 )
 from time_utils import browser_local_now
-from topic_profile import extract_topic_profile
+from topic_profile import extract_topic_profile, split_prerequisites
 from response_profile import build_response_profile
 # Product knowledge was introduced after the original Streamlit entry point.
 # Keep startup resilient while a deployment rolls between revisions: an older
@@ -528,6 +528,47 @@ div.stButton > button:hover {
   color: #17211f;
   font-size: 14px;
   line-height: 1.4;
+}
+.ini-nc-prerequisites-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 18px 17px;
+  border-color: #e9edf3;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.045);
+}
+.ini-nc-prerequisites-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 22px;
+  width: 42px;
+  height: 2px;
+  border-radius: 999px;
+  background: #f51b3f;
+  opacity: 0.72;
+}
+.ini-nc-prerequisites-panel .ini-topic-profile__title {
+  margin-bottom: 11px;
+  color: #17211f;
+}
+.ini-nc-prerequisites-panel__content {
+  padding: 14px 16px;
+  border: 1px solid #eef1f5;
+  border-radius: 14px;
+  background: #f7f8fa;
+  color: #3f4858;
+  font-size: 14px;
+  line-height: 1.55;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.025);
+}
+.ini-nc-prerequisites-panel__eyebrow {
+  display: block;
+  margin-bottom: 5px;
+  color: #7b8493;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
 }
 .ini-topic-profile.ini-conversation-profile {
   height: 100%;
@@ -2464,6 +2505,27 @@ def render_topic_profile(rows: list[tuple[str, str]], compact: bool = False) -> 
     )
 
 
+def render_nc_prerequisites(prerequisites: str) -> None:
+    text = re.sub(r"\s+", " ", (prerequisites or "")).strip()
+    if not text:
+        return
+
+    st.markdown(
+        (
+            '<div class="ini-topic-profile ini-nc-prerequisites-panel">'
+            '<div class="ini-topic-profile__title">'
+            '<span>Prerequisites</span>'
+            '</div>'
+            '<div class="ini-nc-prerequisites-panel__content">'
+            '<span class="ini-nc-prerequisites-panel__eyebrow">Recommended foundation</span>'
+            f'<span>{escape(text)}</span>'
+            '</div>'
+            '</div>'
+        ),
+        unsafe_allow_html=True,
+    )
+
+
 def render_nc_followup_panel(
     followups: list[str],
     sid: Optional[str] = None,
@@ -3460,8 +3522,10 @@ def page_new_chat() -> None:
             if intro:
                 clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
                 profile_rows, intro_body = extract_topic_profile(clean_intro or intro)
+                profile_rows, prerequisites = split_prerequisites(profile_rows)
 
                 render_topic_profile(profile_rows)
+                render_nc_prerequisites(prerequisites)
                 if intro_body:
                     render_nc_intro_preview(intro_body)
 
@@ -6898,8 +6962,10 @@ def page_new_chat() -> None:
             if intro:
                 clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
                 profile_rows, intro_body = extract_topic_profile(clean_intro or intro)
+                profile_rows, prerequisites = split_prerequisites(profile_rows)
 
                 render_topic_profile(profile_rows)
+                render_nc_prerequisites(prerequisites)
                 if intro_body:
                     render_nc_intro_preview(intro_body)
 

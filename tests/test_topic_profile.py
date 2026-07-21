@@ -1,6 +1,6 @@
 import unittest
 
-from streamlit_app.topic_profile import extract_topic_profile
+from streamlit_app.topic_profile import extract_topic_profile, split_prerequisites
 
 
 class TopicProfileTests(unittest.TestCase):
@@ -50,6 +50,27 @@ The descriptive introduction remains available.
 
         self.assertEqual(rows, [])
         self.assertEqual(body, answer)
+
+    def test_prerequisites_are_separated_for_an_individual_card(self):
+        rows = [
+            ("Entity type", "Concept"),
+            ("Prerequisites", "Basic algebra, probability, and programming"),
+            ("Related topics", "Machine learning, robotics"),
+        ]
+
+        profile_rows, prerequisites = split_prerequisites(rows)
+
+        self.assertEqual(
+            profile_rows,
+            [
+                ("Entity type", "Concept"),
+                ("Related topics", "Machine learning, robotics"),
+            ],
+        )
+        self.assertEqual(
+            prerequisites,
+            "Basic algebra, probability, and programming",
+        )
 
 
 if __name__ == "__main__":

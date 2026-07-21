@@ -37,7 +37,30 @@ def extract_topic_profile(text: str) -> tuple[list[tuple[str, str]], str]:
         if value.lower() in {"none", "unknown", "n/a", "not applicable"}:
             continue
         rows.append((label[:60], value[:300]))
-        if len(rows) == 6:
+        if len(rows) == 7:
             break
 
     return rows, body
+
+
+def split_prerequisites(
+    rows: list[tuple[str, str]],
+) -> tuple[list[tuple[str, str]], str]:
+    """Remove prerequisite metadata from profile rows for separate rendering."""
+    profile_rows: list[tuple[str, str]] = []
+    prerequisite = ""
+    prerequisite_labels = {
+        "prerequisite",
+        "prerequisites",
+        "prior knowledge",
+        "recommended background",
+    }
+
+    for label, value in rows or []:
+        normalized_label = re.sub(r"\s+", " ", label.lower()).strip()
+        if normalized_label in prerequisite_labels and not prerequisite:
+            prerequisite = value.strip()
+            continue
+        profile_rows.append((label, value))
+
+    return profile_rows, prerequisite

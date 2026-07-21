@@ -96,10 +96,11 @@ def _build_instruction(mode: str) -> str:
             "- Preserve and address the user's exact topic; never replace it with a broader parent topic.\n"
             "- Start with this exact machine-readable structure, using valid JSON between the tags:\n"
             "<TOPIC_PROFILE>\n"
-            '{"Entity type":"...", "Broad field":"...", "Subject":"...", "Related topics":"..."}\n'
+            '{"Entity type":"...", "Broad field":"...", "Subject":"...", "Prerequisites":"...", "Related topics":"..."}\n'
             "</TOPIC_PROFILE>\n"
             "- Include 3–6 concise profile fields and adapt their labels to the topic.\n"
             "- Use only relevant labels such as Entity type, Organization type, Manufacturer, Broad field, Parent domain, Subject, Subfield, Full form, Name type, or Related topics.\n"
+            "- Always include a Prerequisites field describing the compact knowledge foundation a learner should have before beginning this topic.\n"
             "- Omit irrelevant labels instead of writing unknown, none, or not applicable.\n"
             "- Keep profile values factual and compact; do not use Markdown inside the JSON.\n"
             "- After the closing tag, write the narrative introduction.\n"
