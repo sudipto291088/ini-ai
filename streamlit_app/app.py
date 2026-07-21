@@ -5683,16 +5683,22 @@ def page_new_chat() -> None:
             div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) > div {{
                 overflow: hidden !important;
                 padding: 0 !important;
-                border: 1px solid #d7dde3 !important;
+                border: 1px solid rgba(148, 163, 184, 0.15) !important;
                 border-radius: 18px !important;
-                background: #ffffff !important;
-                box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07) !important;
-                transition: border-color 140ms ease, box-shadow 140ms ease;
+                background: linear-gradient(180deg, #ffffff 0%, #fefefe 100%) !important;
+                box-shadow:
+                    0 22px 58px rgba(15, 23, 42, 0.09),
+                    0 5px 16px rgba(15, 23, 42, 0.04),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
+                transition: border-color 180ms ease, box-shadow 180ms ease;
             }}
 
             div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]:focus) > div {{
-                border-color: #9dbbb5 !important;
-                box-shadow: 0 9px 26px rgba(15, 23, 42, 0.09) !important;
+                border-color: rgba(100, 116, 139, 0.24) !important;
+                box-shadow:
+                    0 24px 64px rgba(15, 23, 42, 0.105),
+                    0 6px 18px rgba(15, 23, 42, 0.045),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.98) !important;
             }}
 
             div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) textarea,
