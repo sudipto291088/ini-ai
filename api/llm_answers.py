@@ -516,6 +516,12 @@ def generate_dynamic_answer_result(
         elif arch == "CURRENT":
             answer_token_limit = 220
 
+        # The New Chat introduction now carries the complete structured learning
+        # response (profile, explanation, loop, paths, map context, and journey).
+        # Its previous ORIENT ceiling could truncate the machine-readable blocks.
+        if isinstance(meta, dict) and str(meta.get("level") or "").lower() == "intro":
+            answer_token_limit = max(answer_token_limit, 2200)
+
 
     payload: Dict[str, Any] = {
         "model": DEFAULT_MODEL,

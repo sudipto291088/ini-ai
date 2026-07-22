@@ -641,6 +641,24 @@ INTENT ADAPTATION
 
 QUESTION DESIGN PRINCIPLES
 
+The seven categories must form ONE coherent investigation of the exact topic,
+not seven independent lists. Preserve the learner's wording and intent throughout.
+
+- Every question must name the topic or refer to it unambiguously.
+- Do not repeat the same learning objective within or across categories.
+- Each category must deepen what came before it; never reset to generic background.
+- Orientation defines scope, purpose, significance, and neighboring concepts.
+- Foundations covers only genuinely required conceptual or mathematical prerequisites.
+- Mechanisms decomposes the exact process, causal chain, calculation, or equation.
+- Methods & Tools covers implementation, comparison, measurement, testing, and debugging.
+- Applications transfers the mechanism into distinct contexts and decision points.
+- Pitfalls diagnoses failure modes, symptoms, trade-offs, and misconceptions.
+- Advanced / Future examines alternatives, unresolved limitations, and open questions.
+- For a precise advanced query, several Mechanisms questions must directly break down
+  that exact query instead of retreating to generic background.
+- The final question of each category should naturally prepare the next category.
+- Do not insert a calendar year unless the topic explicitly requires time-sensitive facts.
+
 If the topic concerns MCP or a local MCP server, ensure the learning path covers:
 - what Model Context Protocol (MCP) is and the difference between an MCP host,
   client, and server
@@ -751,7 +769,7 @@ IMPORTANT
 • The JSON schema must match exactly.
 
 • First question in "Orientation" MUST clearly define the topic.
-• Questions must feel modern and relevant (2024–2025 context).
+• Questions must feel technically relevant without inserting stale calendar years.
 • Focus on learning progression.
 
 Generate the questions now.
@@ -927,7 +945,22 @@ Rules:
   - Applications: 3 to 4 questions
   - Pitfalls: 3 to 4 questions
   - Advanced / Future: 3 to 4 questions
-- Questions must be specific and modern
+- Questions must be specific and technically relevant
+- Treat the categories as one progressive investigation of the exact topic, not
+  seven independent lists
+- Every question must name the topic or refer to it unambiguously
+- Do not repeat a learning objective within or across categories
+- Orientation defines scope, purpose, neighboring concepts, and significance
+- Foundations covers only genuinely required conceptual or mathematical prerequisites
+- Mechanisms decomposes the exact process, causal chain, calculation, or equation
+- Methods & Tools covers implementation, comparison, measurement, testing, and debugging
+- Applications transfers the mechanism into distinct contexts and decision points
+- Pitfalls diagnoses failure modes, symptoms, trade-offs, and misconceptions
+- Advanced / Future examines alternatives, unresolved limitations, and open questions
+- For a precise advanced query, several Mechanisms questions must directly break down
+  that exact query instead of retreating to generic background
+- The final question of each category should naturally prepare the next category
+- Do not insert a calendar year unless the topic explicitly requires time-sensitive facts
 - First question in "Orientation" must define the topic clearly
 - Do not leave any category empty
 - Do NOT generate more than 5 Orientation questions.

@@ -30,7 +30,16 @@ from storage_sqlite import (
     rename_session,
 )
 from time_utils import browser_local_now
-from topic_profile import extract_topic_profile, split_prerequisites
+from topic_profile import (
+    extract_continue_journey,
+    extract_core_explanation,
+    extract_learning_paths,
+    extract_learning_loop,
+    extract_topic_profile,
+    extract_your_question,
+    split_prerequisite_items,
+    split_prerequisites,
+)
 from response_profile import build_response_profile
 # Product knowledge was introduced after the original Streamlit entry point.
 # Keep startup resilient while a deployment rolls between revisions: an older
@@ -687,6 +696,37 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data
   font-size: 14px;
   line-height: 1.55;
 }
+.ini-nc-prerequisites-list {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 30px;
+  row-gap: 9px;
+  list-style: none;
+}
+.ini-nc-prerequisites-list li {
+  position: relative;
+  margin: 0;
+  padding-left: 16px;
+  color: #3f4858;
+  line-height: 1.5;
+}
+.ini-nc-prerequisites-list li::before {
+  position: absolute;
+  top: 0.64em;
+  left: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #9aa5b5;
+  content: "";
+}
+@media (max-width: 700px) {
+  .ini-nc-prerequisites-list {
+    grid-template-columns: 1fr;
+  }
+}
 .ini-nc-intro-copy p {
   margin: 0 0 10px;
 }
@@ -727,6 +767,338 @@ a.ini-nc-followup-panel__item:hover {
   margin-left: 14px;
   color: #667085;
   font-size: 16px;
+}
+.ini-nc-learning-paths {
+  padding: 18px;
+}
+.ini-nc-your-question {
+  padding: 20px 22px;
+}
+.ini-nc-your-question__prompt {
+  margin: 2px 0 18px;
+  color: #172033;
+  font-size: clamp(17px, 1.35vw, 21px);
+  font-weight: 550;
+  line-height: 1.48;
+  letter-spacing: -0.012em;
+}
+.ini-nc-your-question__insight {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  padding-top: 15px;
+  border-top: 1px solid #f0f2f5;
+}
+.ini-nc-your-question__label {
+  margin-bottom: 5px;
+  color: #7b8493;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+.ini-nc-your-question__value {
+  color: #465164;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+.ini-nc-core-explanation {
+  padding: 20px 22px 54px;
+}
+.ini-nc-core-explanation__overview {
+  margin: 0 0 17px;
+  color: #3f4858;
+  font-size: 14px;
+  line-height: 1.62;
+}
+.ini-nc-core-explanation__rule {
+  margin: 0 0 18px 20px;
+  color: #172033;
+  font-family: "Cambria Math", "STIX Two Math", Georgia, serif;
+  font-size: clamp(18px, 1.45vw, 22px);
+  font-weight: 700;
+  line-height: 1.45;
+}
+.ini-nc-core-explanation__variables {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 28px;
+  margin: 0 0 20px 20px;
+}
+.ini-nc-core-explanation__variable {
+  color: #566173;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ini-nc-core-explanation__variable strong {
+  color: #222d3d;
+  font-weight: 750;
+}
+.ini-nc-core-explanation__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin-left: 20px;
+}
+.ini-nc-core-explanation__step {
+  padding-left: 15px;
+  border-left: 2px solid #edf0f4;
+  color: #465164;
+  font-size: 14px;
+  line-height: 1.58;
+}
+.ini-nc-core-explanation__step strong,
+.ini-nc-core-explanation__insight strong,
+.ini-nc-core-explanation__example strong {
+  color: #202b3a;
+  font-weight: 750;
+}
+.ini-nc-core-explanation__insight,
+.ini-nc-core-explanation__example {
+  margin: 18px 0 0 20px;
+  color: #465164;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.ini-nc-learning-loop {
+  padding: 20px 22px;
+}
+.ini-nc-learning-loop__track {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px 34px;
+  margin-top: 3px;
+}
+.ini-nc-learning-loop__stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+.ini-nc-learning-loop__stage::after {
+  position: absolute;
+  top: 7px;
+  right: -23px;
+  color: #c3cad4;
+  font-size: 15px;
+  content: "→";
+}
+.ini-nc-learning-loop__stage:nth-child(3n)::after,
+.ini-nc-learning-loop__stage:last-child::after {
+  display: none;
+}
+.ini-nc-learning-loop__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #e3e7ed;
+  border-radius: 50%;
+  background: #f8f9fb;
+  color: #394456;
+  font-size: 11px;
+  font-weight: 750;
+}
+.ini-nc-learning-loop__heading {
+  margin: 1px 0 4px;
+  color: #202b3a;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+.ini-nc-learning-loop__copy {
+  color: #5a6576;
+  font-size: 13px;
+  line-height: 1.48;
+}
+.ini-nc-learning-loop__outcome {
+  margin: 19px 0 0 40px;
+  color: #465164;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.ini-nc-learning-loop__outcome strong {
+  color: #202b3a;
+  font-weight: 750;
+}
+.ini-nc-continue-journey {
+  padding: 21px 22px 20px;
+}
+.ini-nc-continue-journey__path {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 3px;
+}
+.ini-nc-continue-journey__direction {
+  position: relative;
+  min-width: 0;
+  padding: 2px 24px 3px;
+}
+.ini-nc-continue-journey__direction:first-child {
+  padding-left: 0;
+}
+.ini-nc-continue-journey__direction:last-child {
+  padding-right: 0;
+}
+.ini-nc-continue-journey__direction + .ini-nc-continue-journey__direction {
+  border-left: 1px solid #edf0f4;
+}
+.ini-nc-continue-journey__number {
+  display: block;
+  margin-bottom: 7px;
+  color: #d91639;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.ini-nc-continue-journey__heading {
+  margin-bottom: 6px;
+  color: #202b3a;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.38;
+}
+.ini-nc-continue-journey__copy {
+  color: #5a6576;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.ini-nc-continue-journey__destination {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #f0f2f5;
+  color: #465164;
+  font-size: 13px;
+  line-height: 1.58;
+}
+.ini-nc-continue-journey__destination strong {
+  color: #202b3a;
+  font-weight: 750;
+}
+div[class*="st-key-nc_core_explanation_more_"] {
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  margin: -51px 0 17px 22px;
+}
+div[class*="st-key-nc_core_explanation_more_"] button {
+  min-height: 0 !important;
+  padding: 2px 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #d91639 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+div[class*="st-key-nc_core_explanation_more_"] button:hover {
+  color: #a90f2d !important;
+  text-decoration: underline;
+}
+@media (max-width: 700px) {
+  .ini-nc-your-question__insight {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .ini-nc-core-explanation__variables {
+    grid-template-columns: 1fr;
+  }
+  .ini-nc-core-explanation__rule,
+  .ini-nc-core-explanation__variables,
+  .ini-nc-core-explanation__steps,
+  .ini-nc-core-explanation__insight,
+  .ini-nc-core-explanation__example {
+    margin-left: 10px;
+  }
+  .ini-nc-learning-loop__track {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .ini-nc-learning-loop__stage::after {
+    top: auto;
+    right: auto;
+    bottom: -15px;
+    left: 8px;
+    content: "↓";
+  }
+  .ini-nc-learning-loop__stage:nth-child(3n)::after {
+    display: block;
+  }
+  .ini-nc-learning-loop__stage:last-child::after {
+    display: none;
+  }
+  .ini-nc-learning-loop__outcome {
+    margin-left: 36px;
+  }
+  .ini-nc-continue-journey__path {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .ini-nc-continue-journey__direction,
+  .ini-nc-continue-journey__direction:first-child,
+  .ini-nc-continue-journey__direction:last-child {
+    padding: 0 0 15px;
+  }
+  .ini-nc-continue-journey__direction + .ini-nc-continue-journey__direction {
+    padding-top: 15px;
+    border-top: 1px solid #edf0f4;
+    border-left: 0;
+  }
+}
+.ini-nc-learning-paths__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 34px;
+}
+.ini-nc-learning-paths__group {
+  min-width: 0;
+}
+.ini-nc-learning-paths__heading {
+  margin: 0 0 8px;
+  color: #263142;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+.ini-nc-learning-paths__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ini-nc-learning-paths__list li {
+  position: relative;
+  margin: 0 0 7px;
+  padding-left: 15px;
+  color: #465164;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.48;
+}
+.ini-nc-learning-paths__list li:last-child {
+  margin-bottom: 0;
+}
+.ini-nc-learning-paths__list li::before {
+  position: absolute;
+  top: 0.65em;
+  left: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: #9aa5b5;
+  content: "";
+}
+@media (max-width: 700px) {
+  .ini-nc-learning-paths__grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker) {
   position: relative !important;
@@ -2491,6 +2863,11 @@ def render_nc_prerequisites(prerequisites: str) -> None:
     if not text:
         return
 
+    prerequisite_items = split_prerequisite_items(text)
+    items_markup = "".join(
+        f"<li>{escape(item)}</li>" for item in prerequisite_items
+    )
+
     st.markdown(
         (
             '<div class="ini-topic-profile ini-nc-prerequisites-panel">'
@@ -2498,7 +2875,7 @@ def render_nc_prerequisites(prerequisites: str) -> None:
             '<span>Prerequisites</span>'
             '</div>'
             '<div class="ini-nc-prerequisites-panel__content">'
-            f'<span>{escape(text)}</span>'
+            f'<ul class="ini-nc-prerequisites-list">{items_markup}</ul>'
             '</div>'
             '</div>'
         ),
@@ -2544,6 +2921,218 @@ def render_nc_followup_panel(
             '<span>Suggested Follow-ups</span>'
             '</div>'
             f'<div class="ini-topic-profile__grid">{cards}</div>'
+            '</div>'
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_nc_learning_paths(
+    learning_paths: list[tuple[str, list[str]]],
+) -> None:
+    if not learning_paths:
+        return
+
+    groups_markup = "".join(
+        (
+            '<section class="ini-nc-learning-paths__group">'
+            f'<div class="ini-nc-learning-paths__heading">{escape(label)}</div>'
+            '<ul class="ini-nc-learning-paths__list">'
+            + "".join(f"<li>{escape(question)}</li>" for question in questions)
+            + "</ul></section>"
+        )
+        for label, questions in learning_paths
+    )
+    st.markdown(
+        (
+            '<div class="ini-topic-profile ini-nc-learning-paths">'
+            '<div class="ini-topic-profile__title">'
+            '<span>Related Learning Paths</span>'
+            '</div>'
+            f'<div class="ini-nc-learning-paths__grid">{groups_markup}</div>'
+            '</div>'
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_nc_your_question(question_context: dict[str, str]) -> None:
+    question = (question_context or {}).get("Question", "").strip()
+    intent = (question_context or {}).get("Intent", "").strip()
+    learning_goal = (question_context or {}).get("Learning goal", "").strip()
+    if not question:
+        return
+
+    insights = []
+    if intent:
+        insights.append(
+            '<div><div class="ini-nc-your-question__label">What you are asking</div>'
+            f'<div class="ini-nc-your-question__value">{escape(intent)}</div></div>'
+        )
+    if learning_goal:
+        insights.append(
+            '<div><div class="ini-nc-your-question__label">What clarity looks like</div>'
+            f'<div class="ini-nc-your-question__value">{escape(learning_goal)}</div></div>'
+        )
+
+    insight_markup = (
+        f'<div class="ini-nc-your-question__insight">{"".join(insights)}</div>'
+        if insights
+        else ""
+    )
+    st.markdown(
+        (
+            '<div class="ini-topic-profile ini-nc-your-question">'
+            '<div class="ini-topic-profile__title"><span>Your Question</span></div>'
+            f'<div class="ini-nc-your-question__prompt">{escape(question)}</div>'
+            f'{insight_markup}'
+            '</div>'
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_nc_core_explanation(explanation: dict[str, Any]) -> None:
+    title = str((explanation or {}).get("Title") or "").strip()
+    overview = str((explanation or {}).get("Overview") or "").strip()
+    update_rule = str((explanation or {}).get("Update rule") or "").strip()
+    key_insight = str((explanation or {}).get("Key insight") or "").strip()
+    worked_example = str((explanation or {}).get("Worked example") or "").strip()
+    variables = (explanation or {}).get("Variables") or []
+    steps = (explanation or {}).get("Steps") or []
+    if not title or not overview:
+        return
+
+    control_id = abs(hash(repr(explanation)))
+    open_key = f"nc_core_explanation_open_{control_id}"
+    button_key = f"nc_core_explanation_more_{control_id}"
+    expanded = bool(st.session_state.get(open_key, False))
+    is_long = len(steps) > 3 or bool(worked_example)
+    visible_steps = steps if expanded or not is_long else steps[:3]
+
+    variable_markup = "".join(
+        '<div class="ini-nc-core-explanation__variable">'
+        f'<strong>{escape(str(symbol))}</strong> — {escape(str(meaning))}'
+        '</div>'
+        for symbol, meaning in variables
+    )
+    steps_markup = "".join(
+        '<div class="ini-nc-core-explanation__step">'
+        f'<strong>{escape(str(step.get("Heading") or ""))}</strong><br>'
+        f'{escape(str(step.get("Explanation") or ""))}'
+        '</div>'
+        for step in visible_steps
+        if isinstance(step, dict)
+    )
+    example_markup = (
+        '<div class="ini-nc-core-explanation__example">'
+        f'<strong>Worked example</strong><br>{escape(worked_example)}</div>'
+        if worked_example and (expanded or not is_long)
+        else ""
+    )
+    insight_markup = (
+        '<div class="ini-nc-core-explanation__insight">'
+        f'<strong>Key insight:</strong> {escape(key_insight)}</div>'
+        if key_insight
+        else ""
+    )
+
+    st.markdown(
+        (
+            '<div class="ini-topic-profile ini-nc-core-explanation">'
+            f'<div class="ini-topic-profile__title"><span>{escape(title)}</span></div>'
+            f'<div class="ini-nc-core-explanation__overview">{escape(overview)}</div>'
+            + (
+                f'<div class="ini-nc-core-explanation__rule">{escape(update_rule)}</div>'
+                if update_rule
+                else ""
+            )
+            + (
+                f'<div class="ini-nc-core-explanation__variables">{variable_markup}</div>'
+                if variable_markup
+                else ""
+            )
+            + f'<div class="ini-nc-core-explanation__steps">{steps_markup}</div>'
+            + insight_markup
+            + example_markup
+            + '</div>'
+        ),
+        unsafe_allow_html=True,
+    )
+    if is_long and st.button(
+        "Show less" if expanded else "More",
+        key=button_key,
+        type="tertiary",
+    ):
+        st.session_state[open_key] = not expanded
+        st.rerun()
+
+
+def render_nc_learning_loop(learning_loop: dict[str, Any]) -> None:
+    stages = (learning_loop or {}).get("Stages") or []
+    outcome = str((learning_loop or {}).get("Outcome") or "").strip()
+    if not stages:
+        return
+
+    stages_markup = "".join(
+        (
+            '<div class="ini-nc-learning-loop__stage">'
+            f'<span class="ini-nc-learning-loop__number">{index}</span>'
+            '<div>'
+            f'<div class="ini-nc-learning-loop__heading">{escape(str(stage.get("Heading") or ""))}</div>'
+            f'<div class="ini-nc-learning-loop__copy">{escape(str(stage.get("Explanation") or ""))}</div>'
+            '</div></div>'
+        )
+        for index, stage in enumerate(stages, start=1)
+        if isinstance(stage, dict)
+    )
+    outcome_markup = (
+        '<div class="ini-nc-learning-loop__outcome">'
+        f'<strong>What the loop achieves:</strong> {escape(outcome)}</div>'
+        if outcome
+        else ""
+    )
+    st.markdown(
+        (
+            '<div class="ini-topic-profile ini-nc-learning-loop">'
+            '<div class="ini-topic-profile__title"><span>The Complete Learning Loop</span></div>'
+            f'<div class="ini-nc-learning-loop__track">{stages_markup}</div>'
+            f'{outcome_markup}'
+            '</div>'
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_nc_continue_journey(journey: dict[str, Any]) -> None:
+    directions = (journey or {}).get("Directions") or []
+    destination = str((journey or {}).get("Destination") or "").strip()
+    if not directions:
+        return
+
+    directions_markup = "".join(
+        (
+            '<div class="ini-nc-continue-journey__direction">'
+            f'<span class="ini-nc-continue-journey__number">0{index}</span>'
+            f'<div class="ini-nc-continue-journey__heading">{escape(str(direction.get("Heading") or ""))}</div>'
+            f'<div class="ini-nc-continue-journey__copy">{escape(str(direction.get("Explanation") or ""))}</div>'
+            '</div>'
+        )
+        for index, direction in enumerate(directions, start=1)
+        if isinstance(direction, dict)
+    )
+    destination_markup = (
+        '<div class="ini-nc-continue-journey__destination">'
+        f'<strong>Your next milestone:</strong> {escape(destination)}</div>'
+        if destination
+        else ""
+    )
+    st.markdown(
+        (
+            '<div class="ini-topic-profile ini-nc-continue-journey">'
+            '<div class="ini-topic-profile__title"><span>Continue Your Journey</span></div>'
+            f'<div class="ini-nc-continue-journey__path">{directions_markup}</div>'
+            f'{destination_markup}'
             '</div>'
         ),
         unsafe_allow_html=True,
@@ -3497,10 +4086,26 @@ def page_new_chat() -> None:
         _render_question_map_response_icon()
         with st.container(border=True, key=f"branch_response_card_{branch_idx}"):
             branch_ts = branch.get("ts") or now_label()
+            continue_journey: dict[str, Any] = {}
 
             intro = (branch.get("intro") or "").strip()
             if intro:
-                clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
+                learning_paths, intro_without_paths = extract_learning_paths(intro)
+                your_question, intro_without_question = extract_your_question(
+                    intro_without_paths
+                )
+                core_explanation, intro_without_core = extract_core_explanation(
+                    intro_without_question
+                )
+                learning_loop, intro_without_loop = extract_learning_loop(
+                    intro_without_core
+                )
+                continue_journey, intro_without_journey = extract_continue_journey(
+                    intro_without_loop
+                )
+                clean_intro, intro_followups = split_answer_and_embedded_followups(
+                    intro_without_journey
+                )
                 profile_rows, intro_body = extract_topic_profile(clean_intro or intro)
                 profile_rows, prerequisites = split_prerequisites(profile_rows)
 
@@ -3508,8 +4113,13 @@ def page_new_chat() -> None:
                 render_nc_prerequisites(prerequisites)
                 if intro_body:
                     render_nc_intro_preview(intro_body)
+                render_nc_your_question(your_question)
+                render_nc_core_explanation(core_explanation)
+                render_nc_learning_loop(learning_loop)
 
-                if intro_followups:
+                if learning_paths:
+                    render_nc_learning_paths(learning_paths)
+                elif intro_followups:
                     render_nc_followup_panel(
                         intro_followups,
                         st.session_state.chat_active_id,
@@ -3721,6 +4331,7 @@ def page_new_chat() -> None:
 
                                 question_map_panel.markdown("---")
 
+            render_nc_continue_journey(continue_journey)
             st.markdown(
                 f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{branch_ts}</div>",
                 unsafe_allow_html=True,
@@ -6943,10 +7554,26 @@ def page_new_chat() -> None:
                 if isinstance(st.session_state.chat_root_interrogate, dict)
                 else now_label()
             )
+            continue_journey: dict[str, Any] = {}
 
             intro = st.session_state.chat_intro
             if intro:
-                clean_intro, intro_followups = split_answer_and_embedded_followups(intro)
+                learning_paths, intro_without_paths = extract_learning_paths(intro)
+                your_question, intro_without_question = extract_your_question(
+                    intro_without_paths
+                )
+                core_explanation, intro_without_core = extract_core_explanation(
+                    intro_without_question
+                )
+                learning_loop, intro_without_loop = extract_learning_loop(
+                    intro_without_core
+                )
+                continue_journey, intro_without_journey = extract_continue_journey(
+                    intro_without_loop
+                )
+                clean_intro, intro_followups = split_answer_and_embedded_followups(
+                    intro_without_journey
+                )
                 profile_rows, intro_body = extract_topic_profile(clean_intro or intro)
                 profile_rows, prerequisites = split_prerequisites(profile_rows)
 
@@ -6954,8 +7581,13 @@ def page_new_chat() -> None:
                 render_nc_prerequisites(prerequisites)
                 if intro_body:
                     render_nc_intro_preview(intro_body)
+                render_nc_your_question(your_question)
+                render_nc_core_explanation(core_explanation)
+                render_nc_learning_loop(learning_loop)
 
-                if intro_followups:
+                if learning_paths:
+                    render_nc_learning_paths(learning_paths)
+                elif intro_followups:
                     render_nc_followup_panel(
                         intro_followups,
                         st.session_state.chat_active_id,
@@ -7161,6 +7793,7 @@ def page_new_chat() -> None:
 
                                 question_map_panel.markdown("---")
 
+            render_nc_continue_journey(continue_journey)
             st.markdown(
                 f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{root_ts}</div>",
                 unsafe_allow_html=True,
