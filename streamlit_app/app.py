@@ -7,7 +7,7 @@ import base64
 from contextlib import nullcontext
 from html import escape
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import urlencode
 from pathlib import Path
 
@@ -55,6 +55,19 @@ except ModuleNotFoundError as exc:
         user_profile: Optional[Dict[str, Any]] = None,
     ) -> Optional[str]:
         return None
+
+try:
+    from api.context_resolution import find_contextual_topic_match
+except ModuleNotFoundError as exc:
+    if exc.name != "api.context_resolution":
+        raise
+
+    def find_contextual_topic_match(
+        query: str,
+        candidates: Iterable[str],
+    ) -> Optional[Dict[str, object]]:
+        return None
+
 from api.interrogate import extract_topic as extract_learning_topic
 from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
@@ -4501,6 +4514,16 @@ def page_new_chat() -> None:
         for item in reversed(st.session_state.chat_branch_answers or []):
             if not isinstance(item, dict):
                 continue
+            if item.get("kind") == "direct":
+                direct_payload = item.get("direct_answer") or {}
+                if (
+                    isinstance(direct_payload, dict)
+                    and direct_payload.get("intent") in {
+                        "context_topic_correction",
+                        "context_topic_correction_accepted",
+                    }
+                ):
+                    continue
             interrogate_payload = item.get("interrogate") or {}
             if (
                 item.get("kind") == "interrogate"
@@ -4527,6 +4550,60 @@ def page_new_chat() -> None:
             if candidate and not _is_ambiguous_context_followup(candidate):
                 return candidate
         return ""
+
+    def _latest_structured_chat_topic() -> str:
+        """Return the subject that supplied the active structured context."""
+        for item in reversed(st.session_state.chat_branch_answers or []):
+            if not isinstance(item, dict) or item.get("kind") != "interrogate":
+                continue
+            candidate = str(item.get("topic") or "").strip()
+            if candidate:
+                return candidate
+        return str(st.session_state.get("chat_root_topic") or "").strip()
+
+    def _active_topic_context_candidates() -> List[str]:
+        """Collect short subject names from the latest structured response."""
+        candidates: List[str] = []
+        structured_items = [
+            item
+            for item in reversed(st.session_state.chat_branch_answers or [])
+            if isinstance(item, dict) and item.get("kind") == "interrogate"
+        ]
+        if not structured_items and st.session_state.chat_root_intro:
+            structured_items = [
+                {
+                    "topic": st.session_state.chat_root_topic,
+                    "intro": st.session_state.chat_root_intro,
+                }
+            ]
+
+        for item in structured_items[:1]:
+            topic = str(item.get("topic") or "").strip()
+            if topic:
+                candidates.append(topic)
+
+            intro = str(item.get("intro") or "").strip()
+            if not intro:
+                continue
+            profile_rows, _ = extract_topic_profile(intro)
+            for label, value in profile_rows:
+                normalized_label = re.sub(r"[^a-z]+", " ", label.lower()).strip()
+                if normalized_label not in {"subject", "related topics"}:
+                    continue
+                candidates.extend(
+                    part.strip()
+                    for part in re.split(r"[;,|]", value or "")
+                    if part.strip()
+                )
+
+        deduplicated: List[str] = []
+        seen: set[str] = set()
+        for candidate in candidates:
+            key = re.sub(r"[^a-z0-9]+", " ", candidate.lower()).strip()
+            if key and key not in seen:
+                seen.add(key)
+                deduplicated.append(candidate)
+        return deduplicated
 
     def _latest_assistant_conversation_reply() -> str:
         """Return the latest conversational answer for short-reply resolution."""
@@ -4809,6 +4886,68 @@ def page_new_chat() -> None:
         ):
             topic_text = _resolve_typed_followup(topic_text)
         display_topic_text = topic_text.strip()
+        context_correction_question = ""
+        context_correction_accepted = False
+        pending_context_correction = st.session_state.get("chat_pending_context_correction")
+        normalized_context_reply = re.sub(
+            r"[^a-z0-9 ]+",
+            " ",
+            display_topic_text.lower(),
+        ).strip()
+        should_check_context_match = True
+        if isinstance(pending_context_correction, dict):
+            correction_candidate = str(
+                pending_context_correction.get("candidate") or ""
+            ).strip()
+            normalized_candidate = re.sub(
+                r"[^a-z0-9 ]+",
+                " ",
+                correction_candidate.lower(),
+            ).strip()
+            if correction_candidate and (
+                re.match(r"^(yes|yeah|yep|correct|right|sure|continue|go ahead)\b", normalized_context_reply)
+                or normalized_context_reply == normalized_candidate
+            ):
+                topic_text = correction_candidate
+                context_correction_accepted = True
+                should_check_context_match = False
+            elif re.match(r"^(no|nope|incorrect|neither)\b", normalized_context_reply):
+                should_check_context_match = False
+            st.session_state.chat_pending_context_correction = None
+        if should_check_context_match:
+            contextual_match = find_contextual_topic_match(
+                display_topic_text,
+                _active_topic_context_candidates(),
+            )
+            if contextual_match:
+                correction_candidate = str(
+                    contextual_match.get("candidate") or ""
+                ).strip()
+                active_topic = _latest_structured_chat_topic()
+                if correction_candidate:
+                    normalized_active_topic = re.sub(
+                        r"[^a-z0-9 ]+",
+                        " ",
+                        active_topic.lower(),
+                    ).strip()
+                    normalized_correction = re.sub(
+                        r"[^a-z0-9 ]+",
+                        " ",
+                        correction_candidate.lower(),
+                    ).strip()
+                    context_correction_question = (
+                        f"Did you mean {correction_candidate}"
+                        + (
+                            f" in relation to {active_topic}"
+                            if active_topic and normalized_active_topic != normalized_correction
+                            else ""
+                        )
+                        + "? I want to confirm before answering."
+                    )
+                    st.session_state.chat_pending_context_correction = {
+                        "candidate": correction_candidate,
+                        "source_query": display_topic_text,
+                    }
         prior_response_mode = _latest_response_mode()
         qm_confirmation_accepted = False
         qm_discussion_topic = ""
@@ -5044,7 +5183,19 @@ def page_new_chat() -> None:
                 else nullcontext()
             )
             with spinner_context:
-                if local_conversation_answer:
+                if context_correction_question:
+                    data = {
+                        "categories": {},
+                        "followups": [],
+                        "intent": "context_topic_correction",
+                        "should_answer_direct": False,
+                        "response_mode": "conversation",
+                        "context_intent": "active_topic",
+                        "needs_clarification": False,
+                        "suppress_profile": True,
+                        "reply": context_correction_question,
+                    }
+                elif local_conversation_answer:
                     data = {
                         "categories": {},
                         "followups": [],
@@ -5224,6 +5375,10 @@ def page_new_chat() -> None:
                     }
                 else:
                     data = fetch_interrogate(topic_text.strip())
+                if context_correction_accepted and not (data.get("categories") or {}):
+                    data["intent"] = "context_topic_correction_accepted"
+                    data["context_intent"] = "active_topic"
+                    data["suppress_profile"] = True
                 st.session_state.chat["topic"] = topic_text.strip()
 
                 if "chat_bottom_topic_input" in st.session_state:
