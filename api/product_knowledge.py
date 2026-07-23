@@ -98,6 +98,22 @@ def answer_ini_product_query(
             "directions so you can see what to ask next and choose your own learning path."
         )
 
+    if re.search(
+        r"\b(what|which).*(topics?|subjects?|areas?).*(do you know|can you cover|can you help|support)\b",
+        s,
+    ) or re.search(
+        r"\b(what all|which).*(do you know|can you cover).*(topics?|subjects?|areas?)\b",
+        s,
+    ):
+        return (
+            "I am strongest today at structured learning around artificial intelligence, machine "
+            "learning, data science, computer science, software and cloud concepts such as "
+            "Kubernetes, quantum computing, and cognitive science. I can discuss other educational "
+            "topics too, but the depth and reliability may vary. I do not claim verified specialist "
+            "support for medical, legal, or financial advice. Give me a topic and I will tell you "
+            "honestly whether I can explain it, discuss it, or build a reliable Question Map."
+        )
+
     if re.search(r"\b(what can|how can|capabilities|features|help me|use you|do for me)\b", s):
         return (
             "I can hold a conversation, clarify ambiguous requests, explain topics directly, build "

@@ -4770,6 +4770,23 @@ def page_new_chat() -> None:
         }:
             return f"I’m here with you{address}. What’s going on?"
 
+        if re.search(
+            r"\b(what|which).*(topics?|subjects?|areas?).*(do you know|can you cover|can you help|support)\b",
+            normalized,
+        ) or re.search(
+            r"\b(what all|which).*(do you know|can you cover).*(topics?|subjects?|areas?)\b",
+            normalized,
+        ):
+            return (
+                "I am strongest today at structured learning around artificial intelligence, "
+                "machine learning, data science, computer science, software and cloud concepts "
+                "such as Kubernetes, quantum computing, and cognitive science. I can discuss "
+                "other educational topics too, but the depth and reliability may vary. I do not "
+                "claim verified specialist support for medical, legal, or financial advice. Give "
+                "me a topic and I will tell you honestly whether I can explain it, discuss it, or "
+                "build a reliable Question Map."
+            )
+
         if normalized in {
             "rest for today", "lets rest for today", "let us rest for today",
             "done for today", "thats all for today", "that is all for today",
@@ -5626,7 +5643,6 @@ def page_new_chat() -> None:
             or answer_ini_product_query(prompt)
         ):
             st.session_state._nc_bottom_composer_revision += 1
-            st.session_state.chat_top_topic_input = ""
             st.session_state.chat_top_enter_submit = False
             st.session_state.chat_bottom_enter_submit = False
             st.session_state.nc_started = True
@@ -5826,7 +5842,7 @@ def page_new_chat() -> None:
 
         _render_new_chat_bottom_uib()
 
-        components.html(
+        st.iframe(
             """
             <script>
             requestAnimationFrame(() => {
@@ -5840,8 +5856,8 @@ def page_new_chat() -> None:
             });
             </script>
             """,
-            height=0,
-            scrolling=False,
+            height=1,
+            tab_index=-1,
         )
 
         _generate_pending_new_chat_response(generation_slot)
@@ -5856,7 +5872,7 @@ def page_new_chat() -> None:
         if not st.session_state._nc_scroll_to_latest_response:
             return
 
-        components.html(
+        st.iframe(
             """
             <script>
             requestAnimationFrame(() => {
@@ -5889,13 +5905,13 @@ def page_new_chat() -> None:
             });
             </script>
             """,
-            height=0,
-            scrolling=False,
+            height=1,
+            tab_index=-1,
         )
         st.session_state._nc_scroll_to_latest_response = False
 
     def _render_nc_scroll_controls() -> None:
-        components.html(
+        st.iframe(
             """
             <script>
             (() => {
@@ -6183,8 +6199,8 @@ def page_new_chat() -> None:
             })();
             </script>
             """,
-            height=0,
-            scrolling=False,
+            height=1,
+            tab_index=-1,
         )
 
     def _render_new_chat_top_uib() -> None:
@@ -6639,7 +6655,7 @@ def page_new_chat() -> None:
                 if st.button(label, key=key, use_container_width=True):
                     explore_topic = label
 
-        components.html(
+        st.iframe(
             """
             <script>
             (() => {
@@ -6688,8 +6704,8 @@ def page_new_chat() -> None:
             })();
             </script>
             """,
-            height=0,
-            scrolling=False,
+            height=1,
+            tab_index=-1,
         )
 
         if illustrate_run:
@@ -7098,7 +7114,7 @@ def page_new_chat() -> None:
         # A request rerun can leave a previous fixed composer mounted beside
         # this current one. Keep the current (last-rendered) owned composer
         # and remove only those stale complete composer nodes.
-        components.html(
+        st.iframe(
             """
             <script>
             (() => {
@@ -7115,8 +7131,8 @@ def page_new_chat() -> None:
             })();
             </script>
             """,
-            height=0,
-            scrolling=False,
+            height=1,
+            tab_index=-1,
         )
 
     # Auto-run FUQ opened in a new tab for New Chat

@@ -22,6 +22,18 @@ class ProductKnowledgeTests(unittest.TestCase):
     def test_unrelated_topic_is_not_claimed(self):
         self.assertIsNone(answer_ini_product_query("Generate a Question Map for cognitive science"))
 
+    def test_topic_coverage_answer_is_honest_and_scoped(self):
+        for prompt in (
+            "What all topics do you know?",
+            "Which subjects can you cover?",
+        ):
+            with self.subTest(prompt=prompt):
+                answer = answer_ini_product_query(prompt)
+                self.assertIn("strongest today", answer)
+                self.assertIn("Kubernetes", answer)
+                self.assertIn("depth and reliability may vary", answer)
+                self.assertIn("do not claim verified specialist support", answer)
+
     def test_creator_and_release_answers_are_grounded(self):
         creator = answer_ini_product_query("Who is your creator?")
         self.assertIn("Sudipto", creator)
