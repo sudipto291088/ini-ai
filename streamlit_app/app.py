@@ -432,6 +432,51 @@ button[kind="secondary"]{
 
 /* Responsive */
 @media (max-width: 720px){
+  html,
+  body,
+  [data-testid="stApp"],
+  [data-testid="stAppViewContainer"],
+  [data-testid="stMain"]{
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: clip !important;
+  }
+
+  /*
+   * Streamlit's compact sidebar is still a desktop-width rail. On phones it
+   * leaves a narrow slice of the page visible, which makes the app look as
+   * though the entire screen has been pulled sideways. Treat navigation as a
+   * full-screen mobile drawer instead.
+   */
+  [data-testid="stSidebar"][aria-expanded="true"]{
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147482000 !important;
+    width: 100vw !important;
+    min-width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    transform: none !important;
+    background: #f5f6f8 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  [data-testid="stSidebar"][aria-expanded="true"] .block-container{
+    width: min(100%, 340px) !important;
+    max-width: 340px !important;
+    margin-inline: auto !important;
+    padding-inline: 18px !important;
+  }
+
+  [data-testid="stSidebar"][aria-expanded="true"]
+  [data-testid="stSidebarCollapseButton"]{
+    position: fixed !important;
+    top: 12px !important;
+    right: 12px !important;
+    z-index: 2147482001 !important;
+  }
+
   .main .block-container{ padding-left: 1rem; padding-right: 1rem; }
   .ini_uib_capsule{ padding: 10px 10px; }
   .ini_uib_capsule [data-testid="stHorizontalBlock"]{
@@ -6213,14 +6258,7 @@ def page_new_chat() -> None:
                     }
                     @media (max-width: 760px) {
                       #ini-nc-scroll-controls {
-                        right: 10px;
-                        gap: 6px;
-                      }
-                      #ini-nc-scroll-controls button {
-                        width: 34px;
-                        height: 34px;
-                        border-radius: 12px;
-                        font-size: 15px;
+                        display: none;
                       }
                     }
                   `;
