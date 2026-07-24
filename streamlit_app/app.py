@@ -69,6 +69,7 @@ except ModuleNotFoundError as exc:
         return None
 
 from api.interrogate import extract_topic as extract_learning_topic
+from api.conversation_interpreter import interpret_turn
 from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
 
@@ -3163,7 +3164,7 @@ def render_nc_learning_loop(learning_loop: dict[str, Any]) -> None:
             '<div class="ini-nc-learning-loop__stage">'
             f'<span class="ini-nc-learning-loop__number">{index}</span>'
             '<div>'
-            f'<div class="ini-nc-learning-loop__heading">{escape(str(stage.get("Heading") or ""))}</div>'
+            f'<div class="ini-nc-learning-loop__heading">{escape(re.sub(r"^\s*\d+\s*[.)-]\s*", "", str(stage.get("Heading") or "")))}</div>'
             f'<div class="ini-nc-learning-loop__copy">{escape(str(stage.get("Explanation") or ""))}</div>'
             '</div></div>'
         )
@@ -3985,9 +3986,13 @@ def page_new_chat() -> None:
 
                 if followups:
                     if clarification_ctas:
-                        render_nc_section_title(
-                            clarification_title or "Choose the application"
-                        )
+                        if not (
+                            isinstance(response_payload, dict)
+                            and response_payload.get("hide_clarification_title")
+                        ):
+                            render_nc_section_title(
+                                clarification_title or "Choose the application"
+                            )
                         with st.container(horizontal=True, gap="small"):
                             for index, followup in enumerate(followups):
                                 label = next(
@@ -4957,6 +4962,12 @@ def page_new_chat() -> None:
         ):
             topic_text = _resolve_typed_followup(topic_text)
         display_topic_text = topic_text.strip()
+        interpreted_turn = interpret_turn(display_topic_text)
+        semantic_topic_text = (
+            interpreted_turn.semantic_text
+            if interpreted_turn.has_substantive_text
+            else display_topic_text
+        )
         context_correction_question = ""
         context_correction_accepted = False
         pending_context_correction = st.session_state.get("chat_pending_context_correction")
@@ -4980,6 +4991,7 @@ def page_new_chat() -> None:
                 or normalized_context_reply == normalized_candidate
             ):
                 topic_text = correction_candidate
+                semantic_topic_text = correction_candidate
                 context_correction_accepted = True
                 should_check_context_match = False
             elif re.match(r"^(no|nope|incorrect|neither)\b", normalized_context_reply):
@@ -5054,6 +5066,7 @@ def page_new_chat() -> None:
             if re.match(r"^(yes|yeah|yep|sure|okay|ok|please|go ahead|do it|generate)\b", normalized_reply):
                 if original_topic:
                     topic_text = original_topic
+                    semantic_topic_text = original_topic
                     qm_confirmation_accepted = True
             if qm_confirmation_accepted:
                 st.session_state.chat_study_mode_established = True
@@ -5065,6 +5078,7 @@ def page_new_chat() -> None:
             action_topic = (pending_discussion_action.get("topic") or "").strip()
             if re.match(r"^(generate|question map|create|build|make)\b", action_reply):
                 topic_text = action_topic
+                semantic_topic_text = action_topic
                 qm_confirmation_accepted = True
                 st.session_state.chat_study_mode_established = True
             elif re.match(r"^(continue discussion|continue|discuss|discussion)\b", action_reply):
@@ -5442,12 +5456,12 @@ def page_new_chat() -> None:
                         ),
                     }
                 else:
-                    data = fetch_interrogate(topic_text.strip())
+                    data = fetch_interrogate(semantic_topic_text)
                 if context_correction_accepted and not (data.get("categories") or {}):
                     data["intent"] = "context_topic_correction_accepted"
                     data["context_intent"] = "active_topic"
                     data["suppress_profile"] = True
-                st.session_state.chat["topic"] = topic_text.strip()
+                st.session_state.chat["topic"] = semantic_topic_text
 
                 if "chat_bottom_topic_input" in st.session_state:
                     del st.session_state["chat_bottom_topic_input"]
@@ -5492,7 +5506,7 @@ def page_new_chat() -> None:
                             answer_stop_reason = None
                             mode_name = "focused"
                         else:
-                            answer_prompt = (data.get("direct_answer_prompt") or topic_text.strip()).strip()
+                            answer_prompt = (data.get("direct_answer_prompt") or semantic_topic_text).strip()
                             generation_mode = (
                                 "conversation" if response_mode == "conversation" else "carm"
                             )
@@ -5601,7 +5615,7 @@ def page_new_chat() -> None:
                                 f"{base_request} User additionally specified: {display_topic_text}."
                             ).strip()
                         else:
-                            resolved_request = topic_text.strip()
+                            resolved_request = semantic_topic_text
 
                         st.session_state.chat_active_carm_context = {
                             "original_request": resolved_request,
@@ -5673,7 +5687,7 @@ def page_new_chat() -> None:
                     # repeated application also handles stacked instructions
                     # such as "can you explain artificial intelligence" even
                     # when the first pass removes only "can you".
-                    clarification_topic = display_topic_text
+                    clarification_topic = semantic_topic_text
                     for _ in range(4):
                         extracted_topic = extract_learning_topic(
                             clarification_topic
@@ -5704,6 +5718,7 @@ def page_new_chat() -> None:
                         "needs_clarification": True,
                         "suppress_profile": True,
                         "clarification_title": "Question Map",
+                        "hide_clarification_title": True,
                         "ts": now_label(),
                     }
                     st.session_state.chat_pending_qm_confirmation = {
@@ -5716,19 +5731,19 @@ def page_new_chat() -> None:
                 st.session_state.chat_active_discussion = None
                 if has_existing_root:
                     st.session_state.chat_study_mode_established = True
-                    intro_resp = fetch_study_full(topic_text.strip(), mode="intro", max_rounds=0)
+                    intro_resp = fetch_study_full(semantic_topic_text, mode="intro", max_rounds=0)
                     intro = intro_resp.get("answer", "").strip()
-                    _append_interrogate_branch(topic_text.strip(), data, intro)
+                    _append_interrogate_branch(display_topic_text, data, intro)
                     _persist_new_chat_session(current_sid)
                     st.rerun()
                     return
 
-                st.session_state.chat["topic"] = topic_text.strip()
+                st.session_state.chat["topic"] = semantic_topic_text
                 st.session_state.chat_study_mode_established = True
-                st.session_state.chat_root_topic = topic_text.strip()
+                st.session_state.chat_root_topic = semantic_topic_text
                 st.session_state.chat["interrogate"] = data
 
-                intro_resp = fetch_study_full(topic_text.strip(), mode="intro")
+                intro_resp = fetch_study_full(semantic_topic_text, mode="intro")
                 intro = intro_resp.get("answer", "").strip()
 
                 st.session_state.chat_intro = intro
