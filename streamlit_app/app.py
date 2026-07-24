@@ -134,6 +134,32 @@ span{
   font-family: inherit;
 }
 
+/*
+ * Script-only st.iframe bridges are rendered at one pixel high. Streamlit can
+ * expose that pixel as a stray horizontal speck near the first query. Keep the
+ * scripts active while removing their invisible host frames from page layout.
+ */
+[data-testid="stElementContainer"]:has(iframe[data-testid="stIFrame"][title="st.iframe"]){
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+iframe[data-testid="stIFrame"][title="st.iframe"]{
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Sidebar collapse icon: replace broken ligature text with a clean arrow */
 [data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"]{
   font-size: 0 !important;
@@ -5029,9 +5055,6 @@ def page_new_chat() -> None:
                 if original_topic:
                     topic_text = original_topic
                     qm_confirmation_accepted = True
-            elif re.match(r"^(discuss|discussion|talk|explain|lets discuss|let us discuss)\b", normalized_reply):
-                qm_discussion_topic = original_topic
-                st.session_state.chat_study_mode_established = True
             if qm_confirmation_accepted:
                 st.session_state.chat_study_mode_established = True
             st.session_state.chat_pending_qm_confirmation = None
@@ -5664,7 +5687,7 @@ def page_new_chat() -> None:
                         clarification_topic = extracted_topic
                     clarification_text = (
                         f"That sounds like a shift to a learning topic. Would you like me to "
-                        f"generate a Question Map for {clarification_topic}, or discuss it with you first?"
+                        f"generate a Question Map for {clarification_topic}?"
                     )
                     clarification_payload = {
                         "prompt": display_topic_text,
@@ -5672,7 +5695,7 @@ def page_new_chat() -> None:
                         "incomplete": False,
                         "stop_reason": None,
                         "mode": "conversation",
-                        "followups": ["Generate Question Map", "Discuss this topic"],
+                        "followups": ["Generate Question Map"],
                         "intent": "question_map_confirmation",
                         "should_answer_direct": True,
                         "response_mode": "conversation",
@@ -5680,7 +5703,7 @@ def page_new_chat() -> None:
                         "show_followups": True,
                         "needs_clarification": True,
                         "suppress_profile": True,
-                        "clarification_title": "Choose how to continue",
+                        "clarification_title": "Question Map",
                         "ts": now_label(),
                     }
                     st.session_state.chat_pending_qm_confirmation = {
@@ -5851,10 +5874,6 @@ def page_new_chat() -> None:
 
         pending_qm_choice = st.session_state.get("chat_pending_qm_confirmation")
         normalized_choice = re.sub(r"[^a-z0-9 ]+", " ", prompt.lower()).strip()
-        discussing_choice = bool(
-            isinstance(pending_qm_choice, dict)
-            and re.match(r"^(discuss|discussion|talk|explain|lets discuss|let us discuss)\b", normalized_choice)
-        )
         active_discussion_state = st.session_state.get("chat_active_discussion")
         discussion_interaction = bool(
             isinstance(active_discussion_state, dict)
