@@ -6526,6 +6526,33 @@ def page_new_chat() -> None:
                 text-align: center;
             }}
 
+            .st-key-nc_landing_composer {{
+                width: min(100%, 860px);
+                margin-inline: auto;
+                padding: 8px 10px 10px;
+                overflow: hidden;
+                border: 1px solid rgba(148, 163, 184, 0.18);
+                border-radius: 20px;
+                background:
+                    linear-gradient(180deg, #ffffff 0%, #fdfefe 100%);
+                box-shadow:
+                    0 24px 64px rgba(15, 23, 42, 0.08),
+                    0 6px 18px rgba(15, 23, 42, 0.035),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.98);
+                transition: border-color 180ms ease, box-shadow 180ms ease,
+                    transform 180ms ease;
+            }}
+
+            .st-key-nc_landing_composer:focus-within {{
+                border-color: rgba(100, 116, 139, 0.28);
+                box-shadow:
+                    0 26px 68px rgba(15, 23, 42, 0.095),
+                    0 7px 20px rgba(15, 23, 42, 0.04),
+                    inset 0 1px 0 rgba(255, 255, 255, 1);
+                transform: translateY(-1px);
+            }}
+
+            .st-key-nc_landing_composer
             div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) {{
                 width: min(100%, 860px);
                 margin-inline: auto;
@@ -6534,48 +6561,40 @@ def page_new_chat() -> None:
                 box-shadow: none !important;
             }}
 
+            .st-key-nc_landing_composer
             div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) > div {{
                 overflow: hidden !important;
                 padding: 0 !important;
-                border: 1px solid rgba(148, 163, 184, 0.15) !important;
-                border-radius: 18px !important;
-                background: linear-gradient(180deg, #ffffff 0%, #fefefe 100%) !important;
-                box-shadow:
-                    0 22px 58px rgba(15, 23, 42, 0.09),
-                    0 5px 16px rgba(15, 23, 42, 0.04),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
-                transition: border-color 180ms ease, box-shadow 180ms ease;
+                border: 0 !important;
+                border-radius: 14px !important;
+                background: transparent !important;
+                box-shadow: none !important;
             }}
 
-            div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]:focus) > div {{
-                border-color: rgba(100, 116, 139, 0.24) !important;
-                box-shadow:
-                    0 24px 64px rgba(15, 23, 42, 0.105),
-                    0 6px 18px rgba(15, 23, 42, 0.045),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.98) !important;
-            }}
-
+            .st-key-nc_landing_composer
             div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) textarea,
+            .st-key-nc_landing_composer
             div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) textarea:focus {{
-                min-height: 88px !important;
+                min-height: 70px !important;
                 height: auto !important;
-                max-height: 210px !important;
-                padding: 21px 25px !important;
+                max-height: 190px !important;
+                padding: 18px 18px 12px !important;
                 box-sizing: border-box !important;
                 resize: none !important;
                 overflow-y: auto !important;
                 field-sizing: content;
                 border: 0 !important;
-                border-radius: 18px !important;
+                border-radius: 14px !important;
                 outline: 0 !important;
                 color: #111827 !important;
-                background: #ffffff !important;
+                background: transparent !important;
                 box-shadow: none !important;
                 font-size: 16px !important;
                 line-height: 1.45 !important;
                 caret-color: #087f7b;
             }}
 
+            .st-key-nc_landing_composer
             div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"])
             textarea::placeholder {{
                 color: #8b95a3 !important;
@@ -6584,8 +6603,8 @@ def page_new_chat() -> None:
 
             div[data-testid="stHorizontalBlock"]:has(.st-key-nc_top_interrogate) {{
                 width: min(100%, 370px);
-                margin: 19px auto 0;
-                gap: 20px;
+                margin: 18px auto 0;
+                gap: 14px;
                 flex-wrap: nowrap;
             }}
 
@@ -6600,13 +6619,13 @@ def page_new_chat() -> None:
             .st-key-nc_top_illustrate div.stButton > button[kind="secondary"] {{
                 width: 100% !important;
                 min-width: 0 !important;
-                height: 46px !important;
-                min-height: 46px !important;
+                height: 42px !important;
+                min-height: 42px !important;
                 justify-content: center !important;
                 padding: 0 18px !important;
                 margin: 0 !important;
                 border: 1px solid #071126 !important;
-                border-radius: 18px !important;
+                border-radius: 13px !important;
                 color: #ffffff !important;
                 -webkit-text-fill-color: #ffffff !important;
                 background: #071126 !important;
@@ -6798,8 +6817,10 @@ def page_new_chat() -> None:
                     font-size: 14px;
                 }}
 
-                div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"]) {{
+                .st-key-nc_landing_composer {{
                     width: calc(100% - 18px);
+                    padding: 7px 8px 8px;
+                    border-radius: 18px;
                 }}
 
                 div[data-testid="stHorizontalBlock"]:has(.st-key-nc_top_interrogate) {{
@@ -6844,16 +6865,17 @@ def page_new_chat() -> None:
         illustrate_run = False
         explore_topic = None
 
-        st.text_area(
-            "NC_TOP_TOPIC",
-            placeholder="Ask InI anything...",
-            key="chat_top_topic_input",
-            label_visibility="collapsed",
-            height=88,
-            on_change=_request_chat_top_enter_submit,
-        )
+        with st.container(key="nc_landing_composer"):
+            st.text_area(
+                "NC_TOP_TOPIC",
+                placeholder="Ask InI anything...",
+                key="chat_top_topic_input",
+                label_visibility="collapsed",
+                height=70,
+                on_change=_request_chat_top_enter_submit,
+            )
 
-        action_cols = st.columns(2, gap="medium")
+        action_cols = st.columns(2, gap="small")
         with action_cols[0]:
             run = st.button(
                 "Interrogate",
