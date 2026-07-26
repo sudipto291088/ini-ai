@@ -3638,16 +3638,16 @@ def page_home():
         @keyframes iniIntroCardArrival {
             0% {
                 opacity: 0;
-                transform: translateY(18px) scale(0.992);
-                filter: blur(2px);
+                transform: translateY(32px) scale(0.985);
+                filter: blur(3px);
             }
-            65% {
+            62% {
                 opacity: 1;
                 filter: blur(0);
             }
-            84% {
+            82% {
                 opacity: 1;
-                transform: translateY(-1px) scale(1);
+                transform: translateY(-2px) scale(1);
                 filter: blur(0);
             }
             100% {
@@ -3662,25 +3662,25 @@ def page_home():
         .st-key-intro_release_history_card,
         .st-key-intro_release_card,
         .st-key-intro_learning_card {
-            animation: iniIntroCardArrival 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
+            animation: iniIntroCardArrival 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
             will-change: opacity, transform, filter;
         }
 
         .st-key-intro_welcome_card {
-            animation-delay: 40ms;
+            animation-delay: 70ms;
         }
 
         .st-key-intro_new_chat_card {
-            animation-delay: 125ms;
+            animation-delay: 210ms;
         }
 
         .st-key-intro_release_history_card,
         .st-key-intro_release_card {
-            animation-delay: 210ms;
+            animation-delay: 350ms;
         }
 
         .st-key-intro_learning_card {
-            animation-delay: 295ms;
+            animation-delay: 490ms;
         }
 
         @media (prefers-reduced-motion: reduce) {
