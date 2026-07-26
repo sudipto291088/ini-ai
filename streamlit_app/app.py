@@ -196,11 +196,14 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
 /* --- Sidebar clock tile --- */
 .clock_tile{
   width: 100%;
-  border: 1px solid var(--stroke);
+  border: 1px solid rgba(148, 163, 184, 0.17);
   border-radius: 14px;
   background: var(--card);
   padding: 10px 10px;
   margin: 10px 0 12px 0;
+  box-shadow:
+    0 10px 26px rgba(15, 23, 42, 0.055),
+    0 2px 7px rgba(15, 23, 42, 0.035);
 }
 .clock_center{
   display:flex;
@@ -243,8 +246,11 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
   padding: 3px 10px;
   border-radius:999px;
   font-size:12px;
-  border:1px solid var(--stroke);
-  background: var(--soft);
+  border:1px solid rgba(148, 163, 184, 0.16);
+  background:rgba(248, 250, 252, 0.68);
+  box-shadow:
+    0 5px 14px rgba(15, 23, 42, 0.045),
+    0 1px 3px rgba(15, 23, 42, 0.025);
 }
 .small{ font-size: 12px; }
 .bigtitle{ font-size: 30px; font-weight: 750; margin: 0 0 12px 0; }
