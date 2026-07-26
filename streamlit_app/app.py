@@ -3635,6 +3635,66 @@ def page_home():
     st.markdown(
         """
         <style>
+        @keyframes iniIntroCardArrival {
+            0% {
+                opacity: 0;
+                transform: translateY(18px) scale(0.992);
+                filter: blur(2px);
+            }
+            65% {
+                opacity: 1;
+                filter: blur(0);
+            }
+            84% {
+                opacity: 1;
+                transform: translateY(-1px) scale(1);
+                filter: blur(0);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                filter: blur(0);
+            }
+        }
+
+        .st-key-intro_welcome_card,
+        .st-key-intro_new_chat_card,
+        .st-key-intro_release_history_card,
+        .st-key-intro_release_card,
+        .st-key-intro_learning_card {
+            animation: iniIntroCardArrival 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
+            will-change: opacity, transform, filter;
+        }
+
+        .st-key-intro_welcome_card {
+            animation-delay: 40ms;
+        }
+
+        .st-key-intro_new_chat_card {
+            animation-delay: 125ms;
+        }
+
+        .st-key-intro_release_history_card,
+        .st-key-intro_release_card {
+            animation-delay: 210ms;
+        }
+
+        .st-key-intro_learning_card {
+            animation-delay: 295ms;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .st-key-intro_welcome_card,
+            .st-key-intro_new_chat_card,
+            .st-key-intro_release_history_card,
+            .st-key-intro_release_card,
+            .st-key-intro_learning_card {
+                animation: none !important;
+                transform: none !important;
+                filter: none !important;
+            }
+        }
+
         .st-key-intro_welcome_card,
         .st-key-intro_new_chat_card,
         .st-key-intro_guide_card,
