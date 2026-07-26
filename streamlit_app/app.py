@@ -3632,97 +3632,541 @@ if st.session_state.rename_session_sid:
 # =========================
 
 def page_home():
-    if st.button("Replay Welcome", key="replay_fce_welcome"):
-        st.session_state.fce_static_open = True
-        st.session_state.fce_force_open = True
-        st.rerun()
-
     st.markdown(
         """
-# Welcome to InI.ai
+        <style>
+        .st-key-intro_welcome_card,
+        .st-key-intro_new_chat_card,
+        .st-key-intro_guide_card,
+        .st-key-intro_release_card,
+        .st-key-intro_learning_card {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            margin-bottom: 18px;
+            padding: 24px 26px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 18px;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%,
+                rgba(249, 250, 252, 0.96) 100%);
+            box-shadow:
+                0 18px 46px rgba(15, 23, 42, 0.065),
+                0 4px 13px rgba(15, 23, 42, 0.035),
+                inset 0 1px 0 rgba(255, 255, 255, 1);
+        }
 
-### Interrogate n Illustrate
+        .st-key-intro_welcome_card::before,
+        .st-key-intro_new_chat_card::before,
+        .st-key-intro_guide_card::before,
+        .st-key-intro_release_card::before,
+        .st-key-intro_learning_card::before {
+            position: absolute;
+            z-index: -1;
+            top: 0;
+            left: 7%;
+            width: 86%;
+            height: 1px;
+            content: "";
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 1) 22%,
+                rgba(255, 255, 255, 1) 78%,
+                transparent
+            );
+        }
 
-InI.ai is a Question Engine designed to help users learn through structured exploration rather than isolated answers.
+        .st-key-intro_welcome_card {
+            min-height: 230px;
+            padding: 34px 34px 30px;
+            background:
+                radial-gradient(circle at 92% 18%, rgba(245, 27, 63, 0.07), transparent 29%),
+                linear-gradient(145deg, #ffffff 0%, #fbfcfd 70%, #fff8f9 100%);
+        }
 
-The platform is actively being improved and updated on a regular basis.
+        .st-key-intro_welcome_card::after {
+            position: absolute;
+            z-index: -1;
+            right: -54px;
+            bottom: -88px;
+            width: 240px;
+            height: 240px;
+            border: 1px solid rgba(245, 27, 63, 0.09);
+            border-radius: 50%;
+            content: "";
+            box-shadow:
+                0 0 0 34px rgba(245, 27, 63, 0.022),
+                0 0 0 68px rgba(245, 27, 63, 0.012);
+        }
 
----
+        .st-key-intro_welcome_card .st-key-replay_fce_welcome {
+            position: absolute;
+            z-index: 3;
+            top: 22px;
+            right: 24px;
+        }
 
-## Currently Available
+        .st-key-intro_welcome_card .st-key-replay_fce_welcome button {
+            min-width: 0 !important;
+            min-height: 38px !important;
+            padding: 0 15px !important;
+            border: 1px solid rgba(148, 163, 184, 0.22) !important;
+            border-radius: 11px !important;
+            color: #374151 !important;
+            background: rgba(255, 255, 255, 0.78) !important;
+            box-shadow: 0 5px 14px rgba(15, 23, 42, 0.045) !important;
+        }
 
-### New Chat
+        .intro-eyebrow {
+            margin-bottom: 14px;
+            color: #f51b3f;
+            font-size: 12px;
+            font-weight: 720;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
 
-The primary learning experience.
+        .intro-hero-title {
+            max-width: 720px;
+            margin: 0 0 12px;
+            color: #0f172a;
+            font-size: clamp(34px, 4.1vw, 54px);
+            font-weight: 760;
+            letter-spacing: -0.035em;
+            line-height: 1.04;
+        }
 
-**Interrogate**
+        .intro-hero-subtitle {
+            margin: 0 0 18px;
+            color: #1f2937;
+            font-size: 21px;
+            font-weight: 680;
+            letter-spacing: -0.015em;
+        }
 
-- Generates an Introduction.
-- Creates a structured Question Map.
-- Organizes learning from Foundations to Advanced topics.
-- Supported technical domains use LLM-generated Question Maps.
-- Topics outside current LLM coverage use structured template-based Question Maps.
+        .intro-hero-copy {
+            max-width: 760px;
+            margin: 0 0 9px;
+            color: #4b5563;
+            font-size: 15.5px;
+            line-height: 1.65;
+        }
 
-**Illustrate**
+        .intro-card-heading {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            margin-bottom: 17px;
+            color: #111827;
+            font-size: 19px;
+            font-weight: 720;
+            letter-spacing: -0.015em;
+        }
 
-- Provides examples and applications for a topic.
-- Helps understand where a concept is used in the real world.
+        .intro-icon {
+            display: inline-flex;
+            width: 31px;
+            height: 31px;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 31px;
+            border: 1px solid rgba(245, 27, 63, 0.17);
+            border-radius: 10px;
+            color: #f51b3f;
+            background: rgba(255, 246, 248, 0.82);
+            font-size: 15px;
+            font-weight: 800;
+        }
 
-**Recommended Topics**
+        .intro-mode-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
 
-- Artificial Intelligence
-- Machine Learning
-- Data Science
-- Neural Networks
-- Transformers
-- Reinforcement Learning
+        .intro-mode-card {
+            min-height: 136px;
+            padding: 19px 20px;
+            border: 1px solid rgba(148, 163, 184, 0.17);
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.78);
+            box-shadow:
+                0 9px 22px rgba(15, 23, 42, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 1);
+        }
 
----
+        .intro-mode-title {
+            margin: 0 0 8px;
+            color: #111827;
+            font-size: 17px;
+            font-weight: 700;
+        }
 
-## What's New in v0.1.4
+        .intro-mode-copy,
+        .intro-step-copy,
+        .intro-learning-copy {
+            color: #596273;
+            font-size: 13.5px;
+            line-height: 1.55;
+        }
 
-Released: July 17, 2026
+        .intro-topic-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-top: 13px;
+        }
 
-InI.ai now feels more conversational, polished, and context-aware:
+        .intro-topic-chip,
+        .intro-mode-chip,
+        .intro-release-badge,
+        .intro-status-badge {
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid rgba(148, 163, 184, 0.17);
+            border-radius: 999px;
+            background: rgba(248, 250, 252, 0.82);
+            color: #596273;
+            font-size: 11.5px;
+            font-weight: 620;
+        }
 
-- **Conversational intelligence:** InI can handle greetings, clarifying replies, practical requests, and natural follow-up questions without forcing every message into a Question Map.
-- **Smoother context switching:** Conversations can move from casual chat to a learning topic and back again while retaining context and a compact Topic Profile.
-- **Discussion mode:** Users can discuss a topic before generating a Question Map, continue through three guided discussion directions, and navigate between concise answers.
-- **Refined response design:** A polished primary response surface now contains clean secondary sections and quieter tertiary cards with improved typography, spacing, shadows, and alignment.
-- **Persistent query history:** Every submitted query remains recorded, with a dedicated query navigator for quickly returning to earlier prompts.
-- **Improved generation states:** Context-aware Thinking and Generating response indicators use the InI icon while keeping the active input bar stable.
-- **First Conversation Experience:** The cinematic welcome flow now appears once, supports replay, uses smoother pacing, and presents broader verified quotations.
-- **Brand and navigation polish:** The new InI identity, sidebar presentation, version badge, navigation cards, and floating controls have been visually refined.
+        .intro-topic-chip {
+            padding: 5px 9px;
+        }
 
-These changes move InI beyond a static question generator toward a more natural Question Engine that can clarify intent, hold context, and guide learning without losing the user.
+        .intro-guide-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 24px;
+        }
 
----
+        .intro-step {
+            position: relative;
+            padding-left: 48px;
+        }
 
-### My New Learning
+        .intro-step:not(:last-child)::after {
+            position: absolute;
+            top: 18px;
+            right: -16px;
+            width: 24px;
+            height: 1px;
+            content: "";
+            background: rgba(148, 163, 184, 0.42);
+        }
 
-**Status: In active development**
+        .intro-step-number {
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            width: 35px;
+            height: 35px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(245, 27, 63, 0.36);
+            border-radius: 50%;
+            color: #f51b3f;
+            background: #ffffff;
+            font-size: 13px;
+            font-weight: 750;
+            box-shadow: 0 5px 12px rgba(15, 23, 42, 0.04);
+        }
 
-This learning workspace is currently being refined. Its research modes, session continuity and overall learning experience will continue to improve in upcoming releases.
+        .intro-step-title {
+            margin: 1px 0 5px;
+            color: #111827;
+            font-size: 15px;
+            font-weight: 700;
+        }
 
-Current modes:
+        .intro-release-header,
+        .intro-learning-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 17px;
+        }
 
-- Deep
-- Overview
-- Quiz
+        .intro-release-header .intro-card-heading,
+        .intro-learning-header .intro-card-heading {
+            margin-bottom: 0;
+        }
 
----
+        .intro-release-badge,
+        .intro-status-badge {
+            padding: 6px 10px;
+            white-space: nowrap;
+        }
 
-### Current Version
+        .intro-status-badge {
+            border-color: rgba(245, 27, 63, 0.13);
+            color: #d91d3f;
+            background: rgba(255, 241, 244, 0.88);
+        }
 
-Version: v0.1.4
+        .intro-release-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            border-top: 1px solid rgba(148, 163, 184, 0.14);
+            border-left: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 12px;
+            overflow: hidden;
+        }
 
-The platform is under active development and new features are being added regularly.
+        .intro-release-item {
+            padding: 13px 14px;
+            border-right: 1px solid rgba(148, 163, 184, 0.14);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+            background: rgba(255, 255, 255, 0.42);
+            color: #374151;
+            font-size: 12.5px;
+            line-height: 1.45;
+        }
 
----
+        .intro-release-item strong {
+            display: block;
+            margin-bottom: 3px;
+            color: #111827;
+            font-size: 13px;
+        }
 
-Enter a topic to begin your learning journey.
-"""
+        .intro-release-note {
+            margin: 15px 2px 0;
+            color: #667085;
+            font-size: 12.5px;
+            line-height: 1.55;
+        }
+
+        .intro-learning-modes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .intro-mode-chip {
+            min-width: 78px;
+            justify-content: center;
+            padding: 8px 13px;
+            color: #344054;
+            background: rgba(255, 255, 255, 0.76);
+            box-shadow: 0 5px 13px rgba(15, 23, 42, 0.035);
+        }
+
+        @media (max-width: 760px) {
+            .st-key-intro_welcome_card,
+            .st-key-intro_new_chat_card,
+            .st-key-intro_guide_card,
+            .st-key-intro_release_card,
+            .st-key-intro_learning_card {
+                padding: 20px 18px;
+                border-radius: 16px;
+            }
+
+            .st-key-intro_welcome_card {
+                min-height: 0;
+                padding-top: 74px;
+            }
+
+            .st-key-intro_welcome_card .st-key-replay_fce_welcome {
+                top: 18px;
+                right: 18px;
+            }
+
+            .intro-mode-grid,
+            .intro-guide-grid,
+            .intro-release-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .intro-step:not(:last-child)::after {
+                display: none;
+            }
+
+            .intro-release-header,
+            .intro-learning-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
+
+    with st.container(key="intro_welcome_card"):
+        if st.button("Replay Welcome", key="replay_fce_welcome"):
+            st.session_state.fce_static_open = True
+            st.session_state.fce_force_open = True
+            st.rerun()
+
+        st.markdown(
+            """
+            <div class="intro-eyebrow">Question Intelligence</div>
+            <h1 class="intro-hero-title">Welcome to InI.ai</h1>
+            <div class="intro-hero-subtitle">Interrogate n Illustrate</div>
+            <p class="intro-hero-copy">
+              InI.ai is a Question Engine designed to help users learn through
+              structured exploration rather than isolated answers.
+            </p>
+            <p class="intro-hero-copy">
+              The platform is actively being improved and updated on a regular basis.
+            </p>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with st.container(key="intro_new_chat_card"):
+        st.markdown(
+            """
+            <div class="intro-card-heading">
+              <span class="intro-icon">↗</span>
+              <span>Begin with New Chat</span>
+            </div>
+            <div class="intro-mode-grid">
+              <div class="intro-mode-card">
+                <div class="intro-mode-title">Interrogate</div>
+                <div class="intro-mode-copy">
+                  Generates an Introduction, creates a structured Question Map,
+                  and organizes learning from Foundations to Advanced topics.
+                </div>
+                <div class="intro-topic-row">
+                  <span class="intro-topic-chip">Artificial Intelligence</span>
+                  <span class="intro-topic-chip">Machine Learning</span>
+                  <span class="intro-topic-chip">Data Science</span>
+                </div>
+              </div>
+              <div class="intro-mode-card">
+                <div class="intro-mode-title">Illustrate</div>
+                <div class="intro-mode-copy">
+                  Provides examples and applications for a topic and helps reveal
+                  where a concept is used in the real world.
+                </div>
+                <div class="intro-topic-row">
+                  <span class="intro-topic-chip">Neural Networks</span>
+                  <span class="intro-topic-chip">Transformers</span>
+                  <span class="intro-topic-chip">Reinforcement Learning</span>
+                </div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with st.container(key="intro_guide_card"):
+        st.markdown(
+            """
+            <div class="intro-card-heading">
+              <span class="intro-icon">◇</span>
+              <span>How InI guides you</span>
+            </div>
+            <div class="intro-guide-grid">
+              <div class="intro-step">
+                <span class="intro-step-number">1</span>
+                <div class="intro-step-title">Ask</div>
+                <div class="intro-step-copy">
+                  Start with a topic, question, or idea. InI listens and clarifies.
+                </div>
+              </div>
+              <div class="intro-step">
+                <span class="intro-step-number">2</span>
+                <div class="intro-step-title">Map</div>
+                <div class="intro-step-copy">
+                  See the foundations, mechanisms, applications, and connected questions.
+                </div>
+              </div>
+              <div class="intro-step">
+                <span class="intro-step-number">3</span>
+                <div class="intro-step-title">Understand</div>
+                <div class="intro-step-copy">
+                  Explore deeply with context, examples, and a clear learning path.
+                </div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with st.container(key="intro_release_card"):
+        st.markdown(
+            """
+            <div class="intro-release-header">
+              <div class="intro-card-heading">
+                <span class="intro-icon">✦</span>
+                <span>What's New in v0.1.4</span>
+              </div>
+              <span class="intro-release-badge">Released July 17, 2026</span>
+            </div>
+            <div class="intro-release-grid">
+              <div class="intro-release-item">
+                <strong>Conversational intelligence</strong>
+                Greetings, clarifying replies, practical requests, and natural follow-ups.
+              </div>
+              <div class="intro-release-item">
+                <strong>Smoother context switching</strong>
+                Move between casual conversation and learning topics while retaining context.
+              </div>
+              <div class="intro-release-item">
+                <strong>Discussion mode</strong>
+                Explore guided discussion directions before building a Question Map.
+              </div>
+              <div class="intro-release-item">
+                <strong>Refined response design</strong>
+                Cleaner response surfaces, quieter cards, and improved typography and spacing.
+              </div>
+              <div class="intro-release-item">
+                <strong>Persistent query history</strong>
+                Every submitted query remains recorded and easy to revisit.
+              </div>
+              <div class="intro-release-item">
+                <strong>Thinking &amp; generation states</strong>
+                Context-aware indicators keep the active input experience stable.
+              </div>
+              <div class="intro-release-item">
+                <strong>First Conversation Experience</strong>
+                A cinematic welcome flow with replay, smoother pacing, and verified quotations.
+              </div>
+              <div class="intro-release-item">
+                <strong>Brand and navigation polish</strong>
+                A refined InI identity, sidebar, version presentation, and floating controls.
+              </div>
+            </div>
+            <p class="intro-release-note">
+              These changes move InI beyond a static question generator toward a
+              more natural Question Engine that can clarify intent, hold context,
+              and guide learning without losing the user.
+            </p>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with st.container(key="intro_learning_card"):
+        st.markdown(
+            """
+            <div class="intro-learning-header">
+              <div class="intro-card-heading">
+                <span class="intro-icon">◫</span>
+                <span>My New Learning</span>
+              </div>
+              <span class="intro-status-badge">In active development</span>
+            </div>
+            <div class="intro-learning-copy">
+              This learning workspace is being refined. Its research modes,
+              session continuity, and overall learning experience will continue
+              to improve in upcoming releases.
+            </div>
+            <div class="intro-learning-modes">
+              <span class="intro-mode-chip">Deep</span>
+              <span class="intro-mode-chip">Overview</span>
+              <span class="intro-mode-chip">Quiz</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 def page_new_chat() -> None:
     if "chat_answers" not in st.session_state:
