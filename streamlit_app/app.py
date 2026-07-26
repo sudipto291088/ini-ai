@@ -253,40 +253,36 @@ div[data-testid="stSidebar"] .block-container{
   padding-top: 1rem;
 }
 
-/* Sidebar navigation: quiet, card-like controls rather than button chrome. */
+/* Sidebar navigation: clean text rows without button/card chrome. */
 .ini-sidebar-nav{
   display:flex;
   flex-direction:column;
-  gap:8px;
+  gap:2px;
   margin-top:7px;
 }
 .ini-sidebar-nav-card{
   display:flex;
   align-items:center;
-  min-height:42px;
-  padding:9px 12px;
-  border:1px solid #e3e6ea;
-  border-radius:12px;
-  background:#ffffff;
+  min-height:38px;
+  padding:8px 4px;
+  border:0;
+  border-radius:8px;
+  background:transparent;
   color:var(--ink) !important;
   font-size:13px;
   font-weight:650;
   line-height:1.25;
   text-decoration:none !important;
-  box-shadow:0 2px 7px rgba(15,23,42,.045);
-  transition:background 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  box-shadow:none;
+  transition:background 160ms ease, color 160ms ease;
 }
 .ini-sidebar-nav-card:hover{
-  border-color:#d7dce2;
-  background:#f6f7f8;
-  box-shadow:0 5px 14px rgba(15,23,42,.075);
-  transform:translateY(-1px);
+  background:rgba(15,23,42,.035);
   text-decoration:none !important;
 }
 .ini-sidebar-nav-card.is-active{
-  border-color:#d9dde2;
-  background:#f1f3f5;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9), 0 2px 7px rgba(15,23,42,.035);
+  background:transparent;
+  font-weight:760;
 }
 
 /* Prevent Continue wrapping */
