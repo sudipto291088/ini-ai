@@ -3639,6 +3639,7 @@ def page_home():
         .st-key-intro_new_chat_card,
         .st-key-intro_guide_card,
         .st-key-intro_release_card,
+        .st-key-intro_release_history_card,
         .st-key-intro_learning_card {
             position: relative;
             isolation: isolate;
@@ -3660,6 +3661,7 @@ def page_home():
         .st-key-intro_new_chat_card::before,
         .st-key-intro_guide_card::before,
         .st-key-intro_release_card::before,
+        .st-key-intro_release_history_card::before,
         .st-key-intro_learning_card::before {
             position: absolute;
             z-index: -1;
@@ -3842,6 +3844,12 @@ def page_home():
             gap: 24px;
         }
 
+        .intro-guide-section {
+            margin-top: 34px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
         .intro-step {
             position: relative;
             padding-left: 48px;
@@ -3941,6 +3949,120 @@ def page_home():
             line-height: 1.55;
         }
 
+        .st-key-intro_release_card,
+        .st-key-intro_release_history_card {
+            height: 520px;
+            margin-bottom: 18px;
+        }
+
+        .st-key-intro_release_history_card {
+            padding: 24px 20px;
+        }
+
+        .intro-history-heading {
+            margin-bottom: 5px;
+            color: #111827;
+            font-size: 16px;
+            font-weight: 720;
+            letter-spacing: -0.012em;
+        }
+
+        .intro-history-copy {
+            margin-bottom: 15px;
+            color: #7a8494;
+            font-size: 11.5px;
+            line-height: 1.45;
+        }
+
+        .st-key-intro_release_history_card [class*="st-key-intro_release_"] {
+            margin-top: 5px;
+        }
+
+        .st-key-intro_release_history_card div.stButton > button {
+            min-height: 38px !important;
+            height: 38px !important;
+            justify-content: flex-start !important;
+            padding: 7px 5px !important;
+            margin: 0 !important;
+            border: 0 !important;
+            border-radius: 8px !important;
+            color: #596273 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            white-space: nowrap !important;
+            font-size: 10.5px !important;
+            font-weight: 620 !important;
+        }
+
+        .st-key-intro_release_history_card div.stButton > button p {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap !important;
+            text-overflow: clip;
+        }
+
+        .st-key-intro_release_history_card div.stButton > button:hover {
+            color: #111827 !important;
+            background: rgba(148, 163, 184, 0.07) !important;
+        }
+
+        .st-key-intro_release_history_card div.stButton > button[kind="primary"] {
+            color: #d91d3f !important;
+            background: linear-gradient(
+                90deg,
+                rgba(245, 27, 63, 0.075),
+                rgba(245, 27, 63, 0.012)
+            ) !important;
+            box-shadow: inset 2px 0 0 #f51b3f !important;
+            font-weight: 700 !important;
+        }
+
+        .st-key-intro_release_history_card div.stButton > button:disabled {
+            color: #a7afbd !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            cursor: default !important;
+            opacity: 0.72 !important;
+        }
+
+        .st-key-intro_release_history_card div.stButton > button:disabled:hover {
+            color: #a7afbd !important;
+            background: transparent !important;
+        }
+
+        .intro-release-scroll {
+            max-height: 402px;
+            overflow-y: auto;
+            padding-right: 7px;
+            scrollbar-color: rgba(148, 163, 184, 0.38) transparent;
+            scrollbar-width: thin;
+        }
+
+        .intro-release-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .intro-release-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .intro-release-scroll::-webkit-scrollbar-thumb {
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.35);
+        }
+
+        .intro-release-end {
+            width: 42px;
+            height: 1px;
+            margin: 17px 2px 5px;
+            border-radius: 999px;
+            background: linear-gradient(
+                90deg,
+                rgba(245, 27, 63, 0.42),
+                rgba(245, 27, 63, 0.04)
+            );
+        }
+
         .intro-learning-modes {
             display: flex;
             flex-wrap: wrap;
@@ -3962,6 +4084,7 @@ def page_home():
             .st-key-intro_new_chat_card,
             .st-key-intro_guide_card,
             .st-key-intro_release_card,
+            .st-key-intro_release_history_card,
             .st-key-intro_learning_card {
                 padding: 20px 18px;
                 border-radius: 16px;
@@ -4057,33 +4180,34 @@ def page_home():
             unsafe_allow_html=True,
         )
 
-    with st.container(key="intro_guide_card"):
         st.markdown(
             """
-            <div class="intro-card-heading">
-              <span class="intro-icon">◇</span>
-              <span>How InI guides you</span>
-            </div>
-            <div class="intro-guide-grid">
-              <div class="intro-step">
-                <span class="intro-step-number">1</span>
-                <div class="intro-step-title">Ask</div>
-                <div class="intro-step-copy">
-                  Start with a topic, question, or idea. InI listens and clarifies.
-                </div>
+            <div class="intro-guide-section">
+              <div class="intro-card-heading">
+                <span class="intro-icon">◇</span>
+                <span>How InI guides you</span>
               </div>
-              <div class="intro-step">
-                <span class="intro-step-number">2</span>
-                <div class="intro-step-title">Map</div>
-                <div class="intro-step-copy">
-                  See the foundations, mechanisms, applications, and connected questions.
+              <div class="intro-guide-grid">
+                <div class="intro-step">
+                  <span class="intro-step-number">1</span>
+                  <div class="intro-step-title">Ask</div>
+                  <div class="intro-step-copy">
+                    Start with a topic, question, or idea. InI listens and clarifies.
+                  </div>
                 </div>
-              </div>
-              <div class="intro-step">
-                <span class="intro-step-number">3</span>
-                <div class="intro-step-title">Understand</div>
-                <div class="intro-step-copy">
-                  Explore deeply with context, examples, and a clear learning path.
+                <div class="intro-step">
+                  <span class="intro-step-number">2</span>
+                  <div class="intro-step-title">Map</div>
+                  <div class="intro-step-copy">
+                    See the foundations, mechanisms, applications, and connected questions.
+                  </div>
+                </div>
+                <div class="intro-step">
+                  <span class="intro-step-number">3</span>
+                  <div class="intro-step-title">Understand</div>
+                  <div class="intro-step-copy">
+                    Explore deeply with context, examples, and a clear learning path.
+                  </div>
                 </div>
               </div>
             </div>
@@ -4091,58 +4215,145 @@ def page_home():
             unsafe_allow_html=True,
         )
 
-    with st.container(key="intro_release_card"):
-        st.markdown(
-            """
-            <div class="intro-release-header">
-              <div class="intro-card-heading">
-                <span class="intro-icon">✦</span>
-                <span>What's New in v0.1.4</span>
-              </div>
-              <span class="intro-release-badge">Released July 17, 2026</span>
-            </div>
-            <div class="intro-release-grid">
-              <div class="intro-release-item">
-                <strong>Conversational intelligence</strong>
-                Greetings, clarifying replies, practical requests, and natural follow-ups.
-              </div>
-              <div class="intro-release-item">
-                <strong>Smoother context switching</strong>
-                Move between casual conversation and learning topics while retaining context.
-              </div>
-              <div class="intro-release-item">
-                <strong>Discussion mode</strong>
-                Explore guided discussion directions before building a Question Map.
-              </div>
-              <div class="intro-release-item">
-                <strong>Refined response design</strong>
-                Cleaner response surfaces, quieter cards, and improved typography and spacing.
-              </div>
-              <div class="intro-release-item">
-                <strong>Persistent query history</strong>
-                Every submitted query remains recorded and easy to revisit.
-              </div>
-              <div class="intro-release-item">
-                <strong>Thinking &amp; generation states</strong>
-                Context-aware indicators keep the active input experience stable.
-              </div>
-              <div class="intro-release-item">
-                <strong>First Conversation Experience</strong>
-                A cinematic welcome flow with replay, smoother pacing, and verified quotations.
-              </div>
-              <div class="intro-release-item">
-                <strong>Brand and navigation polish</strong>
-                A refined InI identity, sidebar, version presentation, and floating controls.
-              </div>
-            </div>
-            <p class="intro-release-note">
-              These changes move InI beyond a static question generator toward a
-              more natural Question Engine that can clarify intent, hold context,
-              and guide learning without losing the user.
-            </p>
-            """,
-            unsafe_allow_html=True,
+    intro_releases = {
+        "v0.1.4": {
+            "date": "July 17, 2026",
+            "items": (
+                ("Conversational intelligence", "Greetings, clarifying replies, practical requests, and natural follow-ups."),
+                ("Smoother context switching", "Move between casual conversation and learning topics while retaining context."),
+                ("Discussion mode", "Explore guided discussion directions before building a Question Map."),
+                ("Refined response design", "Cleaner response surfaces, quieter cards, and improved typography and spacing."),
+                ("Persistent query history", "Every submitted query remains recorded and easy to revisit."),
+                ("Thinking & generation states", "Context-aware indicators keep the active input experience stable."),
+                ("First Conversation Experience", "A cinematic welcome flow with replay, smoother pacing, and verified quotations."),
+                ("Brand and navigation polish", "A refined InI identity, sidebar, version presentation, and floating controls."),
+            ),
+            "note": (
+                "These changes move InI beyond a static question generator toward a "
+                "more natural Question Engine that can clarify intent, hold context, "
+                "and guide learning without losing the user."
+            ),
+        },
+        "v0.1.3": {
+            "date": "July 10, 2026",
+            "items": (
+                ("Refined New Chat flow", "A clearer path from a submitted topic to its structured learning response."),
+                ("Adaptive topic profiles", "Richer profiles that adjust their fields to the subject being explored."),
+                ("Question Map interactions", "More deliberate question selection and smoother introduction controls."),
+                ("Visitor privacy isolation", "Conversation records are separated by visitor instead of being shared."),
+                ("Local dates and timestamps", "Chat activity reflects each visitor's own local time."),
+                ("My New Learning refinements", "Improved learning modes, response cards, and query-to-response transitions."),
+            ),
+            "note": (
+                "v0.1.3 established a more dependable learning flow and strengthened "
+                "the foundations for private, structured, visitor-specific exploration."
+            ),
+        },
+        "v0.1.2": {
+            "date": "June 28, 2026",
+            "items": (
+                ("Expanded technical coverage", "Broader Question Maps for computer science, hardware, cloud, machine learning, and statistics."),
+                ("Stronger topic recognition", "Short technical queries are interpreted more accurately and routed with greater consistency."),
+                ("Specific AI subjects preserved", "Topics such as Spatial AI and Constitutional AI retain their precise meaning."),
+                ("Ambiguity correction", "Resolved conflicting interpretations such as AMD the company versus the medical condition."),
+                ("Interface clarity", "More prominent Interrogate and Illustrate actions and a clearer Introduction experience."),
+                ("Visible release identity", "Updated the application label and added a dedicated What's New section."),
+            ),
+            "note": (
+                "v0.1.2 expanded InI's technical vocabulary while improving the "
+                "accuracy and consistency of its subject understanding."
+            ),
+        },
+        "v0.1.1": {
+            "date": "June 25, 2026",
+            "items": (
+                ("Stable public deployment", "Aligned the local and live environments around a dependable public release."),
+                ("Structured learning workflow", "Established the Topic → Introduction → Question Map → Answer learning journey."),
+                ("Improved Question Maps", "Strengthened AI-generated question structure and generation stability."),
+                ("Follow-up questions", "Added follow-up generation to continue exploration beyond the initial map."),
+                ("Answer continuation", "Supported AI-generated answers with a path for continuing the response."),
+                ("Session persistence", "Preserved learning activity across the user's session."),
+            ),
+            "note": (
+                "v0.1.1 established InI's stable foundation as an AI Tutor and "
+                "Question Engine built around structured inquiry."
+            ),
+        },
+    }
+    if st.session_state.get("intro_selected_release") not in intro_releases:
+        st.session_state.intro_selected_release = "v0.1.4"
+
+    selected_release = st.session_state.intro_selected_release
+    release = intro_releases[selected_release]
+    release_items_html = "".join(
+        (
+            '<div class="intro-release-item">'
+            f"<strong>{heading}</strong>{description}"
+            "</div>"
         )
+        for heading, description in release["items"]
+    )
+
+    release_history_col, release_details_col = st.columns([1, 3.2], gap="medium")
+    release_slots = (
+        "v0.1.8",
+        "v0.1.7",
+        "v0.1.6",
+        "v0.1.5",
+        "v0.1.4",
+        "v0.1.3",
+        "v0.1.2",
+        "v0.1.1",
+    )
+
+    with release_history_col:
+        with st.container(key="intro_release_history_card", height="stretch"):
+            st.markdown(
+                """
+                <div class="intro-history-heading">Release History</div>
+                <div class="intro-history-copy">Select a version to view its release details.</div>
+                """,
+                unsafe_allow_html=True,
+            )
+            for version in release_slots:
+                is_released = version in intro_releases
+                if version == "v0.1.4":
+                    button_label = f"{version}  ·  Current"
+                elif not is_released:
+                    button_label = f"{version}  ·  Unreleased"
+                else:
+                    button_label = version
+                if st.button(
+                    button_label,
+                    key=f"intro_release_{version.replace('.', '_')}",
+                    type="primary" if version == selected_release else "secondary",
+                    width="stretch",
+                    disabled=not is_released,
+                ):
+                    st.session_state.intro_selected_release = version
+                    st.rerun()
+
+    with release_details_col:
+        with st.container(key="intro_release_card", height="stretch"):
+            st.markdown(
+                f"""
+                <div class="intro-release-header">
+                  <div class="intro-card-heading">
+                    <span class="intro-icon">✦</span>
+                    <span>What's New in {selected_release}</span>
+                  </div>
+                  <span class="intro-release-badge">Released {release["date"]}</span>
+                </div>
+                <div class="intro-release-scroll">
+                  <div class="intro-release-grid">
+                    {release_items_html}
+                  </div>
+                  <p class="intro-release-note">{release["note"]}</p>
+                  <div class="intro-release-end" aria-hidden="true"></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     with st.container(key="intro_learning_card"):
         st.markdown(
