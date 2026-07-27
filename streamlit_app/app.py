@@ -7108,6 +7108,40 @@ def page_new_chat() -> None:
                 ].filter(Boolean).filter((el, index, arr) => arr.indexOf(el) === index);
 
                 const applyScroll = (kind) => {
+                  const isMobile = win.matchMedia('(max-width: 760px)').matches;
+                  if (isMobile) {
+                    const candidates = scrollables()
+                      .map((el) => ({
+                        el,
+                        range: Math.max(0, el.scrollHeight - el.clientHeight)
+                      }))
+                      .filter(({ range }) => range > 8)
+                      .sort((a, b) => b.range - a.range);
+                    const target = candidates.find(({ el }) =>
+                      el.matches?.('[data-testid="stMain"], [data-testid="stAppViewContainer"], .main')
+                    )?.el || candidates[0]?.el;
+                    if (!target) return;
+
+                    const viewportHeight = target.clientHeight || win.innerHeight;
+                    const currentTop = target.scrollTop || 0;
+                    const maxTop = Math.max(0, target.scrollHeight - viewportHeight);
+                    let nextTop = currentTop;
+                    if (kind === 'home') nextTop = 0;
+                    else if (kind === 'end') nextTop = maxTop;
+                    else if (kind === 'up') nextTop = Math.max(0, currentTop - (viewportHeight * 0.72));
+                    else if (kind === 'down') nextTop = Math.min(maxTop, currentTop + (viewportHeight * 0.72));
+                    target.scrollTo({ top: nextTop, behavior: 'smooth' });
+                    if (kind === 'end') {
+                      const settleAtEnd = () => target.scrollTo({
+                        top: Math.max(0, target.scrollHeight - target.clientHeight),
+                        behavior: 'auto'
+                      });
+                      win.requestAnimationFrame(() => win.requestAnimationFrame(settleAtEnd));
+                      win.setTimeout(settleAtEnd, 240);
+                    }
+                    return;
+                  }
+
                   const amount = win.innerHeight * 0.82;
                   for (const el of scrollables()) {
                     if (kind === 'home') {

@@ -11,7 +11,7 @@ _FCE_COMPONENT = st.components.v2.component(
     html='<div id="ini-fce-root" aria-live="polite"></div>',
     css="""
     #ini-fce-root { font-family: Aptos, "Segoe UI", system-ui, sans-serif; }
-    .ini-fce-overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 28px; box-sizing: border-box; background: rgba(16, 24, 40, .34); backdrop-filter: blur(3px); z-index: 1; opacity: 0; transition: opacity 420ms ease; pointer-events: none; }
+    .ini-fce-overlay { position: absolute; inset: 0; width: 100%; height: 100%; display: grid; place-items: center; padding: 28px; box-sizing: border-box; background: rgba(16, 24, 40, .34); backdrop-filter: blur(3px); z-index: 1; opacity: 0; transition: opacity 420ms ease; pointer-events: none; }
     .ini-fce-overlay.is-visible { opacity: 1; pointer-events: auto; }
     .ini-fce-panel { width: min(60vw, 810px); max-height: min(82vh, 790px); box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(226,232,240,.92); border-radius: 22px; background: rgba(255,255,255,.985); color: #1b2432; box-shadow: 0 28px 72px rgba(15,23,42,.20); }
     .ini-fce-header { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; padding: 22px 30px; }
@@ -41,7 +41,17 @@ _FCE_COMPONENT = st.components.v2.component(
     .ini-fce-final-actions .ini-fce-button { min-height: 45px; }
     @keyframes ini-fce-cursor { 0%, 45% { opacity: 1; } 46%, 100% { opacity: 0; } }
     @media (max-width: 900px) { .ini-fce-panel { width: min(82vw, 720px); } .ini-fce-body { padding-inline: 34px; } }
-    @media (max-width: 640px) { .ini-fce-overlay { padding: 12px; } .ini-fce-panel { width: 100%; max-height: calc(100vh - 24px); border-radius: 18px; } .ini-fce-header { padding: 17px 19px; } .ini-fce-body { padding-inline: 23px; } .ini-fce-transcript { padding-block: 28px; } .ini-fce-message { font-size: 21px; } .ini-fce-footer { align-items: stretch; flex-direction: column-reverse; padding: 14px 19px 18px; } .ini-fce-controls { width: 100%; } .ini-fce-button { flex: 1 1 auto; } .ini-fce-final-actions { grid-template-columns: 1fr; } }
+    .ini-fce-overlay.is-mobile { padding: 10px; }
+    .ini-fce-overlay.is-mobile .ini-fce-panel { width: calc(100% - 20px); max-width: none; max-height: calc(100% - 20px); border-radius: 18px; }
+    .ini-fce-overlay.is-mobile .ini-fce-header { padding: 15px 17px; }
+    .ini-fce-overlay.is-mobile .ini-fce-body { min-width: 0; min-height: 0; padding-inline: 20px; }
+    .ini-fce-overlay.is-mobile .ini-fce-transcript { min-width: 0; min-height: 0; padding-block: 22px; }
+    .ini-fce-overlay.is-mobile .ini-fce-message { max-width: 100%; overflow-wrap: anywhere; word-break: normal; font-size: clamp(18px, 5.2vw, 21px); }
+    .ini-fce-overlay.is-mobile .ini-fce-footer { align-items: stretch; flex-direction: column-reverse; padding: 12px 17px 15px; }
+    .ini-fce-overlay.is-mobile .ini-fce-controls { width: 100%; }
+    .ini-fce-overlay.is-mobile .ini-fce-button { flex: 1 1 auto; }
+    .ini-fce-overlay.is-mobile .ini-fce-final-actions { grid-template-columns: 1fr; }
+    @media (max-width: 640px) { .ini-fce-overlay { padding: 10px; } .ini-fce-panel { width: calc(100% - 20px); max-width: none; max-height: calc(100% - 20px); border-radius: 18px; } .ini-fce-header { padding: 15px 17px; } .ini-fce-body { min-width: 0; min-height: 0; padding-inline: 20px; } .ini-fce-transcript { min-width: 0; min-height: 0; padding-block: 22px; } .ini-fce-message { max-width: 100%; overflow-wrap: anywhere; font-size: clamp(18px, 5.2vw, 21px); } .ini-fce-footer { align-items: stretch; flex-direction: column-reverse; padding: 12px 17px 15px; } .ini-fce-controls { width: 100%; } .ini-fce-button { flex: 1 1 auto; } .ini-fce-final-actions { grid-template-columns: 1fr; } }
     @media (prefers-reduced-motion: reduce) { .ini-fce-overlay { transition: none; } .ini-fce-body { scroll-behavior: auto; } .ini-fce-caret { animation: none; } }
     """,
     js="""
@@ -61,15 +71,40 @@ _FCE_COMPONENT = st.components.v2.component(
       // Streamlit places this component inside the main-content region.
       // The overlay itself expands left by the visible sidebar width below.
       const sidebar = document.querySelector('[data-testid="stSidebar"]');
-      const sidebarWidth = sidebar && sidebar.offsetParent !== null
+      const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+      const physicalShortSide = Math.min(window.screen?.width || Infinity, window.screen?.height || Infinity);
+      const isMobileViewport = window.matchMedia('(max-width: 720px)').matches
+        || (hasCoarsePointer && physicalShortSide <= 720);
+      const sidebarWidth = !isMobileViewport && sidebar && sidebar.offsetParent !== null
         ? sidebar.getBoundingClientRect().width
         : 0;
-      Object.assign(host.style, {
-        position: 'fixed',
-        inset: '0',
-        zIndex: '2147483000',
-        pointerEvents: 'auto',
-      });
+      const syncHostToViewport = () => {
+        const viewport = window.visualViewport;
+        if (isMobileViewport && viewport) {
+          Object.assign(host.style, {
+            position: 'fixed',
+            inset: 'auto',
+            left: `${viewport.offsetLeft}px`,
+            top: `${viewport.offsetTop}px`,
+            width: `${viewport.width}px`,
+            height: `${viewport.height}px`,
+            zIndex: '2147483000',
+            pointerEvents: 'auto',
+          });
+          return;
+        }
+        Object.assign(host.style, {
+          position: 'fixed',
+          inset: '0',
+          width: 'auto',
+          height: 'auto',
+          zIndex: '2147483000',
+          pointerEvents: 'auto',
+        });
+      };
+      syncHostToViewport();
+      window.visualViewport?.addEventListener('resize', syncHostToViewport);
+      window.visualViewport?.addEventListener('scroll', syncHostToViewport);
 
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const flowStorageKey = 'ini_fce_active_flow';
@@ -138,7 +173,9 @@ _FCE_COMPONENT = st.components.v2.component(
         const canGoBack = progress && progress.index > 0 && progress.index < data.messages.length - 1;
         const footer = end ? '' : `<footer class="ini-fce-footer">${all ? '<div></div>' : `<div class="ini-fce-controls">${canGoBack ? '<button class="ini-fce-button" type="button" data-action="back">Previous</button>' : ''}<button class="ini-fce-button" type="button" data-action="skip">Skip Introduction</button><button class="ini-fce-button" type="button" data-action="show-all">Show Everything</button></div>`}<button class="ini-fce-button" type="button" data-action="skip-end">Skip to End</button></footer>`;
         if (Date.now() >= state.visibleAt) localStorage.setItem('ini_fce_seen', '1');
-        root.innerHTML = `<section class="ini-fce-overlay${Date.now() >= state.visibleAt ? ' is-visible' : ''}" role="dialog" aria-modal="true" aria-label="Welcome to InI.ai" style="inset:0 auto 0 -${sidebarWidth}px;width:calc(100vw + ${sidebarWidth}px)"><div class="ini-fce-panel"><header class="ini-fce-header"><div class="ini-fce-brand"><img src="${escapeHtml(data.icon_data)}" alt="InI.ai icon"> <span>InI.ai</span></div><button class="ini-fce-close" type="button" aria-label="Close First Conversation Experience" data-action="close">×</button></header><main class="ini-fce-body"><div class="ini-fce-transcript">${content}</div></main>${footer}</div></section>`;
+        const desktopExpansion = isMobileViewport ? '' : `left:-${sidebarWidth}px;width:calc(100% + ${sidebarWidth}px)`;
+        const mobileClass = isMobileViewport ? ' is-mobile' : '';
+        root.innerHTML = `<section class="ini-fce-overlay${mobileClass}${Date.now() >= state.visibleAt ? ' is-visible' : ''}" role="dialog" aria-modal="true" aria-label="Welcome to InI.ai" style="${desktopExpansion}"><div class="ini-fce-panel"><header class="ini-fce-header"><div class="ini-fce-brand"><img src="${escapeHtml(data.icon_data)}" alt="InI.ai icon"> <span>InI.ai</span></div><button class="ini-fce-close" type="button" aria-label="Close First Conversation Experience" data-action="close">×</button></header><main class="ini-fce-body"><div class="ini-fce-transcript">${content}</div></main>${footer}</div></section>`;
         root.querySelectorAll('[data-action]').forEach((button) => button.addEventListener('click', (event) => {
           event.stopPropagation();
           const action = button.dataset.action;
@@ -193,6 +230,8 @@ _FCE_COMPONENT = st.components.v2.component(
         root.removeEventListener('pointerdown', holdControls, true);
         root.removeEventListener('pointerup', releaseControls, true);
         document.removeEventListener('keydown', onKeyDown);
+        window.visualViewport?.removeEventListener('resize', syncHostToViewport);
+        window.visualViewport?.removeEventListener('scroll', syncHostToViewport);
         if (originalHostStyle === null) host.removeAttribute('style');
         else host.setAttribute('style', originalHostStyle);
       };
