@@ -471,36 +471,33 @@ button[kind="secondary"]{
     overflow-x: clip !important;
   }
 
-  /*
-   * Streamlit's compact sidebar is still a desktop-width rail. On phones it
-   * leaves a narrow slice of the page visible, which makes the app look as
-   * though the entire screen has been pulled sideways. Treat navigation as a
-   * full-screen mobile drawer instead.
-   */
+  /* Keep mobile navigation compact without covering the entire display. */
   [data-testid="stSidebar"][aria-expanded="true"]{
     position: fixed !important;
-    inset: 0 !important;
+    inset: 0 auto 0 0 !important;
     z-index: 2147482000 !important;
-    width: 100vw !important;
-    min-width: 100vw !important;
-    max-width: 100vw !important;
+    width: min(70vw, 320px) !important;
+    min-width: 0 !important;
+    max-width: 320px !important;
     height: 100dvh !important;
     transform: none !important;
     background: #f5f6f8 !important;
+    border-right: 1px solid rgba(15, 23, 42, 0.08) !important;
+    box-shadow: 18px 0 42px rgba(15, 23, 42, 0.14) !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
   }
 
   [data-testid="stSidebar"][aria-expanded="true"] .block-container{
-    width: min(100%, 340px) !important;
-    max-width: 340px !important;
-    margin-inline: auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin-inline: 0 !important;
     padding-inline: 18px !important;
   }
 
   [data-testid="stSidebar"][aria-expanded="true"]
   [data-testid="stSidebarCollapseButton"]{
-    position: fixed !important;
+    position: absolute !important;
     top: 12px !important;
     right: 12px !important;
     z-index: 2147482001 !important;
@@ -3585,6 +3582,51 @@ with st.sidebar:
         st.markdown("\n".join(html), unsafe_allow_html=True)
     else:
         st.markdown('<div class="small" style="color:var(--muted);">No learning sessions yet.</div>', unsafe_allow_html=True)
+
+# On phones, begin with navigation collapsed. The document-level marker keeps
+# Streamlit reruns from closing the drawer again after the user opens it.
+st.iframe(
+    """
+    <script>
+    (() => {
+      try {
+        const doc = window.parent.document;
+        const win = window.parent;
+        const root = doc.documentElement;
+
+        if (!win.matchMedia('(max-width: 720px)').matches) return;
+        if (root.dataset.iniMobileSidebarInitialized === 'true') return;
+        root.dataset.iniMobileSidebarInitialized = 'true';
+
+        let attempts = 0;
+        const collapseMobileSidebar = () => {
+          const sidebar = doc.querySelector('[data-testid="stSidebar"]');
+          if (sidebar && sidebar.getAttribute('aria-expanded') !== 'true') return;
+
+          const control = doc.querySelector(
+            '[data-testid="stSidebarCollapseButton"]'
+          );
+          if (sidebar && control) {
+            const button = control.matches('button')
+              ? control
+              : control.querySelector('button');
+            (button || control).click();
+            return;
+          }
+
+          attempts += 1;
+          if (attempts < 40) win.setTimeout(collapseMobileSidebar, 50);
+        };
+
+        collapseMobileSidebar();
+      } catch (err) {}
+    })();
+    </script>
+    """,
+    height=1,
+    tab_index=-1,
+)
+
 @st.dialog("Rename Session")
 def _render_rename_session_dialog() -> None:
     sid = st.session_state.rename_session_sid
@@ -7560,6 +7602,33 @@ def page_new_chat() -> None:
 
                 [data-testid="stElementContainer"]:has(.nc-explore-label) {{
                     width: calc(100% - 18px);
+                }}
+            }}
+
+            @media (max-width: 380px) {{
+                .st-key-nc_explore_ai button,
+                .st-key-nc_explore_quantum button,
+                .st-key-nc_explore_cognitive button,
+                .st-key-nc_explore_kubernetes button {{
+                    gap: 5px;
+                    padding-inline: 7px !important;
+                }}
+
+                .st-key-nc_explore_ai button::before,
+                .st-key-nc_explore_quantum button::before,
+                .st-key-nc_explore_cognitive button::before,
+                .st-key-nc_explore_kubernetes button::before {{
+                    width: 14px;
+                    height: 14px;
+                    flex-basis: 14px;
+                }}
+
+                .st-key-nc_explore_ai button p,
+                .st-key-nc_explore_quantum button p,
+                .st-key-nc_explore_cognitive button p,
+                .st-key-nc_explore_kubernetes button p {{
+                    font-size: 11px !important;
+                    text-overflow: clip;
                 }}
             }}
             </style>
