@@ -7061,7 +7061,37 @@ def page_new_chat() -> None:
                     }
                     @media (max-width: 760px) {
                       #ini-nc-scroll-controls {
-                        display: none;
+                        right: max(7px, env(safe-area-inset-right));
+                        top: 50%;
+                        bottom: auto;
+                        display: flex;
+                        gap: 6px;
+                        transform: translateY(-50%);
+                      }
+                      #ini-nc-scroll-controls button {
+                        width: 34px;
+                        height: 34px;
+                        border-radius: 11px;
+                        font-size: 15px;
+                        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.10);
+                      }
+                      #ini-nc-query-navigator {
+                        padding:
+                          max(12px, env(safe-area-inset-top))
+                          max(12px, env(safe-area-inset-right))
+                          max(12px, env(safe-area-inset-bottom))
+                          max(12px, env(safe-area-inset-left));
+                      }
+                      #ini-nc-query-navigator__panel {
+                        width: 100%;
+                        max-height: calc(100dvh - 24px);
+                        padding: 16px;
+                        border-radius: 16px;
+                      }
+                      .ini-nc-query-navigator__label {
+                        overflow: visible;
+                        text-overflow: clip;
+                        white-space: normal;
                       }
                     }
                   `;
