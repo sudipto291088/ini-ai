@@ -69,6 +69,7 @@ except ModuleNotFoundError as exc:
         return None
 
 from api.interrogate import extract_topic as extract_learning_topic
+from api.capability_boundary import assess_capability
 from api.conversation_interpreter import interpret_turn
 from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
@@ -4597,6 +4598,10 @@ def page_new_chat() -> None:
     def _run_new_chat_direct_followup(topic_text: str) -> None:
         if not topic_text.strip():
             return
+        capability_boundary = assess_capability(topic_text)
+        if capability_boundary:
+            _run_new_chat_interrogate(topic_text, show_spinner=False)
+            return
         try:
             current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
             with st.spinner("Generating details... please wait."):
@@ -5651,6 +5656,58 @@ def page_new_chat() -> None:
             )
         return None
 
+    def _is_topic_recommendation_request(text: str) -> bool:
+        normalized = re.sub(r"[^a-z0-9 ]+", " ", (text or "").lower()).strip()
+        return bool(
+            re.search(
+                r"^(?:please\s+)?(?:can you\s+|could you\s+|would you\s+)?"
+                r"(?:suggest|recommend)(?:\s+me)?\s+(?:a|one|some)\s+"
+                r"(?:topic|subject)(?:\s+to\s+(?:learn|study|explore))?$",
+                normalized,
+            )
+        )
+
+    def _topic_recommendation_copy(topic: str) -> str:
+        normalized_topic = (topic or "").strip().casefold()
+        if normalized_topic == "kubernetes":
+            return (
+                "Try **Kubernetes**. It is a practical topic that connects containers, deployment, "
+                "scaling, and modern cloud infrastructure, and it is within one of my stronger "
+                "learning areas. If it interests you, ask me to generate a Question Map for "
+                "Kubernetes."
+            )
+        if normalized_topic == "spatial artificial intelligence":
+            return (
+                "Try **spatial artificial intelligence**. It connects perception, mapping, computer "
+                "vision, robotics, and reasoning about physical environments. If it interests you, "
+                "ask me to generate a Question Map for spatial artificial intelligence."
+            )
+        if normalized_topic == "quantum computing":
+            return (
+                "Try **quantum computing**. It offers a structured path through qubits, superposition, "
+                "entanglement, algorithms, and hardware limitations. If it interests you, ask me to "
+                "generate a Question Map for quantum computing."
+            )
+        return (
+            "Try **gradient descent**. It is a focused starting point that connects calculus, "
+            "machine learning, and practical model training, and it is within one of my stronger "
+            "learning areas. If it interests you, ask me to generate a Question Map for gradient "
+            "descent."
+        )
+
+    def _next_topic_recommendation(current_topic: str) -> str:
+        sequence = [
+            "gradient descent",
+            "Kubernetes",
+            "spatial artificial intelligence",
+            "quantum computing",
+        ]
+        normalized_current = (current_topic or "").strip().casefold()
+        for index, candidate in enumerate(sequence):
+            if candidate.casefold() == normalized_current:
+                return sequence[(index + 1) % len(sequence)]
+        return sequence[0]
+
     def _local_conversation_answer(
         text: str,
         profile: Optional[Dict[str, Any]] = None,
@@ -5692,6 +5749,9 @@ def page_new_chat() -> None:
         }:
             return f"I’m here with you{address}. What’s going on?"
 
+        if _is_topic_recommendation_request(normalized):
+            return _topic_recommendation_copy("gradient descent")
+
         if re.search(
             r"\b(what|which).*(topics?|subjects?|areas?).*(do you know|can you cover|can you help|support)\b",
             normalized,
@@ -5703,10 +5763,11 @@ def page_new_chat() -> None:
                 "I am strongest today at structured learning around artificial intelligence, "
                 "machine learning, data science, computer science, software and cloud concepts "
                 "such as Kubernetes, quantum computing, and cognitive science. I can discuss "
-                "other educational topics too, but the depth and reliability may vary. I do not "
-                "claim verified specialist support for medical, legal, or financial advice. Give "
-                "me a topic and I will tell you honestly whether I can explain it, discuss it, or "
-                "build a reliable Question Map."
+                "other educational topics too, but the depth and reliability may vary. I am still "
+                "in active development, so I can occasionally misunderstand a request or produce "
+                "an uneven result. I do not claim verified specialist support for medical, legal, "
+                "or financial advice. Give me a topic and I will tell you honestly whether I can "
+                "explain it or build a reliable Question Map."
             )
 
         if normalized in {
@@ -5737,6 +5798,30 @@ def page_new_chat() -> None:
             if interpreted_turn.has_substantive_text
             else display_topic_text
         )
+        active_capability_boundary = st.session_state.get(
+            "chat_active_capability_boundary"
+        )
+        normalized_boundary_reply = re.sub(
+            r"[^a-z0-9 ]+",
+            " ",
+            display_topic_text.lower(),
+        ).strip()
+        boundary_followup = bool(
+            re.match(
+                r"^(?:yes|yeah|yep|sure|okay|ok|please|go ahead|do it|"
+                r"continue|explain|explain more|tell me more)\b",
+                normalized_boundary_reply,
+            )
+        )
+        if isinstance(active_capability_boundary, dict) and boundary_followup:
+            blocked_topic = str(
+                active_capability_boundary.get("source_topic") or ""
+            ).strip()
+            if blocked_topic:
+                topic_text = blocked_topic
+                semantic_topic_text = blocked_topic
+        elif assess_capability(display_topic_text) is None:
+            st.session_state.chat_active_capability_boundary = None
         context_correction_question = ""
         context_correction_accepted = False
         pending_context_correction = st.session_state.get("chat_pending_context_correction")
@@ -5812,6 +5897,13 @@ def page_new_chat() -> None:
             display_topic_text,
             chat_user_profile,
         )
+        topic_recommendation_request = _is_topic_recommendation_request(
+            display_topic_text
+        )
+        recommended_topic = (
+            "gradient descent" if topic_recommendation_request else ""
+        )
+        alternate_topic_recommendation = ""
         ini_product_answer = _chat_identity_answer(
             display_topic_text,
             chat_user_profile,
@@ -5837,6 +5929,15 @@ def page_new_chat() -> None:
                     topic_text = original_topic
                     semantic_topic_text = original_topic
                     qm_confirmation_accepted = True
+            elif re.match(
+                r"^(?:no|nope|not this|something else|anything else|another|"
+                r"another one|different|different topic|suggest another)\b",
+                normalized_reply,
+            ):
+                alternate_topic_recommendation = _next_topic_recommendation(
+                    original_topic
+                )
+                recommended_topic = alternate_topic_recommendation
             if qm_confirmation_accepted:
                 st.session_state.chat_study_mode_established = True
             st.session_state.chat_pending_qm_confirmation = None
@@ -5952,6 +6053,7 @@ def page_new_chat() -> None:
 
         if (
             not discussion_freeform_followup
+            and not qm_confirmation_accepted
             and _looks_like_answer_to_last_question(
                 display_topic_text,
                 contextual_previous_reply,
@@ -5962,6 +6064,7 @@ def page_new_chat() -> None:
         if (
             _is_ambiguous_context_followup(display_topic_text)
             and prior_response_mode == "conversation"
+            and not qm_confirmation_accepted
         ):
             discussion_freeform_followup = True
 
@@ -6016,6 +6119,17 @@ def page_new_chat() -> None:
 
         if not topic_text.strip():
             return
+        capability_boundary = assess_capability(topic_text)
+        if capability_boundary:
+            # A boundary ends any half-finished learning route. A later
+            # confirmation such as "go ahead" must not bypass it.
+            st.session_state.chat_active_capability_boundary = {
+                "domain": capability_boundary.domain,
+                "source_topic": topic_text,
+            }
+            st.session_state.chat_pending_context_clarification = None
+            st.session_state.chat_pending_qm_confirmation = None
+            st.session_state.chat_pending_discussion_action = None
         try:
             current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
 
@@ -6034,7 +6148,19 @@ def page_new_chat() -> None:
                 else nullcontext()
             )
             with spinner_context:
-                if context_correction_question:
+                if capability_boundary:
+                    data = {
+                        "categories": {},
+                        "followups": [],
+                        "intent": "capability_boundary",
+                        "should_answer_direct": False,
+                        "response_mode": "conversation",
+                        "context_intent": "unsupported_domain",
+                        "needs_clarification": False,
+                        "suppress_profile": True,
+                        "reply": capability_boundary.reply,
+                    }
+                elif context_correction_question:
                     data = {
                         "categories": {},
                         "followups": [],
@@ -6046,15 +6172,42 @@ def page_new_chat() -> None:
                         "suppress_profile": True,
                         "reply": context_correction_question,
                     }
-                elif local_conversation_answer:
+                elif alternate_topic_recommendation:
+                    st.session_state.chat_pending_qm_confirmation = {
+                        "topic": alternate_topic_recommendation,
+                    }
                     data = {
                         "categories": {},
-                        "followups": [],
+                        "followups": ["Generate Question Map"],
+                        "intent": "topic_recommendation",
+                        "should_answer_direct": False,
+                        "response_mode": "conversation",
+                        "context_intent": "conversation",
+                        "needs_clarification": True,
+                        "hide_clarification_title": True,
+                        "suppress_profile": False,
+                        "reply": _topic_recommendation_copy(
+                            alternate_topic_recommendation
+                        ),
+                    }
+                elif local_conversation_answer:
+                    if topic_recommendation_request:
+                        st.session_state.chat_pending_qm_confirmation = {
+                            "topic": "gradient descent",
+                        }
+                    data = {
+                        "categories": {},
+                        "followups": (
+                            ["Generate Question Map"]
+                            if topic_recommendation_request
+                            else []
+                        ),
                         "intent": "local_conversation",
                         "should_answer_direct": False,
                         "response_mode": "conversation",
                         "context_intent": "conversation",
-                        "needs_clarification": False,
+                        "needs_clarification": topic_recommendation_request,
+                        "hide_clarification_title": topic_recommendation_request,
                         "suppress_profile": False,
                         "reply": local_conversation_answer,
                     }
@@ -6311,17 +6464,28 @@ def page_new_chat() -> None:
                         "stop_reason": answer_stop_reason,
                         "mode": mode_name,
                         "followups": followups,
-                        "intent": intent_name,
+                        "intent": (
+                            "topic_recommendation"
+                            if recommended_topic
+                            else intent_name
+                        ),
                         "should_answer_direct": should_answer_direct,
                         "response_mode": response_mode,
                         "context_intent": context_intent,
                         "show_followups": show_followups,
                         "needs_clarification": bool(data.get("needs_clarification")),
-                        "profile_prompt": qm_discussion_topic or display_topic_text,
+                        "profile_prompt": (
+                            recommended_topic
+                            if recommended_topic
+                            else qm_discussion_topic or display_topic_text
+                        ),
                         "suppress_profile": bool(data.get("suppress_profile", False)),
                         "show_action_buttons": bool(qm_discussion_topic),
                         "clarification_title": (
                             "Choose how to continue" if qm_discussion_topic else ""
+                        ),
+                        "hide_clarification_title": bool(
+                            data.get("hide_clarification_title", False)
                         ),
                         "discussion_answer": (
                             {
@@ -6546,6 +6710,10 @@ def page_new_chat() -> None:
         show_spinner: bool = True,
     ) -> None:
         if not topic_text.strip():
+            return
+        capability_boundary = assess_capability(topic_text)
+        if capability_boundary:
+            _run_new_chat_interrogate(topic_text, show_spinner=False)
             return
         try:
             current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
@@ -6790,7 +6958,18 @@ def page_new_chat() -> None:
             time.sleep(0.65)
             if action == "illustrate":
                 resolved_status = "generating"
-            elif _is_explicit_qm_prompt(prompt) or (
+            elif (
+                isinstance(
+                    st.session_state.get("chat_pending_qm_confirmation"),
+                    dict,
+                )
+                and bool(
+                    re.match(
+                        r"^(yes|yeah|yep|sure|okay|ok|please|go ahead|do it|generate)\b",
+                        re.sub(r"[^a-z0-9 ]+", " ", prompt.lower()).strip(),
+                    )
+                )
+            ) or _is_explicit_qm_prompt(prompt) or (
                 st.session_state.chat_study_mode_established
                 and not _looks_like_casual_generation(prompt)
                 and not _looks_like_answer_to_last_question(

@@ -27,6 +27,39 @@ def build_response_profile(
     response_mode = (response_mode or "").strip().lower()
     context_intent = (context_intent or "").strip().lower()
 
+    if intent == "topic_recommendation":
+        if "kubernetes" in normalized:
+            return [
+                ("Name type", "Recommended learning topic"),
+                ("Entity type", "Container orchestration platform"),
+                ("Broad field", "Cloud computing"),
+                ("Subject", _subject(text)),
+                ("Related topics", "Containers, deployments, scaling, clusters, DevOps"),
+            ]
+        if "spatial artificial intelligence" in normalized:
+            return [
+                ("Name type", "Recommended learning topic"),
+                ("Entity type", "Interdisciplinary AI field"),
+                ("Broad field", "Artificial intelligence"),
+                ("Subject", _subject(text)),
+                ("Related topics", "Computer vision, robotics, mapping, spatial reasoning"),
+            ]
+        if "quantum computing" in normalized:
+            return [
+                ("Name type", "Recommended learning topic"),
+                ("Entity type", "Computing paradigm"),
+                ("Broad field", "Quantum information science"),
+                ("Subject", _subject(text)),
+                ("Related topics", "Qubits, superposition, entanglement, quantum algorithms"),
+            ]
+        return [
+            ("Name type", "Recommended learning topic"),
+            ("Entity type", "Optimization algorithm"),
+            ("Broad field", "Machine learning"),
+            ("Subject", _subject(text)),
+            ("Related topics", "Calculus, loss functions, model training, learning rates"),
+        ]
+
     if response_mode == "conversation":
         if re.search(r"\b(call you|your name|who are you|what should i call)\b", normalized):
             return [

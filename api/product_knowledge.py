@@ -109,16 +109,20 @@ def answer_ini_product_query(
             "I am strongest today at structured learning around artificial intelligence, machine "
             "learning, data science, computer science, software and cloud concepts such as "
             "Kubernetes, quantum computing, and cognitive science. I can discuss other educational "
-            "topics too, but the depth and reliability may vary. I do not claim verified specialist "
-            "support for medical, legal, or financial advice. Give me a topic and I will tell you "
-            "honestly whether I can explain it, discuss it, or build a reliable Question Map."
+            "topics too, but the depth and reliability may vary. I am still in active development, "
+            "so I can occasionally misunderstand a request or produce an uneven result. I do not "
+            "claim verified specialist support for medical, legal, or financial advice. Give me a "
+            "topic and I will tell you honestly whether I can explain it or build a reliable "
+            "Question Map."
         )
 
     if re.search(r"\b(what can|how can|capabilities|features|help me|use you|do for me)\b", s):
         return (
             "I can hold a conversation, clarify ambiguous requests, explain topics directly, build "
             "Topic Profiles and structured Question Maps, suggest useful follow-ups, guide focused "
-            "discussions, and preserve your query trail so an exploration remains navigable."
+            "discussions, and preserve your query trail so an exploration remains navigable. I am "
+            "still being improved, so these abilities are not equally reliable for every subject "
+            "or every phrasing yet."
         )
 
     if re.search(r"\b(what exactly|what is|who are|describe|define).*(ini|you)\b", s) or s in {
