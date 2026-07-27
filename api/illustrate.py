@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 from typing import Dict, List
 
@@ -60,19 +61,35 @@ def _normalize_examples(text: str) -> str:
     return s
 
 
-def _build_illustrate_instruction(topic: str, topic_type: str) -> str:
+def _build_illustrate_instruction(
+    topic: str,
+    topic_type: str,
+    start_number: int = 1,
+    end_number: int = 5,
+    existing_titles: str = "",
+) -> str:
+    continuation_note = (
+        f"\nAlready used example headings:\n{existing_titles}\n"
+        "Do not repeat those examples or closely equivalent scenarios.\n"
+        if existing_titles
+        else ""
+    )
     return f"""
 You are InI.ai — an explanation engine for learning through examples.
 
 TOPIC: {topic}
 TOPIC TYPE: {topic_type}
+{continuation_note}
 
 Your task:
-Generate 9 to 10 highly relevant examples that illustrate the topic clearly.
+Generate exactly {end_number - start_number + 1} highly relevant examples, numbered
+from Example {start_number} through Example {end_number}, that illustrate the topic clearly.
 
 Output rules:
 - Do NOT produce a question map.
 - Do NOT produce generic bullets.
+- STRICT LIMIT: keep each example between 45 and 75 words.
+- End every example with a complete sentence before starting the next one.
 - Each example must start with a bold heading.
 - Each heading should name the example clearly, such as a domain, scenario, or use case.
 - Under each heading, write a properly indented explanatory write-up.
@@ -83,21 +100,86 @@ Output rules:
 - If the topic is abstract, use strong analogies plus practical contexts.
 - Maintain clarity and substance; avoid filler.
 - Keep the formatting consistent from start to finish.
+- Independently recompute every numerical result before including it.
+- If a calculation cannot be verified, explain the method without inventing a result.
 
 Preferred output pattern:
 
-**Example 1 — Heading**
+**Example {start_number} — Heading**
 
 Explanation paragraph(s)...
 
 ---
 
-**Example 2 — Heading**
+**Example {start_number + 1} — Heading**
 
 Explanation paragraph(s)...
 
 Now generate the examples.
 """.strip()
+
+
+def _example_headings(text: str) -> List[str]:
+    return [
+        match.strip()
+        for match in re.findall(
+            r"(?im)^\s*\*\*Example\s+\d+\s*[—–:-]\s*(.+?)\*\*\s*$",
+            text or "",
+        )
+    ]
+
+
+def _count_examples(text: str) -> int:
+    return len(
+        re.findall(
+            r"(?im)^\s*\*\*Example\s+\d+\s*[—–:-]",
+            text or "",
+        )
+    )
+
+
+def _repair_sqrt_approximations(text: str) -> str:
+    """Correct explicit ``sqrt(number) = value`` arithmetic slips."""
+    pattern = re.compile(
+        r"(sqrt\(\s*(\d+(?:\.\d+)?)\s*\)\s*(?:=|≈|~=|about)\s*)"
+        r"(\d+(?:\.\d+)?)",
+        flags=re.IGNORECASE,
+    )
+
+    def replace(match: re.Match[str]) -> str:
+        radicand = float(match.group(2))
+        claimed = float(match.group(3))
+        actual = math.sqrt(radicand)
+        tolerance = max(0.012, actual * 0.0001)
+        if abs(claimed - actual) <= tolerance:
+            return match.group(0)
+        corrected = f"{actual:.2f}".rstrip("0").rstrip(".")
+        return f"{match.group(1)}{corrected}"
+
+    return pattern.sub(replace, text or "")
+
+
+def _drop_incomplete_final_example(text: str) -> str:
+    """Remove a visibly truncated final block so it is never presented."""
+    value = (text or "").rstrip()
+    starts = list(
+        re.finditer(
+            r"(?im)^\s*\*\*Example\s+\d+\s*[—–:-]",
+            value,
+        )
+    )
+    if not starts:
+        return value
+
+    final_block = value[starts[-1].start():]
+    balanced_parentheses = final_block.count("(") == final_block.count(")")
+    complete_ending = bool(re.search(r'[.!?]["\')\]]?\s*$', final_block))
+    if balanced_parentheses and complete_ending:
+        return value
+
+    trimmed = value[:starts[-1].start()].rstrip()
+    trimmed = re.sub(r"(?:\n\s*---\s*)+$", "", trimmed).rstrip()
+    return trimmed
 
 
 def _build_template_examples(topic: str) -> str:
@@ -173,16 +255,64 @@ def illustrate(topic: str) -> Dict[str, object]:
                 topic=clean_topic,
                 topic_type=topic_type,
                 archetype="APPLY",
-                question=_build_illustrate_instruction(clean_topic, topic_type),
+                question=_build_illustrate_instruction(
+                    clean_topic,
+                    topic_type,
+                    1,
+                    5,
+                ),
                 meta={"mode": "illustrate_examples", "expects": "text"},
             )
-            examples_text = _normalize_examples(raw or "")
+            examples_text = _drop_incomplete_final_example(
+                _normalize_examples(raw or "")
+            )
             used_llm = bool(examples_text.strip())
+
+            rounds = 0
+            while 0 < _count_examples(examples_text) < 9 and rounds < 2:
+                current_count = _count_examples(examples_text)
+                start_number = current_count + 1
+                end_number = min(10, start_number + 4)
+                continuation = llm_answer_question(
+                    topic=clean_topic,
+                    topic_type=topic_type,
+                    archetype="APPLY",
+                    question=_build_illustrate_instruction(
+                        clean_topic,
+                        topic_type,
+                        start_number,
+                        end_number,
+                        "\n".join(
+                            f"- {title}"
+                            for title in _example_headings(examples_text)
+                        ),
+                    ),
+                    meta={
+                        "mode": "illustrate_examples_continuation",
+                        "expects": "text",
+                    },
+                )
+                continuation_text = _drop_incomplete_final_example(
+                    _normalize_examples(continuation or "")
+                )
+                if not continuation_text.strip():
+                    break
+                examples_text = (
+                    f"{examples_text.rstrip()}\n\n---\n\n"
+                    f"{continuation_text.lstrip()}"
+                )
+                if _count_examples(examples_text) <= current_count:
+                    break
+                rounds += 1
+
+            examples_text = _repair_sqrt_approximations(
+                _drop_incomplete_final_example(examples_text)
+            )
         except Exception:
             examples_text = ""
             used_llm = False
 
-    if not examples_text.strip():
+    if _count_examples(examples_text) < 9:
         examples_text = _build_template_examples(clean_topic)
         used_llm = False
 
@@ -196,4 +326,5 @@ def illustrate(topic: str) -> Dict[str, object]:
             "v0: LLM used when available; template fallback otherwise",
         ],
         "llm_used": used_llm,
+        "example_count": _count_examples(examples_text),
     }

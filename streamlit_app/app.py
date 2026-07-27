@@ -5204,6 +5204,7 @@ def page_new_chat() -> None:
         text: str,
         ts: str = "",
         extra_class: str = "",
+        query_mode: str = "",
     ) -> None:
         prompt = (text or "").strip()
         if not prompt:
@@ -5217,27 +5218,30 @@ def page_new_chat() -> None:
         if ts:
             ts_html = f"<div style='margin-top:6px; text-align:right; color:#64748b; font-size:11px;'>{ts}</div>"
 
-        st.markdown(
-            f"""
-            <div class="{class_names}" style="display:flex; justify-content:flex-end; margin: 10px 0 14px 0;">
-            <div class="nc-user-bubble__content" style="
-                max-width: 68%;
-                background: #f3f4f6;
-                color: #111827;
-                border: 1px solid #e5e7eb;
-                border-radius: 18px;
-                padding: 10px 14px;
-                line-height: 1.45;
-                font-size: 14px;
-                box-shadow: 0 1px 2px rgba(15,23,42,0.04);
-            ">
-                <span class="nc-user-bubble__prompt">{prompt}</span>
-                {ts_html}
-            </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        mode_html = ""
+        if (query_mode or "").strip().lower() == "illustrate":
+            mode_html = (
+                '<div class="nc-user-bubble__mode" aria-label="Illustrate query" '
+                'style="display:flex;align-items:center;justify-content:flex-start;align-self:flex-start;gap:6px;'
+                'margin-top:7px;padding-left:3px;color:#111827;font-size:11px;'
+                'font-weight:650;letter-spacing:.01em;">'
+                '<span aria-hidden="true" style="width:6px;height:6px;border-radius:50%;'
+                'background:#f51b3f;box-shadow:0 0 0 3px rgba(245,27,63,.10);"></span>'
+                '<span>Illustrate</span></div>'
+            )
+
+        bubble_html = (
+            f'<div class="{class_names}" '
+            'style="display:flex;justify-content:flex-end;margin:10px 0 14px 0;">'
+            '<div style="display:flex;flex-direction:column;align-items:flex-end;max-width:68%;">'
+            '<div class="nc-user-bubble__content" '
+            'style="max-width:100%;box-sizing:border-box;background:#f3f4f6;color:#111827;'
+            'border:1px solid #e5e7eb;border-radius:18px;padding:10px 14px;'
+            'line-height:1.45;font-size:14px;box-shadow:0 1px 2px rgba(15,23,42,0.04);">'
+            f'<span class="nc-user-bubble__prompt">{prompt}</span>{ts_html}</div>'
+            f'{mode_html}</div></div>'
         )
+        st.markdown(bubble_html, unsafe_allow_html=True)
 
 
 
@@ -7013,6 +7017,7 @@ def page_new_chat() -> None:
             pending_prompt,
             pending_ts,
             extra_class="nc-pending-inline-query",
+            query_mode=(pending.get("action") or "").strip().lower(),
         )
 
         generation_slot = st.empty()
@@ -7628,7 +7633,9 @@ def page_new_chat() -> None:
             }}
 
             .st-key-nc_top_interrogate div.stButton > button[kind="secondary"],
-            .st-key-nc_top_illustrate div.stButton > button[kind="secondary"] {{
+            .st-key-nc_top_illustrate div.stButton > button[kind="secondary"],
+            .st-key-nc_top_interrogate div[data-testid="stFormSubmitButton"] > button,
+            .st-key-nc_top_illustrate div[data-testid="stFormSubmitButton"] > button {{
                 width: 100% !important;
                 min-width: 0 !important;
                 height: 42px !important;
@@ -7647,7 +7654,9 @@ def page_new_chat() -> None:
             }}
 
             .st-key-nc_top_interrogate div.stButton > button[kind="secondary"]:hover,
-            .st-key-nc_top_illustrate div.stButton > button[kind="secondary"]:hover {{
+            .st-key-nc_top_illustrate div.stButton > button[kind="secondary"]:hover,
+            .st-key-nc_top_interrogate div[data-testid="stFormSubmitButton"] > button:hover,
+            .st-key-nc_top_illustrate div[data-testid="stFormSubmitButton"] > button:hover {{
                 transform: translateY(-1px);
                 border-color: #111d35 !important;
                 background: #111d35 !important;
@@ -7657,7 +7666,11 @@ def page_new_chat() -> None:
             .st-key-nc_top_interrogate div.stButton > button[kind="secondary"] p,
             .st-key-nc_top_interrogate div.stButton > button[kind="secondary"] span,
             .st-key-nc_top_illustrate div.stButton > button[kind="secondary"] p,
-            .st-key-nc_top_illustrate div.stButton > button[kind="secondary"] span {{
+            .st-key-nc_top_illustrate div.stButton > button[kind="secondary"] span,
+            .st-key-nc_top_interrogate div[data-testid="stFormSubmitButton"] > button p,
+            .st-key-nc_top_interrogate div[data-testid="stFormSubmitButton"] > button span,
+            .st-key-nc_top_illustrate div[data-testid="stFormSubmitButton"] > button p,
+            .st-key-nc_top_illustrate div[data-testid="stFormSubmitButton"] > button span {{
                 color: #ffffff !important;
                 -webkit-text-fill-color: #ffffff !important;
                 font-size: 14px !important;
@@ -7841,7 +7854,9 @@ def page_new_chat() -> None:
                 }}
 
                 .st-key-nc_top_interrogate div.stButton > button[kind="secondary"],
-                .st-key-nc_top_illustrate div.stButton > button[kind="secondary"] {{
+                .st-key-nc_top_illustrate div.stButton > button[kind="secondary"],
+                .st-key-nc_top_interrogate div[data-testid="stFormSubmitButton"] > button,
+                .st-key-nc_top_illustrate div[data-testid="stFormSubmitButton"] > button {{
                     height: 44px !important;
                     min-height: 44px !important;
                     padding-inline: 10px !important;
@@ -7904,31 +7919,31 @@ def page_new_chat() -> None:
         illustrate_run = False
         explore_topic = None
 
-        with st.container(key="nc_landing_composer"):
-            st.text_area(
-                "NC_TOP_TOPIC",
-                placeholder="Ask InI anything...",
-                key="chat_top_topic_input",
-                label_visibility="collapsed",
-                height=70,
-                on_change=_request_chat_top_enter_submit,
-            )
+        with st.form("nc_top_action_form", border=False):
+            with st.container(key="nc_landing_composer"):
+                st.text_area(
+                    "NC_TOP_TOPIC",
+                    placeholder="Ask InI anything...",
+                    key="chat_top_topic_input",
+                    label_visibility="collapsed",
+                    height=70,
+                )
 
-        action_cols = st.columns(2, gap="small")
-        with action_cols[0]:
-            run = st.button(
-                "Interrogate",
-                key="nc_top_interrogate",
-                type="secondary",
-                use_container_width=True,
-            )
-        with action_cols[1]:
-            illustrate_run = st.button(
-                "Illustrate",
-                key="nc_top_illustrate",
-                type="secondary",
-                use_container_width=True,
-            )
+            action_cols = st.columns(2, gap="small")
+            with action_cols[0]:
+                run = st.form_submit_button(
+                    "Interrogate",
+                    key="nc_top_interrogate",
+                    type="secondary",
+                    use_container_width=True,
+                )
+            with action_cols[1]:
+                illustrate_run = st.form_submit_button(
+                    "Illustrate",
+                    key="nc_top_illustrate",
+                    type="secondary",
+                    use_container_width=True,
+                )
 
         st.markdown('<div class="nc-explore-label">Explore</div>', unsafe_allow_html=True)
         explore_cols = st.columns(4, gap="small")
@@ -7943,59 +7958,6 @@ def page_new_chat() -> None:
                 if st.button(label, key=key, use_container_width=True):
                     explore_topic = label
 
-        st.iframe(
-            """
-            <script>
-            (() => {
-              const parentDoc = window.parent.document;
-              const bindEnter = () => {
-                const input = parentDoc.querySelector(
-                  'textarea[aria-label="NC_TOP_TOPIC"]'
-                );
-
-                if (!input || input.dataset.iniEnterBound) {
-                  return false;
-                }
-
-                input.dataset.iniEnterBound = "true";
-                input.addEventListener("keydown", (event) => {
-                  if (
-                    event.key === "Enter"
-                    && !event.shiftKey
-                    && !event.ctrlKey
-                    && !event.metaKey
-                    && !event.isComposing
-                  ) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    input.dispatchEvent(new KeyboardEvent("keydown", {
-                      key: "Enter",
-                      code: "Enter",
-                      ctrlKey: true,
-                      bubbles: true,
-                      cancelable: true,
-                    }));
-                  }
-                });
-                return true;
-              };
-
-              if (!bindEnter()) {
-                let attempts = 0;
-                const timer = window.setInterval(() => {
-                  attempts += 1;
-                  if (bindEnter() || attempts >= 20) {
-                    window.clearInterval(timer);
-                  }
-                }, 50);
-              }
-            })();
-            </script>
-            """,
-            height=1,
-            tab_index=-1,
-        )
-
         if illustrate_run:
             _queue_new_chat_request(
                 st.session_state.chat_top_topic_input,
@@ -8005,7 +7967,7 @@ def page_new_chat() -> None:
         if explore_topic:
             _queue_new_chat_request(explore_topic, "interrogate")
 
-        if run or st.session_state.chat_top_enter_submit:
+        if run:
             _queue_new_chat_request(
                 st.session_state.chat_top_topic_input,
                 "interrogate",
@@ -8230,7 +8192,9 @@ def page_new_chat() -> None:
             }
 
             .st-key-nc_bottom_interrogate div.stButton > button,
-            .st-key-nc_bottom_illustrate div.stButton > button {
+            .st-key-nc_bottom_illustrate div.stButton > button,
+            .st-key-nc_bottom_interrogate div[data-testid="stFormSubmitButton"] > button,
+            .st-key-nc_bottom_illustrate div[data-testid="stFormSubmitButton"] > button {
                 width: 100% !important;
                 min-width: 0 !important;
                 height: 40px !important;
@@ -8250,7 +8214,9 @@ def page_new_chat() -> None:
             }
 
             .st-key-nc_bottom_interrogate div.stButton > button:hover,
-            .st-key-nc_bottom_illustrate div.stButton > button:hover {
+            .st-key-nc_bottom_illustrate div.stButton > button:hover,
+            .st-key-nc_bottom_interrogate div[data-testid="stFormSubmitButton"] > button:hover,
+            .st-key-nc_bottom_illustrate div[data-testid="stFormSubmitButton"] > button:hover {
                 border-color: #111d35 !important;
                 background: #111d35 !important;
             }
@@ -8258,7 +8224,11 @@ def page_new_chat() -> None:
             .st-key-nc_bottom_interrogate div.stButton > button p,
             .st-key-nc_bottom_interrogate div.stButton > button span,
             .st-key-nc_bottom_illustrate div.stButton > button p,
-            .st-key-nc_bottom_illustrate div.stButton > button span {
+            .st-key-nc_bottom_illustrate div.stButton > button span,
+            .st-key-nc_bottom_interrogate div[data-testid="stFormSubmitButton"] > button p,
+            .st-key-nc_bottom_interrogate div[data-testid="stFormSubmitButton"] > button span,
+            .st-key-nc_bottom_illustrate div[data-testid="stFormSubmitButton"] > button p,
+            .st-key-nc_bottom_illustrate div[data-testid="stFormSubmitButton"] > button span {
                 margin: 0 !important;
                 color: #ffffff !important;
                 -webkit-text-fill-color: #ffffff !important;
@@ -8342,7 +8312,9 @@ def page_new_chat() -> None:
                 }
 
                 .st-key-nc_bottom_interrogate div.stButton > button,
-                .st-key-nc_bottom_illustrate div.stButton > button {
+                .st-key-nc_bottom_illustrate div.stButton > button,
+                .st-key-nc_bottom_interrogate div[data-testid="stFormSubmitButton"] > button,
+                .st-key-nc_bottom_illustrate div[data-testid="stFormSubmitButton"] > button {
                     height: 38px !important;
                     min-height: 38px !important;
                     max-height: 38px !important;
@@ -8358,34 +8330,37 @@ def page_new_chat() -> None:
         composer_revision = st.session_state._nc_bottom_composer_revision
         composer_key = f"chat_bottom_topic_input_{composer_revision}"
 
-        with st.container(key="nc_bottom_composer"):
-            input_col, int_col, ill_col = st.columns(
-                [8.5, 1.4, 1.4],
-                gap="small"
-            )
-
-            with input_col:
-                st.text_input(
-                    "NC_BOTTOM_TOPIC",
-                    key=composer_key,
-                    label_visibility="collapsed",
-                    placeholder="Ask InI anything to continue...",
-                    on_change=_request_chat_bottom_enter_submit,
+        with st.form(
+            f"nc_bottom_action_form_{composer_revision}",
+            border=False,
+        ):
+            with st.container(key="nc_bottom_composer"):
+                input_col, int_col, ill_col = st.columns(
+                    [8.5, 1.4, 1.4],
+                    gap="small"
                 )
 
-            with int_col:
-                run = st.button(
-                    "Interrogate",
-                    key="nc_bottom_interrogate",
-                    use_container_width=True,
-                )
+                with input_col:
+                    st.text_input(
+                        "NC_BOTTOM_TOPIC",
+                        key=composer_key,
+                        label_visibility="collapsed",
+                        placeholder="Ask InI anything to continue...",
+                    )
 
-            with ill_col:
-                illustrate_run = st.button(
-                    "Illustrate",
-                    key="nc_bottom_illustrate",
-                    use_container_width=True,
-                )
+                with int_col:
+                    run = st.form_submit_button(
+                        "Interrogate",
+                        key="nc_bottom_interrogate",
+                        use_container_width=True,
+                    )
+
+                with ill_col:
+                    illustrate_run = st.form_submit_button(
+                        "Illustrate",
+                        key="nc_bottom_illustrate",
+                        use_container_width=True,
+                    )
 
         if illustrate_run:
             _queue_new_chat_request(
@@ -8393,7 +8368,7 @@ def page_new_chat() -> None:
                 "illustrate",
             )
 
-        if run or st.session_state.chat_bottom_enter_submit:
+        if run:
             _queue_new_chat_request(
                 st.session_state.get(composer_key, ""),
                 "interrogate",
@@ -8529,6 +8504,7 @@ def page_new_chat() -> None:
             pending_prompt,
             pending_ts,
             extra_class="nc-pending-query",
+            query_mode=(pending_new_chat_request.get("action") or "").strip().lower(),
         )
 
         generation_slot = st.empty()
@@ -8547,7 +8523,8 @@ def page_new_chat() -> None:
         _render_nc_user_bubble(
             st.session_state.chat_root_topic or st.session_state.chat.get("topic") or "",
             st.session_state.chat_root_illustrate.get("ts", "") if isinstance(st.session_state.chat_root_illustrate, dict) else "",
-)
+            query_mode="illustrate",
+        )
 
         _render_simple_response(
             "root_response_card",
@@ -8575,7 +8552,7 @@ def page_new_chat() -> None:
                 if idx == total_branches:
                     _render_nc_latest_scroll_target()
 
-                _render_nc_user_bubble(topic, ts)
+                _render_nc_user_bubble(topic, ts, query_mode=kind)
 
                 if kind == "illustrate":
                     illustrate_payload = item.get("illustrate") or {}
@@ -8705,7 +8682,7 @@ def page_new_chat() -> None:
                 if idx == total_branches:
                     _render_nc_latest_scroll_target()
 
-                _render_nc_user_bubble(topic, ts)
+                _render_nc_user_bubble(topic, ts, query_mode=kind)
 
                 if kind == "illustrate":
                     illustrate_payload = item.get("illustrate") or {}
@@ -9119,7 +9096,7 @@ def page_new_chat() -> None:
                 if idx == total_branches:
                     _render_nc_latest_scroll_target()
 
-                _render_nc_user_bubble(topic, ts)
+                _render_nc_user_bubble(topic, ts, query_mode=kind)
 
                 if kind == "illustrate":
                     illustrate_payload = item.get("illustrate") or {}
