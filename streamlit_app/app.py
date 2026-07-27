@@ -1257,6 +1257,16 @@ div[class*="st-key-branch_response_card_"][class*="_row"] {
   object-fit: contain;
   filter: drop-shadow(0 3px 7px rgba(245, 27, 63, 0.16));
 }
+@media (max-width: 700px) {
+  .ini-qmap-avatar-anchor img {
+    left: 2px;
+  }
+  .st-key-root_response_card,
+  div[class*="st-key-branch_response_card_"]:not([class*="_row"]):not([class*="_clarification_cta_"]) {
+    width: calc(100% - 28px) !important;
+    margin-left: 28px !important;
+  }
+}
 .ini-casual-response-copy {
   display: none;
 }
