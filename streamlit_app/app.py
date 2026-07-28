@@ -4639,13 +4639,21 @@ def page_new_chat() -> None:
             _append_interrogate_branch(topic_text.strip(), data, intro)
             _persist_new_chat_session(current_sid)
 
-    def _run_new_chat_branch_illustrate(topic_text: str) -> None:
+    def _run_new_chat_branch_illustrate(
+        topic_text: str,
+        show_spinner: bool = True,
+    ) -> None:
         if not topic_text.strip():
             return
 
         current_sid = st.session_state.chat_active_id or st.session_state.chat_loaded_sid
 
-        with st.spinner("Generating illustrations... please wait."):
+        spinner_context = (
+            st.spinner("Generating illustrations... please wait.")
+            if show_spinner
+            else nullcontext()
+        )
+        with spinner_context:
             data = fetch_illustrate(topic_text.strip())
             _append_illustrate_branch(topic_text.strip(), data)
             _persist_new_chat_session(current_sid)
@@ -6725,7 +6733,10 @@ def page_new_chat() -> None:
             current_sid = _persist_new_chat_session(current_sid)
 
             if current_sid and st.session_state.chat_loaded_sid == current_sid and _session_has_existing_root():
-                _run_new_chat_branch_illustrate(topic_text.strip())
+                _run_new_chat_branch_illustrate(
+                    topic_text.strip(),
+                    show_spinner=show_spinner,
+                )
                 st.rerun()
                 return
 
