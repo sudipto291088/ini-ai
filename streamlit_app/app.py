@@ -4558,6 +4558,7 @@ def page_new_chat() -> None:
                 "kind": "illustrate",
                 "topic": topic_text,
                 "illustrate": data,
+                "_stream_pending": True,
                 "ts": now_label(),
             }
         )
@@ -4682,6 +4683,7 @@ def page_new_chat() -> None:
         compact_profile: bool = False,
         clarification_title: str = "",
         response_payload: Optional[Dict[str, Any]] = None,
+        stream_follow: bool = False,
     ) -> None:
         response_icon_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
         response_icon_data = base64.b64encode(
@@ -4717,6 +4719,101 @@ def page_new_chat() -> None:
                         streamed_keys = st.session_state.setdefault("_carm_streamed_responses", set())
                         stream_key = f"{response_card_key}:{ts}:{len(stream_text)}"
                         if stream_key not in streamed_keys:
+                            if stream_follow:
+                                st.iframe(
+                                    f"""
+                                    <script>
+                                    (() => {{
+                                      try {{
+                                        const doc = window.parent.document;
+                                        const win = doc.defaultView || window.parent;
+                                        const responseSelector =
+                                          '.st-key-{response_card_key}';
+                                        const response =
+                                          doc.querySelector(responseSelector);
+                                        if (!response) return;
+
+                                        const previous = win.__iniIllustrateStreamFollow;
+                                        if (previous?.observer) previous.observer.disconnect();
+                                        if (previous?.frame) cancelAnimationFrame(previous.frame);
+
+                                        const handoff = doc.getElementById(
+                                          'ini-illustrate-stream-handoff'
+                                        );
+                                        const state = {{
+                                          observer: null,
+                                          frame: 0,
+                                          handedOff: false,
+                                          response,
+                                          responseSelector,
+                                          baselineVisibleExampleCount: Number(
+                                            handoff?.dataset
+                                              ?.baselineVisibleExampleCount || 0
+                                          ),
+                                          baselineTextLength: response.textContent.length
+                                        }};
+                                        const follow = () => {{
+                                          state.frame = 0;
+                                          const scrollers = [
+                                            doc.scrollingElement,
+                                            doc.documentElement,
+                                            doc.body,
+                                            doc.querySelector('[data-testid="stAppViewContainer"]'),
+                                            doc.querySelector('[data-testid="stMain"]'),
+                                            doc.querySelector('.main')
+                                          ].filter(Boolean);
+
+                                          for (const scroller of [...new Set(scrollers)]) {{
+                                            if (scroller.scrollHeight <= scroller.clientHeight + 20) continue;
+                                            const bottom = response.getBoundingClientRect().bottom
+                                              - scroller.getBoundingClientRect().top
+                                              + scroller.scrollTop
+                                              - scroller.clientHeight
+                                              + 110;
+                                            scroller.scrollTo({{
+                                              top: Math.max(0, bottom),
+                                              behavior: 'auto'
+                                            }});
+                                          }}
+                                        }};
+                                        const schedule = (fromMutation = false) => {{
+                                          const visibleExampleCount = (
+                                            doc.body.innerText.match(
+                                              /Example\\s*1\\b/gi
+                                            ) || []
+                                          ).length;
+                                          const responseTextStarted =
+                                            visibleExampleCount >
+                                            state.baselineVisibleExampleCount;
+                                          if (
+                                            fromMutation
+                                            && responseTextStarted
+                                            && !state.handedOff
+                                          ) {{
+                                            handoff?.remove();
+                                            state.handedOff = true;
+                                          }}
+                                          if (!state.frame) state.frame = requestAnimationFrame(follow);
+                                        }};
+
+                                        state.observer = new MutationObserver(
+                                          () => schedule(true)
+                                        );
+                                        state.observer.observe(response, {{
+                                          childList: true,
+                                          subtree: true,
+                                          characterData: true
+                                        }});
+                                        win.__iniIllustrateStreamFollow = state;
+                                        schedule(false);
+                                      }} catch (err) {{}}
+                                    }})();
+                                    </script>
+                                    """,
+                                    height=1,
+                                    tab_index=-1,
+                                )
+
                             def _carm_text_stream():
                                 for offset in range(0, len(stream_text), 3):
                                     yield stream_text[offset:offset + 3]
@@ -4724,6 +4821,87 @@ def page_new_chat() -> None:
 
                             st.write_stream(_carm_text_stream())
                             streamed_keys.add(stream_key)
+                            if stream_follow:
+                                st.iframe(
+                                    """
+                                    <script>
+                                    (() => {
+                                      try {
+                                        const doc = window.parent.document;
+                                        const win = doc.defaultView || window.parent;
+
+                                        const returnToQuery = () => {
+                                          const queries = doc.querySelectorAll('.nc-user-bubble');
+                                          const query = queries[queries.length - 1];
+                                          if (query) {
+                                            const scrollers = [
+                                              doc.scrollingElement,
+                                              doc.documentElement,
+                                              doc.body,
+                                              doc.querySelector('[data-testid="stAppViewContainer"]'),
+                                              doc.querySelector('[data-testid="stMain"]'),
+                                              doc.querySelector('.main')
+                                            ].filter(Boolean);
+                                            for (const scroller of [...new Set(scrollers)]) {
+                                              if (scroller.scrollHeight <= scroller.clientHeight + 20) continue;
+                                              const top = query.getBoundingClientRect().top
+                                                - scroller.getBoundingClientRect().top
+                                                + scroller.scrollTop
+                                                - 82;
+                                              scroller.scrollTo({
+                                                top: Math.max(0, top),
+                                                behavior: 'smooth'
+                                              });
+                                            }
+                                          }
+                                        };
+
+                                        const finishHandoff = (attempt = 0) => {
+                                          const state =
+                                            win.__iniIllustrateStreamFollow;
+                                          const visibleExampleCount = (
+                                            doc.body.innerText.match(
+                                              /Example\\s*1\\b/gi
+                                            ) || []
+                                          ).length;
+                                          const textIsVisible = Boolean(
+                                            state
+                                            && visibleExampleCount >
+                                              state.baselineVisibleExampleCount
+                                          );
+                                          if (!textIsVisible && attempt < 1200) {
+                                            setTimeout(
+                                              () => finishHandoff(attempt + 1),
+                                              50
+                                            );
+                                            return;
+                                          }
+
+                                          if (state?.observer) {
+                                            state.observer.disconnect();
+                                          }
+                                          if (state?.frame) {
+                                            cancelAnimationFrame(state.frame);
+                                          }
+                                          delete win.__iniIllustrateStreamFollow;
+                                          doc.getElementById(
+                                            'ini-illustrate-stream-handoff'
+                                          )?.remove();
+
+                                          // Re-apply the final reading position
+                                          // once Streamlit's remaining layout
+                                          // has settled.
+                                          setTimeout(returnToQuery, 180);
+                                          setTimeout(returnToQuery, 950);
+                                        };
+                                        finishHandoff();
+                                      } catch (err) {}
+                                    })();
+                                    </script>
+                                    """,
+                                    height=1,
+                                    tab_index=-1,
+                                )
                         else:
                             st.markdown(stream_text)
                     else:
@@ -4927,6 +5105,7 @@ def page_new_chat() -> None:
         compact_profile: bool = False,
         clarification_title: str = "",
         response_payload: Optional[Dict[str, Any]] = None,
+        stream_follow: bool = False,
     ) -> None:
         if isinstance(response_payload, dict) and response_payload.get("discussion_answer"):
             _render_discussion_answer_card(
@@ -4945,6 +5124,7 @@ def page_new_chat() -> None:
             compact_profile,
             clarification_title,
             response_payload,
+            stream_follow,
         )
 
     def _render_branch_question_map(branch_idx: int, branch: Dict[str, Any]) -> None:
@@ -6756,6 +6936,7 @@ def page_new_chat() -> None:
                     del st.session_state["chat_bottom_topic_input"]
                 st.session_state.chat["illustrate"] = {
                     **data,
+                    "_stream_pending": True,
                     "ts": now_label(),
                 }
                 st.session_state.chat["interrogate"] = None
@@ -6769,6 +6950,7 @@ def page_new_chat() -> None:
                 st.session_state.chat_root_interrogate = None
                 st.session_state.chat_root_illustrate = {
                     **data,
+                    "_stream_pending": True,
                     "ts": now_label(),
                 }
                 st.session_state.chat_root_intro = ""
@@ -6896,6 +7078,10 @@ def page_new_chat() -> None:
         st.markdown(
             f"""
             <style>
+            .nc-generation-placeholder {{
+                transform: translateY(18px) !important;
+            }}
+
             .nc-generation-placeholder .nc-generation-copy {{
                 display: flex;
                 align-items: center;
@@ -7004,6 +7190,88 @@ def page_new_chat() -> None:
                 generation_slot.empty()
                 with generation_slot.container():
                     _render_new_chat_generation_placeholder(action, resolved_status)
+
+            if action == "illustrate":
+                st.iframe(
+                    """
+                    <script>
+                    (() => {
+                      try {
+                        const doc = window.parent.document;
+                        doc.getElementById(
+                          'ini-illustrate-stream-handoff'
+                        )?.remove();
+
+                        const source = doc.querySelector(
+                          '.nc-generation-placeholder'
+                        );
+                        if (!source) return;
+
+                        const rect = source.getBoundingClientRect();
+                        const clone = source.cloneNode(true);
+                        clone.id = 'ini-illustrate-stream-handoff';
+                        clone.dataset.baselineVisibleExampleCount = String(
+                          (
+                            doc.body.innerText.match(
+                              /Example\\s*1\\b/gi
+                            ) || []
+                          ).length
+                        );
+                        Object.assign(clone.style, {
+                          position: 'fixed',
+                          left: `${rect.left}px`,
+                          top: `${rect.top}px`,
+                          width: `${rect.width}px`,
+                          minHeight: `${rect.height}px`,
+                          zIndex: '2147482000',
+                          pointerEvents: 'none',
+                          marginTop: '0',
+                          visibility: 'hidden'
+                        });
+                        clone.style.setProperty(
+                          'transform',
+                          'none',
+                          'important'
+                        );
+                        doc.body.appendChild(clone);
+
+                        const positionInResponseLane = () => {
+                          const queries = doc.querySelectorAll(
+                            '.nc-user-bubble'
+                          );
+                          const query = queries[queries.length - 1];
+                          if (!query) return;
+
+                          const queryRect = query.getBoundingClientRect();
+                          const desiredTop = queryRect.bottom + 18;
+                          const maximumTop = Math.max(
+                            18,
+                            window.parent.innerHeight - rect.height - 24
+                          );
+                          clone.style.left = `${rect.left}px`;
+                          clone.style.top = `${
+                            Math.max(18, Math.min(desiredTop, maximumTop))
+                          }px`;
+                        };
+
+                        const revealAfterOriginalLeaves = () => {
+                          if (!clone.isConnected) return;
+                          if (!source.isConnected) {
+                            positionInResponseLane();
+                            clone.style.visibility = 'visible';
+                          }
+                          requestAnimationFrame(revealAfterOriginalLeaves);
+                        };
+                        requestAnimationFrame(revealAfterOriginalLeaves);
+
+                        setTimeout(() => clone.remove(), 120000);
+                      } catch (err) {}
+                    })();
+                    </script>
+                    """,
+                    height=1,
+                    tab_index=-1,
+                )
 
             with generation_slot.container():
                 if action == "illustrate":
@@ -8531,6 +8799,7 @@ def page_new_chat() -> None:
 
     illustrate_data = st.session_state.chat.get("illustrate")
     if isinstance(illustrate_data, dict) and (illustrate_data.get("illustration_text") or "").strip():
+        stream_root_illustration = bool(illustrate_data.get("_stream_pending"))
         _render_nc_user_bubble(
             st.session_state.chat_root_topic or st.session_state.chat.get("topic") or "",
             st.session_state.chat_root_illustrate.get("ts", "") if isinstance(st.session_state.chat_root_illustrate, dict) else "",
@@ -8541,11 +8810,18 @@ def page_new_chat() -> None:
             "root_response_card",
             "### Illustrations\n\n" + (illustrate_data.get("illustration_text") or ""),
             illustrate_data.get("ts") or "",
+            stream_response=stream_root_illustration,
+            stream_follow=stream_root_illustration,
             topic_profile=_profile_for_response(
                 st.session_state.chat_root_topic or st.session_state.chat.get("topic") or "",
                 mode_override="illustration",
             ),
         )
+        if stream_root_illustration:
+            illustrate_data["_stream_pending"] = False
+            if isinstance(st.session_state.chat_root_illustrate, dict):
+                st.session_state.chat_root_illustrate["_stream_pending"] = False
+            _persist_new_chat_session()
 
         if st.session_state.chat_branch_answers:
             root_has_open_answer_divider = any(
@@ -8576,11 +8852,16 @@ def page_new_chat() -> None:
                             idx - 1,
                             illustration_text,
                             illustrate_payload.get("ts", ""),
+                            stream_response=bool(item.get("_stream_pending")),
+                            stream_follow=bool(item.get("_stream_pending")),
                             topic_profile=_profile_for_response(
                                 topic,
                                 mode_override="illustration",
                             ),
                         )
+                        if item.get("_stream_pending"):
+                            item["_stream_pending"] = False
+                            _persist_new_chat_session()
                     else:
                         st.caption("No illustration generated.")
 
@@ -8707,11 +8988,16 @@ def page_new_chat() -> None:
                             idx - 1,
                             illustration_text,
                             illustrate_payload.get("ts", ""),
+                            stream_response=bool(item.get("_stream_pending")),
+                            stream_follow=bool(item.get("_stream_pending")),
                             topic_profile=_profile_for_response(
                                 topic,
                                 mode_override="illustration",
                             ),
                         )
+                        if item.get("_stream_pending"):
+                            item["_stream_pending"] = False
+                            _persist_new_chat_session()
                     else:
                         st.caption("No illustration generated.")
                 elif kind == "direct":
@@ -9120,11 +9406,16 @@ def page_new_chat() -> None:
                             idx - 1,
                             illustration_text,
                             item.get("ts") or "",
+                            stream_response=bool(item.get("_stream_pending")),
+                            stream_follow=bool(item.get("_stream_pending")),
                             topic_profile=_profile_for_response(
                                 topic,
                                 mode_override="illustration",
                             ),
                         )
+                        if item.get("_stream_pending"):
+                            item["_stream_pending"] = False
+                            _persist_new_chat_session()
                     else:
                         st.caption("No illustration generated.")
 
