@@ -8850,7 +8850,7 @@ def page_new_chat() -> None:
                     if illustration_text:
                         _render_branch_simple_response(
                             idx - 1,
-                            illustration_text,
+                            "### Illustrations\n\n" + illustration_text,
                             illustrate_payload.get("ts", ""),
                             stream_response=bool(item.get("_stream_pending")),
                             stream_follow=bool(item.get("_stream_pending")),
@@ -8986,7 +8986,7 @@ def page_new_chat() -> None:
                     if illustration_text:
                         _render_branch_simple_response(
                             idx - 1,
-                            illustration_text,
+                            "### Illustrations\n\n" + illustration_text,
                             illustrate_payload.get("ts", ""),
                             stream_response=bool(item.get("_stream_pending")),
                             stream_follow=bool(item.get("_stream_pending")),
@@ -9404,7 +9404,7 @@ def page_new_chat() -> None:
                     if illustration_text:
                         _render_branch_simple_response(
                             idx - 1,
-                            illustration_text,
+                            "### Illustrations\n\n" + illustration_text,
                             item.get("ts") or "",
                             stream_response=bool(item.get("_stream_pending")),
                             stream_follow=bool(item.get("_stream_pending")),
