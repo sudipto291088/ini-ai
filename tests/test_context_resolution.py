@@ -40,6 +40,20 @@ class ContextResolutionTests(unittest.TestCase):
             )
         )
 
+    def test_specific_topic_containing_parent_topic_is_preserved(self):
+        for query in (
+            "quant artificial intelligence",
+            "quantum artificial intelligence",
+            "sovereign artificial intelligence",
+        ):
+            with self.subTest(query=query):
+                self.assertIsNone(
+                    find_contextual_topic_match(
+                        query,
+                        ["artificial intelligence"],
+                    )
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

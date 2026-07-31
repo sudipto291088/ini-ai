@@ -3052,10 +3052,9 @@ def render_nc_learning_paths(
 
 
 def render_nc_your_question(question_context: dict[str, str]) -> None:
-    question = (question_context or {}).get("Question", "").strip()
     intent = (question_context or {}).get("Intent", "").strip()
     learning_goal = (question_context or {}).get("Learning goal", "").strip()
-    if not question:
+    if not intent and not learning_goal:
         return
 
     insights = []
@@ -3079,7 +3078,6 @@ def render_nc_your_question(question_context: dict[str, str]) -> None:
         (
             '<div class="ini-topic-profile ini-nc-your-question">'
             '<div class="ini-topic-profile__title"><span>Your Question</span></div>'
-            f'<div class="ini-nc-your-question__prompt">{escape(question)}</div>'
             f'{insight_markup}'
             '</div>'
         ),
@@ -3258,12 +3256,57 @@ def render_nc_section_title(
         )
 
 
-def render_nc_intro_preview(body: str) -> None:
+def render_nc_intro_preview(
+    body: str,
+    core_explanation: Optional[dict[str, Any]] = None,
+) -> None:
     text = (body or "").strip()
+    text = re.sub(
+        r"^(?:#{1,6}\s*)?Introduction\s*:?\s*",
+        "",
+        text,
+        count=1,
+        flags=re.IGNORECASE,
+    ).strip()
     if not text:
         return
 
     parts = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    if core_explanation and len(parts) >= 3:
+        # The opening definition belongs to Core Explanation. Preserve the
+        # genuinely contextual sentences that follow it in the same paragraph.
+        opening_sentences = re.split(r"(?<=[.!?])\s+", parts[0])
+        contextual_opening = " ".join(opening_sentences[1:]).strip()
+        parts = ([contextual_opening] if contextual_opening else []) + parts[1:]
+        parts = [
+            part
+            for part in parts
+            if not re.match(
+                r"^(?:Why it matters\s*:|How to use\b)",
+                part,
+                flags=re.IGNORECASE,
+            )
+        ]
+        pruned_parts: list[str] = []
+        for part in parts:
+            sentences = re.split(r"(?<=[.!?])\s+", part)
+            sentences = [
+                sentence
+                for sentence in sentences
+                if not re.search(
+                    r"(?:practical work cycles through|governing objective|"
+                    r"how to use\b|question map|hands-on practice)",
+                    sentence,
+                    flags=re.IGNORECASE,
+                )
+            ]
+            cleaned_part = " ".join(sentence.strip() for sentence in sentences if sentence.strip())
+            if cleaned_part:
+                pruned_parts.append(cleaned_part)
+        parts = pruned_parts
+        if not parts:
+            parts = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()][1:2]
+
     def intro_html(items: list[str]) -> str:
         html_parts = []
         for item in items:
@@ -5184,7 +5227,7 @@ def page_new_chat() -> None:
                 render_topic_profile(profile_rows)
                 render_nc_prerequisites(prerequisites)
                 if intro_body:
-                    render_nc_intro_preview(intro_body)
+                    render_nc_intro_preview(intro_body, core_explanation)
                 render_nc_your_question(your_question)
                 render_nc_core_explanation(core_explanation)
                 render_nc_learning_loop(learning_loop)
@@ -9179,7 +9222,7 @@ def page_new_chat() -> None:
                 render_topic_profile(profile_rows)
                 render_nc_prerequisites(prerequisites)
                 if intro_body:
-                    render_nc_intro_preview(intro_body)
+                    render_nc_intro_preview(intro_body, core_explanation)
                 render_nc_your_question(your_question)
                 render_nc_core_explanation(core_explanation)
                 render_nc_learning_loop(learning_loop)

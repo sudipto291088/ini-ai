@@ -39,6 +39,16 @@ def find_contextual_topic_match(
         if candidate_normalized == query_normalized:
             continue
 
+        # A longer query that contains the complete active topic is normally a
+        # more specific subject, not a typo. For example, "quantum artificial
+        # intelligence" and "sovereign artificial intelligence" must not be
+        # collapsed back to "artificial intelligence".
+        if (
+            len(query_tokens) > len(candidate_tokens)
+            and set(candidate_tokens).issubset(query_tokens)
+        ):
+            continue
+
         shared_tokens = len(set(query_tokens) & set(candidate_tokens))
         required_shared = max(1, min(len(query_tokens), len(candidate_tokens)) - 1)
         if shared_tokens < required_shared:
