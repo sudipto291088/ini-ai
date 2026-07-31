@@ -56,19 +56,42 @@ def answer_ini_product_query(
 
     if re.search(r"\b(how many|which|previous|earlier|history).*(versions?|releases?)\b", s):
         return (
-            "I am currently on v0.1.4. This build has a documented product history for "
-            "v0.1.3 and v0.1.4; earlier work belonged to the experimental v0 phase rather "
-            "than a formal release history."
+            "I am currently on v0.1.5. I have five documented releases, from v0.1.1 "
+            "through v0.1.5; work before v0.1.1 belonged to the experimental v0 phase "
+            "rather than the formal release history."
         )
 
-    if re.search(r"\b(current|latest|new|special|update|changed|improved).*(versions?|releases?|v0.1.4)\b", s) or re.search(
-        r"\b(versions?|releases?|v0.1.4).*(current|latest|new|special|update|changed|improved)\b", s
+    earlier_releases = {
+        "v0.1.4": (
+            "v0.1.4 strengthened conversational intelligence, context switching, guided "
+            "discussion, persistent query history, generation states, the First Conversation "
+            "Experience, and InI's visual identity."
+        ),
+        "v0.1.3": (
+            "v0.1.3 refined New Chat, adaptive Topic Profiles, Question Map interactions, "
+            "visitor privacy isolation, local timestamps, and My New Learning."
+        ),
+        "v0.1.2": (
+            "v0.1.2 expanded technical coverage, strengthened topic recognition and ambiguity "
+            "correction, preserved specific AI subjects, and clarified the interface."
+        ),
+        "v0.1.1": (
+            "v0.1.1 established the stable public deployment, structured learning workflow, "
+            "Question Maps, follow-ups, answer continuation, and session persistence."
+        ),
+    }
+    for version, summary in earlier_releases.items():
+        if version in s:
+            return summary
+
+    if re.search(r"\b(current|latest|new|special|update|changed|improved).*(versions?|releases?|v0.1.5)\b", s) or re.search(
+        r"\b(versions?|releases?|v0.1.5).*(current|latest|new|special|update|changed|improved)\b", s
     ):
         return (
-            "v0.1.4 is my current release. It adds stronger conversational intelligence, "
-            "context-aware follow-ups and topic switching, guided Discussion Mode, persistent "
-            "query history, clearer Thinking and generation states, a refined response-card "
-            "experience, and broader branding and navigation polish."
+            "v0.1.5 is my current release. It deepens structured learning responses, strengthens "
+            "conversation repair and honest capability boundaries, completes Illustrate with "
+            "streamed examples and subject-aware Topic Profiles, redesigns the Introduction "
+            "experience, and improves reliability across desktop and mobile."
         )
 
     if re.search(r"\b(plan|planned|planning|roadmap|future|coming|next)\b", s):

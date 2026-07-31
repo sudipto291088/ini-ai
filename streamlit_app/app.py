@@ -3497,7 +3497,7 @@ with st.sidebar:
         _render_clock_tile()
         st.caption("Tip: install 'streamlit-autorefresh' to enable a live-updating clock.")
 
-    st.markdown('<span class="badge" style="margin-left:11px;">v0.1.4 &middot; Question Intelligence</span>', unsafe_allow_html=True)
+    st.markdown('<span class="badge" style="margin-left:11px;">v0.1.5 &middot; Question Intelligence</span>', unsafe_allow_html=True)
 
     st.markdown('<div class="small" style="color:var(--muted); font-weight:750; margin-top:10px;">Navigation</div>', unsafe_allow_html=True)
     intro_nav_href = _private_href(page="home")
@@ -4329,6 +4329,24 @@ def page_home():
         )
 
     intro_releases = {
+        "v0.1.5": {
+            "date": "July 31, 2026",
+            "items": (
+                ("Deeper structured responses", "New learning cards connect prerequisites, the user's question, core mechanisms, complete learning loops, and onward journeys."),
+                ("Stronger conversation repair", "Improved topic extraction, contextual clarification, corrections, follow-ups, and transitions between casual and learning intent."),
+                ("Honest capability boundaries", "InI now communicates uncertainty and unsupported specialist areas instead of overstating what it knows."),
+                ("Illustrate, fully realized", "Illustrate now routes correctly, generates concrete examples, streams naturally, and maintains a stable visual handoff while responding."),
+                ("Subject-aware Illustrate profiles", "Illustration responses classify the actual learning subject instead of describing the user's interface action."),
+                ("Responsive mobile experience", "Stabilized the welcome flow, sidebar, navigation controls, response identity, and compact actions across phone-sized screens."),
+                ("A redesigned Introduction", "Glossy cards, animated entrances, interactive release history, clearer onboarding, and a more distinctive application experience."),
+                ("A more expressive InI identity", "Animated Mukut, refined welcome presentation, softer surfaces, and consistent response headings strengthen InI's living presence."),
+            ),
+            "note": (
+                "v0.1.5 turns the foundations of v0.1.4 into a more coherent product: "
+                "InI communicates more honestly, teaches with greater structure, illustrates "
+                "with visible purpose, and behaves more reliably across desktop and mobile."
+            ),
+        },
         "v0.1.4": {
             "date": "July 17, 2026",
             "items": (
@@ -4393,8 +4411,11 @@ def page_home():
             ),
         },
     }
-    if st.session_state.get("intro_selected_release") not in intro_releases:
-        st.session_state.intro_selected_release = "v0.1.4"
+    if st.session_state.get("intro_release_catalog_version") != "v0.1.5":
+        st.session_state.intro_release_catalog_version = "v0.1.5"
+        st.session_state.intro_selected_release = "v0.1.5"
+    elif st.session_state.get("intro_selected_release") not in intro_releases:
+        st.session_state.intro_selected_release = "v0.1.5"
 
     selected_release = st.session_state.intro_selected_release
     release = intro_releases[selected_release]
@@ -4430,7 +4451,7 @@ def page_home():
             )
             for version in release_slots:
                 is_released = version in intro_releases
-                if version == "v0.1.4":
+                if version == "v0.1.5":
                     button_label = f"{version}  ·  Current"
                 elif not is_released:
                     button_label = f"{version}  ·  Unreleased"
@@ -5531,7 +5552,7 @@ def page_new_chat() -> None:
     def _looks_like_ini_version_query(text: str) -> bool:
         s = re.sub(r"[^a-z0-9. ]+", " ", (text or "").lower()).strip()
         return bool(
-            re.search(r"\bv0\.1\.4\b", s)
+            re.search(r"\bv0\.1\.[1-5]\b", s)
             or re.search(r"\b(your|ini|yourself)\b.*\b(version|update|release|improved)\b", s)
             or re.search(r"\b(version|update|release)\b.*\b(your|ini|yourself)\b", s)
         )
@@ -6426,11 +6447,11 @@ def page_new_chat() -> None:
                         "needs_clarification": False,
                         "suppress_profile": False,
                         "reply": (
-                            "InI.ai v0.1.4 improves conversational intelligence and context switching, "
-                            "adds guided Discussion Mode, preserves every submitted query, refines the "
-                            "response-card experience and generation states, strengthens the First "
-                            "Conversation Experience, and polishes InI branding and navigation. It was "
-                            "released on July 17, 2026."
+                            "InI.ai v0.1.5 deepens structured learning responses, strengthens "
+                            "conversation repair and honest capability boundaries, completes the "
+                            "Illustrate experience with streamed examples and subject-aware profiles, "
+                            "redesigns the Introduction experience, and improves mobile reliability. "
+                            "It was released on July 31, 2026."
                         ),
                     }
                 elif start_discussion_topic:

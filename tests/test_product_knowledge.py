@@ -39,9 +39,12 @@ class ProductKnowledgeTests(unittest.TestCase):
         self.assertIn("Sudipto", creator)
         self.assertIn("Sid", creator)
         release = answer_ini_product_query("What is new in your current version?")
-        self.assertIn("v0.1.4", release)
+        self.assertIn("v0.1.5", release)
+        self.assertIn("Illustrate", release)
         history = answer_ini_product_query("How many versions have you had?")
-        self.assertIn("v0.1.3", history)
+        self.assertIn("five documented releases", history)
+        self.assertIn("v0.1.1", history)
+        self.assertIn("v0.1.5", history)
 
     def test_self_identified_creator_profile_is_remembered(self):
         profile = {
