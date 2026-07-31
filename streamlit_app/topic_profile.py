@@ -34,6 +34,32 @@ _CONTINUE_JOURNEY_BLOCK = re.compile(
 )
 
 
+def _correct_difficulty(rows: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Prevent technically substantial profiles from being labelled Beginner."""
+    fields = {label.casefold(): value for label, value in rows}
+    if fields.get("difficulty", "").casefold() != "beginner":
+        return rows
+
+    profile_text = " ".join(fields.values()).casefold()
+    intermediate_signals = (
+        "amdahl",
+        "cache coherence",
+        "concurrency",
+        "throughput modelling",
+        "throughput modeling",
+        "numa",
+        "parallel programming",
+        "operating systems scheduling",
+    )
+    if not any(signal in profile_text for signal in intermediate_signals):
+        return rows
+
+    return [
+        (label, "Intermediate") if label.casefold() == "difficulty" else (label, value)
+        for label, value in rows
+    ]
+
+
 def extract_topic_profile(text: str) -> tuple[list[tuple[str, str]], str]:
     source = (text or "").strip()
     match = _PROFILE_BLOCK.search(source)
@@ -65,7 +91,7 @@ def extract_topic_profile(text: str) -> tuple[list[tuple[str, str]], str]:
         if len(rows) == 10:
             break
 
-    return rows, body
+    return _correct_difficulty(rows), body
 
 
 def extract_learning_paths(

@@ -105,6 +105,23 @@ Backpropagation computes gradients through a neural network.
             "Backpropagation computes gradients through a neural network.",
         )
 
+    def test_upgrades_substantial_multicore_profile_from_beginner(self):
+        answer = """
+<TOPIC_PROFILE>
+{"Entity type":"Hardware concept", "Broad field":"Computer Architecture", "Subject":"hexa core", "Mathematical foundation":"Amdahl's Law; concurrency and throughput modelling", "Prerequisites":"Basic CPU structure; cache hierarchy; operating systems scheduling; elementary parallel programming", "Related topics":"cache coherence; NUMA", "Difficulty":"Beginner"}
+</TOPIC_PROFILE>
+
+A hexa-core processor contains six physical processing cores.
+"""
+
+        rows, body = extract_topic_profile(answer)
+
+        self.assertIn(("Difficulty", "Intermediate"), rows)
+        self.assertEqual(
+            body,
+            "A hexa-core processor contains six physical processing cores.",
+        )
+
     def test_splits_prerequisite_items_without_breaking_parentheses(self):
         prerequisites = (
             "Basic calculus (derivatives, chain rule), linear algebra "
