@@ -14,6 +14,89 @@ def _subject(text: str, limit: int = 92) -> str:
     return clean[:limit].rstrip() or "User message"
 
 
+def _illustration_topic_profile(text: str, normalized: str) -> ProfileRows:
+    """Describe the illustrated subject, rather than the user's UI action."""
+    profiles = [
+        (
+            ("computer vision", "image recognition", "object detection"),
+            "AI discipline",
+            "Artificial intelligence",
+            "Image processing, pattern recognition, deep learning, visual perception",
+        ),
+        (
+            ("neural network", "deep learning"),
+            "Machine learning model family",
+            "Artificial intelligence",
+            "Backpropagation, optimization, representation learning, model architectures",
+        ),
+        (
+            ("machine learning",),
+            "Computational learning field",
+            "Artificial intelligence",
+            "Supervised learning, unsupervised learning, model evaluation, deployment",
+        ),
+        (
+            ("artificial intelligence",),
+            "Computing discipline",
+            "Computer science",
+            "Machine learning, reasoning, perception, autonomous systems",
+        ),
+        (
+            ("quantum computing", "quantum computer"),
+            "Computing paradigm",
+            "Quantum information science",
+            "Qubits, superposition, entanglement, quantum algorithms",
+        ),
+        (
+            ("kubernetes",),
+            "Container orchestration platform",
+            "Cloud computing",
+            "Containers, clusters, deployments, scaling, DevOps",
+        ),
+        (
+            ("data science",),
+            "Interdisciplinary field",
+            "Data science",
+            "Statistics, data analysis, machine learning, visualization",
+        ),
+        (
+            ("cognitive science",),
+            "Interdisciplinary field",
+            "Cognitive science",
+            "Psychology, neuroscience, linguistics, artificial intelligence",
+        ),
+        (
+            ("geothermal",),
+            "Energy technology",
+            "Renewable energy",
+            "Earth heat, power generation, heat pumps, sustainability",
+        ),
+        (
+            ("linear algebra", "calculus", "geometry", "algebra"),
+            "Mathematical discipline",
+            "Mathematics",
+            "Definitions, operations, geometric meaning, practical applications",
+        ),
+    ]
+    for keywords, entity_type, broad_field, related in profiles:
+        if any(keyword in normalized for keyword in keywords):
+            return [
+                ("Name type", "Learning topic"),
+                ("Entity type", entity_type),
+                ("Broad field", broad_field),
+                ("Subject", _subject(text)),
+                ("Related topics", related),
+            ]
+
+    return [
+        ("Name type", "Learning topic"),
+        ("Entity type", "Concept or subject"),
+        ("Broad field", "Knowledge domain"),
+        ("Subject", _subject(text)),
+        ("Related topics", "Foundations, mechanisms, applications, limitations"),
+    ]
+
+
 def build_response_profile(
     prompt: str,
     intent: str = "",
@@ -142,13 +225,7 @@ def build_response_profile(
         ]
 
     if response_mode == "illustration":
-        return [
-            ("Name type", "Illustration request"),
-            ("Entity type", "Explanatory prompt"),
-            ("Broad field", "Applied learning"),
-            ("Subject", _subject(text)),
-            ("Related topics", "Examples, applications, analogies, visual reasoning"),
-        ]
+        return _illustration_topic_profile(text, normalized)
 
     return [
         ("Name type", "Information request"),
