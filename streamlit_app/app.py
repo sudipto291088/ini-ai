@@ -1623,6 +1623,53 @@ div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] p {
 .ini-nc-section-title__mark {
   display: none;
 }
+.ini-topic-profile:not(.ini-conversation-profile) > .ini-topic-profile__title,
+.ini-nc-section-title.ini-nc-qmap-marker {
+  gap: 7px;
+}
+.ini-topic-profile:not(.ini-conversation-profile) > .ini-topic-profile__title::before,
+.ini-nc-section-title.ini-nc-qmap-marker::before {
+  display: inline-grid;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #17211f;
+  content: "category";
+  font-family: "Material Symbols Rounded";
+  font-size: 18px;
+  font-style: normal;
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 20;
+  line-height: 1;
+}
+.ini-topic-profile.ini-nc-prerequisites-panel > .ini-topic-profile__title::before {
+  content: "checklist";
+}
+.ini-topic-profile.ini-nc-intro-panel > .ini-topic-profile__title::before {
+  content: "menu_book";
+}
+.ini-topic-profile.ini-nc-your-question > .ini-topic-profile__title::before {
+  content: "help";
+}
+.ini-topic-profile.ini-nc-core-explanation > .ini-topic-profile__title::before {
+  content: "lightbulb";
+}
+.ini-topic-profile.ini-nc-learning-loop > .ini-topic-profile__title::before {
+  content: "sync";
+}
+.ini-topic-profile.ini-nc-learning-paths > .ini-topic-profile__title::before {
+  content: "route";
+}
+.ini-topic-profile.ini-nc-continue-journey > .ini-topic-profile__title::before {
+  content: "explore";
+}
+.ini-nc-section-title.ini-nc-qmap-marker::before {
+  content: "hub";
+}
 .ini-nc-section-title {
   width: auto;
   padding: 0;
