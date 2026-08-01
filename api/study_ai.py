@@ -169,9 +169,10 @@ def _build_instruction(mode: str) -> str:
             "- Give every card one distinct job: Topic Profile classifies, Your Question interprets intent, Core Explanation answers, and Introduction supplies context.\n"
             "- Do not repeat the definition, governing relationship, worked example, learning goal, or step sequence already present in the structured blocks.\n"
             "- Do not preview the Learning Loop or explain how to use the Question Map; those cards must speak for themselves.\n"
-            "- Begin with the topic's wider context and purpose, then explain its major areas and why it matters.\n"
+            "- Structure the introduction as exactly three short paragraphs beginning with Purpose:, Major areas:, and Who should study this next:.\n"
+            "- Keep those labels concise; the paragraphs should provide wider context rather than repeat the Core Explanation.\n"
             "- For a named institution or organization, explain its identity, research focus, and relationship to the wider field without inventing current details.\n"
-            "- Use 3–5 short paragraphs or compact sections with natural educational flow.\n"
+            "- Keep a natural educational flow across those three compact sections.\n"
             "- Do not produce the Question Map itself, a quiz, or an exhaustive technical deep dive.\n"
             "- Avoid repetitive summaries and do not compress the introduction into only a few bullets.\n"
             "- Never invent current, local, or live facts.\n"
@@ -289,6 +290,38 @@ def _requires_current_context(topic: str) -> bool:
     return any(re.search(pattern, text) for pattern in patterns)
 
 
+def _processor_accuracy_contract(topic: str) -> str:
+    """Add terminology constraints only when the query concerns CPU cores."""
+    text = (topic or "").lower()
+    if not re.search(
+        r"\b(?:cpu|processor|microarchitecture|multicore|multi-core|"
+        r"dual[ -]core|quad[ -]core|hexa[ -]core|octa[ -]core|"
+        r"physical cores?|logical processors?|hyper[ -]?threading|smt)\b",
+        text,
+    ):
+        return ""
+    return (
+        "\nPROCESSOR TERMINOLOGY ACCURACY:\n"
+        "- A core count describes physical processing cores, not a guaranteed thread count.\n"
+        "- Distinguish physical cores, logical processors, hardware threads, and software threads.\n"
+        "- Never infer logical-processor or thread count unless SMT/Hyper-Threading support is explicitly known.\n"
+        "- For example, a hexa-core CPU has six physical cores; it may expose six logical processors without SMT or commonly twelve with two-way SMT.\n"
+        "- Do not use the imprecise phrase native threads.\n"
+    )
+
+
+def _normalize_processor_terminology(answer: str, topic: str) -> str:
+    """Repair the known core/thread conflation if it escapes generation."""
+    if not _processor_accuracy_contract(topic):
+        return answer
+    return re.sub(
+        r"\bsix\s+native\s+threads\b",
+        "six physical processing cores",
+        answer,
+        flags=re.IGNORECASE,
+    )
+
+
 def _resolve_topic_context(topic: str) -> str:
     """Add context only for exact acronyms already routed as technical topics."""
     if topic.strip().lower() == "amd":
@@ -390,7 +423,7 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         }
 
     # ---- Build prompt ----
-    instruction = _build_instruction(mode)
+    instruction = _build_instruction(mode) + _processor_accuracy_contract(user_topic)
 
     if continue_mode and previous_answer:
 
@@ -435,7 +468,10 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         timeout_s=120,
     )
 
-    ans = (result.get("answer") or "").strip()
+    ans = _normalize_processor_terminology(
+        (result.get("answer") or "").strip(),
+        user_topic,
+    )
     incomplete = bool(result.get("incomplete", False))
     stop_reason = result.get("stop_reason", None)
 

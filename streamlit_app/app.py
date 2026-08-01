@@ -781,6 +781,41 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data
   font-size: 14px;
   line-height: 1.55;
 }
+.ini-nc-intro-panel .ini-topic-profile__title {
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.ini-nc-intro-copy__section {
+  margin: 0 0 14px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(148, 163, 184, 0.26);
+}
+.ini-nc-intro-copy__section:last-child {
+  margin-bottom: 0;
+}
+.ini-nc-intro-copy__heading {
+  margin: 0 0 5px;
+  color: #364152;
+  font-size: 13.5px;
+  font-weight: 550;
+  line-height: 1.35;
+}
+.ini-nc-intro-copy__list {
+  margin: 5px 0 0;
+  padding-left: 18px;
+}
+.ini-nc-intro-copy__lead {
+  margin-bottom: 7px !important;
+}
+.ini-nc-intro-copy__list li {
+  margin: 0 0 5px;
+  padding-left: 2px;
+}
+.ini-nc-intro-copy__list li::marker {
+  color: #9aa5b5;
+  font-size: 0.78em;
+}
 .ini-nc-prerequisites-list {
   margin: 0;
   padding: 0;
@@ -813,7 +848,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data
   }
 }
 .ini-nc-intro-copy p {
-  margin: 0 0 10px;
+  margin: 0;
 }
 .ini-nc-intro-copy p:last-child {
   margin-bottom: 0;
@@ -3308,10 +3343,105 @@ def render_nc_intro_preview(
             parts = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()][1:2]
 
     def intro_html(items: list[str]) -> str:
+        def split_major_areas(value: str) -> tuple[list[str], str]:
+            numbered_matches = list(re.finditer(r"\((\d+)\)\s*", value))
+            if len(numbered_matches) >= 3:
+                lead = value[: numbered_matches[0].start()].strip()
+                lead = re.sub(r"[,:;—–-]+$", "", lead).strip()
+                areas: list[str] = []
+                for index, match in enumerate(numbered_matches):
+                    end = (
+                        numbered_matches[index + 1].start()
+                        if index + 1 < len(numbered_matches)
+                        else len(value)
+                    )
+                    area = value[match.end() : end].strip()
+                    area = re.sub(r"^(?:and\s+)", "", area, flags=re.IGNORECASE)
+                    area = re.sub(r";?\s+and\s*$", "", area, flags=re.IGNORECASE)
+                    area = re.sub(r"[;,.\s]+$", "", area).strip()
+                    if area:
+                        areas.append(area[0].upper() + area[1:])
+                if len(areas) >= 3:
+                    return areas, lead
+
+            sentence_match = re.match(r"^(.+?[.!?])(?:\s+(.*))?$", value, flags=re.DOTALL)
+            first_sentence = sentence_match.group(1) if sentence_match else value
+            remainder = sentence_match.group(2).strip() if sentence_match and sentence_match.group(2) else ""
+            normalized = re.sub(r",?\s+and\s+", ", ", first_sentence.rstrip(".!?"), count=1)
+            areas: list[str] = []
+            current: list[str] = []
+            depth = 0
+            for char in normalized:
+                if char == "(":
+                    depth += 1
+                elif char == ")" and depth:
+                    depth -= 1
+                if char == "," and depth == 0:
+                    area = "".join(current).strip()
+                    if area:
+                        areas.append(area)
+                    current = []
+                else:
+                    current.append(char)
+            final_area = "".join(current).strip()
+            if final_area:
+                areas.append(final_area)
+            return (areas, remainder) if len(areas) >= 3 else ([], value)
+
         html_parts = []
-        for item in items:
-            safe_item = escape(item).replace("\n", "<br>")
-            html_parts.append(f"<p>{safe_item}</p>")
+        for item_index, item in enumerate(items):
+            heading = ""
+            copy = item
+            section_patterns = (
+                (r"^Purpose\s*:\s*", "Purpose"),
+                (
+                    r"^(?:Its|The)\s+purpose\s+is\s+(?:practical\s*[—–-]\s*)?",
+                    "Purpose",
+                ),
+                (r"^Major areas\s*:\s*", "Major areas"),
+                (
+                    r"^Major areas(?:\s+(?:inside|within)\s+.+?)?\s+are\s+",
+                    "Major areas",
+                ),
+                (
+                    r"^Who should study this next\s*:\s*",
+                    "Who should study this next",
+                ),
+            )
+            for pattern, label in section_patterns:
+                if re.match(pattern, copy, flags=re.IGNORECASE):
+                    heading = label
+                    copy = re.sub(pattern, "", copy, count=1, flags=re.IGNORECASE).strip()
+                    if copy:
+                        copy = copy[0].upper() + copy[1:]
+                    break
+            if not heading and item_index == 0:
+                heading = "Purpose"
+
+            content_html = f"<p>{escape(copy).replace(chr(10), '<br>')}</p>"
+            if heading == "Major areas":
+                areas, remainder = split_major_areas(copy)
+                if areas:
+                    list_items = "".join(f"<li>{escape(area)}</li>" for area in areas)
+                    lead_html = (
+                        f'<p class="ini-nc-intro-copy__lead">{escape(remainder)}</p>'
+                        if remainder
+                        else ""
+                    )
+                    content_html = (
+                        f"{lead_html}"
+                        f'<ul class="ini-nc-intro-copy__list">{list_items}</ul>'
+                    )
+            heading_html = (
+                f'<div class="ini-nc-intro-copy__heading">{escape(heading)}</div>'
+                if heading
+                else ""
+            )
+            html_parts.append(
+                '<section class="ini-nc-intro-copy__section">'
+                f"{heading_html}{content_html}"
+                "</section>"
+            )
         return (
             '<div class="ini-topic-profile ini-nc-intro-panel">'
             '<div class="ini-topic-profile__title">'

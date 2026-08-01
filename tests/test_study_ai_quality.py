@@ -119,6 +119,22 @@ class StudyAIQualityTests(unittest.TestCase):
         self.assertIn("Do NOT repeat any heading or idea", question)
         self.assertIn("only the unfinished point", question)
 
+    def test_processor_topics_receive_core_thread_accuracy_contract(self) -> None:
+        contract = study_module._processor_accuracy_contract("Explain a hexa-core CPU")
+
+        self.assertIn("six physical cores", contract)
+        self.assertIn("Never infer", contract)
+        self.assertIn("SMT/Hyper-Threading", contract)
+        self.assertEqual(study_module._processor_accuracy_contract("Bayesian inference"), "")
+
+    def test_processor_terminology_guard_repairs_native_threads(self) -> None:
+        answer = "A hexa-core processor provides six native threads."
+
+        self.assertEqual(
+            study_module._normalize_processor_terminology(answer, "hexa core"),
+            "A hexa-core processor provides six physical processing cores.",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
