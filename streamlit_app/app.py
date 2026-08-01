@@ -617,7 +617,7 @@ div.stButton > button:hover {
   color: #7b8493;
   font-size: 10px;
   font-weight: 700;
-  text-transform: uppercase;
+  text-transform: none;
 }
 .ini-topic-profile__value {
   color: #17211f;
@@ -911,8 +911,8 @@ a.ini-nc-followup-panel__item:hover {
   color: #7b8493;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.055em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
 }
 .ini-nc-your-question__value {
   color: #465164;
@@ -1181,8 +1181,8 @@ div[class*="st-key-nc_core_explanation_more_"] button:hover {
   color: #263142;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
 }
 .ini-nc-learning-paths__list {
   margin: 0;
