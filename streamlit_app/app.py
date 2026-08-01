@@ -587,8 +587,9 @@ div.stButton > button:hover {
   gap: 8px;
   margin-bottom: 14px;
   color: #f51b3f;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .ini-topic-profile__mark {
   width: 18px;
@@ -750,8 +751,9 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) .ini-
   border-radius: 12px;
   background: #fff4f6;
   color: #f51b3f;
-  font-size: 14px;
-  font-weight: 850;
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 .ini-nc-section-title__mark {
   width: 16px;
@@ -780,11 +782,6 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data
   color: #17211f;
   font-size: 14px;
   line-height: 1.55;
-}
-.ini-nc-intro-panel .ini-topic-profile__title {
-  font-size: 15.5px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
 }
 .ini-nc-intro-copy__section {
   margin: 0 0 14px;
