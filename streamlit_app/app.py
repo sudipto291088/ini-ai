@@ -1638,7 +1638,7 @@ div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] p {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  color: #17211f;
+  color: #f51b3f;
   content: "category";
   font-family: "Material Symbols Rounded";
   font-size: 18px;
