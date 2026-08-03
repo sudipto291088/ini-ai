@@ -131,6 +131,11 @@ def extract_topic(user_text: str) -> str:
         text = m.group(1).strip()
 
     # Normalize simple cases
+    if text.lower() in {
+        "quant artificial intelligence",
+        "quant ai",
+    }:
+        return "Quantitative Artificial Intelligence"
     if text.lower() == "ai":
         return "Artificial Intelligence"
     if text.lower() in ["ml", "machine learning"]:
@@ -1159,6 +1164,51 @@ def interrogate(text: str) -> Dict[str, Any]:
             "llm_used": False,
             "intent": intent.get("intent", "empty"),
             "mode_hint": intent.get("mode_hint", "deep"),
+        }
+
+    # "Quan AI" is genuinely ambiguous: it can be a clipped/typo form of
+    # either quantitative AI or quantum AI. Do not let the model silently
+    # choose a domain and build an authoritative-looking response around it.
+    normalized_query = re.sub(
+        r"[^a-z0-9 ]+",
+        " ",
+        (text or "").lower(),
+    )
+    normalized_query = re.sub(r"\s+", " ", normalized_query).strip()
+    ambiguous_subject = re.sub(
+        r"^(?:what is|what s|explain|define|tell me about)\s+",
+        "",
+        normalized_query,
+    ).strip()
+    if ambiguous_subject in {"quan ai", "quan artificial intelligence"}:
+        return {
+            "topic": "",
+            "topic_type": "ambiguous_learning_topic",
+            "categories": {},
+            "notes": ["Clarification required between two plausible AI topics."],
+            "summary": [],
+            "confidence": 0.99,
+            "needs_clarification": True,
+            "clarifying_question": (
+                "Did you mean Quantitative Artificial Intelligence or "
+                "Quantum Artificial Intelligence?"
+            ),
+            "reply": (
+                "Did you mean Quantitative Artificial Intelligence or "
+                "Quantum Artificial Intelligence?"
+            ),
+            "followups": [
+                "Quantitative Artificial Intelligence",
+                "Quantum Artificial Intelligence",
+            ],
+            "llm_used": False,
+            "intent": "clarify_topic_ambiguity",
+            "response_mode": "conversation",
+            "context_intent": "ambiguous_learning_topic",
+            "clarification_title": "Choose the topic",
+            "mode_hint": "focused",
+            "should_answer_direct": False,
+            "suppress_profile": True,
         }
 
     context = classify_context(text)

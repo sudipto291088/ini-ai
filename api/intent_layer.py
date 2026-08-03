@@ -204,6 +204,8 @@ TECHNICAL_TOPIC_PHRASES = {
     "gradient descent variations",
     "constitutional ai",
     "spatial ai",
+    "quant artificial intelligence",
+    "quantitative artificial intelligence",
     "artificial general intelligence",
     "bcbl",
     "basque center on cognition brain and language",
@@ -476,7 +478,18 @@ def _is_known_technical_topic(text: str) -> bool:
         return False
 
     normalized_topics = {_normalize_compact(p) for p in TECHNICAL_TOPIC_PHRASES}
-    return s in normalized_topics
+    if s in normalized_topics:
+        return True
+
+    # A definition-style question about a known learning subject is still a
+    # learning request. Classify the subject after removing the interrogative
+    # wrapper instead of sending every "what is ..." turn to the factual path.
+    subject = re.sub(
+        r"^(?:what|who|where|when|which)\s+(?:is|are)\s+",
+        "",
+        s,
+    ).strip()
+    return subject in normalized_topics
 
 
 def _looks_like_direct_factual_query(text: str) -> bool:

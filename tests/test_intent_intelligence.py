@@ -127,6 +127,30 @@ def test_substantive_how_questions_use_structured_learning():
         assert result["should_answer_direct"] is False
 
 
+def test_quant_artificial_intelligence_uses_structured_learning():
+    prompt = "what is quant artificial intelligence"
+
+    result = detect_intent(prompt)
+
+    assert result["intent"] == "topic_explore"
+    assert result["should_interrogate"] is True
+    assert result["should_answer_direct"] is False
+    assert extract_topic(prompt) == "Quantitative Artificial Intelligence"
+
+
+def test_quan_artificial_intelligence_requires_domain_clarification():
+    result = interrogate("what is quan artificial intelligence")
+
+    assert result["categories"] == {}
+    assert result["needs_clarification"] is True
+    assert result["intent"] == "clarify_topic_ambiguity"
+    assert result["suppress_profile"] is True
+    assert result["followups"] == [
+        "Quantitative Artificial Intelligence",
+        "Quantum Artificial Intelligence",
+    ]
+
+
 def test_specialized_intents_extract_clean_topics():
     examples = {
         "Compare Python versus Java": "Python versus Java",

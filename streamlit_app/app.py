@@ -6930,7 +6930,9 @@ def page_new_chat() -> None:
                         "suppress_profile": bool(data.get("suppress_profile", False)),
                         "show_action_buttons": bool(qm_discussion_topic),
                         "clarification_title": (
-                            "Choose how to continue" if qm_discussion_topic else ""
+                            "Choose how to continue"
+                            if qm_discussion_topic
+                            else str(data.get("clarification_title") or "")
                         ),
                         "hide_clarification_title": bool(
                             data.get("hide_clarification_title", False)
@@ -7049,6 +7051,9 @@ def page_new_chat() -> None:
                 # -------------------------------------------------
                 st.session_state.chat_pending_context_clarification = None
                 st.session_state.chat_active_carm_context = None
+                resolved_learning_topic = str(
+                    data.get("topic") or semantic_topic_text
+                ).strip()
                 explicit_qm_request = bool(
                     re.search(
                         r"\b(question\s*map|qmap|qm)\b|\b(generate|create|build|make)\b.*\bmap\b",
@@ -7112,19 +7117,25 @@ def page_new_chat() -> None:
                 st.session_state.chat_active_discussion = None
                 if has_existing_root:
                     st.session_state.chat_study_mode_established = True
-                    intro_resp = fetch_study_full(semantic_topic_text, mode="intro", max_rounds=0)
+                    intro_resp = fetch_study_full(
+                        resolved_learning_topic,
+                        mode="intro",
+                        max_rounds=0,
+                    )
                     intro = intro_resp.get("answer", "").strip()
                     _append_interrogate_branch(display_topic_text, data, intro)
                     _persist_new_chat_session(current_sid)
                     st.rerun()
                     return
 
+                # Preserve exactly what the learner typed in the visible chat;
+                # use the resolved subject only for generation.
                 st.session_state.chat["topic"] = semantic_topic_text
                 st.session_state.chat_study_mode_established = True
                 st.session_state.chat_root_topic = semantic_topic_text
                 st.session_state.chat["interrogate"] = data
 
-                intro_resp = fetch_study_full(semantic_topic_text, mode="intro")
+                intro_resp = fetch_study_full(resolved_learning_topic, mode="intro")
                 intro = intro_resp.get("answer", "").strip()
 
                 st.session_state.chat_intro = intro
@@ -8526,10 +8537,13 @@ def page_new_chat() -> None:
                 align-items: center;
                 gap: 8px;
                 flex-wrap: nowrap;
-                border: 1px solid #d9dee4;
+                border: 1px solid rgba(15, 23, 42, 0.065);
                 border-radius: 18px;
-                background: #ffffff;
-                box-shadow: 0 7px 22px rgba(15, 23, 42, 0.075);
+                background: rgba(255, 255, 255, 0.985);
+                box-shadow:
+                    0 12px 32px rgba(15, 23, 42, 0.055),
+                    0 2px 8px rgba(15, 23, 42, 0.025),
+                    inset 0 0 0 1px rgba(255, 255, 255, 0.82);
                 transform: translateX(-50%);
             }
 
