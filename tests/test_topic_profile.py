@@ -15,6 +15,47 @@ from streamlit_app.topic_profile import (
 
 class TopicProfileTests(unittest.TestCase):
 
+    def test_difficulty_evaluator_handles_three_distinct_depths(self) -> None:
+        cases = (
+            (
+                "What is photosynthesis?",
+                '{"Entity type":"Biological process","Subject":"Photosynthesis","Prerequisites":"Basic cell biology","Difficulty":"Beginner"}',
+                "Beginner",
+            ),
+            (
+                "What is quantitative artificial intelligence?",
+                '{"Entity type":"Technical field","Subject":"Quantitative Artificial Intelligence","Prerequisites":"Calculus; linear algebra; probability theory","Difficulty":"Beginner"}',
+                "Intermediate",
+            ),
+            (
+                "How does backpropagation mathematically update weights in a deep neural network?",
+                '{"Entity type":"Learning algorithm","Subject":"Backpropagation in a deep neural network","Mathematical foundation":"Partial derivatives; chain rule; matrix calculus","Difficulty":"Beginner"}',
+                "Advanced",
+            ),
+            (
+                "Newton's laws of motion",
+                '{"Entity type":"Physical laws","Subject":"Newtonian mechanics","Prerequisites":"Basic algebra","Difficulty":"Beginner"}',
+                "Beginner",
+            ),
+            (
+                "Distributed systems",
+                '{"Entity type":"Computing field","Subject":"Distributed systems","Prerequisites":"Networking; operating systems; concurrency","Difficulty":"Beginner"}',
+                "Intermediate",
+            ),
+            (
+                "How does the Kalman filter mathematically update covariance in sensor fusion?",
+                '{"Entity type":"Estimation algorithm","Subject":"Kalman filter","Mathematical foundation":"Linear algebra; probability; matrix calculus","Prerequisites":"State-space models; covariance","Difficulty":"Intermediate"}',
+                "Advanced",
+            ),
+        )
+
+        for query, profile, expected in cases:
+            with self.subTest(query=query):
+                rows, _ = extract_topic_profile(
+                    f"<TOPIC_PROFILE>\n{profile}\n</TOPIC_PROFILE>", query
+                )
+                self.assertIn(("Difficulty", expected), rows)
+
     def test_numbered_meiotic_stage_comparisons_are_intermediate(self) -> None:
         answer = """<TOPIC_PROFILE>
 {"Entity type":"Cellular process phase", "Subject":"Meiosis", "Prerequisites":"Chromosomes; homologs; sister chromatids", "Difficulty":"Beginner"}

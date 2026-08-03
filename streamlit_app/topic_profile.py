@@ -38,17 +38,22 @@ def _correct_difficulty(
     rows: list[tuple[str, str]],
     user_query: str = "",
 ) -> list[tuple[str, str]]:
-    """Align difficulty with the depth requested, then with prerequisites."""
+    """Deterministically align difficulty with topic and requested depth."""
     fields = {label.casefold(): value for label, value in rows}
     current_difficulty = fields.get("difficulty", "").casefold()
     profile_text = " ".join(fields.values()).casefold()
     query = re.sub(r"\s+", " ", (user_query or "").strip().casefold())
 
     def set_difficulty(value: str) -> list[tuple[str, str]]:
-        return [
+        corrected = [
             (label, value) if label.casefold() == "difficulty" else (label, item)
             for label, item in rows
         ]
+        if not any(label.casefold() == "difficulty" for label, _ in rows):
+            corrected.append(("Difficulty", value))
+        return corrected
+
+    evidence = f"{query} {profile_text}"
 
     numbered_meiotic_stage = r"(?:meiosis|prophase|metaphase|anaphase|telophase)"
     if re.search(
@@ -61,30 +66,11 @@ def _correct_difficulty(
         # meiotic sequence. It is therefore consistently intermediate.
         return set_difficulty("Intermediate")
 
-    action_cues = re.compile(
-        r"\b(explain|compare|calculate|derive|prove|show|teach|implement|how|why|what)\b"
-    )
-    is_bare_topic = bool(
-        query
-        and "?" not in query
-        and len(query.split()) <= 8
-        and not action_cues.search(query)
-    )
-    if is_bare_topic:
-        specialized_bare_signals = (
-            "crispr", "gene editing", "molecular cloning", "guide rna",
-            "enzyme kinetics", "genome editing", "cell culture",
-            "bayesian inference", "quantum mechanics", "compiler design",
-            "distributed systems", "cryptography",
-        )
-        if any(signal in profile_text for signal in specialized_bare_signals):
-            return set_difficulty("Intermediate")
-        return set_difficulty("Beginner")
-
     advanced_query_cues = (
         "mathematically", "derive", "proof", "matrix calculus",
         "update uncertainty", "update weights", "gradient flow",
-        "covariance update", "jacobian", "hessian",
+        "covariance update", "jacobian", "hessian", "formal proof",
+        "time complexity", "convergence proof",
     )
     advanced_foundations = (
         "matrix calculus", "partial derivatives", "multivariable calculus",
@@ -92,7 +78,7 @@ def _correct_difficulty(
     )
     if (
         any(cue in query for cue in advanced_query_cues)
-        and any(foundation in profile_text for foundation in advanced_foundations)
+        and any(foundation in evidence for foundation in advanced_foundations)
     ):
         return set_difficulty("Advanced")
 
@@ -112,15 +98,18 @@ def _correct_difficulty(
     )
     if (
         current_difficulty in {"beginner", "intermediate"}
-        and any(signal in profile_text for signal in advanced_topic_signals)
-        and any(signal in profile_text for signal in advanced_math_signals)
+        and any(signal in evidence for signal in advanced_topic_signals)
+        and any(signal in evidence for signal in advanced_math_signals)
     ):
         return set_difficulty("Advanced")
 
-    if current_difficulty != "beginner":
-        return rows
-
-    intermediate_signals = (
+    # These subjects have an intermediate floor even when the user asks only
+    # for an introduction. Wording such as "what is" must not erase the
+    # conceptual prerequisites inherent in the subject.
+    intermediate_topic_signals = (
+        "quantitative artificial intelligence",
+        "quant artificial intelligence",
+        "probabilistic artificial intelligence",
         "amdahl",
         "cache coherence",
         "concurrency",
@@ -148,7 +137,27 @@ def _correct_difficulty(
         "statistical inference",
         "likelihood",
         "asymptotics",
+        "compiler design",
+        "distributed systems",
+        "cryptography",
+        "kalman filter",
+        "support vector machine",
     )
+    action_cues = re.compile(
+        r"\b(explain|compare|calculate|derive|prove|show|teach|implement|how|why|what)\b"
+    )
+    is_bare_topic = bool(
+        query
+        and "?" not in query
+        and len(query.split()) <= 8
+        and not action_cues.search(query)
+    )
+    intrinsically_intermediate = any(
+        signal in evidence for signal in intermediate_topic_signals
+    )
+    if is_bare_topic and not intrinsically_intermediate:
+        return set_difficulty("Beginner")
+
     prerequisites = fields.get("prerequisites", "")
     prerequisite_items = [
         item.strip()
@@ -165,18 +174,17 @@ def _correct_difficulty(
         "gene expression",
         "repair pathways",
     )
-    requires_substantial_foundation = any(
-        signal in profile_text for signal in substantial_foundations
-    )
+    requires_substantial_foundation = any(signal in evidence for signal in substantial_foundations)
     has_layered_prerequisites = len(prerequisite_items) >= 3
-    if not (
-        any(signal in profile_text for signal in intermediate_signals)
+    requires_intermediate_depth = (
+        intrinsically_intermediate
         or requires_substantial_foundation
         or has_layered_prerequisites
-    ):
-        return rows
+    )
+    if requires_intermediate_depth and current_difficulty in {"", "beginner"}:
+        return set_difficulty("Intermediate")
 
-    return set_difficulty("Intermediate")
+    return rows
 
 
 def split_intro_major_areas(value: str) -> tuple[list[str], str]:
