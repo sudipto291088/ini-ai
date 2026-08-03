@@ -7,12 +7,30 @@ from streamlit_app.topic_profile import (
     extract_learning_loop,
     extract_topic_profile,
     extract_your_question,
+    split_intro_major_areas,
     split_prerequisite_items,
     split_prerequisites,
 )
 
 
 class TopicProfileTests(unittest.TestCase):
+
+    def test_numbered_meiotic_stage_comparisons_are_intermediate(self) -> None:
+        answer = """<TOPIC_PROFILE>
+{"Entity type":"Cellular process phase", "Subject":"Meiosis", "Prerequisites":"Chromosomes; homologs; sister chromatids", "Difficulty":"Beginner"}
+</TOPIC_PROFILE>"""
+
+        queries = (
+            "Compare prophase 1 and prophase 2",
+            "Difference between metaphase I and metaphase II",
+            "Anaphase I versus anaphase II",
+            "Compare telophase I and telophase II",
+            "Compare meiosis I and meiosis II",
+        )
+        for query in queries:
+            with self.subTest(query=query):
+                rows, _ = extract_topic_profile(answer, query)
+                self.assertIn(("Difficulty", "Intermediate"), rows)
     def test_extracts_adaptive_profile_and_preserves_introduction(self):
         answer = """
 <TOPIC_PROFILE>
@@ -120,6 +138,89 @@ A hexa-core processor contains six physical processing cores.
         self.assertEqual(
             body,
             "A hexa-core processor contains six physical processing cores.",
+        )
+
+    def test_upgrades_math_heavy_and_implementation_profiles(self):
+        cases = (
+            "Undergraduate linear algebra; basic quantum mechanics",
+            "Multivariable calculus; chain rule; gradient-based optimization",
+            "Python programming; PyTorch or TensorFlow; transfer learning",
+            "DNA/RNA structure; gene expression; enzymatic cleavage; repair pathways",
+            "Probability distributions; conditional probability; calculus; likelihood",
+        )
+
+        for prerequisites in cases:
+            with self.subTest(prerequisites=prerequisites):
+                answer = f"""
+<TOPIC_PROFILE>
+{{"Entity type":"Technical topic","Prerequisites":"{prerequisites}","Difficulty":"Beginner"}}
+</TOPIC_PROFILE>
+"""
+                rows, _ = extract_topic_profile(answer)
+                self.assertIn(("Difficulty", "Intermediate"), rows)
+
+    def test_promotes_mathematical_backpropagation_to_advanced(self):
+        answer = """
+<TOPIC_PROFILE>
+{"Entity type":"Algorithm", "Subject":"Backpropagation in deep neural networks", "Mathematical foundation":"Partial derivatives and the chain rule", "Difficulty":"Intermediate"}
+</TOPIC_PROFILE>
+"""
+
+        rows, _ = extract_topic_profile(answer)
+
+        self.assertIn(("Difficulty", "Advanced"), rows)
+
+    def test_bare_topic_depth_is_beginner_even_with_advanced_foundations(self):
+        answer = """
+<TOPIC_PROFILE>
+{"Entity type":"Scientific theory","Mathematical foundation":"Continuum mechanics; vector kinematics; heat transport equations","Prerequisites":"Earth structure; geology; convection","Difficulty":"Intermediate"}
+</TOPIC_PROFILE>
+"""
+
+        rows, _ = extract_topic_profile(answer, "Plate tectonics")
+
+        self.assertIn(("Difficulty", "Beginner"), rows)
+
+    def test_specialized_bare_topic_is_not_downgraded_to_beginner(self):
+        answer = """
+<TOPIC_PROFILE>
+{"Entity type":"Genome-editing method","Subject":"CRISPR gene editing","Mathematical foundation":"Enzyme kinetics","Prerequisites":"Molecular cloning; guide RNA; DNA repair","Difficulty":"Beginner"}
+</TOPIC_PROFILE>
+"""
+
+        rows, _ = extract_topic_profile(answer, "CRISPR gene editing")
+
+        self.assertIn(("Difficulty", "Intermediate"), rows)
+
+    def test_advanced_mechanism_query_uses_requested_depth(self):
+        answer = """
+<TOPIC_PROFILE>
+{"Entity type":"Estimation algorithm","Mathematical foundation":"Linear algebra; Gaussian probability; matrix calculus","Prerequisites":"State-space models; covariance; Bayesian updating","Difficulty":"Intermediate"}
+</TOPIC_PROFILE>
+"""
+
+        rows, _ = extract_topic_profile(
+            answer,
+            "How does the Kalman filter update uncertainty in sensor fusion?",
+        )
+
+        self.assertIn(("Difficulty", "Advanced"), rows)
+
+    def test_splits_lettered_major_areas_into_complete_bullets(self):
+        areas, lead = split_intro_major_areas(
+            "You will examine (a) definitions and governing formulas; "
+            "(b) thresholding and model tendencies; and (c) application-based "
+            "prioritization, plus F1 and F-beta under class imbalance."
+        )
+
+        self.assertEqual(lead, "You will examine")
+        self.assertEqual(
+            areas,
+            [
+                "Definitions and governing formulas",
+                "Thresholding and model tendencies",
+                "Application-based prioritization, plus F1 and F-beta under class imbalance",
+            ],
         )
 
     def test_splits_prerequisite_items_without_breaking_parentheses(self):
@@ -236,6 +337,76 @@ The narrative remains available.
         self.assertEqual(explanation["Variables"][1], ("eta", "learning rate"))
         self.assertEqual(explanation["Steps"][1]["Heading"], "2. Backward pass")
         self.assertEqual(body, "The narrative remains available.")
+
+    def test_repairs_delimiter_inside_a_formula_symbol(self):
+        answer = """
+<CORE_EXPLANATION>
+<TITLE>Classification loss</TITLE>
+<VARIABLES>
+L( :: ) :: loss function such as cross-entropy
+</VARIABLES>
+</CORE_EXPLANATION>
+"""
+
+        explanation, _ = extract_core_explanation(answer)
+
+        self.assertEqual(
+            explanation["Variables"],
+            [("L(·)", "loss function such as cross-entropy")],
+        )
+
+    def test_extracts_semicolon_delimited_variables_from_one_line(self):
+        answer = """
+<CORE_EXPLANATION>
+<TITLE>Bayesian posterior</TITLE>
+<VARIABLES>
+θ :: parameter vector; y :: observed data; p(y) :: evidence term
+</VARIABLES>
+</CORE_EXPLANATION>
+"""
+
+        explanation, _ = extract_core_explanation(answer)
+
+        self.assertEqual(
+            explanation["Variables"],
+            [
+                ("θ", "parameter vector"),
+                ("y", "observed data"),
+                ("p(y)", "evidence term"),
+            ],
+        )
+
+    def test_repairs_unclosed_update_rule_delimiters(self):
+        answer = """
+<CORE_EXPLANATION>
+<TITLE>Database query cost</TITLE>
+<UPDATE_RULE>cost(nodes scanned) + cost(edges traversed</UPDATE_RULE>
+</CORE_EXPLANATION>
+"""
+
+        explanation, _ = extract_core_explanation(answer)
+
+        self.assertEqual(
+            explanation["Update rule"],
+            "cost(nodes scanned) + cost(edges traversed)",
+        )
+
+    def test_hides_prompt_placeholder_from_core_explanation(self):
+        answer = """
+<CORE_EXPLANATION>
+<TITLE>Sensitivity vs specificity</TITLE>
+<OVERVIEW>Two concise sentences</OVERVIEW>
+<UPDATE_RULE>Sensitivity = TP / (TP + FN)</UPDATE_RULE>
+</CORE_EXPLANATION>
+"""
+
+        explanation, _ = extract_core_explanation(answer)
+
+        self.assertNotIn("Overview", explanation)
+        self.assertEqual(
+            explanation["Update rule"],
+            "Sensitivity = TP / (TP + FN)",
+        )
 
     def test_recovers_truncated_core_explanation_without_leaking_markup(self):
         answer = """

@@ -120,6 +120,7 @@ def _build_instruction(mode: str) -> str:
             "- Question must preserve the user's exact substantive question without conversational filler.\n"
             "- Intent must explain in one concise sentence what the learner is really trying to understand.\n"
             "- Learning goal must state in one concise sentence what the learner should be able to explain after the answer.\n"
+            "- Do not infer that the learner wants programming, coding, implementation, APIs, or developer workflows merely because the subject is technical. Include that intent only when the user's wording or established conversation context explicitly supports it.\n"
             "- Do not answer the question inside this block.\n"
             "- Immediately after the closing YOUR_QUESTION tag, output this exact machine-readable block:\n"
             "<CORE_EXPLANATION>\n"
@@ -149,6 +150,9 @@ def _build_instruction(mode: str) -> str:
             "<OUTCOME>One concise sentence explaining what completing or repeating the sequence achieves</OUTCOME>\n"
             "</LEARNING_LOOP>\n"
             "- Create 5 to 6 causal or operational stages specific to the user's exact question.\n"
+            "- Match the loop to the depth and form of the user's request: for a broad or introductory topic, use a conceptual learning progression; for a precise advanced question, use the technical reasoning or mechanism sequence; for an explicit practical request, use an actionable workflow.\n"
+            "- Do not turn a broad topic into an advanced optimization, implementation, measurement, or troubleshooting workflow unless the user's wording or established context supports that depth.\n"
+            "- Treat a bare topic or short noun phrase with no action verb as introductory. Use exactly 5 stagesâ€”identify, distinguish, connect, apply conceptually, and reviewâ€”then stop; do not append a refine or optimization stage. Such a loop must not instruct the learner to code, benchmark, measure, profile, optimize, debug, configure, deploy, or select replacement hardware.\n"
             "- For a cyclical process, the final stage must naturally lead back to the next cycle; for a non-cyclical subject, show the complete reasoning sequence toward a practical outcome.\n"
             "- Keep each stage compact, distinct, and free of Markdown.\n"
             "- Immediately after the closing LEARNING_LOOP tag, output this exact machine-readable block:\n"
@@ -162,6 +166,7 @@ def _build_instruction(mode: str) -> str:
             "</CONTINUE_JOURNEY>\n"
             "- Create exactly 3 distinct directions: strengthen understanding, practise or verify it, then advance beyond it.\n"
             "- Make every direction specific to the user's exact question; never use generic labels such as Learn more or Explore further.\n"
+            "- A practical verification step need not involve code. Recommend programming or implementation only when the user's wording or established context calls for it.\n"
             "- Do not repeat questions from Related Learning Paths or the Question Map.\n"
             "- Keep the directions non-interactive in wording: no invitations to click, choose, or select.\n"
             "- After the closing CONTINUE_JOURNEY tag, write the narrative introduction.\n"
@@ -344,6 +349,523 @@ def _continuation_context(previous_answer: str, max_chars: int = 6000) -> str:
     )
 
 
+_LEARNING_LOOP_BLOCK = re.compile(
+    r"<LEARNING_LOOP>.*?</LEARNING_LOOP>",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+
+_CONTINUE_JOURNEY_BLOCK = re.compile(
+    r"<CONTINUE_JOURNEY>.*?</CONTINUE_JOURNEY>",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+
+
+def _is_bare_learning_topic(user_topic: str) -> bool:
+    """Return True for a short topic label with no requested action."""
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    if not topic or "?" in topic or len(topic.split()) > 8:
+        return False
+
+    action_cues = (
+        "explain", "compare", "calculate", "derive", "prove", "show", "teach",
+        "implement", "build", "create", "code", "program", "debug", "configure",
+        "install", "deploy", "measure", "profile", "optimize", "evaluate", "design",
+        "how", "why", "what", "when", "where", "which", "can", "should",
+    )
+    return not any(re.search(rf"\b{re.escape(cue)}\b", topic) for cue in action_cues)
+
+
+def _adapt_intro_learning_loop(answer: str, user_topic: str) -> str:
+    """Enforce a conceptual five-stage loop for an unqualified topic label."""
+    if not _is_bare_learning_topic(user_topic) or not _LEARNING_LOOP_BLOCK.search(answer):
+        return answer
+
+    topic = re.sub(r"[<>]", "", re.sub(r"\s+", " ", user_topic.strip()))
+    replacement = f"""<LEARNING_LOOP>
+<STAGES>
+1. Identify :: Define the topic and recognize its essential components.
+2. Distinguish :: Separate the topic from its closest related concepts and common misconceptions.
+3. Connect :: Relate the main components to understand how the topic works as a whole.
+4. Apply conceptually :: Use a representative scenario to predict where the topic matters and what behavior to expect.
+5. Review :: Summarize its purpose, major trade-offs, and limitations.
+</STAGES>
+<OUTCOME>The learner can explain the topic, distinguish it from neighboring ideas, and reason about it in context.</OUTCOME>
+</LEARNING_LOOP>"""
+    return _LEARNING_LOOP_BLOCK.sub(replacement, answer, count=1)
+
+
+def _is_compare_request(user_topic: str) -> bool:
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    return bool(
+        re.search(r"\b(compare|comparison|contrast|difference between|versus|vs\.? )\b", topic)
+        or topic.startswith("compare ")
+    )
+
+
+def _is_scientific_process_comparison(user_topic: str) -> bool:
+    """Return True when a comparison asks how natural processes differ."""
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    process_terms = (
+        "mitosis", "meiosis", "photosynthesis", "cellular respiration",
+        "aerobic respiration", "anaerobic respiration", "fermentation",
+        "transcription", "translation", "dna replication", "diffusion",
+        "osmosis", "evaporation", "condensation", "conduction",
+        "convection", "radiation",
+    )
+    return _is_compare_request(topic) and sum(term in topic for term in process_terms) >= 2
+
+
+def _is_conceptual_comparison(user_topic: str) -> bool:
+    """Return True for comparisons intended to clarify concepts, not choose tools."""
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    conceptual_pairs = (
+        ("deductive", "inductive"),
+        ("accuracy", "precision"),
+        ("validity", "reliability"),
+        ("necessary", "sufficient"),
+    )
+    return _is_compare_request(topic) and any(
+        first in topic and second in topic for first, second in conceptual_pairs
+    )
+
+
+def _is_causal_inference_comparison(user_topic: str) -> bool:
+    """Return True when association is being contrasted with causal evidence."""
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    return (
+        _is_compare_request(topic)
+        and "correlation" in topic
+        and ("causation" in topic or "causal" in topic)
+    )
+
+
+def _is_research_method_comparison(user_topic: str) -> bool:
+    """Return True for comparisons between qualitative and quantitative methods."""
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    return (
+        _is_compare_request(topic)
+        and "qualitative" in topic
+        and "quantitative" in topic
+    )
+
+
+def _is_metric_comparison(user_topic: str) -> bool:
+    """Return True when the user compares evaluation or statistical metrics."""
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    metric_pairs = (
+        ("precision", "recall"),
+        ("sensitivity", "specificity"),
+        ("precision", "accuracy"),
+        ("roc", "auc"),
+        ("f1", "accuracy"),
+    )
+    return _is_compare_request(topic) and any(
+        first in topic and second in topic for first, second in metric_pairs
+    )
+
+
+def _metric_comparison_pair(user_topic: str) -> tuple[str, str] | None:
+    """Return the actual metric pair named by the learner, when recognized."""
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    metric_pairs = (
+        ("precision", "recall"),
+        ("sensitivity", "specificity"),
+        ("precision", "accuracy"),
+        ("roc", "auc"),
+        ("f1", "accuracy"),
+    )
+    return next(
+        (pair for pair in metric_pairs if pair[0] in topic and pair[1] in topic),
+        None,
+    )
+
+
+def _adapt_compare_learning_loop(answer: str, user_topic: str) -> str:
+    """Keep comparison requests analytical unless implementation was requested."""
+    if not _is_compare_request(user_topic) or not _LEARNING_LOOP_BLOCK.search(answer):
+        return answer
+
+    if _is_scientific_process_comparison(user_topic):
+        replacement = """<LEARNING_LOOP>
+<STAGES>
+1. Identify :: Define each process, its biological purpose, and where it occurs.
+2. Distinguish :: Compare their stages, inputs, outputs, and defining mechanisms using the same criteria.
+3. Connect :: Relate their differences to the roles they play in the organism or system.
+4. Apply conceptually :: Trace representative examples and predict the outcome of each process.
+5. Review :: Summarize the similarities, essential differences, and common misconceptions.
+</STAGES>
+<OUTCOME>The learner can explain both processes, compare them accurately, and predict their biological outcomes.</OUTCOME>
+</LEARNING_LOOP>"""
+    elif _is_metric_comparison(user_topic):
+        replacement = """<LEARNING_LOOP>
+<STAGES>
+1. Identify :: Define each metric precisely and map every term to the underlying observations or confusion-matrix cells.
+2. Distinguish :: Compare what each denominator asks, which errors affect it, and what a high or low value means.
+3. Connect :: Relate the metrics to thresholds, class imbalance, and the real cost of false positives and false negatives.
+4. Apply conceptually :: Compute both metrics for representative cases and explain why the preferred balance changes by application.
+5. Review :: Summarize the trade-off, common interpretation mistakes, and when a combined measure is useful.
+</STAGES>
+<OUTCOME>The learner can calculate, interpret, and select the metrics according to the error costs of the task.</OUTCOME>
+</LEARNING_LOOP>"""
+    elif _is_causal_inference_comparison(user_topic):
+        replacement = """<LEARNING_LOOP>
+<STAGES>
+1. Identify :: Define statistical association and causal effect, including the direction of each claim.
+2. Distinguish :: Separate correlation from causation by testing confounding, reverse causality, selection effects, and coincidence.
+3. Connect :: Relate observational patterns to causal assumptions using interventions, counterfactuals, and causal diagrams.
+4. Apply conceptually :: Evaluate representative claims and identify what experiment, natural experiment, or adjustment strategy could support causality.
+5. Review :: Summarize what the evidence establishes, what remains assumed, and which alternative explanations survive.
+</STAGES>
+<OUTCOME>The learner can distinguish association from causal evidence and state what additional design or assumptions a causal claim requires.</OUTCOME>
+</LEARNING_LOOP>"""
+    elif _is_research_method_comparison(user_topic):
+        replacement = """<LEARNING_LOOP>
+<STAGES>
+1. Identify :: Define the research question and the kind of evidence needed to answer it.
+2. Distinguish :: Compare qualitative and quantitative data, sampling, collection, analysis, and standards of validity using shared criteria.
+3. Connect :: Relate each method's strengths and limitations to depth, measurement, generalization, and context.
+4. Apply conceptually :: Match representative research questions to qualitative, quantitative, or mixed-method designs and justify each choice.
+5. Review :: Summarize the decision boundaries, integration opportunities, and common methodological mismatches.
+</STAGES>
+<OUTCOME>The learner can select and justify an appropriate research design based on the question, evidence, and intended claim.</OUTCOME>
+</LEARNING_LOOP>"""
+    elif _is_conceptual_comparison(user_topic):
+        replacement = """<LEARNING_LOOP>
+<STAGES>
+1. Identify :: Define each concept precisely and state the kind of reasoning or claim it represents.
+2. Distinguish :: Compare their starting points, logical movement, standards of support, and conclusion strength.
+3. Connect :: Show how the concepts complement one another within inquiry, explanation, and evidence-based judgment.
+4. Apply conceptually :: Classify representative arguments and explain why each example belongs to one form rather than the other.
+5. Review :: Summarize the essential contrast, common confusions, and limits of each concept.
+</STAGES>
+<OUTCOME>The learner can distinguish the concepts accurately, recognize them in examples, and explain how each supports knowledge.</OUTCOME>
+</LEARNING_LOOP>"""
+    else:
+        replacement = """<LEARNING_LOOP>
+<STAGES>
+1. Identify :: Define the two alternatives and the decision being examined.
+2. Distinguish :: Compare their structures, strengths, limitations, and assumptions using shared criteria.
+3. Connect :: Relate each trade-off to the kinds of problems and constraints where it matters.
+4. Apply conceptually :: Use representative scenarios to determine which alternative fits each situation.
+5. Review :: Summarize the decision boundaries, exceptions, and possible hybrid approaches.
+</STAGES>
+<OUTCOME>The learner can compare the alternatives consistently and justify when each is the better fit.</OUTCOME>
+</LEARNING_LOOP>"""
+    return _LEARNING_LOOP_BLOCK.sub(replacement, answer, count=1)
+
+
+def _adapt_compare_journey(answer: str, user_topic: str) -> str:
+    """Remove unsolicited implementation work from comparison follow-through."""
+    if not _is_compare_request(user_topic) or not _CONTINUE_JOURNEY_BLOCK.search(answer):
+        return answer
+
+    if _is_scientific_process_comparison(user_topic):
+        replacement = """<CONTINUE_JOURNEY>
+<DIRECTIONS>
+1. Strengthen the stage-by-stage comparison :: Place corresponding stages side by side and trace their inputs, transformations, and outputs.
+2. Connect mechanism to biological purpose :: Explain how each process's location and mechanism support its distinct role in the living system.
+3. Test the distinction with examples :: Predict how changing an input or condition affects each process's material, energy, or biological outcome.
+</DIRECTIONS>
+<DESTINATION>The learner can compare the processes from inputs through mechanisms to outcomes without importing features that belong only to a different biological process.</DESTINATION>
+</CONTINUE_JOURNEY>"""
+    elif _is_metric_comparison(user_topic):
+        first_metric, second_metric = _metric_comparison_pair(user_topic) or (
+            "the first metric",
+            "the second metric",
+        )
+        replacement = f"""<CONTINUE_JOURNEY>
+<DIRECTIONS>
+1. Strengthen metric interpretation :: Recalculate both metrics from several confusion matrices and explain every change.
+2. Explore threshold trade-offs :: Trace how moving the classification threshold changes false positives, false negatives, {first_metric}, and {second_metric}.
+3. Match metrics to consequences :: Compare realistic applications and justify the appropriate balance from their error costs.
+</DIRECTIONS>
+<DESTINATION>The learner can defend a metric choice with calculations, threshold behavior, and domain consequences.</DESTINATION>
+</CONTINUE_JOURNEY>"""
+    elif _is_causal_inference_comparison(user_topic):
+        replacement = """<CONTINUE_JOURNEY>
+<DIRECTIONS>
+1. Diagnose a correlated pattern :: Take an observational association and list plausible confounders, reverse-causal paths, and selection effects.
+2. Draw the causal structure :: Build a simple causal diagram and identify which variables should be controlled, measured, or left untouched.
+3. Strengthen identification :: Compare randomized experiments, natural experiments, longitudinal designs, and instrumental variables for the same causal question.
+</DIRECTIONS>
+<DESTINATION>The learner can evaluate whether evidence supports association alone or a defensible causal conclusion.</DESTINATION>
+</CONTINUE_JOURNEY>"""
+    elif _is_research_method_comparison(user_topic):
+        replacement = """<CONTINUE_JOURNEY>
+<DIRECTIONS>
+1. Strengthen method selection :: Compare several research questions and identify whether each requires contextual depth, numerical measurement, or both.
+2. Examine evidence quality :: Evaluate sampling, data collection, analysis, validity, and bias in one qualitative and one quantitative study.
+3. Explore mixed-method integration :: Design a sequence in which findings from one method meaningfully guide or explain results from the other.
+</DIRECTIONS>
+<DESTINATION>The learner can design and defend a coherent qualitative, quantitative, or mixed-method study without confusing their evidence standards.</DESTINATION>
+</CONTINUE_JOURNEY>"""
+    elif _is_conceptual_comparison(user_topic):
+        replacement = """<CONTINUE_JOURNEY>
+<DIRECTIONS>
+1. Strengthen the distinction :: Rewrite several claims in both forms and identify how their premises and conclusions differ.
+2. Examine mixed reasoning :: Study real explanations where the two concepts work together rather than appearing in isolation.
+3. Test common edge cases :: Classify ambiguous examples, justify the classification, and identify where certainty or support can fail.
+</DIRECTIONS>
+<DESTINATION>The learner can identify, construct, and evaluate both forms without treating either as universally superior.</DESTINATION>
+</CONTINUE_JOURNEY>"""
+    else:
+        replacement = """<CONTINUE_JOURNEY>
+<DIRECTIONS>
+1. Clarify the decision criteria :: List the requirements, constraints, and trade-offs that matter most in the comparison.
+2. Examine representative scenarios :: Apply the same criteria to a few contrasting situations and explain which alternative fits each one.
+3. Explore boundaries and hybrids :: Study edge cases where neither alternative is sufficient alone or where combining them is reasonable.
+</DIRECTIONS>
+<DESTINATION>The learner can make and defend a context-aware choice without assuming that one alternative is universally superior.</DESTINATION>
+</CONTINUE_JOURNEY>"""
+    return _CONTINUE_JOURNEY_BLOCK.sub(replacement, answer, count=1)
+
+
+def _normalize_continue_journey_headings(answer: str) -> str:
+    """Replace leaked prompt placeholders with stable, meaningful headings."""
+    match = _CONTINUE_JOURNEY_BLOCK.search(answer)
+    if not match:
+        return answer
+
+    headings = ("Strengthen understanding", "Practise or verify", "Advance beyond it")
+    index = 0
+
+    def replace_placeholder(_: re.Match[str]) -> str:
+        nonlocal index
+        heading = headings[min(index, len(headings) - 1)]
+        index += 1
+        return heading
+
+    normalized = re.sub(
+        r"A short, topic-specific direction",
+        replace_placeholder,
+        match.group(0),
+        flags=re.IGNORECASE,
+    )
+    return answer[:match.start()] + normalized + answer[match.end():]
+
+
+_NUMBERED_MEIOTIC_STAGES = ("meiosis", "prophase", "metaphase", "anaphase", "telophase")
+
+
+def _requested_numbered_stage_pair(user_topic: str) -> str | None:
+    """Return the stage name when the query explicitly contrasts I with II."""
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip())
+    for stage in _NUMBERED_MEIOTIC_STAGES:
+        if re.search(
+            rf"\b{stage}\s+(?:i|1)\b.*\b{stage}\s+(?:ii|2)\b",
+            topic,
+            flags=re.IGNORECASE,
+        ):
+            return stage
+    return None
+
+
+def _normalize_numbered_stage_comparison(answer: str, user_topic: str) -> str:
+    """Repair a provider collapsing the requested stage II into stage I."""
+    stage = _requested_numbered_stage_pair(user_topic)
+    if not stage:
+        return answer
+
+    escaped = re.escape(stage)
+    normalized = answer
+
+    # Direct comparison forms used throughout headings, paths and questions.
+    normalized = re.sub(
+        rf"\b{escaped}\s+i\s+(and|vs\.?|versus|or)\s+(?:{escaped}\s+)?i\b",
+        lambda match: f"{stage} I {match.group(1)} {stage} II",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        rf"\b{escaped}\s+i\s*\+\s*{escaped}\s+i\b",
+        f"{stage} I + {stage} II",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        rf"\b{escaped}\s+i\s+(and|vs\.?|versus|or)\s+i\b",
+        lambda match: f"{stage} I {match.group(1)} II",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+
+    # In a sentence that contrasts the same stage twice, the occurrence after
+    # the contrast word is necessarily the requested stage II.
+    normalized = re.sub(
+        rf"(\b{escaped}\s+i\b[^.?!\n]{{0,220}}?\b(?:whereas|while|but|from|versus|vs\.?)\s+){escaped}\s+i\b",
+        rf"\1{stage} II",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+
+    # Stage-II roles have distinctive biological semantics even when the
+    # provider starts a new sentence instead of using a comparison connector.
+    semantic_patterns = (
+        (rf"\b{escaped}\s+i\b(?=\s+(?:aligns?|separates?)\s+(?:individual\s+chromosomes|sister\s+chromatids))", f"{stage} II"),
+        (rf"\b{escaped}\s+i\b(?=\s+(?:is|acts)\s+(?:as\s+)?(?:an?\s+)?equational\b)", f"{stage} II"),
+        (rf"\b{escaped}\s+i\b(?=\s+(?:resembles|is\s+like)\s+mitosis\b)", f"{stage} II"),
+        (rf"\b{escaped}\s+i\b(?=[^.;\n]{{0,100}}\bcentromeric\s+cohesin\s+is\s+(?:removed|cleaved))", f"{stage} II"),
+        (rf"\bsister\s+chromatids\s+(?:in|during|at)\s+{escaped}\s+i\b", f"sister chromatids in {stage} II"),
+        (rf"\b{escaped}\s+i\b(?=\s+(?:does\s+not\s+change\s+ploidy|lacks\s+crossing-over))", f"{stage} II"),
+        (rf"\bMII\s*[^A-Za-z0-9\s]+\s*{escaped}\s+i\b", f"MII — {stage} II"),
+    )
+    for pattern, replacement in semantic_patterns:
+        normalized = re.sub(
+            pattern,
+            lambda match, value=replacement: (
+                value[0].upper() + value[1:]
+                if match.group(0)[0].isupper()
+                else value
+            ),
+            normalized,
+            flags=re.IGNORECASE,
+        )
+    return normalized
+
+
+def _normalize_response_text(answer: str, user_topic: str = "") -> str:
+    normalized = re.sub(
+        r"\bYou(?:['\u2018\u2019]|â€™)?l\b",
+        "You'll",
+        answer,
+        flags=re.IGNORECASE,
+    )
+    def normalize_youll_case(match: re.Match[str]) -> str:
+        prefix = normalized[: match.start()].rstrip()
+        if not prefix or prefix[-1] in ".!?":
+            return "You'll"
+        return "you'll"
+
+    normalized = re.sub(r"\bYou'll\b", normalize_youll_case, normalized)
+    normalized = re.sub(
+        r"\bmeiosis\s+i\s+(and|vs\.?|versus|or)\s+(meiosis\s+)?i\b",
+        lambda match: (
+            f"meiosis I {match.group(1)} "
+            f"{'meiosis ' if match.group(2) else ''}II"
+        ),
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        r"\bmeiosis\s+i\s*/\s*i\b",
+        "meiosis I/II",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        r"\bmeiosis\s+i\s*([—–-]\s*sister\s+chromatid(?:s)?\s+separation)\b",
+        lambda match: f"Meiosis II {match.group(1)}",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        r"\band\s+meiosis\s+i\s*(?=\([^)]*sister\s+chromatid)",
+        "and meiosis II ",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        r"\bmeiosis\s+i\s+separates\s+sister\s+chromatids\b",
+        "meiosis II separates sister chromatids",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    if re.search(
+        r"\bmeiosis\s+(?:i|1)\b.*\bmeiosis\s+(?:ii|2)\b",
+        user_topic,
+        flags=re.IGNORECASE,
+    ):
+        # When the requested comparison explicitly names both divisions, repair
+        # provider text that repeats stage I in a stage-II role.
+        normalized = re.sub(
+            r"\bmeiosis\s+i\b(?=\s+is\s+the\s+equational\s+division)",
+            lambda match: "Meiosis II" if match.group(0)[0].isupper() else "meiosis II",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        normalized = re.sub(
+            r"(\bafter\s+meiosis\s+i\b[^\n]{0,160}\bremains\b[^\n]{0,100}\bafter\s+)meiosis\s+i\b",
+            r"\1meiosis II",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        normalized = re.sub(
+            r"(\bnondisjunction\s+in\s+meiosis\s+i\b[^?\n]{0,120}?\bfrom\s+)meiosis\s+i\b",
+            r"\1meiosis II",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        explicit_stage_repairs = (
+            (r"\bmeiosis\s+i\s*\+\s*meiosis\s+i\b", "meiosis I + meiosis II"),
+            (r"\bmeiosis\s+i\s+(and|vs\.?|versus|or)\s+i\b", None),
+            (r"\b0\s+for\s+meiosis\s+i\b", "0 for meiosis II"),
+            (r"\bno\s+new\s+homolog\s+pairing\s+in\s+meiosis\s+i\b", "no new homolog pairing in meiosis II"),
+            (r"\bmetaphase\s+i(?=:\s*individual\s+chromosomes)", "Metaphase II"),
+            (r"\bmeiosis\s+i\s+resembles\s+mitosis\b", "meiosis II resembles mitosis"),
+            (r"\bmeiosis\s+i(?=\s*\(equational\b)", "meiosis II"),
+            (r"\bmeiosis\s+i(?=\s+is\s+(?:an?\s+)?equational\b)", "meiosis II"),
+            (r"\bmeiosis\s+i(?=\s+lacks\s+crossing-over\b)", "meiosis II"),
+            (r"\bmeiosis\s+i(?=\s+separates\s+sister\s+chromatids\b)", "meiosis II"),
+            (r"\bsister\s+chromatids\s+in\s+meiosis\s+i\b", "sister chromatids in meiosis II"),
+            (r"\bin\s+meiosis\s+i(?=,\s*centromeric\s+cohesin\s+is\s+removed)", "in meiosis II"),
+            (r"(--meiosis\s+i-->\s*n\s*\(unchanged\))", "--meiosis II--> n (unchanged)"),
+            (r"\bprophase\s+i\s+to\s+anaphase\s+i(?=\s+separating\s+chromatids)", "prophase II to anaphase II"),
+            (r"\b(i\s+vs\.?\s+)i\b", None),
+        )
+        for pattern, replacement in explicit_stage_repairs:
+            if replacement is None:
+                normalized = re.sub(
+                    pattern,
+                    lambda match: (
+                        f"meiosis I {match.group(1)} II"
+                        if "meiosis" in match.group(0).casefold()
+                        else f"{match.group(1)}II"
+                    ),
+                    normalized,
+                    flags=re.IGNORECASE,
+                )
+            else:
+                normalized = re.sub(
+                    pattern,
+                    lambda match, value=replacement: (
+                        value[0].upper() + value[1:]
+                        if match.group(0)[0].isupper()
+                        else value
+                    ),
+                    normalized,
+                    flags=re.IGNORECASE,
+                )
+    return _normalize_numbered_stage_comparison(normalized, user_topic)
+
+
+_INTRO_REQUIRED_SECTIONS = (
+    "TOPIC_PROFILE",
+    "LEARNING_PATHS",
+    "YOUR_QUESTION",
+    "CORE_EXPLANATION",
+    "LEARNING_LOOP",
+    "CONTINUE_JOURNEY",
+)
+
+
+def _missing_intro_sections(answer: str) -> list[str]:
+    """Detect structurally absent cards even when the provider reports completion."""
+    source = answer or ""
+    missing = [
+        section
+        for section in _INTRO_REQUIRED_SECTIONS
+        if not re.search(
+            rf"<{section}>.*?</{section}>",
+            source,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+    ]
+    narrative_labels = ("Purpose:", "Major areas:", "Who should study this next:")
+    if not all(label.casefold() in source.casefold() for label in narrative_labels):
+        missing.append("INTRODUCTION")
+    return missing
+
+
 
 
 def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
@@ -472,8 +994,19 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         (result.get("answer") or "").strip(),
         user_topic,
     )
+    if mode == "intro":
+        ans = _adapt_intro_learning_loop(ans, user_topic)
+        ans = _adapt_compare_learning_loop(ans, user_topic)
+        ans = _adapt_compare_journey(ans, user_topic)
+        ans = _normalize_continue_journey_headings(ans)
+        ans = _normalize_response_text(ans, user_topic)
     incomplete = bool(result.get("incomplete", False))
     stop_reason = result.get("stop_reason", None)
+    if mode == "intro" and not continue_mode:
+        missing_sections = _missing_intro_sections(ans)
+        if missing_sections:
+            incomplete = True
+            stop_reason = "missing_required_sections"
 
     # If the LLM returned no text (rare), expose a stable response
     if not ans:

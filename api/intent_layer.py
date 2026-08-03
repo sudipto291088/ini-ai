@@ -504,6 +504,8 @@ def _looks_like_direct_factual_query(text: str) -> bool:
         "what applications",
         "why does",
         "why do",
+        "how does",
+        "how do",
     )
 
     if any(s.startswith(prefix) for prefix in EDUCATIONAL_QUESTION_PREFIXES):

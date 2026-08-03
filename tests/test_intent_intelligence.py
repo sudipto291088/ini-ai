@@ -1,5 +1,61 @@
 from api.intent_layer import detect_intent
-from api.interrogate import extract_topic, interrogate
+from api.interrogate import (
+    _normalize_question_map_terminology,
+    extract_topic,
+    interrogate,
+)
+
+
+def test_question_map_repairs_duplicate_meiotic_stage_label():
+    categories = {
+        "Orientation": [
+            {
+                "question": "Compare meiotic I vs meiotic I in chromosome segregation."
+            }
+        ]
+    }
+
+    normalized = _normalize_question_map_terminology(categories)
+
+    assert normalized["Orientation"][0]["question"] == (
+        "Compare meiotic I vs meiotic II in chromosome segregation."
+    )
+
+
+def test_question_map_repairs_meiosis_stage_variants():
+    categories = {
+        "Orientation": [
+            {"question": "What does meiosis I + meiosis I achieve?"},
+            {"question": "How do errors in I vs I differ?"},
+            {"question": "Which outcomes map to meiosis I and I?"},
+        ]
+    }
+
+    normalized = _normalize_question_map_terminology(categories)
+    questions = [item["question"] for item in normalized["Orientation"]]
+
+    assert questions == [
+        "What does meiosis I + meiosis II achieve?",
+        "How do errors in I vs II differ?",
+        "Which outcomes map to meiosis I and meiosis II?",
+    ]
+
+
+def test_question_map_repairs_numbered_stage_comparisons():
+    categories = {
+        "Orientation": [
+            {"question": "Compare metaphase I and metaphase I."},
+            {"question": "How do anaphase I versus anaphase I differ?"},
+        ]
+    }
+
+    normalized = _normalize_question_map_terminology(categories)
+    questions = [item["question"] for item in normalized["Orientation"]]
+
+    assert questions == [
+        "Compare metaphase I and metaphase II.",
+        "How do anaphase I versus anaphase II differ?",
+    ]
 
 
 def test_greeting_is_natural_and_generic():
@@ -58,6 +114,17 @@ def test_learning_intents_are_detected():
         result = detect_intent(prompt)
         assert result["intent"] == "topic_explore"
         assert result["response_intent"] == expected
+
+
+def test_substantive_how_questions_use_structured_learning():
+    for prompt in (
+        "How does quantum tunneling work?",
+        "How do confidence intervals work?",
+    ):
+        result = detect_intent(prompt)
+        assert result["intent"] == "topic_explore"
+        assert result["should_interrogate"] is True
+        assert result["should_answer_direct"] is False
 
 
 def test_specialized_intents_extract_clean_topics():

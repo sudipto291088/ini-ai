@@ -37,6 +37,7 @@ from topic_profile import (
     extract_learning_loop,
     extract_topic_profile,
     extract_your_question,
+    split_intro_major_areas,
     split_prerequisite_items,
     split_prerequisites,
 )
@@ -3388,7 +3389,13 @@ def render_nc_intro_preview(
 
     def intro_html(items: list[str]) -> str:
         def split_major_areas(value: str) -> tuple[list[str], str]:
-            numbered_matches = list(re.finditer(r"\((\d+)\)\s*", value))
+            structured_areas, structured_lead = split_intro_major_areas(value)
+            if structured_areas:
+                return structured_areas, structured_lead
+
+            numbered_matches = list(
+                re.finditer(r"\(([0-9]+|[a-z])\)\s*", value, flags=re.IGNORECASE)
+            )
             if len(numbered_matches) >= 3:
                 lead = value[: numbered_matches[0].start()].strip()
                 lead = re.sub(r"[,:;—–-]+$", "", lead).strip()
@@ -3430,7 +3437,15 @@ def render_nc_intro_preview(
             final_area = "".join(current).strip()
             if final_area:
                 areas.append(final_area)
-            return (areas, remainder) if len(areas) >= 3 else ([], value)
+
+            normalized_areas: list[str] = []
+            for area in areas:
+                area = re.sub(r"^and\s+", "", area.strip(), flags=re.IGNORECASE)
+                area = re.sub(r"[;,\.\s]+$", "", area).strip()
+                if area:
+                    normalized_areas.append(area[0].upper() + area[1:])
+
+            return (normalized_areas, remainder) if len(normalized_areas) >= 3 else ([], value)
 
         html_parts = []
         for item_index, item in enumerate(items):
@@ -5395,7 +5410,10 @@ def page_new_chat() -> None:
                 clean_intro, intro_followups = split_answer_and_embedded_followups(
                     intro_without_journey
                 )
-                profile_rows, intro_body = extract_topic_profile(clean_intro or intro)
+                profile_rows, intro_body = extract_topic_profile(
+                    clean_intro or intro,
+                    str(branch.get("topic") or branch.get("prompt") or ""),
+                )
                 profile_rows, prerequisites = split_prerequisites(profile_rows)
 
                 render_topic_profile(profile_rows)
@@ -9390,7 +9408,10 @@ def page_new_chat() -> None:
                 clean_intro, intro_followups = split_answer_and_embedded_followups(
                     intro_without_journey
                 )
-                profile_rows, intro_body = extract_topic_profile(clean_intro or intro)
+                profile_rows, intro_body = extract_topic_profile(
+                    clean_intro or intro,
+                    str(st.session_state.chat_root_topic or st.session_state.chat.get("topic") or ""),
+                )
                 profile_rows, prerequisites = split_prerequisites(profile_rows)
 
                 render_topic_profile(profile_rows)

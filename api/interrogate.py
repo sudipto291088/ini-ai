@@ -213,6 +213,52 @@ def _question_map_counts_ok(categories: Dict[str, List[Dict[str, Any]]]) -> bool
     return MIN_TOTAL_QUESTIONS <= total <= MAX_TOTAL_QUESTIONS
 
 
+def _normalize_question_map_terminology(
+    categories: Dict[str, List[Dict[str, Any]]],
+) -> Dict[str, List[Dict[str, Any]]]:
+    """Repair internally contradictory stage labels before UI rendering."""
+    normalized: Dict[str, List[Dict[str, Any]]] = {}
+    for category, items in (categories or {}).items():
+        normalized_items: List[Dict[str, Any]] = []
+        for item in items or []:
+            clean_item = dict(item)
+            question = str(clean_item.get("question") or "")
+            question = re.sub(
+                r"\bmeiotic\s+i\s+(vs\.?|and|versus|or)\s+meiotic\s+i\b",
+                lambda match: f"meiotic I {match.group(1)} meiotic II",
+                question,
+                flags=re.IGNORECASE,
+            )
+            question = re.sub(
+                r"\bmeiosis\s+i\s+(vs\.?|and|versus|or)\s+(?:meiosis\s+)?i\b",
+                lambda match: f"meiosis I {match.group(1)} meiosis II",
+                question,
+                flags=re.IGNORECASE,
+            )
+            question = re.sub(
+                r"\bmeiosis\s+i\s*\+\s*meiosis\s+i\b",
+                "meiosis I + meiosis II",
+                question,
+                flags=re.IGNORECASE,
+            )
+            question = re.sub(
+                r"\b(i\s+vs\.?\s+)i\b",
+                lambda match: f"{match.group(1)}II",
+                question,
+                flags=re.IGNORECASE,
+            )
+            question = re.sub(
+                r"\b(prophase|metaphase|anaphase|telophase)\s+i\s+(vs\.?|and|versus|or)\s+(?:\1\s+)?i\b",
+                lambda match: f"{match.group(1)} I {match.group(2)} {match.group(1)} II",
+                question,
+                flags=re.IGNORECASE,
+            )
+            clean_item["question"] = question
+            normalized_items.append(clean_item)
+        normalized[category] = normalized_items
+    return normalized
+
+
 def _top_up_question_map(
     categories: Dict[str, List[Dict[str, Any]]],
     topic: str,
@@ -651,6 +697,9 @@ not seven independent lists. Preserve the learner's wording and intent throughou
 - Foundations covers only genuinely required conceptual or mathematical prerequisites.
 - Mechanisms decomposes the exact process, causal chain, calculation, or equation.
 - Methods & Tools covers implementation, comparison, measurement, testing, and debugging.
+- Do not assume programming intent merely because the topic is technical. Include coding,
+  APIs, software implementation, or developer workflows only when the learner's wording
+  explicitly requests them; otherwise keep Methods & Tools appropriate to the subject.
 - Applications transfers the mechanism into distinct contexts and decision points.
 - Pitfalls diagnoses failure modes, symptoms, trade-offs, and misconceptions.
 - Advanced / Future examines alternatives, unresolved limitations, and open questions.
@@ -954,6 +1003,9 @@ Rules:
 - Foundations covers only genuinely required conceptual or mathematical prerequisites
 - Mechanisms decomposes the exact process, causal chain, calculation, or equation
 - Methods & Tools covers implementation, comparison, measurement, testing, and debugging
+- Do not assume programming intent merely because the topic is technical. Include coding,
+  APIs, software implementation, or developer workflows only when the learner's wording
+  explicitly requests them; otherwise keep Methods & Tools appropriate to the subject
 - Applications transfers the mechanism into distinct contexts and decision points
 - Pitfalls diagnoses failure modes, symptoms, trade-offs, and misconceptions
 - Advanced / Future examines alternatives, unresolved limitations, and open questions
@@ -1318,7 +1370,7 @@ def interrogate(text: str) -> Dict[str, Any]:
             return {
                 "topic": clean_topic,
                 "topic_type": topic_type,
-                "categories": llm_categories,
+                "categories": _normalize_question_map_terminology(llm_categories),
                 "summary": validated_summary,                
                 "confidence": confidence,
                 "notes": [
@@ -1343,7 +1395,7 @@ def interrogate(text: str) -> Dict[str, Any]:
         return {
             "topic": clean_topic,
             "topic_type": topic_type,
-            "categories": fallback_qa,
+            "categories": _normalize_question_map_terminology(fallback_qa),
             "summary": build_summary(clean_topic, topic_type, confidence),
             "confidence": confidence,
             "notes": [
@@ -1366,7 +1418,7 @@ def interrogate(text: str) -> Dict[str, Any]:
     return {
         "topic": clean_topic,
         "topic_type": topic_type,
-        "categories": qa,
+        "categories": _normalize_question_map_terminology(qa),
         "summary": build_summary(clean_topic, topic_type, confidence),
         "confidence": confidence,
         "notes": [

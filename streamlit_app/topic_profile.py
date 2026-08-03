@@ -34,33 +34,179 @@ _CONTINUE_JOURNEY_BLOCK = re.compile(
 )
 
 
-def _correct_difficulty(rows: list[tuple[str, str]]) -> list[tuple[str, str]]:
-    """Prevent technically substantial profiles from being labelled Beginner."""
+def _correct_difficulty(
+    rows: list[tuple[str, str]],
+    user_query: str = "",
+) -> list[tuple[str, str]]:
+    """Align difficulty with the depth requested, then with prerequisites."""
     fields = {label.casefold(): value for label, value in rows}
-    if fields.get("difficulty", "").casefold() != "beginner":
+    current_difficulty = fields.get("difficulty", "").casefold()
+    profile_text = " ".join(fields.values()).casefold()
+    query = re.sub(r"\s+", " ", (user_query or "").strip().casefold())
+
+    def set_difficulty(value: str) -> list[tuple[str, str]]:
+        return [
+            (label, value) if label.casefold() == "difficulty" else (label, item)
+            for label, item in rows
+        ]
+
+    numbered_meiotic_stage = r"(?:meiosis|prophase|metaphase|anaphase|telophase)"
+    if re.search(
+        rf"\b({numbered_meiotic_stage})\s+(?:i|1)\b.*\b\1\s+(?:ii|2)\b",
+        query,
+        flags=re.IGNORECASE,
+    ):
+        # Comparing the two meiotic divisions or their corresponding stages
+        # presupposes chromosome structure, homolog/sister distinction and the
+        # meiotic sequence. It is therefore consistently intermediate.
+        return set_difficulty("Intermediate")
+
+    action_cues = re.compile(
+        r"\b(explain|compare|calculate|derive|prove|show|teach|implement|how|why|what)\b"
+    )
+    is_bare_topic = bool(
+        query
+        and "?" not in query
+        and len(query.split()) <= 8
+        and not action_cues.search(query)
+    )
+    if is_bare_topic:
+        specialized_bare_signals = (
+            "crispr", "gene editing", "molecular cloning", "guide rna",
+            "enzyme kinetics", "genome editing", "cell culture",
+            "bayesian inference", "quantum mechanics", "compiler design",
+            "distributed systems", "cryptography",
+        )
+        if any(signal in profile_text for signal in specialized_bare_signals):
+            return set_difficulty("Intermediate")
+        return set_difficulty("Beginner")
+
+    advanced_query_cues = (
+        "mathematically", "derive", "proof", "matrix calculus",
+        "update uncertainty", "update weights", "gradient flow",
+        "covariance update", "jacobian", "hessian",
+    )
+    advanced_foundations = (
+        "matrix calculus", "partial derivatives", "multivariable calculus",
+        "state-space", "covariance", "automatic differentiation", "jacobian",
+    )
+    if (
+        any(cue in query for cue in advanced_query_cues)
+        and any(foundation in profile_text for foundation in advanced_foundations)
+    ):
+        return set_difficulty("Advanced")
+
+    advanced_topic_signals = (
+        "backpropagation",
+        "deep neural network",
+        "neural network optimization",
+        "automatic differentiation",
+        "computational graph",
+    )
+    advanced_math_signals = (
+        "partial derivatives",
+        "multivariable calculus",
+        "chain rule",
+        "jacobian",
+        "gradient derivation",
+    )
+    if (
+        current_difficulty in {"beginner", "intermediate"}
+        and any(signal in profile_text for signal in advanced_topic_signals)
+        and any(signal in profile_text for signal in advanced_math_signals)
+    ):
+        return set_difficulty("Advanced")
+
+    if current_difficulty != "beginner":
         return rows
 
-    profile_text = " ".join(fields.values()).casefold()
     intermediate_signals = (
         "amdahl",
         "cache coherence",
         "concurrency",
+        "undergraduate linear algebra",
+        "quantum mechanics",
+        "multivariable calculus",
+        "chain rule",
+        "gradient-based optimization",
+        "pytorch",
+        "tensorflow",
+        "transfer learning",
+        "cnn architectures",
         "throughput modelling",
         "throughput modeling",
         "numa",
         "parallel programming",
         "operating systems scheduling",
+        "crispr",
+        "gene editing",
+        "dna repair",
+        "nhej",
+        "hdr",
+        "bayesian",
+        "frequentist",
+        "statistical inference",
+        "likelihood",
+        "asymptotics",
     )
-    if not any(signal in profile_text for signal in intermediate_signals):
+    prerequisites = fields.get("prerequisites", "")
+    prerequisite_items = [
+        item.strip()
+        for item in re.split(r"[;,]", prerequisites)
+        if len(item.strip().split()) >= 2
+    ]
+    substantial_foundations = (
+        "calculus",
+        "linear algebra",
+        "probability theory",
+        "conditional probability",
+        "optimization",
+        "molecular biology",
+        "gene expression",
+        "repair pathways",
+    )
+    requires_substantial_foundation = any(
+        signal in profile_text for signal in substantial_foundations
+    )
+    has_layered_prerequisites = len(prerequisite_items) >= 3
+    if not (
+        any(signal in profile_text for signal in intermediate_signals)
+        or requires_substantial_foundation
+        or has_layered_prerequisites
+    ):
         return rows
 
-    return [
-        (label, "Intermediate") if label.casefold() == "difficulty" else (label, value)
-        for label, value in rows
-    ]
+    return set_difficulty("Intermediate")
 
 
-def extract_topic_profile(text: str) -> tuple[list[tuple[str, str]], str]:
+def split_intro_major_areas(value: str) -> tuple[list[str], str]:
+    """Split numbered or lettered Introduction clauses into complete bullets."""
+    source = re.sub(r"\s+", " ", str(value or "")).strip()
+    marker_matches = list(
+        re.finditer(r"\(([0-9]+|[a-z])\)\s*", source, flags=re.IGNORECASE)
+    )
+    if len(marker_matches) >= 2:
+        lead = source[: marker_matches[0].start()].strip()
+        lead = re.sub(r"[,:;â€”â€“-]+$", "", lead).strip()
+        areas: list[str] = []
+        for index, match in enumerate(marker_matches):
+            end = marker_matches[index + 1].start() if index + 1 < len(marker_matches) else len(source)
+            area = source[match.end() : end].strip()
+            area = re.sub(r"^(?:and\s+)", "", area, flags=re.IGNORECASE)
+            area = re.sub(r";?\s+and\s*$", "", area, flags=re.IGNORECASE)
+            area = re.sub(r"[;,.\s]+$", "", area).strip()
+            if area:
+                areas.append(area[0].upper() + area[1:])
+        if len(areas) >= 2:
+            return areas, lead
+
+    return [], source
+
+
+def extract_topic_profile(
+    text: str,
+    user_query: str = "",
+) -> tuple[list[tuple[str, str]], str]:
     source = (text or "").strip()
     match = _PROFILE_BLOCK.search(source)
     if not match:
@@ -91,7 +237,7 @@ def extract_topic_profile(text: str) -> tuple[list[tuple[str, str]], str]:
         if len(rows) == 10:
             break
 
-    return _correct_difficulty(rows), body
+    return _correct_difficulty(rows, user_query), body
 
 
 def extract_learning_paths(
@@ -220,9 +366,16 @@ def extract_core_explanation(text: str) -> tuple[dict[str, Any], str]:
         variables_block = tagged_value("VARIABLES")
         variables: dict[str, str] = {}
         for line in variables_block.splitlines():
-            symbol, separator, meaning = line.partition("::")
-            if separator and symbol.strip() and meaning.strip():
-                variables[symbol.strip()] = meaning.strip()
+            # Models occasionally place several ``symbol :: meaning`` pairs
+            # on one semicolon-delimited line. Split those pairs first, while
+            # retaining the final delimiter repair for symbols such as
+            # ``L( :: ) :: loss``.
+            entries = re.split(r";\s*(?=[^;\n]{1,60}\s*::)", line)
+            for entry in entries:
+                symbol, separator, meaning = entry.rpartition("::")
+                if separator and symbol.strip() and meaning.strip():
+                    clean_symbol = re.sub(r"\s*::\s*", "·", symbol.strip())
+                    variables[clean_symbol] = meaning.strip()
         parsed["Variables"] = variables
 
         steps_block = tagged_value("STEPS")
@@ -239,6 +392,13 @@ def extract_core_explanation(text: str) -> tuple[dict[str, Any], str]:
         parsed["Steps"] = steps
 
     result: dict[str, Any] = {}
+    leaked_prompt_placeholders = {
+        "two concise sentences",
+        "the central equation or governing relationship",
+        "a precise, topic-specific explanation title",
+        "the single most important takeaway",
+        "a compact numerical or concrete example",
+    }
     for field, limit in (
         ("Title", 120),
         ("Overview", 900),
@@ -247,6 +407,13 @@ def extract_core_explanation(text: str) -> tuple[dict[str, Any], str]:
         ("Worked example", 1200),
     ):
         value = re.sub(r"\s+", " ", str(parsed.get(field) or "")).strip()
+        if value.casefold() in leaked_prompt_placeholders:
+            value = ""
+        if field == "Update rule":
+            for opening, closing in (("(", ")"), ("[", "]"), ("{", "}")):
+                missing = value.count(opening) - value.count(closing)
+                if 0 < missing <= 2:
+                    value += closing * missing
         if value:
             result[field] = value[:limit]
 
