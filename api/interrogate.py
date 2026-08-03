@@ -407,6 +407,40 @@ def build_summary(topic: str, topic_type: str, confidence: float) -> List[str]:
 # Template answers (fallback)
 # IMPORTANT: DO NOT shorten answers; keep full explanations.
 # ------------------------------------------------------------
+def _unsupported_topic_result(
+    topic: str,
+    topic_type: str,
+    confidence: float,
+    intent: Dict[str, Any],
+    response_intent: str,
+) -> Dict[str, Any]:
+    """Stop cleanly when no topic-specific Question Map can be produced."""
+    return {
+        "topic": topic,
+        "topic_type": topic_type,
+        "categories": {},
+        "summary": [],
+        "confidence": confidence,
+        "notes": [
+            "No sufficiently specific Question Map was produced; generic fallback suppressed."
+        ],
+        "llm_used": False,
+        "needs_clarification": False,
+        "intent": "unsupported_learning_topic",
+        "response_intent": response_intent,
+        "response_mode": "conversation",
+        "context_intent": "unsupported_learning_topic",
+        "mode_hint": intent.get("mode_hint", "focused"),
+        "followups": [],
+        "should_answer_direct": False,
+        "suppress_profile": True,
+        "reply": (
+            f"I cannot yet build a reliable, topic-specific Question Map for {topic}. "
+            "I am stopping here instead of filling the response with generic questions."
+        ),
+    }
+
+
 def _orient_answer(topic: str, question: str, cat: str) -> str:
     ql = (question or "").lower()
 
@@ -1354,12 +1388,12 @@ def interrogate(text: str) -> Dict[str, Any]:
     }
     topic_type = intent_topic_types.get(response_intent, topic_type)
 
-    # AI topic: LLM questions-only (answers on click via /answer)
+    # Every supported learning topic must earn a topic-specific LLM map.
+    # Generic template maps are intentionally forbidden.
     use_llm = (
-    _llm_is_enabled()
-    and (_is_llm_topic(clean_topic) or response_intent != "explore")
-    and (generate_dynamic_answer_result is not None)
-)
+        _llm_is_enabled()
+        and (generate_dynamic_answer_result is not None)
+    )
 
     if use_llm:
         summary, llm_categories = [], {}
@@ -1439,49 +1473,13 @@ def interrogate(text: str) -> Dict[str, Any]:
             }
 
         # STEP 4: FINAL fallback → template only
-        fallback_categories = build_categories(clean_topic, topic_type)
-        fallback_qa = attach_answers(fallback_categories, clean_topic, topic_type)
+        return _unsupported_topic_result(
+            clean_topic, topic_type, confidence, intent, response_intent
+        )
 
-        return {
-            "topic": clean_topic,
-            "topic_type": topic_type,
-            "categories": _normalize_question_map_terminology(fallback_qa),
-            "summary": build_summary(clean_topic, topic_type, confidence),
-            "confidence": confidence,
-            "notes": [
-                "v0: interrogation engine",
-                "v0: AI LLM question-map failed after retries; template fallback used",
-            ],
-            "llm_used": False,
-            "needs_clarification": False,
-            "intent": intent.get("intent", "topic_explore"),
-            "response_intent": response_intent,
-            "mode_hint": intent.get("mode_hint", "deep"),
-            "followups": intent.get("followups", []),
-            "reply": "",
-        }
-
-    # Non-AI topics: templates
-    categories = build_categories(clean_topic, topic_type)
-    qa = attach_answers(categories, clean_topic, topic_type)
-
-    return {
-        "topic": clean_topic,
-        "topic_type": topic_type,
-        "categories": _normalize_question_map_terminology(qa),
-        "summary": build_summary(clean_topic, topic_type, confidence),
-        "confidence": confidence,
-        "notes": [
-            "v0: interrogation engine",
-            "v0: templates for non-AI topics",
-        ],
-        "llm_used": False,
-        "intent": intent.get("intent", "topic_explore"),
-        "response_intent": response_intent,
-        "mode_hint": intent.get("mode_hint", "deep"),
-        "followups": intent.get("followups", []),
-        "reply": "",
-    }
+    return _unsupported_topic_result(
+        clean_topic, topic_type, confidence, intent, response_intent
+    )
 
 
 __all__ = ["interrogate", "extract_topic", "detect_topic_type"]

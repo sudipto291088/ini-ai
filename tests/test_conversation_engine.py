@@ -116,8 +116,10 @@ class ConversationEngineTests(unittest.TestCase):
 
     def test_explicit_question_map_command_is_not_live_data(self):
         result = interrogate("generate a question map for quad core")
-        self.assertTrue(result.get("categories"))
         self.assertNotEqual(result.get("intent"), "direct_factual_query")
+        if not result.get("categories"):
+            self.assertEqual(result.get("intent"), "unsupported_learning_topic")
+            self.assertIn("quad core", result.get("reply", "").lower())
 
     def test_ambiguous_continuation_does_not_become_a_question_map(self):
         for message in ("what else", "so what else", "and what else", "well, anything else"):
@@ -128,7 +130,32 @@ class ConversationEngineTests(unittest.TestCase):
 
     def test_explicit_question_map_for_ambiguous_words_still_obeys_command(self):
         result = interrogate("generate a question map for what else")
-        self.assertTrue(result.get("categories"))
+        self.assertNotEqual(result.get("intent"), "clarify")
+
+    def test_failed_generation_never_returns_generic_question_templates(self):
+        from unittest.mock import patch
+
+        with patch("api.interrogate._llm_is_enabled", return_value=False):
+            result = interrogate("photosynthesis")
+
+        self.assertEqual(result["categories"], {})
+        self.assertEqual(result["intent"], "unsupported_learning_topic")
+        self.assertTrue(result["suppress_profile"])
+        self.assertIn("photosynthesis", result["reply"].lower())
+        self.assertNotIn("send a topic", result["reply"].lower())
+
+    def test_single_word_subject_is_a_learning_topic(self):
+        for subject in ("photosynthesis", "mitosis", "thermodynamics"):
+            with self.subTest(subject=subject):
+                result = detect_intent(subject)
+                self.assertEqual(result["intent"], "topic_explore")
+                self.assertTrue(result["should_interrogate"])
+
+    def test_single_word_conversation_is_not_a_learning_topic(self):
+        for message in ("thanks", "continue", "sorry", "nothing"):
+            with self.subTest(message=message):
+                result = detect_intent(message)
+                self.assertNotEqual(result["intent"], "topic_explore")
 
 
 if __name__ == "__main__":

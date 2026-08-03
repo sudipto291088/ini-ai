@@ -589,6 +589,26 @@ def _looks_like_topic(text: str) -> bool:
     if any(_normalize_compact(tok) in s for tok in TOPIC_CUES):
         return True
 
+    # A learner will often enter a single subject name ("photosynthesis",
+    # "mitosis", "thermodynamics") without an instruction. Earlier this was
+    # rejected merely because it was one word. Conversation primitives are
+    # handled before this function, so a substantial alphabetic term is a
+    # valid learning topic unless it is clearly generic dialogue language.
+    words = s.split()
+    generic_single_words = {
+        "again", "anything", "buddy", "continue", "different", "else",
+        "fine", "friend", "good", "great", "help", "later", "maybe",
+        "more", "next", "nothing", "okay", "please", "right", "same",
+        "something", "sorry", "thanks", "today", "tomorrow", "wrong",
+    }
+    if (
+        len(words) == 1
+        and len(words[0]) >= 5
+        and words[0].isalpha()
+        and words[0] not in generic_single_words
+    ):
+        return True
+
     # clean noun phrase topic: "artificial intelligence", "neural networks"
     if 2 <= len(s.split()) <= 8 and "?" not in s:
         banned_smalltalk_starts = {
