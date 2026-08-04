@@ -119,6 +119,15 @@ The descriptive introduction remains available.
         self.assertEqual(rows, [])
         self.assertEqual(body, answer)
 
+    def test_learning_path_labels_do_not_leak_json_separators(self) -> None:
+        answer = """<LEARNING_PATHS>
+{"Advanced_implications":["How do the mechanisms interact?","What changes at scale?"]}
+</LEARNING_PATHS>"""
+
+        groups, _ = extract_learning_paths(answer)
+
+        self.assertEqual(groups[0][0], "Advanced implications")
+
     def test_prerequisites_are_separated_for_an_individual_card(self):
         rows = [
             ("Entity type", "Concept"),
@@ -219,6 +228,17 @@ A hexa-core processor contains six physical processing cores.
 """
 
         rows, _ = extract_topic_profile(answer, "Plate tectonics")
+
+        self.assertIn(("Difficulty", "Beginner"), rows)
+
+    def test_introductory_definition_depth_is_beginner_for_plate_tectonics(self):
+        answer = """
+<TOPIC_PROFILE>
+{"Entity type":"Scientific theory","Subject":"Plate tectonics","Mathematical foundation":"Continuum mechanics; vector kinematics","Prerequisites":"Earth structure; geology; convection","Difficulty":"Intermediate"}
+</TOPIC_PROFILE>
+"""
+
+        rows, _ = extract_topic_profile(answer, "What is plate tectonics?")
 
         self.assertIn(("Difficulty", "Beginner"), rows)
 

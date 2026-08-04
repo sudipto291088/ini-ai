@@ -155,6 +155,14 @@ def _correct_difficulty(
     intrinsically_intermediate = any(
         signal in evidence for signal in intermediate_topic_signals
     )
+    introductory_definition = bool(
+        re.match(
+            r"^(?:what\s+(?:is|are)|define|give me an introduction to|introduction to)\b",
+            query,
+        )
+    )
+    if introductory_definition and not intrinsically_intermediate:
+        return set_difficulty("Beginner")
     if is_bare_topic and not intrinsically_intermediate:
         return set_difficulty("Beginner")
 
@@ -271,7 +279,8 @@ def extract_learning_paths(
 
     groups: list[tuple[str, list[str]]] = []
     for raw_label, raw_questions in parsed.items():
-        label = re.sub(r"\s+", " ", str(raw_label or "")).strip()
+        label = re.sub(r"[_-]+", " ", str(raw_label or ""))
+        label = re.sub(r"\s+", " ", label).strip()
         if not label or not isinstance(raw_questions, list):
             continue
 

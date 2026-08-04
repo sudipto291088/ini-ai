@@ -71,8 +71,8 @@ After"""
 
         self.assertNotIn("prototype and implement", adapted)
         self.assertNotIn("implement one representative query", adapted)
-        self.assertIn("Compare their structures, strengths, limitations", adapted)
-        self.assertIn("Clarify the decision criteria", adapted)
+        self.assertIn("relational and graph databases", adapted)
+        self.assertIn("Strengthen the shared criteria", adapted)
 
     def test_scientific_process_comparison_uses_process_learning_path(self) -> None:
         answer = """<LEARNING_LOOP>generic decision loop</LEARNING_LOOP>
@@ -91,6 +91,82 @@ After"""
         self.assertIn("Trace representative examples", adapted)
         self.assertIn("Strengthen the stage-by-stage comparison", adapted)
         self.assertNotIn("decision being examined", adapted)
+
+    def test_tcp_udp_comparison_names_protocol_mechanics(self) -> None:
+        answer = """<LEARNING_LOOP>generic comparison</LEARNING_LOOP>
+<CONTINUE_JOURNEY>generic journey</CONTINUE_JOURNEY>"""
+
+        adapted = study_module._adapt_compare_learning_loop(
+            answer,
+            "Compare TCP and UDP.",
+        )
+        adapted = study_module._adapt_compare_journey(
+            adapted,
+            "Compare TCP and UDP.",
+        )
+
+        self.assertIn("Trace TCP delivery", adapted)
+        self.assertIn("Trace UDP delivery", adapted)
+        self.assertIn("Test loss and latency trade-offs", adapted)
+        self.assertIn("QUIC", adapted)
+        self.assertNotIn("decision being examined", adapted)
+
+    def test_conditioning_comparison_uses_learning_mechanisms(self) -> None:
+        answer = """<LEARNING_LOOP>generic comparison</LEARNING_LOOP>
+<CONTINUE_JOURNEY>generic journey</CONTINUE_JOURNEY>"""
+
+        adapted = study_module._adapt_compare_learning_loop(
+            answer,
+            "Compare classical and operant conditioning.",
+        )
+        adapted = study_module._adapt_compare_journey(
+            adapted,
+            "Compare classical and operant conditioning.",
+        )
+
+        self.assertIn("links two stimuli", adapted)
+        self.assertIn("links behavior to its consequence", adapted)
+        self.assertIn("Classify contrasting examples", adapted)
+        self.assertIn("exposure", adapted)
+
+    def test_stack_queue_comparison_has_specific_paths_and_relationship(self) -> None:
+        answer = """<CORE_EXPLANATION>
+<UPDATE_RULE>Order rule :: reversed? FIFO/LIFO</UPDATE_RULE>
+<VARIABLES>element :: item\nFIFO :: queue\nLIFO :: stack</VARIABLES>
+</CORE_EXPLANATION>
+<LEARNING_LOOP>generic comparison</LEARNING_LOOP>
+<CONTINUE_JOURNEY>generic journey</CONTINUE_JOURNEY>"""
+
+        adapted = study_module._adapt_compare_learning_loop(
+            answer, "Compare stack and queue data structures."
+        )
+        adapted = study_module._adapt_compare_journey(
+            adapted, "Compare stack and queue data structures."
+        )
+        adapted = study_module._normalize_stack_queue_relationship(
+            adapted, "Compare stack and queue data structures."
+        )
+
+        self.assertIn("Trace insertion and removal", adapted)
+        self.assertIn("Simulate both structures by hand", adapted)
+        self.assertIn("order_stack = reverse(insertion_order)", adapted)
+        self.assertNotIn("reversed?", adapted)
+
+    def test_bfs_dfs_comparison_uses_graph_search_paths(self) -> None:
+        answer = """<LEARNING_LOOP>generic comparison</LEARNING_LOOP>
+<CONTINUE_JOURNEY>generic journey</CONTINUE_JOURNEY>"""
+
+        adapted = study_module._adapt_compare_learning_loop(
+            answer, "Compare breadth-first search and depth-first search."
+        )
+        adapted = study_module._adapt_compare_journey(
+            adapted, "Compare breadth-first search and depth-first search."
+        )
+
+        self.assertIn("Trace traversal order", adapted)
+        self.assertIn("Compare guarantees", adapted)
+        self.assertIn("Trace one graph with both searches", adapted)
+        self.assertIn("iterative deepening", adapted)
 
     def test_respiration_comparison_uses_biological_process_path(self) -> None:
         answer = """<LEARNING_LOOP>generic</LEARNING_LOOP>
@@ -397,6 +473,45 @@ Purpose: A partial response."""
             study_module._requires_current_context("How does electric current flow?")
         )
         self.assertEqual(captured["archetype"], "CURRENT")
+
+    def test_validation_retry_requests_a_complete_fresh_response(self) -> None:
+        captured = {}
+
+        def fake_generate(**kwargs):
+            captured.update(kwargs)
+            return {
+                "answer": "A regenerated response.",
+                "incomplete": False,
+                "stop_reason": None,
+            }
+
+        with (
+            patch.object(study_module, "llm_enabled", return_value=True),
+            patch.object(
+                study_module,
+                "detect_intent",
+                return_value={
+                    "intent": "topic_explore",
+                    "should_interrogate": True,
+                    "should_answer_direct": False,
+                },
+            ),
+            patch.object(study_module, "generate_dynamic_answer_result", fake_generate),
+        ):
+            study_module.study_ai(
+                {
+                    "topic": "Quantum entanglement",
+                    "mode": "intro",
+                    "validation_feedback": [
+                        "Bell-state formula contains single-qubit basis states"
+                    ],
+                }
+            )
+
+        prompt = captured["question"]
+        self.assertIn("VALIDATION RETRY", prompt)
+        self.assertIn("Regenerate the complete response from scratch", prompt)
+        self.assertIn("Bell-state formula contains single-qubit basis states", prompt)
 
     def test_continuation_prompt_forbids_rebuilding_sections(self) -> None:
         captured = {}

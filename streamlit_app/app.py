@@ -42,6 +42,7 @@ from topic_profile import (
     split_prerequisites,
 )
 from response_profile import build_response_profile
+from structured_validation import validate_structured_learning_answer
 # Product knowledge was introduced after the original Streamlit entry point.
 # Keep startup resilient while a deployment rolls between revisions: an older
 # checkout must still render instead of failing before the first frame.
@@ -2857,12 +2858,16 @@ def fetch_study(
     mode: str = "deep",
     continue_mode: bool = False,
     previous_answer: Optional[str] = None,
+    validation_feedback: Optional[list[str]] = None,
 ) -> Dict[str, Any]:
     payload: Dict[str, Any] = {"topic": topic, "mode": mode}
 
     if continue_mode and previous_answer:
         payload["continue_mode"] = True
         payload["previous_answer"] = previous_answer
+
+    if validation_feedback:
+        payload["validation_feedback"] = validation_feedback[:8]
 
     return post_json("/study/ai", payload, timeout=180)
 
@@ -2902,11 +2907,64 @@ def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dic
         answer = (answer.rstrip() + "\n\n" + chunk).strip()
         rounds += 1
 
+    validation: Dict[str, Any] = {
+        "valid": True,
+        "issues": [],
+        "repairs": [],
+    }
+    if mode == "intro":
+        validation = validate_structured_learning_answer(answer)
+        answer = str(validation.get("answer") or "").strip()
+        if resp.get("incomplete") is True or (
+            (resp.get("stop_reason") or "").strip().lower() == "max_output_tokens"
+        ):
+            validation["valid"] = False
+            validation.setdefault("issues", []).append(
+                "provider output remained truncated after continuation"
+            )
+        if not validation.get("valid"):
+            retry_resp = fetch_study(
+                topic,
+                mode="intro",
+                validation_feedback=list(validation.get("issues") or []),
+            )
+            retry_answer = normalize_whitespace_for_readability(
+                normalize_mojibake(retry_resp.get("answer", "") or "")
+            )
+            retry_validation = validate_structured_learning_answer(retry_answer)
+            if retry_resp.get("incomplete") is True or (
+                (retry_resp.get("stop_reason") or "").strip().lower()
+                == "max_output_tokens"
+            ):
+                retry_validation["valid"] = False
+                retry_validation.setdefault("issues", []).append(
+                    "provider retry remained truncated"
+                )
+            if retry_validation.get("valid"):
+                resp = retry_resp
+                answer = str(retry_validation.get("answer") or "").strip()
+                retry_validation.setdefault("repairs", []).append(
+                    "regenerated invalid structured response"
+                )
+                validation = retry_validation
+            else:
+                validation = retry_validation
+        if not validation.get("valid"):
+            safe_topic = re.sub(r"[<>]", "", re.sub(r"\s+", " ", topic)).strip()
+            safe_topic = re.sub(r"[.!?]+$", "", safe_topic).strip()
+            answer = (
+                f"InI could not validate a complete structured response for {safe_topic}. "
+                "The incomplete content was withheld rather than displayed."
+            )
+
     return {
         "answer": answer,
         "incomplete": resp.get("incomplete"),
         "stop_reason": resp.get("stop_reason"),
         "followups": resp.get("followups") or [],
+        "validation_failed": not bool(validation.get("valid", True)),
+        "validation_issues": validation.get("issues") or [],
+        "validation_repairs": validation.get("repairs") or [],
     }
 
 
@@ -7117,8 +7175,17 @@ def page_new_chat() -> None:
                 st.session_state.chat_active_discussion = None
                 if has_existing_root:
                     st.session_state.chat_study_mode_established = True
+                    intro_topic = (
+                        display_topic_text
+                        if re.search(
+                            r"\b(compare|comparison|contrast|difference\s+between|versus|vs\.?)\b",
+                            display_topic_text,
+                            flags=re.IGNORECASE,
+                        )
+                        else resolved_learning_topic
+                    )
                     intro_resp = fetch_study_full(
-                        resolved_learning_topic,
+                        intro_topic,
                         mode="intro",
                         max_rounds=0,
                     )
@@ -7135,7 +7202,16 @@ def page_new_chat() -> None:
                 st.session_state.chat_root_topic = semantic_topic_text
                 st.session_state.chat["interrogate"] = data
 
-                intro_resp = fetch_study_full(resolved_learning_topic, mode="intro")
+                intro_topic = (
+                    display_topic_text
+                    if re.search(
+                        r"\b(compare|comparison|contrast|difference\s+between|versus|vs\.?)\b",
+                        display_topic_text,
+                        flags=re.IGNORECASE,
+                    )
+                    else resolved_learning_topic
+                )
+                intro_resp = fetch_study_full(intro_topic, mode="intro")
                 intro = intro_resp.get("answer", "").strip()
 
                 st.session_state.chat_intro = intro

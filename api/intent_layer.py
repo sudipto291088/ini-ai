@@ -501,6 +501,16 @@ def _looks_like_direct_factual_query(text: str) -> bool:
     if _is_known_technical_topic(text):
         return False
 
+    # A definition request is usually a learning request, even when the
+    # subject has not yet been added to our small known-topic vocabulary.
+    # Reserve the direct-fact path for genuinely time-sensitive or lookup-like
+    # wording (price, date, office holder, population, and similar cues).
+    if re.match(r"^what\s+(?:is|are)\s+", s) and not any(
+        (keyword in set(s.split()) if " " not in keyword else keyword in s)
+        for keyword in DIRECT_FACTUAL_KEYWORDS
+    ):
+        return False
+
     # Educational questions should NOT be treated as factual lookups
     EDUCATIONAL_QUESTION_PREFIXES = (
         "what terminology",

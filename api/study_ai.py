@@ -140,6 +140,7 @@ def _build_instruction(mode: str) -> str:
             "- Create 4â€“6 logically ordered steps with properly indented, concise explanations.\n"
             "- Use a precise central equation when the subject is mathematical; otherwise use the most important governing relationship.\n"
             "- Define every symbol used in the update rule and keep variable meanings compact.\n"
+            "- Use the exact same symbols in UPDATE_RULE and VARIABLES; never provide variable definitions for symbols that do not appear in the displayed relationship.\n"
             "- Make headings and the Key insight carry the important emphasis; do not use Markdown inside the block.\n"
             "- Include a concrete worked example when one improves understanding; otherwise use a realistic conceptual example.\n"
             "- Immediately after the closing CORE_EXPLANATION tag, output this exact machine-readable block:\n"
@@ -150,6 +151,7 @@ def _build_instruction(mode: str) -> str:
             "<OUTCOME>One concise sentence explaining what completing or repeating the sequence achieves</OUTCOME>\n"
             "</LEARNING_LOOP>\n"
             "- Create 5 to 6 causal or operational stages specific to the user's exact question.\n"
+            "- Never use placeholder-like stages such as Define the topic, closest related concepts, relate the main components, use a representative scenario, or summarize purpose and trade-offs. Name the actual concepts, mechanisms, or processes from the user's question in every stage.\n"
             "- Match the loop to the depth and form of the user's request: for a broad or introductory topic, use a conceptual learning progression; for a precise advanced question, use the technical reasoning or mechanism sequence; for an explicit practical request, use an actionable workflow.\n"
             "- Do not turn a broad topic into an advanced optimization, implementation, measurement, or troubleshooting workflow unless the user's wording or established context supports that depth.\n"
             "- Treat a bare topic or short noun phrase with no action verb as introductory. Use exactly 5 stagesâ€”identify, distinguish, connect, apply conceptually, and reviewâ€”then stop; do not append a refine or optimization stage. Such a loop must not instruct the learner to code, benchmark, measure, profile, optimize, debug, configure, deploy, or select replacement hardware.\n"
@@ -402,6 +404,29 @@ def _is_compare_request(user_topic: str) -> bool:
     )
 
 
+def _comparison_pair(user_topic: str) -> tuple[str, str] | None:
+    """Extract two compact comparison labels for deterministic adaptations."""
+    topic = re.sub(r"[?.!]+$", "", re.sub(r"\s+", " ", user_topic.strip()))
+    topic = re.sub(
+        r"^(?:compare|contrast)\s+",
+        "",
+        topic,
+        flags=re.IGNORECASE,
+    )
+    parts = re.split(
+        r"\s+(?:and|versus|vs\.?)\s+|\s+difference\s+between\s+",
+        topic,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )
+    if len(parts) != 2:
+        return None
+    first, second = (part.strip(" ,:;-") for part in parts)
+    if not first or not second or len(first.split()) > 8 or len(second.split()) > 8:
+        return None
+    return first, second
+
+
 def _is_scientific_process_comparison(user_topic: str) -> bool:
     """Return True when a comparison asks how natural processes differ."""
     topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
@@ -449,6 +474,29 @@ def _is_research_method_comparison(user_topic: str) -> bool:
     )
 
 
+def _is_learning_theory_comparison(user_topic: str) -> bool:
+    """Return True for the classical/operant conditioning distinction."""
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    return (
+        _is_compare_request(topic)
+        and "classical" in topic
+        and "operant" in topic
+        and "conditioning" in topic
+    )
+
+
+def _is_stack_queue_comparison(user_topic: str) -> bool:
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    return _is_compare_request(topic) and "stack" in topic and "queue" in topic
+
+
+def _is_graph_search_comparison(user_topic: str) -> bool:
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    breadth = "breadth-first" in topic or "breadth first" in topic or "bfs" in topic
+    depth = "depth-first" in topic or "depth first" in topic or "dfs" in topic
+    return _is_compare_request(topic) and breadth and depth
+
+
 def _is_metric_comparison(user_topic: str) -> bool:
     """Return True when the user compares evaluation or statistical metrics."""
     topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
@@ -485,7 +533,43 @@ def _adapt_compare_learning_loop(answer: str, user_topic: str) -> str:
     if not _is_compare_request(user_topic) or not _LEARNING_LOOP_BLOCK.search(answer):
         return answer
 
-    if _is_scientific_process_comparison(user_topic):
+    pair = _comparison_pair(user_topic)
+    normalized_pair = {item.casefold() for item in pair} if pair else set()
+
+    if normalized_pair == {"tcp", "udp"}:
+        replacement = """<LEARNING_LOOP>
+<STAGES>
+1. Establish transport requirements :: Identify whether the application needs ordered delivery, retransmission, congestion control, low latency, or message boundaries.
+2. Trace TCP delivery :: Follow connection setup, sequencing, acknowledgements, retransmission, flow control, and congestion control from sender to receiver.
+3. Trace UDP delivery :: Follow independent datagrams without connection setup, built-in ordering, retransmission, or congestion control.
+4. Compare network conditions :: Evaluate how TCP and UDP behave under packet loss, delay, reordering, and changing available bandwidth.
+5. Match protocol to application :: Select TCP, UDP, or an application-layer design such as QUIC according to the required reliability and latency behavior.
+</STAGES>
+<OUTCOME>The learner can explain the mechanisms of TCP and UDP and justify a transport choice from an application's delivery, latency, and congestion requirements.</OUTCOME>
+</LEARNING_LOOP>"""
+    elif _is_stack_queue_comparison(user_topic):
+        replacement = """<LEARNING_LOOP>
+<STAGES>
+1. Trace insertion and removal :: Follow the same sequence of items through stack push/pop and queue enqueue/dequeue operations.
+2. Connect order to structure :: Relate LIFO behavior to the stack top and FIFO behavior to queue front and rear positions.
+3. Compare implementations :: Examine dynamic arrays, linked lists, and circular buffers through operation cost and memory behavior.
+4. Match algorithms to access order :: Use stacks for recursion, undo, and depth-first search; use queues for scheduling, buffering, and breadth-first search.
+5. Test boundary conditions :: Check underflow, overflow, resizing, and concurrent-access cases without confusing queues with priority queues or deques.
+</STAGES>
+<OUTCOME>The learner can trace stack and queue operations, explain why their service orders differ, and select the correct structure for an algorithm.</OUTCOME>
+</LEARNING_LOOP>"""
+    elif _is_graph_search_comparison(user_topic):
+        replacement = """<LEARNING_LOOP>
+<STAGES>
+1. Build the same graph frontier :: Start BFS and DFS from the same node with an explicit visited set.
+2. Trace traversal order :: Follow FIFO queue expansion for BFS and LIFO stack or recursion expansion for DFS.
+3. Compare guarantees :: Determine completeness, shortest-path behavior, and time and space costs under the same graph assumptions.
+4. Match search to problem shape :: Apply BFS to level distance and unweighted shortest paths, and DFS to backtracking, cycle analysis, and topological structure.
+5. Test difficult graphs :: Examine cycles, disconnected components, infinite branches, and memory-heavy wide frontiers.
+</STAGES>
+<OUTCOME>The learner can trace BFS and DFS, predict their traversal order and guarantees, and choose between them from graph structure and search goals.</OUTCOME>
+</LEARNING_LOOP>"""
+    elif _is_scientific_process_comparison(user_topic):
         replacement = """<LEARNING_LOOP>
 <STAGES>
 1. Identify :: Define each process, its biological purpose, and where it occurs.
@@ -495,6 +579,17 @@ def _adapt_compare_learning_loop(answer: str, user_topic: str) -> str:
 5. Review :: Summarize the similarities, essential differences, and common misconceptions.
 </STAGES>
 <OUTCOME>The learner can explain both processes, compare them accurately, and predict their biological outcomes.</OUTCOME>
+</LEARNING_LOOP>"""
+    elif _is_learning_theory_comparison(user_topic):
+        replacement = """<LEARNING_LOOP>
+<STAGES>
+1. Identify the learned association :: Define how classical conditioning links two stimuli while operant conditioning links behavior to its consequence.
+2. Trace acquisition :: Follow conditioned-stimulus pairing in classical conditioning and reinforcement or punishment contingencies in operant conditioning.
+3. Compare learner behavior :: Distinguish elicited responses from emitted actions and identify the learner's role in each process.
+4. Apply to cases :: Classify examples from exposure therapy, classroom behavior, animal training, and habit formation using explicit evidence.
+5. Review boundary cases :: Examine extinction, generalization, avoidance, and situations where both forms of learning operate together.
+</STAGES>
+<OUTCOME>The learner can distinguish classical from operant conditioning by the association learned, the behavior involved, and the mechanism that changes it.</OUTCOME>
 </LEARNING_LOOP>"""
     elif _is_metric_comparison(user_topic):
         replacement = """<LEARNING_LOOP>
@@ -540,6 +635,18 @@ def _adapt_compare_learning_loop(answer: str, user_topic: str) -> str:
 </STAGES>
 <OUTCOME>The learner can distinguish the concepts accurately, recognize them in examples, and explain how each supports knowledge.</OUTCOME>
 </LEARNING_LOOP>"""
+    elif pair:
+        first, second = pair
+        replacement = f"""<LEARNING_LOOP>
+<STAGES>
+1. Define both subjects :: State precisely what {first} and {second} are and the problem each addresses.
+2. Compare shared criteria :: Evaluate {first} and {second} using the same mechanisms, assumptions, strengths, and limitations.
+3. Connect differences to consequences :: Explain how their structural differences change behavior in realistic conditions.
+4. Apply the comparison :: Test {first} and {second} against representative scenarios using explicit requirements.
+5. Review the boundary :: Summarize when {first}, {second}, or a hybrid approach is appropriate and identify important exceptions.
+</STAGES>
+<OUTCOME>The learner can compare {first} and {second} consistently and justify when each is appropriate.</OUTCOME>
+</LEARNING_LOOP>"""
     else:
         replacement = """<LEARNING_LOOP>
 <STAGES>
@@ -559,7 +666,37 @@ def _adapt_compare_journey(answer: str, user_topic: str) -> str:
     if not _is_compare_request(user_topic) or not _CONTINUE_JOURNEY_BLOCK.search(answer):
         return answer
 
-    if _is_scientific_process_comparison(user_topic):
+    pair = _comparison_pair(user_topic)
+    normalized_pair = {item.casefold() for item in pair} if pair else set()
+
+    if normalized_pair == {"tcp", "udp"}:
+        replacement = """<CONTINUE_JOURNEY>
+<DIRECTIONS>
+1. Inspect TCP and UDP packet flows :: Trace a TCP exchange and a UDP exchange, labeling connection setup, sequence or acknowledgement behavior, and message boundaries.
+2. Test loss and latency trade-offs :: Predict how packet loss, reordering, and delay affect a web transfer, voice call, DNS lookup, and multiplayer game under each protocol.
+3. Explore modern transport design :: Study how QUIC builds reliable multiplexed streams over UDP while implementing congestion control in user space.
+</DIRECTIONS>
+<DESTINATION>The learner can choose and defend TCP, UDP, or QUIC from concrete reliability, ordering, latency, and deployment requirements.</DESTINATION>
+</CONTINUE_JOURNEY>"""
+    elif _is_stack_queue_comparison(user_topic):
+        replacement = """<CONTINUE_JOURNEY>
+<DIRECTIONS>
+1. Simulate both structures by hand :: Insert the same item sequence, remove every item, and record the contrasting service orders.
+2. Connect structures to algorithms :: Trace a call stack and a breadth-first work queue to see how access order controls execution.
+3. Explore practical variants :: Compare circular queues, deques, bounded buffers, and thread-safe implementations with ordinary stacks and queues.
+</DIRECTIONS>
+<DESTINATION>The learner can implement and select stack or queue behavior without confusing LIFO, FIFO, deque, and priority semantics.</DESTINATION>
+</CONTINUE_JOURNEY>"""
+    elif _is_graph_search_comparison(user_topic):
+        replacement = """<CONTINUE_JOURNEY>
+<DIRECTIONS>
+1. Trace one graph with both searches :: Record frontier contents, visited nodes, parent links, and traversal order after every expansion.
+2. Verify guarantees experimentally :: Compare BFS and DFS on shortest-path, maze, cycle-detection, and disconnected-graph examples.
+3. Explore hybrid search :: Study iterative deepening and bidirectional BFS as responses to DFS depth risk and BFS memory growth.
+</DIRECTIONS>
+<DESTINATION>The learner can justify BFS, DFS, or a hybrid using completeness, optimality, memory, and graph-shape requirements.</DESTINATION>
+</CONTINUE_JOURNEY>"""
+    elif _is_scientific_process_comparison(user_topic):
         replacement = """<CONTINUE_JOURNEY>
 <DIRECTIONS>
 1. Strengthen the stage-by-stage comparison :: Place corresponding stages side by side and trace their inputs, transformations, and outputs.
@@ -567,6 +704,15 @@ def _adapt_compare_journey(answer: str, user_topic: str) -> str:
 3. Test the distinction with examples :: Predict how changing an input or condition affects each process's material, energy, or biological outcome.
 </DIRECTIONS>
 <DESTINATION>The learner can compare the processes from inputs through mechanisms to outcomes without importing features that belong only to a different biological process.</DESTINATION>
+</CONTINUE_JOURNEY>"""
+    elif _is_learning_theory_comparison(user_topic):
+        replacement = """<CONTINUE_JOURNEY>
+<DIRECTIONS>
+1. Classify contrasting examples :: Label the stimulus, response, behavior, and consequence in paired classical and operant cases.
+2. Examine overlapping mechanisms :: Study avoidance learning and other cases where respondent and instrumental processes interact.
+3. Design an ethical intervention :: Compare how exposure, reinforcement schedules, shaping, and extinction would change a concrete behavior.
+</DIRECTIONS>
+<DESTINATION>The learner can diagnose the conditioning mechanism in real situations and select an evidence-based, ethically appropriate learning strategy.</DESTINATION>
 </CONTINUE_JOURNEY>"""
     elif _is_metric_comparison(user_topic):
         first_metric, second_metric = _metric_comparison_pair(user_topic) or (
@@ -608,6 +754,16 @@ def _adapt_compare_journey(answer: str, user_topic: str) -> str:
 </DIRECTIONS>
 <DESTINATION>The learner can identify, construct, and evaluate both forms without treating either as universally superior.</DESTINATION>
 </CONTINUE_JOURNEY>"""
+    elif pair:
+        first, second = pair
+        replacement = f"""<CONTINUE_JOURNEY>
+<DIRECTIONS>
+1. Strengthen the shared criteria :: Build a side-by-side comparison of {first} and {second} using the same requirements and assumptions.
+2. Verify with contrasting scenarios :: Apply {first} and {second} to representative cases and explain how each result follows from their differences.
+3. Explore limits and combinations :: Study the edge cases where {first}, {second}, or a hybrid approach stops being sufficient.
+</DIRECTIONS>
+<DESTINATION>The learner can defend a context-aware choice between {first} and {second} without treating either as universally superior.</DESTINATION>
+</CONTINUE_JOURNEY>"""
     else:
         replacement = """<CONTINUE_JOURNEY>
 <DIRECTIONS>
@@ -642,6 +798,34 @@ def _normalize_continue_journey_headings(answer: str) -> str:
         flags=re.IGNORECASE,
     )
     return answer[:match.start()] + normalized + answer[match.end():]
+
+
+def _normalize_stack_queue_relationship(answer: str, user_topic: str) -> str:
+    """Replace ambiguous prose relationships with explicit access-order rules."""
+    if not _is_stack_queue_comparison(user_topic):
+        return answer
+
+    answer = re.sub(
+        r"<UPDATE_RULE>.*?</UPDATE_RULE>",
+        (
+            "<UPDATE_RULE>order_stack = reverse(insertion_order); "
+            "order_queue = insertion_order</UPDATE_RULE>"
+        ),
+        answer,
+        count=1,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return re.sub(
+        r"<VARIABLES>.*?</VARIABLES>",
+        """<VARIABLES>
+order_stack :: removal order produced by stack pop operations
+order_queue :: removal order produced by queue dequeue operations
+insertion_order :: sequence in which elements enter the structure
+</VARIABLES>""",
+        answer,
+        count=1,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
 
 
 _NUMBERED_MEIOTIC_STAGES = ("meiosis", "prophase", "metaphase", "anaphase", "telophase")
@@ -886,11 +1070,17 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         mode = _normalize_mode(payload.get("mode"))
         continue_mode = bool(payload.get("continue_mode", False))
         previous_answer = (payload.get("previous_answer") or "").strip()
+        validation_feedback = [
+            str(item).strip()
+            for item in (payload.get("validation_feedback") or [])
+            if str(item).strip()
+        ][:8]
     else:
         user_topic = str(payload).strip()
         mode = "deep"
         continue_mode = False
         previous_answer = ""
+        validation_feedback = []
 
     if not user_topic:
         user_topic = "Explain Artificial Intelligence."
@@ -970,6 +1160,14 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
             f"{instruction}\n"
             f"User prompt: {llm_topic}\n"
         )
+        if validation_feedback:
+            feedback_lines = "\n".join(f"- {item}" for item in validation_feedback)
+            question += (
+                "\nVALIDATION RETRY:\n"
+                "The previous draft was withheld. Regenerate the complete response from scratch; "
+                "do not discuss the failed draft. Correct every issue below:\n"
+                f"{feedback_lines}\n"
+            )
 
     # ---- Call core LLM engine ----
     archetype = _archetype_for_mode(mode)
@@ -995,9 +1193,15 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         user_topic,
     )
     if mode == "intro":
-        ans = _adapt_intro_learning_loop(ans, user_topic)
+        # The first pass keeps the conservative bare-topic safeguard. If that
+        # draft fails semantic validation, the retry prompt explicitly asks
+        # the model for a topic-specific replacement; do not overwrite that
+        # repaired loop with the same generic fallback that caused rejection.
+        if not validation_feedback:
+            ans = _adapt_intro_learning_loop(ans, user_topic)
         ans = _adapt_compare_learning_loop(ans, user_topic)
         ans = _adapt_compare_journey(ans, user_topic)
+        ans = _normalize_stack_queue_relationship(ans, user_topic)
         ans = _normalize_continue_journey_headings(ans)
         ans = _normalize_response_text(ans, user_topic)
     incomplete = bool(result.get("incomplete", False))

@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
@@ -24,6 +24,10 @@ class StudyAIIn(BaseModel):
     # v0 continuation (optional; UI may wire later)
     continue_mode: bool = Field(False, description="If true, continue from previous_answer")
     previous_answer: Optional[str] = Field(None, description="Prior assistant answer to continue from")
+    validation_feedback: List[str] = Field(
+        default_factory=list,
+        description="Structured-output defects to correct during one full regeneration",
+    )
 
 
 def _warm_up_in_background() -> None:

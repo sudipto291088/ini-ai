@@ -151,6 +151,17 @@ class ConversationEngineTests(unittest.TestCase):
                 self.assertEqual(result["intent"], "topic_explore")
                 self.assertTrue(result["should_interrogate"])
 
+    def test_unknown_concept_definition_routes_to_learning(self):
+        result = detect_intent("What is quantum entanglement?")
+        self.assertEqual(result["intent"], "topic_explore")
+        self.assertTrue(result["should_interrogate"])
+        self.assertFalse(result["should_answer_direct"])
+
+    def test_live_definition_lookup_remains_direct(self):
+        result = detect_intent("What is the current bitcoin price?")
+        self.assertEqual(result["intent"], "direct_factual_query")
+        self.assertTrue(result["should_answer_direct"])
+
     def test_single_word_conversation_is_not_a_learning_topic(self):
         for message in ("thanks", "continue", "sorry", "nothing"):
             with self.subTest(message=message):
