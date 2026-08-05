@@ -33,6 +33,7 @@ PLACEHOLDER_TEXT = (
     "a precise, topic-specific explanation title",
     "two concise sentences",
     "the central equation or governing relationship",
+    "a single presentation-ready equation or governing relationship",
     "symbol :: compact meaning",
     "one concise explanatory sentence",
     "the single most important takeaway",

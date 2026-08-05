@@ -932,12 +932,38 @@ a.ini-nc-followup-panel__item:hover {
   line-height: 1.62;
 }
 .ini-nc-core-explanation__rule {
-  margin: 0 0 18px 20px;
+  position: relative;
+  margin: 2px 0 12px 20px;
+  padding: 34px 22px 18px;
+  border: 1px solid rgba(238, 33, 72, 0.12);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(238, 33, 72, 0.065), transparent 42%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(249, 250, 253, 0.92));
+  box-shadow: 0 12px 30px rgba(23, 32, 51, 0.055);
   color: #172033;
   font-family: "Cambria Math", "STIX Two Math", Georgia, serif;
   font-size: clamp(18px, 1.45vw, 22px);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.45;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.ini-nc-core-explanation__rule-label {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  color: #172033;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+.ini-nc-core-explanation__variables-label {
+  margin: 0 0 8px 20px;
+  color: #687083;
+  font-size: 12px;
+  font-weight: 650;
 }
 .ini-nc-core-explanation__variables {
   display: grid;
@@ -3223,6 +3249,18 @@ def render_nc_your_question(question_context: dict[str, str]) -> None:
     )
 
 
+def _formula_html(value: Any) -> str:
+    """Turn safe, compact equation text into readable mathematical typography."""
+    rendered = escape(str(value or "").strip())
+    rendered = rendered.replace("-&gt;", "→").replace("&lt;=", "≤").replace("&gt;=", "≥")
+    rendered = re.sub(r"\s+\*\s+", " × ", rendered)
+    rendered = re.sub(r"_\{([A-Za-z0-9,+−-]+)\}", r"<sub>\1</sub>", rendered)
+    rendered = re.sub(r"_([A-Za-z][A-Za-z0-9]*|\d+)", r"<sub>\1</sub>", rendered)
+    rendered = re.sub(r"\^\{([^{}<>]+)\}", r"<sup>\1</sup>", rendered)
+    rendered = re.sub(r"\^(-?[A-Za-z0-9]+)", r"<sup>\1</sup>", rendered)
+    return rendered
+
+
 def render_nc_core_explanation(explanation: dict[str, Any]) -> None:
     title = str((explanation or {}).get("Title") or "").strip()
     overview = str((explanation or {}).get("Overview") or "").strip()
@@ -3243,9 +3281,23 @@ def render_nc_core_explanation(explanation: dict[str, Any]) -> None:
 
     variable_markup = "".join(
         '<div class="ini-nc-core-explanation__variable">'
-        f'<strong>{escape(str(symbol))}</strong> — {escape(str(meaning))}'
+        f'<strong>{_formula_html(symbol)}</strong> — {escape(str(meaning))}'
         '</div>'
         for symbol, meaning in variables
+    )
+    formula_markup = (
+        '<div class="ini-nc-core-explanation__rule">'
+        '<span class="ini-nc-core-explanation__rule-label">Core relationship</span>'
+        f'{_formula_html(update_rule)}'
+        '</div>'
+        if update_rule
+        else ""
+    )
+    variables_markup = (
+        '<div class="ini-nc-core-explanation__variables-label">Where</div>'
+        f'<div class="ini-nc-core-explanation__variables">{variable_markup}</div>'
+        if variable_markup
+        else ""
     )
     steps_markup = "".join(
         '<div class="ini-nc-core-explanation__step">'
@@ -3273,16 +3325,8 @@ def render_nc_core_explanation(explanation: dict[str, Any]) -> None:
             '<div class="ini-topic-profile ini-nc-core-explanation">'
             f'<div class="ini-topic-profile__title"><span>{escape(title)}</span></div>'
             f'<div class="ini-nc-core-explanation__overview">{escape(overview)}</div>'
-            + (
-                f'<div class="ini-nc-core-explanation__rule">{escape(update_rule)}</div>'
-                if update_rule
-                else ""
-            )
-            + (
-                f'<div class="ini-nc-core-explanation__variables">{variable_markup}</div>'
-                if variable_markup
-                else ""
-            )
+            + formula_markup
+            + variables_markup
             + f'<div class="ini-nc-core-explanation__steps">{steps_markup}</div>'
             + insight_markup
             + example_markup

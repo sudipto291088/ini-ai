@@ -412,6 +412,7 @@ def extract_core_explanation(text: str) -> tuple[dict[str, Any], str]:
     leaked_prompt_placeholders = {
         "two concise sentences",
         "the central equation or governing relationship",
+        "a single presentation-ready equation or governing relationship",
         "a precise, topic-specific explanation title",
         "the single most important takeaway",
         "a compact numerical or concrete example",
