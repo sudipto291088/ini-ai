@@ -90,6 +90,7 @@ _SPLASH_COMPONENT = st.components.v2.component(
 
       const host = root.getRootNode().host;
       const originalHostStyle = host.getAttribute('style');
+      let hostRestored = false;
       const syncHostToViewport = () => {
         const viewport = window.visualViewport;
         Object.assign(host.style, {
@@ -102,6 +103,14 @@ _SPLASH_COMPONENT = st.components.v2.component(
           zIndex: '2147483600',
           pointerEvents: 'auto',
         });
+      };
+      const restoreHost = () => {
+        if (hostRestored) return;
+        hostRestored = true;
+        window.visualViewport?.removeEventListener('resize', syncHostToViewport);
+        window.visualViewport?.removeEventListener('scroll', syncHostToViewport);
+        if (originalHostStyle === null) host.removeAttribute('style');
+        else host.setAttribute('style', originalHostStyle);
       };
       syncHostToViewport();
       window.visualViewport?.addEventListener('resize', syncHostToViewport);
@@ -130,16 +139,14 @@ _SPLASH_COMPONENT = st.components.v2.component(
       const finishTimer = window.setTimeout(() => {
         sessionStorage.setItem(completedKey, loadId);
         root.innerHTML = '';
+        restoreHost();
         setTriggerValue('complete', audience);
       }, Math.max(0, visibleFor + 430 - elapsed));
 
       return () => {
         window.clearTimeout(leaveTimer);
         window.clearTimeout(finishTimer);
-        window.visualViewport?.removeEventListener('resize', syncHostToViewport);
-        window.visualViewport?.removeEventListener('scroll', syncHostToViewport);
-        if (originalHostStyle === null) host.removeAttribute('style');
-        else host.setAttribute('style', originalHostStyle);
+        restoreHost();
       };
     }
     """,
