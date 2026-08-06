@@ -11179,6 +11179,126 @@ elif st.session_state.page == "My New Learning":
 else:
     page_new_project()
 
+# Keep InI's reading scale close to a comfortable conversational UI.  This
+# final stylesheet is intentionally emitted after the page so it wins over
+# component-local rules without changing card dimensions or responsive layout.
+st.markdown(
+    """
+    <style>
+    :root {
+      --ini-reading-size: 16px;
+      --ini-secondary-size: 15px;
+      --ini-compact-size: 14px;
+    }
+
+    /* App navigation and persistent controls */
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] a,
+    [data-testid="stSidebar"] button,
+    [data-testid="stSidebar"] label {
+      font-size: var(--ini-compact-size) !important;
+      line-height: 1.48 !important;
+    }
+    [data-testid="stMain"] input,
+    [data-testid="stMain"] textarea,
+    [data-testid="stMain"] input::placeholder,
+    [data-testid="stMain"] textarea::placeholder {
+      font-size: var(--ini-reading-size) !important;
+    }
+    [data-testid="stMain"] div.stButton > button,
+    [data-testid="stMain"] div.stFormSubmitButton > button {
+      font-size: var(--ini-secondary-size) !important;
+    }
+
+    /* Structured InI response cards */
+    .ini-topic-profile__title,
+    .ini-nc-section-title {
+      font-size: 17px !important;
+    }
+    .ini-topic-profile__label,
+    .ini-nc-your-question__label,
+    .ini-nc-core-explanation__rule-label,
+    .ini-nc-core-explanation__variables-label {
+      font-size: 12px !important;
+    }
+    .ini-topic-profile__value,
+    .ini-nc-prerequisites-panel__content,
+    .ini-nc-intro-copy,
+    .ini-nc-your-question__value,
+    .ini-nc-core-explanation__overview,
+    .ini-nc-core-explanation__step,
+    .ini-nc-core-explanation__insight,
+    .ini-nc-core-explanation__example,
+    .ini-nc-learning-paths__list li,
+    a.ini-nc-followup-panel__item {
+      font-size: var(--ini-reading-size) !important;
+    }
+    .ini-nc-intro-copy__heading,
+    .ini-nc-core-explanation__variable,
+    .ini-nc-learning-loop__heading,
+    .ini-nc-learning-loop__copy,
+    .ini-nc-learning-loop__outcome,
+    .ini-nc-continue-journey__copy,
+    .ini-nc-continue-journey__destination,
+    .ini-nc-learning-paths__heading {
+      font-size: var(--ini-secondary-size) !important;
+    }
+    .ini-nc-continue-journey__heading {
+      font-size: var(--ini-reading-size) !important;
+    }
+    .ini-nc-your-question__prompt {
+      font-size: clamp(19px, 1.45vw, 23px) !important;
+    }
+    .ini-nc-core-explanation__rule {
+      font-size: clamp(20px, 1.55vw, 24px) !important;
+    }
+
+    /* Knowledge Map and Question Map */
+    .ini-nc-knowledge-map__node strong {
+      font-size: var(--ini-secondary-size) !important;
+    }
+    .ini-nc-knowledge-map__node span,
+    .ini-nc-knowledge-map__level-heading,
+    .ini-nc-knowledge-map__question {
+      font-size: var(--ini-secondary-size) !important;
+    }
+    .ini-nc-knowledge-map__node--question strong {
+      font-size: 18px !important;
+    }
+    [data-testid="stRadio"] div[role="radiogroup"] label,
+    [data-testid="stRadio"] div[role="radiogroup"] label p,
+    [data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"])
+      [data-testid="stToggle"] label,
+    [data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"])
+      [data-testid="stToggle"] p {
+      font-size: var(--ini-compact-size) !important;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
+      div.stButton > button {
+      font-size: var(--ini-reading-size) !important;
+      line-height: 1.52 !important;
+    }
+    div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"],
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker)
+      .ini_ai_inner {
+      font-size: var(--ini-reading-size) !important;
+    }
+
+    @media (max-width: 700px) {
+      :root {
+        --ini-reading-size: 15.5px;
+        --ini-secondary-size: 14.5px;
+        --ini-compact-size: 13.5px;
+      }
+      .ini-nc-your-question__prompt {
+        font-size: 18px !important;
+      }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 # =========================
 # First Conversation Experience — static shell (Stage 2)
