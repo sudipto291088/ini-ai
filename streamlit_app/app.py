@@ -1675,6 +1675,167 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   margin: 0 auto;
   background: #cfd5df;
 }
+.ini-nc-knowledge-map__organic-tree {
+  position: relative;
+  width: 100%;
+  padding: 8px 0 4px;
+}
+.ini-nc-knowledge-map__organic-tree::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: linear-gradient(180deg, #c8ced8 0%, #d9dee6 78%, rgba(217, 222, 230, 0.18) 100%);
+  content: "";
+}
+.ini-nc-knowledge-map__branch-flow {
+  position: relative;
+  width: 50%;
+  min-height: 126px;
+  padding-bottom: 22px;
+}
+.ini-nc-knowledge-map__branch-flow--left {
+  margin-right: 50%;
+  padding-right: 54px;
+}
+.ini-nc-knowledge-map__branch-flow--right {
+  margin-left: 50%;
+  padding-left: 54px;
+}
+.ini-nc-knowledge-map__branch-junction {
+  position: absolute;
+  top: 24px;
+  width: 54px;
+  height: 24px;
+  border-top: 1px solid #c8ced8;
+}
+.ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__branch-junction {
+  right: 0;
+  border-right: 1px solid #c8ced8;
+  border-radius: 0 16px 0 0;
+}
+.ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__branch-junction {
+  left: 0;
+  border-left: 1px solid #c8ced8;
+  border-radius: 16px 0 0 0;
+}
+.ini-nc-knowledge-map__branch-junction::after {
+  position: absolute;
+  top: -5px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  background: #aeb7c5;
+  box-shadow: 0 0 0 1px #d4d9e1;
+  content: "";
+}
+.ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__branch-junction::after {
+  right: -5px;
+}
+.ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__branch-junction::after {
+  left: -5px;
+}
+.ini-nc-knowledge-map__branch-content {
+  position: relative;
+}
+.ini-nc-knowledge-map__branch-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin-bottom: 10px;
+  color: #172033;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__branch-heading {
+  justify-content: flex-end;
+}
+.ini-nc-knowledge-map__branch-number {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 31px;
+  width: 31px;
+  height: 31px;
+  border: 1px solid #dfe4eb;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.055);
+  color: #667085;
+  font-size: 11px;
+  font-weight: 750;
+}
+.ini-nc-knowledge-map__leaves {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.ini-nc-knowledge-map__leaves::before {
+  position: absolute;
+  top: -10px;
+  bottom: 18px;
+  width: 1px;
+  background: #e0e4ea;
+  content: "";
+}
+.ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaves::before {
+  right: 15px;
+}
+.ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaves::before {
+  left: 15px;
+}
+.ini-nc-knowledge-map__leaf {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid rgba(222, 227, 235, 0.88);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.045);
+  color: #4d586b;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaf {
+  margin-right: 16px;
+  border-radius: 18px 8px 18px 18px;
+}
+.ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaf {
+  margin-left: 16px;
+  border-radius: 8px 18px 18px 18px;
+}
+.ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaf:nth-child(2) {
+  margin-left: 7%;
+}
+.ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaf:nth-child(2) {
+  margin-right: 7%;
+}
+.ini-nc-knowledge-map__leaf::before {
+  position: absolute;
+  top: 18px;
+  width: 16px;
+  height: 1px;
+  background: #e0e4ea;
+  content: "";
+}
+.ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaf::before {
+  right: -17px;
+}
+.ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaf::before {
+  left: -17px;
+}
+.ini-nc-knowledge-map__leaf-dot {
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: #aab3c1;
+}
 .ini-nc-knowledge-map__focus {
   align-self: flex-end;
   margin-top: 14px;
@@ -1766,6 +1927,55 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   .ini-nc-knowledge-map__focus[open] > summary {
     top: 14px;
     right: 14px;
+  }
+  .ini-nc-knowledge-map__organic-tree::before {
+    left: 17px;
+  }
+  .ini-nc-knowledge-map__branch-flow,
+  .ini-nc-knowledge-map__branch-flow--left,
+  .ini-nc-knowledge-map__branch-flow--right {
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0 0 22px 54px;
+  }
+  .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__branch-heading,
+  .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__branch-heading {
+    justify-content: flex-start;
+  }
+  .ini-nc-knowledge-map__branch-junction,
+  .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__branch-junction,
+  .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__branch-junction {
+    top: 21px;
+    left: 17px;
+    width: 37px;
+    height: 18px;
+    border: 0;
+    border-top: 1px solid #c8ced8;
+    border-radius: 14px 0 0 0;
+  }
+  .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__branch-junction::after,
+  .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__branch-junction::after {
+    left: -5px;
+    right: auto;
+  }
+  .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaves::before,
+  .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaves::before {
+    right: auto;
+    left: 15px;
+  }
+  .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaf,
+  .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaf,
+  .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaf:nth-child(2),
+  .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaf:nth-child(2) {
+    margin-right: 0;
+    margin-left: 16px;
+    border-radius: 8px 18px 18px 18px;
+  }
+  .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaf::before,
+  .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaf::before {
+    right: auto;
+    left: -17px;
   }
 }
 @media (max-width: 760px) {
@@ -3470,24 +3680,29 @@ def render_nc_knowledge_map(topic: str, categories: dict[str, Any]) -> None:
     if not stages:
         return
 
-    level_parts: list[str] = []
+    branch_parts: list[str] = []
     for index, (label, stage_questions) in enumerate(stages, start=1):
         questions_markup = "".join(
-            f'<div class="ini-nc-knowledge-map__question">{escape(item)}</div>'
+            '<div class="ini-nc-knowledge-map__leaf">'
+            '<span class="ini-nc-knowledge-map__leaf-dot"></span>'
+            f'<span>{escape(item)}</span>'
+            '</div>'
             for item in stage_questions
         )
-        level_parts.append(
-            '<section class="ini-nc-knowledge-map__level">'
-            '<div class="ini-nc-knowledge-map__level-heading">'
-            f'<span class="ini-nc-knowledge-map__level-number">{index:02d}</span>'
-            f'<span>{escape(label)}</span>'
+        side = "left" if index % 2 else "right"
+        branch_parts.append(
+            f'<section class="ini-nc-knowledge-map__branch-flow ini-nc-knowledge-map__branch-flow--{side}">'
+            '<div class="ini-nc-knowledge-map__branch-junction"></div>'
+            '<div class="ini-nc-knowledge-map__branch-content">'
+            '<div class="ini-nc-knowledge-map__branch-heading">'
+            f'<span class="ini-nc-knowledge-map__branch-number">{index:02d}</span>'
+            f'<strong>{escape(label)}</strong>'
             '</div>'
-            f'<div class="ini-nc-knowledge-map__questions">{questions_markup}</div>'
+            f'<div class="ini-nc-knowledge-map__leaves">{questions_markup}</div>'
+            '</div>'
             '</section>'
         )
-        if index != len(stages):
-            level_parts.append('<div class="ini-nc-knowledge-map__level-connector"></div>')
-    levels_markup = "".join(level_parts)
+    branches_markup = "".join(branch_parts)
     flow_markup = (
         '<div class="ini-nc-knowledge-map__flow">'
         '<div class="ini-nc-knowledge-map__node">'
@@ -3498,7 +3713,7 @@ def render_nc_knowledge_map(topic: str, categories: dict[str, Any]) -> None:
         f'<strong>{escape(question)}</strong>'
         '</div>'
         '<div class="ini-nc-knowledge-map__connector"></div>'
-        f'<div class="ini-nc-knowledge-map__levels">{levels_markup}</div>'
+        f'<div class="ini-nc-knowledge-map__organic-tree">{branches_markup}</div>'
         '<div class="ini-nc-knowledge-map__connector"></div>'
         '<div class="ini-nc-knowledge-map__node ini-nc-knowledge-map__node--continue">'
         '<strong>Continue into the Question Map</strong>'
@@ -11259,7 +11474,9 @@ st.markdown(
     }
     .ini-nc-knowledge-map__node span,
     .ini-nc-knowledge-map__level-heading,
-    .ini-nc-knowledge-map__question {
+    .ini-nc-knowledge-map__question,
+    .ini-nc-knowledge-map__branch-heading,
+    .ini-nc-knowledge-map__leaf {
       font-size: var(--ini-secondary-size) !important;
     }
     .ini-nc-knowledge-map__node--question strong {
