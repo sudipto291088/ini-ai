@@ -589,7 +589,7 @@ div.stButton > button:hover {
   gap: 8px;
   margin-bottom: 14px;
   color: #f51b3f;
-  font-size: 15.5px;
+  font-size: 16.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -617,13 +617,13 @@ div.stButton > button:hover {
 .ini-topic-profile__label {
   margin-bottom: 6px;
   color: #7b8493;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: none;
 }
 .ini-topic-profile__value {
   color: #17211f;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.4;
 }
 .ini-nc-prerequisites-panel {
@@ -641,7 +641,7 @@ div.stButton > button:hover {
   border-radius: 0;
   background: transparent;
   color: #3f4858;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.55;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.025);
 }
@@ -753,7 +753,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) .ini-
   border-radius: 12px;
   background: #fff4f6;
   color: #f51b3f;
-  font-size: 15.5px;
+  font-size: 16.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -768,6 +768,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) .ini-
 }
 .ini-nc-section-subtitle {
   margin-left: 30px;
+  font-size: 14px;
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data-testid="stMarkdownContainer"] > p {
   color: #3f4858;
@@ -782,7 +783,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data
   background: transparent;
   box-shadow: none;
   color: #17211f;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.55;
 }
 .ini-nc-intro-copy__section {
@@ -796,7 +797,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-section-title) [data
 .ini-nc-intro-copy__heading {
   margin: 0 0 5px;
   color: #364152;
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 550;
   line-height: 1.35;
 }
@@ -871,7 +872,7 @@ a.ini-nc-followup-panel__item {
   background: #f7f8fa;
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.035);
   color: #17211f !important;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
   line-height: 1.45;
   text-decoration: none !important;
@@ -896,7 +897,7 @@ a.ini-nc-followup-panel__item:hover {
 .ini-nc-your-question__prompt {
   margin: 2px 0 18px;
   color: #172033;
-  font-size: clamp(17px, 1.35vw, 21px);
+  font-size: clamp(18px, 1.4vw, 22px);
   font-weight: 550;
   line-height: 1.48;
   letter-spacing: -0.012em;
@@ -911,14 +912,14 @@ a.ini-nc-followup-panel__item:hover {
 .ini-nc-your-question__label {
   margin-bottom: 5px;
   color: #7b8493;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: none;
 }
 .ini-nc-your-question__value {
   color: #465164;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
   line-height: 1.55;
 }
@@ -928,7 +929,7 @@ a.ini-nc-followup-panel__item:hover {
 .ini-nc-core-explanation__overview {
   margin: 0 0 17px;
   color: #3f4858;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.62;
 }
 .ini-nc-core-explanation__rule {
@@ -962,7 +963,7 @@ a.ini-nc-followup-panel__item:hover {
 .ini-nc-core-explanation__variables-label {
   margin: 0 0 8px 20px;
   color: #687083;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 650;
 }
 .ini-nc-core-explanation__variables {
@@ -973,7 +974,7 @@ a.ini-nc-followup-panel__item:hover {
 }
 .ini-nc-core-explanation__variable {
   color: #566173;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
 }
 .ini-nc-core-explanation__variable strong {
@@ -990,7 +991,7 @@ a.ini-nc-followup-panel__item:hover {
   padding-left: 15px;
   border-left: 2px solid #edf0f4;
   color: #465164;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.58;
 }
 .ini-nc-core-explanation__step strong,
@@ -1003,7 +1004,7 @@ a.ini-nc-followup-panel__item:hover {
 .ini-nc-core-explanation__example {
   margin: 18px 0 0 20px;
   color: #465164;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.6;
 }
 .ini-nc-learning-loop {
@@ -1051,19 +1052,19 @@ a.ini-nc-followup-panel__item:hover {
 .ini-nc-learning-loop__heading {
   margin: 1px 0 4px;
   color: #202b3a;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 750;
   line-height: 1.35;
 }
 .ini-nc-learning-loop__copy {
   color: #5a6576;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.48;
 }
 .ini-nc-learning-loop__outcome {
   margin: 19px 0 0 40px;
   color: #465164;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.55;
 }
 .ini-nc-learning-loop__outcome strong {
@@ -1104,13 +1105,13 @@ a.ini-nc-followup-panel__item:hover {
 .ini-nc-continue-journey__heading {
   margin-bottom: 6px;
   color: #202b3a;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 750;
   line-height: 1.38;
 }
 .ini-nc-continue-journey__copy {
   color: #5a6576;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.55;
 }
 .ini-nc-continue-journey__destination {
@@ -1118,7 +1119,7 @@ a.ini-nc-followup-panel__item:hover {
   padding-top: 14px;
   border-top: 1px solid #f0f2f5;
   color: #465164;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.58;
 }
 .ini-nc-continue-journey__destination strong {
@@ -1207,7 +1208,7 @@ div[class*="st-key-nc_core_explanation_more_"] button:hover {
 .ini-nc-learning-paths__heading {
   margin: 0 0 8px;
   color: #263142;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: none;
@@ -1222,7 +1223,7 @@ div[class*="st-key-nc_core_explanation_more_"] button:hover {
   margin: 0 0 7px;
   padding-left: 15px;
   color: #465164;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
   line-height: 1.48;
 }
@@ -1507,6 +1508,294 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   border-radius: 0;
   background: transparent;
 }
+.ini-nc-knowledge-map {
+  padding: 20px 22px 22px;
+  overflow: hidden;
+}
+.ini-nc-knowledge-map__flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2px 0 0;
+}
+.ini-nc-knowledge-map__node {
+  position: relative;
+  width: min(100%, 560px);
+  padding: 12px 18px;
+  border: 1px solid #e8ebf1;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #ffffff, #f7f8fb);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.055);
+  color: #172033;
+  text-align: center;
+}
+.ini-nc-knowledge-map__node strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+}
+.ini-nc-knowledge-map__node span {
+  display: block;
+  margin-top: 3px;
+  color: #6b7280;
+  font-size: 13px;
+}
+.ini-nc-knowledge-map__node--question {
+  width: min(100%, 720px);
+  padding: 16px 22px;
+  border-color: #111827;
+  background: linear-gradient(135deg, #111827, #202a3b);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
+  color: #ffffff;
+}
+.ini-nc-knowledge-map__node--question strong {
+  font-size: 17px;
+  line-height: 1.45;
+}
+.ini-nc-knowledge-map__connector {
+  width: 1px;
+  height: 22px;
+  background: #cfd5df;
+}
+.ini-nc-knowledge-map__branches {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding-top: 18px;
+}
+.ini-nc-knowledge-map__branches::before {
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: #cfd5df;
+  content: "";
+}
+.ini-nc-knowledge-map__branch {
+  position: relative;
+  flex: 1 1 220px;
+  max-width: calc(33.333% - 8px);
+  min-width: 0;
+  padding: 14px 15px 15px;
+  border: 1px solid #e8ebf1;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 9px 24px rgba(15, 23, 42, 0.045);
+}
+.ini-nc-knowledge-map__branch::before {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  width: 1px;
+  height: 18px;
+  background: #cfd5df;
+  content: "";
+}
+.ini-nc-knowledge-map__branch-title {
+  margin-bottom: 5px;
+  color: #172033;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ini-nc-knowledge-map__branch-index {
+  display: block;
+  margin-bottom: 7px;
+  color: #8a93a3;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.ini-nc-knowledge-map__branch-copy {
+  color: #596274;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ini-nc-knowledge-map__node--continue {
+  width: min(100%, 620px);
+  border-color: #dfe3ea;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.045);
+}
+.ini-nc-knowledge-map__levels {
+  width: 100%;
+}
+.ini-nc-knowledge-map__level {
+  display: grid;
+  grid-template-columns: minmax(145px, 0.32fr) minmax(0, 1.68fr);
+  gap: 12px;
+  width: 100%;
+}
+.ini-nc-knowledge-map__level-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 100%;
+  padding: 14px 15px;
+  border: 1px solid #e4e8ef;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #ffffff, #f7f8fb);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+  color: #172033;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.ini-nc-knowledge-map__level-number {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #edf0f5;
+  color: #596274;
+  font-size: 11px;
+}
+.ini-nc-knowledge-map__questions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.ini-nc-knowledge-map__question {
+  padding: 13px 15px;
+  border: 1px solid #e7eaf0;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+  color: #4d586b;
+  font-size: 13.5px;
+  line-height: 1.58;
+}
+.ini-nc-knowledge-map__level-connector {
+  width: 1px;
+  height: 16px;
+  margin: 0 auto;
+  background: #cfd5df;
+}
+.ini-nc-knowledge-map__focus {
+  align-self: flex-end;
+  margin-top: 14px;
+}
+.ini-nc-knowledge-map__focus > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  border: 1px solid #dfe3ea;
+  border-radius: 11px;
+  background: #ffffff;
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.06);
+  color: #172033;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  list-style: none;
+}
+.ini-nc-knowledge-map__focus > summary::-webkit-details-marker {
+  display: none;
+}
+.ini-nc-knowledge-map__focus > summary::before {
+  content: "↗";
+  color: #596274;
+  font-size: 15px;
+}
+.ini-nc-knowledge-map__focus[open] > summary {
+  position: fixed;
+  top: 22px;
+  right: 28px;
+  z-index: 1000002;
+  border-color: #cfd5df;
+}
+.ini-nc-knowledge-map__focus[open] > summary span {
+  display: none;
+}
+.ini-nc-knowledge-map__focus[open] > summary::after {
+  content: "Close focused view";
+}
+.ini-nc-knowledge-map__focus-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1000001;
+  overflow: auto;
+  padding: 72px clamp(22px, 5vw, 86px) 42px;
+  background: rgba(246, 247, 250, 0.97);
+  backdrop-filter: blur(14px);
+}
+.ini-nc-knowledge-map__focus-surface {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 28px 30px 34px;
+  border: 1px solid #e0e4eb;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.14);
+}
+.ini-nc-knowledge-map__focus-title {
+  margin-bottom: 20px;
+  color: #172033;
+  font-size: 20px;
+  font-weight: 700;
+}
+.ini-nc-knowledge-map__focus-panel .ini-nc-knowledge-map__level-heading,
+.ini-nc-knowledge-map__focus-panel .ini-nc-knowledge-map__question {
+  font-size: 15px;
+}
+.ini-nc-knowledge-map__focus-panel .ini-nc-knowledge-map__node--question strong {
+  font-size: 19px;
+}
+@media (max-width: 760px) {
+  .ini-nc-knowledge-map__level {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .ini-nc-knowledge-map__level-heading {
+    min-height: auto;
+  }
+  .ini-nc-knowledge-map__questions {
+    grid-template-columns: 1fr;
+  }
+  .ini-nc-knowledge-map__focus-panel {
+    padding: 66px 12px 24px;
+  }
+  .ini-nc-knowledge-map__focus-surface {
+    padding: 20px 14px 24px;
+  }
+  .ini-nc-knowledge-map__focus[open] > summary {
+    top: 14px;
+    right: 14px;
+  }
+}
+@media (max-width: 760px) {
+  .ini-nc-knowledge-map {
+    padding: 18px 16px 19px;
+  }
+  .ini-nc-knowledge-map__branches {
+    display: block;
+    gap: 10px;
+  }
+  .ini-nc-knowledge-map__branches::before {
+    left: 50%;
+    right: auto;
+    width: 1px;
+    height: 100%;
+  }
+  .ini-nc-knowledge-map__branch {
+    max-width: none;
+    margin-left: 18px;
+  }
+  .ini-nc-knowledge-map__branch + .ini-nc-knowledge-map__branch {
+    margin-top: 10px;
+  }
+  .ini-nc-knowledge-map__branch::before {
+    top: 50%;
+    left: -18px;
+    width: 18px;
+    height: 1px;
+  }
+}
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   [data-testid="stRadio"] label input[type="radio"] {
   display: none !important;
@@ -1545,7 +1834,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   div.stButton > button {
   margin: 7px 0 !important;
   padding: 14px 15px !important;
-  font-size: 14px !important;
+  font-size: 15px !important;
   border-color: transparent !important;
   box-shadow: 0 15px 38px rgba(15, 23, 42, 0.10), 0 3px 10px rgba(15, 23, 42, 0.035) !important;
 }
@@ -1594,19 +1883,19 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) 
 div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] {
   padding: 14px 16px !important;
   color: #3f4858 !important;
-  font-size: 15px !important;
+  font-size: 16px !important;
   line-height: 1.6 !important;
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-answer-marker) .ini_ai_inner h4 {
   margin: 0 0 10px !important;
   color: #17211f !important;
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 750 !important;
 }
 div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] h4 {
   margin: 0 0 8px !important;
   color: #17211f !important;
-  font-size: 14px !important;
+  font-size: 15px !important;
   font-weight: 650 !important;
 }
 div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] p {
@@ -1676,6 +1965,9 @@ div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] p {
 }
 .ini-topic-profile.ini-nc-prerequisites-panel > .ini-topic-profile__title::before {
   content: "checklist";
+}
+.ini-topic-profile.ini-nc-knowledge-map > .ini-topic-profile__title::before {
+  content: "account_tree";
 }
 .ini-topic-profile.ini-nc-intro-panel > .ini-topic-profile__title::before {
   content: "menu_book";
@@ -3136,6 +3428,96 @@ def render_nc_prerequisites(prerequisites: str) -> None:
             '<div class="ini-nc-prerequisites-panel__content">'
             f'<ul class="ini-nc-prerequisites-list">{items_markup}</ul>'
             '</div>'
+            '</div>'
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_nc_knowledge_map(topic: str, categories: dict[str, Any]) -> None:
+    """Render a compact beginner-first hierarchy from the existing Question Map."""
+    question = re.sub(r"\s+", " ", (topic or "")).strip()
+    if not question or not isinstance(categories, dict):
+        return
+
+    stage_keys = (
+        ("Understand the problem", ("Orientation",)),
+        ("Build the foundations", ("Foundations",)),
+        ("See how it works", ("Mechanisms",)),
+        ("Learn the methods", ("Methods & Tools",)),
+        ("Apply and evaluate", ("Applications", "Pitfalls")),
+        ("Advance further", ("Advanced / Future",)),
+    )
+    stages: list[tuple[str, list[str]]] = []
+    for label, keys in stage_keys:
+        stage_questions: list[str] = []
+        for key in keys:
+            for item in categories.get(key) or []:
+                if not isinstance(item, dict):
+                    continue
+                candidate = re.sub(
+                    r"\s+", " ", str(item.get("question") or "")
+                ).strip()
+                if candidate and candidate not in stage_questions:
+                    stage_questions.append(candidate)
+                if len(stage_questions) == 2:
+                    break
+            if len(stage_questions) == 2:
+                break
+        if stage_questions:
+            stages.append((label, stage_questions))
+
+    if not stages:
+        return
+
+    level_parts: list[str] = []
+    for index, (label, stage_questions) in enumerate(stages, start=1):
+        questions_markup = "".join(
+            f'<div class="ini-nc-knowledge-map__question">{escape(item)}</div>'
+            for item in stage_questions
+        )
+        level_parts.append(
+            '<section class="ini-nc-knowledge-map__level">'
+            '<div class="ini-nc-knowledge-map__level-heading">'
+            f'<span class="ini-nc-knowledge-map__level-number">{index:02d}</span>'
+            f'<span>{escape(label)}</span>'
+            '</div>'
+            f'<div class="ini-nc-knowledge-map__questions">{questions_markup}</div>'
+            '</section>'
+        )
+        if index != len(stages):
+            level_parts.append('<div class="ini-nc-knowledge-map__level-connector"></div>')
+    levels_markup = "".join(level_parts)
+    flow_markup = (
+        '<div class="ini-nc-knowledge-map__flow">'
+        '<div class="ini-nc-knowledge-map__node">'
+        '<strong>Prerequisites</strong><span>Build the foundation shown above</span>'
+        '</div>'
+        '<div class="ini-nc-knowledge-map__connector"></div>'
+        '<div class="ini-nc-knowledge-map__node ini-nc-knowledge-map__node--question">'
+        f'<strong>{escape(question)}</strong>'
+        '</div>'
+        '<div class="ini-nc-knowledge-map__connector"></div>'
+        f'<div class="ini-nc-knowledge-map__levels">{levels_markup}</div>'
+        '<div class="ini-nc-knowledge-map__connector"></div>'
+        '<div class="ini-nc-knowledge-map__node ini-nc-knowledge-map__node--continue">'
+        '<strong>Continue into the Question Map</strong>'
+        '<span>Explore the detailed questions inside each stage</span>'
+        '</div>'
+        '</div>'
+    )
+    st.markdown(
+        (
+            '<div class="ini-topic-profile ini-nc-knowledge-map">'
+            '<div class="ini-topic-profile__title"><span>Knowledge Map</span></div>'
+            f'{flow_markup}'
+            '<details class="ini-nc-knowledge-map__focus">'
+            '<summary><span>Focus map</span></summary>'
+            '<div class="ini-nc-knowledge-map__focus-panel">'
+            '<div class="ini-nc-knowledge-map__focus-surface">'
+            '<div class="ini-nc-knowledge-map__focus-title">Knowledge Map</div>'
+            f'{flow_markup}'
+            '</div></div></details>'
             '</div>'
         ),
         unsafe_allow_html=True,
@@ -5493,6 +5875,7 @@ def page_new_chat() -> None:
         with st.container(border=True, key=f"branch_response_card_{branch_idx}"):
             branch_ts = branch.get("ts") or now_label()
             continue_journey: dict[str, Any] = {}
+            cats = data.get("categories") or {}
 
             intro = (branch.get("intro") or "").strip()
             if intro:
@@ -5520,6 +5903,10 @@ def page_new_chat() -> None:
 
                 render_topic_profile(profile_rows)
                 render_nc_prerequisites(prerequisites)
+                render_nc_knowledge_map(
+                    str(branch.get("topic") or branch.get("prompt") or ""),
+                    cats,
+                )
                 if intro_body:
                     render_nc_intro_preview(intro_body, core_explanation)
                 render_nc_your_question(your_question)
@@ -5538,8 +5925,6 @@ def page_new_chat() -> None:
             branch_followups = branch.setdefault("followups", {})
             branch_open_questions = set(branch.get("open_questions") or [])
             branch_visited_questions = set(branch.get("visited_questions") or [])
-
-            cats = data.get("categories") or {}
 
             ladder = [
                 ("Orientation", ["Orientation"]),
@@ -9523,6 +9908,7 @@ def page_new_chat() -> None:
                 else now_label()
             )
             continue_journey: dict[str, Any] = {}
+            cats = data.get("categories") or {}
 
             intro = st.session_state.chat_intro
             if intro:
@@ -9550,6 +9936,10 @@ def page_new_chat() -> None:
 
                 render_topic_profile(profile_rows)
                 render_nc_prerequisites(prerequisites)
+                render_nc_knowledge_map(
+                    str(st.session_state.chat_root_topic or st.session_state.chat.get("topic") or ""),
+                    cats,
+                )
                 if intro_body:
                     render_nc_intro_preview(intro_body, core_explanation)
                 render_nc_your_question(your_question)
@@ -9563,8 +9953,6 @@ def page_new_chat() -> None:
                         intro_followups,
                         st.session_state.chat_active_id,
                     )
-
-            cats = data.get("categories") or {}
 
             ladder = [
                 ("Orientation", ["Orientation"]),
