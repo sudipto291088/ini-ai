@@ -1541,15 +1541,18 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   font-size: 13px;
 }
 .ini-nc-knowledge-map__node--question {
-  width: min(100%, 720px);
-  padding: 16px 22px;
-  border-color: #111827;
-  background: linear-gradient(135deg, #111827, #202a3b);
-  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
-  color: #ffffff;
+  width: fit-content;
+  max-width: min(88%, 620px);
+  padding: 11px 26px;
+  border: 1.5px solid #f21f46;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(242, 31, 70, 0.12);
+  color: #e7193f;
 }
 .ini-nc-knowledge-map__node--question strong {
   font-size: 17px;
+  font-weight: 750;
   line-height: 1.45;
 }
 .ini-nc-knowledge-map__connector {
