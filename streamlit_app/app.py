@@ -2046,6 +2046,11 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   font-size: 19px;
 }
 @media (max-width: 760px) {
+  .ini-nc-overview-grid:has(.ini-nc-knowledge-map__focus[open]) {
+    width: calc(100vw - 24px);
+    max-width: none;
+    margin-left: calc(50% - 50vw + 12px);
+  }
   .ini-nc-overview-grid {
     grid-template-columns: 1fr;
   }
@@ -2063,17 +2068,19 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
     grid-template-columns: 1fr;
   }
   .ini-nc-knowledge-map__focus-panel {
-    padding: 66px 12px 24px;
+    padding: 58px 0 18px;
   }
   .ini-nc-knowledge-map__focus-surface {
-    padding: 20px 14px 24px;
+    padding: 20px 12px 24px;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   .ini-nc-knowledge-map__focus[open] > summary {
     top: 14px;
     right: 14px;
   }
   .ini-nc-knowledge-map__organic-tree::before {
-    left: 17px;
+    left: 10px;
   }
   .ini-nc-knowledge-map__branch-flow,
   .ini-nc-knowledge-map__branch-flow--left,
@@ -2081,7 +2088,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
     width: 100%;
     min-height: 0;
     margin: 0;
-    padding: 0 0 22px 54px;
+    padding: 0 0 20px 34px;
   }
   .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__branch-heading,
   .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__branch-heading {
@@ -2091,8 +2098,8 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__branch-junction,
   .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__branch-junction {
     top: 21px;
-    left: 17px;
-    width: 37px;
+    left: 10px;
+    width: 24px;
     height: 18px;
     border: 0;
     border-top: 1px solid #c8ced8;
@@ -2106,20 +2113,36 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaves::before,
   .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaves::before {
     right: auto;
-    left: 15px;
+    left: 9px;
   }
   .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaf,
   .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaf,
   .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaf:nth-child(2),
   .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaf:nth-child(2) {
     margin-right: 0;
-    margin-left: 16px;
+    margin-left: 9px;
     border-radius: 8px 18px 18px 18px;
   }
   .ini-nc-knowledge-map__branch-flow--left .ini-nc-knowledge-map__leaf::before,
   .ini-nc-knowledge-map__branch-flow--right .ini-nc-knowledge-map__leaf::before {
     right: auto;
-    left: -17px;
+    left: -10px;
+  }
+  .ini-nc-knowledge-map__branch-content,
+  .ini-nc-knowledge-map__branch-heading,
+  .ini-nc-knowledge-map__leaves,
+  .ini-nc-knowledge-map__leaf,
+  .ini-nc-knowledge-map__leaf-copy,
+  .ini-nc-knowledge-map__leaf-title,
+  .ini-nc-knowledge-map__leaf-description {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .ini-nc-knowledge-map__branch-heading,
+  .ini-nc-knowledge-map__leaf-title,
+  .ini-nc-knowledge-map__leaf-description {
+    overflow-wrap: anywhere;
+    word-break: normal;
   }
 }
 @media (max-width: 760px) {
