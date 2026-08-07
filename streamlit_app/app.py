@@ -1510,8 +1510,95 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   background: transparent;
 }
 .ini-nc-knowledge-map {
+  display: flex;
+  flex-direction: column;
   padding: 20px 22px 22px;
   overflow: hidden;
+}
+.ini-nc-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
+  align-items: stretch;
+  gap: 14px;
+  margin: 12px 0 20px;
+}
+.ini-nc-overview-grid > .ini-topic-profile {
+  height: 410px;
+  min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+.ini-nc-overview-grid--single {
+  grid-template-columns: 1fr;
+}
+.ini-nc-overview-grid .ini-topic-profile__title {
+  flex: 0 0 auto;
+}
+.ini-nc-knowledge-map__compact {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.ini-nc-knowledge-map__compact .ini-nc-knowledge-map__node {
+  padding: 8px 11px;
+  border-radius: 12px;
+}
+.ini-nc-knowledge-map__compact .ini-nc-knowledge-map__node strong {
+  font-size: 12px;
+}
+.ini-nc-knowledge-map__compact .ini-nc-knowledge-map__node span {
+  font-size: 11px;
+}
+.ini-nc-knowledge-map__compact .ini-nc-knowledge-map__node--question {
+  padding: 8px 14px;
+}
+.ini-nc-knowledge-map__compact .ini-nc-knowledge-map__node--question strong {
+  font-size: 14px;
+  line-height: 1.3;
+}
+.ini-nc-knowledge-map__compact .ini-nc-knowledge-map__connector {
+  height: 10px;
+}
+.ini-nc-knowledge-map__compact-stages {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+.ini-nc-knowledge-map__compact-stages::before {
+  position: absolute;
+  top: -12px;
+  bottom: -12px;
+  left: 50%;
+  width: 1px;
+  background: #d8dde5;
+  content: "";
+}
+.ini-nc-knowledge-map__compact-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 1px solid #e7eaf0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.04);
+  color: #4d586b;
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+.ini-nc-knowledge-map__compact-stage-number {
+  flex: 0 0 auto;
+  color: #8a93a3;
+  font-size: 9px;
+  font-weight: 700;
 }
 .ini-nc-knowledge-map__flow {
   display: flex;
@@ -1841,25 +1928,34 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   background: #aab3c1;
 }
 .ini-nc-knowledge-map__focus {
+  position: relative;
+  z-index: 5;
+  flex: 0 0 auto;
   align-self: flex-end;
-  margin-top: 14px;
+  margin-top: 11px;
 }
 .ini-nc-knowledge-map__focus > summary {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 9px 13px;
-  border: 1px solid #dfe3ea;
-  border-radius: 11px;
-  background: #ffffff;
-  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.06);
-  color: #172033;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #d91639;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 700;
   list-style: none;
+  outline: none;
+}
+.ini-nc-knowledge-map__focus > summary:hover {
+  color: #a90f2d;
+  text-decoration: underline;
 }
 .ini-nc-knowledge-map__focus > summary::-webkit-details-marker {
+  display: none;
+}
+.ini-nc-knowledge-map__focus > summary::before {
   display: none;
 }
 .ini-nc-knowledge-map__focus > summary::before {
@@ -1868,35 +1964,56 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   font-size: 15px;
 }
 .ini-nc-knowledge-map__focus[open] > summary {
-  position: fixed;
-  top: 22px;
-  right: 28px;
-  z-index: 1000002;
-  border-color: #cfd5df;
+  display: flex;
+  justify-content: flex-end;
+  width: fit-content;
+  margin: 0 0 10px auto;
 }
 .ini-nc-knowledge-map__focus[open] > summary span {
   display: none;
 }
 .ini-nc-knowledge-map__focus[open] > summary::after {
-  content: "Close focused view";
+  content: "Close focus view";
 }
 .ini-nc-knowledge-map__focus-panel {
-  position: fixed;
-  inset: 0;
-  z-index: 1000001;
-  overflow: auto;
-  padding: 72px clamp(22px, 5vw, 86px) 42px;
-  background: rgba(246, 247, 250, 0.97);
-  backdrop-filter: blur(14px);
+  position: static;
+  box-sizing: border-box;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  padding: 0;
+  background: transparent;
 }
 .ini-nc-knowledge-map__focus-surface {
-  max-width: 1320px;
+  max-width: none;
   margin: 0 auto;
   padding: 28px 30px 34px;
   border: 1px solid #e0e4eb;
   border-radius: 22px;
   background: #ffffff;
   box-shadow: 0 28px 70px rgba(15, 23, 42, 0.14);
+}
+.ini-nc-overview-grid:has(.ini-nc-knowledge-map__focus[open]) {
+  display: block;
+}
+.ini-nc-overview-grid:has(.ini-nc-knowledge-map__focus[open])
+  > .ini-nc-intro-panel {
+  display: none;
+}
+.ini-nc-overview-grid:has(.ini-nc-knowledge-map__focus[open])
+  > .ini-nc-knowledge-map {
+  height: auto;
+}
+.ini-nc-overview-grid:has(.ini-nc-knowledge-map__focus[open])
+  > .ini-nc-knowledge-map > .ini-topic-profile__title,
+.ini-nc-overview-grid:has(.ini-nc-knowledge-map__focus[open])
+  .ini-nc-knowledge-map__compact {
+  display: none;
+}
+.ini-nc-overview-grid:has(.ini-nc-knowledge-map__focus[open])
+  .ini-nc-knowledge-map__focus {
+  width: 100%;
+  margin-top: 0;
 }
 .ini-nc-knowledge-map__focus-title {
   margin-bottom: 20px;
@@ -1912,6 +2029,12 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   font-size: 19px;
 }
 @media (max-width: 760px) {
+  .ini-nc-overview-grid {
+    grid-template-columns: 1fr;
+  }
+  .ini-nc-overview-grid > .ini-topic-profile {
+    height: 390px;
+  }
   .ini-nc-knowledge-map__level {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -2137,13 +2260,71 @@ div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] p {
   to { opacity: 1; transform: translateY(0); }
 }
 .ini-topic-profile.ini-nc-intro-panel {
-  padding-bottom: 52px;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  padding-bottom: 18px;
 }
 .ini-nc-intro-panel .ini-topic-profile__title {
   color: #17211f;
 }
 .ini-nc-intro-panel .ini-topic-profile__mark {
   display: none;
+}
+.ini-nc-intro-panel .ini-nc-intro-copy {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding-right: 7px;
+}
+.ini-nc-intro-panel .ini-nc-intro-copy:has(.ini-nc-intro-more[open]) {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #d8dde6 transparent;
+}
+.ini-nc-intro-more {
+  margin-top: 10px;
+}
+.ini-nc-intro-more > summary {
+  display: inline-flex;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #d91639;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  list-style: none;
+}
+.ini-nc-intro-more > summary:hover {
+  color: #a90f2d;
+  text-decoration: underline;
+}
+.ini-nc-intro-more > summary::-webkit-details-marker {
+  display: none;
+}
+.ini-nc-intro-more__less {
+  display: none;
+}
+.ini-nc-intro-more[open] .ini-nc-intro-more__more {
+  display: none;
+}
+.ini-nc-intro-more[open] .ini-nc-intro-more__less {
+  display: inline;
+}
+.ini-nc-intro-more[open] {
+  display: flex;
+  flex-direction: column;
+}
+.ini-nc-intro-more[open] > summary {
+  order: 2;
+  margin-top: 12px;
+}
+.ini-nc-intro-more[open] > .ini-nc-intro-more__content {
+  order: 1;
+}
+.ini-nc-intro-more__content {
+  padding-top: 12px;
 }
 .ini-topic-profile__title,
 .ini-nc-section-title {
@@ -3655,11 +3836,16 @@ def render_nc_prerequisites(prerequisites: str) -> None:
     )
 
 
-def render_nc_knowledge_map(topic: str, categories: dict[str, Any]) -> None:
+def render_nc_knowledge_map(
+    topic: str,
+    categories: dict[str, Any],
+    *,
+    as_html: bool = False,
+) -> Optional[str]:
     """Render a compact beginner-first hierarchy from the existing Question Map."""
     question = re.sub(r"\s+", " ", (topic or "")).strip()
     if not question or not isinstance(categories, dict):
-        return
+        return None
 
     stage_keys = (
         ("Understand the problem", ("Orientation",)),
@@ -3689,7 +3875,7 @@ def render_nc_knowledge_map(topic: str, categories: dict[str, Any]) -> None:
             stages.append((label, stage_questions))
 
     if not stages:
-        return
+        return None
 
     branch_parts: list[str] = []
     for index, (label, stage_questions) in enumerate(stages, start=1):
@@ -3714,6 +3900,28 @@ def render_nc_knowledge_map(topic: str, categories: dict[str, Any]) -> None:
             '</section>'
         )
     branches_markup = "".join(branch_parts)
+    compact_stages_markup = "".join(
+        (
+            '<div class="ini-nc-knowledge-map__compact-stage">'
+            f'<span class="ini-nc-knowledge-map__compact-stage-number">{index:02d}</span>'
+            f'<span>{escape(label)}</span>'
+            '</div>'
+        )
+        for index, (label, _) in enumerate(stages, start=1)
+    )
+    compact_flow_markup = (
+        '<div class="ini-nc-knowledge-map__compact">'
+        '<div class="ini-nc-knowledge-map__node">'
+        '<strong>Prerequisites</strong><span>Begin with the foundations</span>'
+        '</div>'
+        '<div class="ini-nc-knowledge-map__connector"></div>'
+        '<div class="ini-nc-knowledge-map__node ini-nc-knowledge-map__node--question">'
+        f'<strong>{escape(question)}</strong>'
+        '</div>'
+        '<div class="ini-nc-knowledge-map__connector"></div>'
+        f'<div class="ini-nc-knowledge-map__compact-stages">{compact_stages_markup}</div>'
+        '</div>'
+    )
     flow_markup = (
         '<div class="ini-nc-knowledge-map__flow">'
         '<div class="ini-nc-knowledge-map__node">'
@@ -3732,22 +3940,23 @@ def render_nc_knowledge_map(topic: str, categories: dict[str, Any]) -> None:
         '</div>'
         '</div>'
     )
-    st.markdown(
-        (
-            '<div class="ini-topic-profile ini-nc-knowledge-map">'
-            '<div class="ini-topic-profile__title"><span>Knowledge Map</span></div>'
-            f'{flow_markup}'
-            '<details class="ini-nc-knowledge-map__focus">'
-            '<summary><span>Focus map</span></summary>'
-            '<div class="ini-nc-knowledge-map__focus-panel">'
-            '<div class="ini-nc-knowledge-map__focus-surface">'
-            '<div class="ini-nc-knowledge-map__focus-title">Knowledge Map</div>'
-            f'{flow_markup}'
-            '</div></div></details>'
-            '</div>'
-        ),
-        unsafe_allow_html=True,
+    map_html = (
+        '<div class="ini-topic-profile ini-nc-knowledge-map">'
+        '<div class="ini-topic-profile__title"><span>Knowledge Map</span></div>'
+        f'{compact_flow_markup}'
+        '<details class="ini-nc-knowledge-map__focus">'
+        '<summary><span>Focus map</span></summary>'
+        '<div class="ini-nc-knowledge-map__focus-panel">'
+        '<div class="ini-nc-knowledge-map__focus-surface">'
+        '<div class="ini-nc-knowledge-map__focus-title">Knowledge Map</div>'
+        f'{flow_markup}'
+        '</div></div></details>'
+        '</div>'
     )
+    if as_html:
+        return map_html
+    st.markdown(map_html, unsafe_allow_html=True)
+    return None
 
 
 def render_nc_followup_panel(
@@ -4049,7 +4258,9 @@ def render_nc_section_title(
 def render_nc_intro_preview(
     body: str,
     core_explanation: Optional[dict[str, Any]] = None,
-) -> None:
+    *,
+    as_html: bool = False,
+) -> Optional[str]:
     text = (body or "").strip()
     text = re.sub(
         r"^(?:#{1,6}\s*)?Introduction\s*:?\s*",
@@ -4059,7 +4270,7 @@ def render_nc_intro_preview(
         flags=re.IGNORECASE,
     ).strip()
     if not text:
-        return
+        return None
 
     parts = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     if core_explanation and len(parts) >= 3:
@@ -4097,7 +4308,7 @@ def render_nc_intro_preview(
         if not parts:
             parts = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()][1:2]
 
-    def intro_html(items: list[str]) -> str:
+    def intro_sections_html(items: list[str], start_index: int = 0) -> str:
         def split_major_areas(value: str) -> tuple[list[str], str]:
             structured_areas, structured_lead = split_intro_major_areas(value)
             if structured_areas:
@@ -4158,7 +4369,7 @@ def render_nc_intro_preview(
             return (normalized_areas, remainder) if len(normalized_areas) >= 3 else ([], value)
 
         html_parts = []
-        for item_index, item in enumerate(items):
+        for item_index, item in enumerate(items, start=start_index):
             heading = ""
             copy = item
             section_patterns = (
@@ -4211,34 +4422,70 @@ def render_nc_intro_preview(
                 f"{heading_html}{content_html}"
                 "</section>"
             )
-        return (
-            '<div class="ini-topic-profile ini-nc-intro-panel">'
-            '<div class="ini-topic-profile__title">'
-            '<span class="ini-topic-profile__mark"></span>'
-            '<span>Introduction</span>'
-            '</div>'
-            f'<div class="ini-topic-profile__item ini-nc-intro-copy">{"".join(html_parts)}</div>'
-            '</div>'
+        return "".join(html_parts)
+
+    preview_markup = intro_sections_html(parts[:1])
+    more_markup = ""
+    if len(parts) > 1:
+        remaining_markup = intro_sections_html(parts[1:], start_index=1)
+        more_markup = (
+            '<details class="ini-nc-intro-more">'
+            '<summary>'
+            '<span class="ini-nc-intro-more__more">More</span>'
+            '<span class="ini-nc-intro-more__less">Show less</span>'
+            '</summary>'
+            f'<div class="ini-nc-intro-more__content">{remaining_markup}</div>'
+            '</details>'
         )
 
-    if len(parts) <= 1:
-        st.markdown(intro_html(parts), unsafe_allow_html=True)
-        return
+    intro_html = (
+        '<div class="ini-topic-profile ini-nc-intro-panel">'
+        '<div class="ini-topic-profile__title">'
+        '<span class="ini-topic-profile__mark"></span>'
+        '<span>Introduction</span>'
+        '</div>'
+        '<div class="ini-topic-profile__item ini-nc-intro-copy">'
+        f'{preview_markup}{more_markup}'
+        '</div>'
+        '</div>'
+    )
+    if as_html:
+        return intro_html
+    st.markdown(intro_html, unsafe_allow_html=True)
+    return None
 
-    # The reading surface stays singular. More expands this same card rather
-    # than adding a second content box beneath the preview.
-    control_id = abs(hash(text))
-    open_key = f"nc_intro_more_open_{control_id}"
-    button_key = f"nc_intro_more_button_{control_id}"
-    visible_parts = parts if st.session_state.get(open_key) else parts[:1]
-    st.markdown(intro_html(visible_parts), unsafe_allow_html=True)
-    if st.button(
-        "Show less" if st.session_state.get(open_key) else "More",
-        key=button_key,
-        type="tertiary",
-    ):
-        st.session_state[open_key] = not st.session_state.get(open_key, False)
-        st.rerun()
+
+def render_nc_overview_pair(
+    topic: str,
+    categories: dict[str, Any],
+    intro_body: str,
+    core_explanation: Optional[dict[str, Any]] = None,
+) -> None:
+    """Render the Knowledge Map preview and Introduction as one aligned row."""
+    knowledge_map_html = render_nc_knowledge_map(
+        topic,
+        categories,
+        as_html=True,
+    )
+    introduction_html = render_nc_intro_preview(
+        intro_body,
+        core_explanation,
+        as_html=True,
+    )
+    cards = "".join(
+        card for card in (knowledge_map_html, introduction_html) if card
+    )
+    if not cards:
+        return
+    wrapper_class = (
+        "ini-nc-overview-grid"
+        if knowledge_map_html and introduction_html
+        else "ini-nc-overview-grid ini-nc-overview-grid--single"
+    )
+    st.markdown(
+        f'<div class="{wrapper_class}">{cards}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def render_nc_question_map_tabs() -> None:
@@ -6129,12 +6376,18 @@ def page_new_chat() -> None:
 
                 render_topic_profile(profile_rows)
                 render_nc_prerequisites(prerequisites)
-                render_nc_knowledge_map(
-                    str(branch.get("topic") or branch.get("prompt") or ""),
-                    cats,
-                )
                 if intro_body:
-                    render_nc_intro_preview(intro_body, core_explanation)
+                    render_nc_overview_pair(
+                        str(branch.get("topic") or branch.get("prompt") or ""),
+                        cats,
+                        intro_body,
+                        core_explanation,
+                    )
+                else:
+                    render_nc_knowledge_map(
+                        str(branch.get("topic") or branch.get("prompt") or ""),
+                        cats,
+                    )
                 render_nc_your_question(your_question)
                 render_nc_core_explanation(core_explanation)
                 render_nc_learning_loop(learning_loop)
@@ -10162,12 +10415,18 @@ def page_new_chat() -> None:
 
                 render_topic_profile(profile_rows)
                 render_nc_prerequisites(prerequisites)
-                render_nc_knowledge_map(
-                    str(st.session_state.chat_root_topic or st.session_state.chat.get("topic") or ""),
-                    cats,
-                )
                 if intro_body:
-                    render_nc_intro_preview(intro_body, core_explanation)
+                    render_nc_overview_pair(
+                        str(st.session_state.chat_root_topic or st.session_state.chat.get("topic") or ""),
+                        cats,
+                        intro_body,
+                        core_explanation,
+                    )
+                else:
+                    render_nc_knowledge_map(
+                        str(st.session_state.chat_root_topic or st.session_state.chat.get("topic") or ""),
+                        cats,
+                    )
                 render_nc_your_question(your_question)
                 render_nc_core_explanation(core_explanation)
                 render_nc_learning_loop(learning_loop)
