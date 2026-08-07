@@ -1818,7 +1818,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   height: 9px;
   border: 2px solid #ffffff;
   border-radius: 50%;
-  background: #aeb7c5;
+  background: #f51b3f;
   box-shadow: 0 0 0 1px #d4d9e1;
   content: "";
 }
@@ -1925,7 +1925,24 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   height: 6px;
   margin-top: 8px;
   border-radius: 50%;
-  background: #aab3c1;
+  background: #f51b3f;
+}
+.ini-nc-knowledge-map__leaf-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.ini-nc-knowledge-map__leaf-title {
+  color: #172033;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.ini-nc-knowledge-map__leaf-description {
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.5;
 }
 .ini-nc-knowledge-map__focus {
   position: relative;
@@ -3877,15 +3894,96 @@ def render_nc_knowledge_map(
     if not stages:
         return None
 
+    expanded_stages: list[tuple[str, list[Any]]] = stages
+    normalized_question = re.sub(r"[^a-z0-9]+", " ", question.lower()).strip()
+    if "linear regression" in normalized_question:
+        # Linear regression benefits from a subject-specific curriculum in the
+        # focused map. Keep the compact preview unchanged while giving the
+        # expanded view a complete, continuous learning sequence.
+        expanded_stages = [
+            (
+                "Orientation",
+                [
+                    ("Definition", "Models the relationship between a continuous response and one or more predictors."),
+                    ("Purpose", "Supports prediction, forecasting, explanation, and statistical inference."),
+                ],
+            ),
+            (
+                "Classification",
+                [
+                    ("Simple linear regression", "Uses one predictor to estimate one continuous response."),
+                    ("Multiple linear regression", "Uses several predictors while estimating their conditional relationships with the response."),
+                    ("Multivariate linear regression", "Models multiple response variables and belongs to a distinct branch."),
+                ],
+            ),
+            (
+                "Model foundations",
+                [
+                    ("Variables and parameters", "Connects predictors, response, intercept, slope, and coefficients."),
+                    ("Predictions and residuals", "Separates fitted values from the errors left unexplained by the model."),
+                ],
+            ),
+            (
+                "Model fitting",
+                [
+                    ("Ordinary least squares", "Finds coefficients by minimizing the sum of squared residuals."),
+                    ("Coefficient estimation", "Moves from the simple line equation to the general matrix formulation."),
+                ],
+            ),
+            (
+                "Interpretation",
+                [
+                    ("Coefficient meaning", "Explains expected response changes while other predictors remain fixed."),
+                    ("Prediction and inference", "Distinguishes forecasting outcomes from explaining estimated relationships."),
+                    ("Association and causation", "Prevents regression coefficients from being treated automatically as causal effects."),
+                ],
+            ),
+            (
+                "Evaluation",
+                [
+                    ("Evaluation metrics", "Measures prediction error through absolute, squared, and root-mean-squared error."),
+                    ("Goodness of fit", "Examines explained variation using R-squared and adjusted R-squared."),
+                    ("Generalization", "Checks whether performance remains reliable on unseen data."),
+                ],
+            ),
+            (
+                "Model trust",
+                [
+                    ("Assumptions", "Covers linearity, independence, constant variance, and distributional conditions."),
+                    ("Residual diagnostics", "Uses residual patterns to expose misspecification and unstable errors."),
+                    ("Influential data", "Examines multicollinearity, outliers, and high-leverage observations."),
+                ],
+            ),
+            (
+                "Improvement and expansion",
+                [
+                    ("Regularization techniques", "Ridge, lasso, and elastic net control coefficient instability and model complexity."),
+                    ("Robust and polynomial regression", "Responds separately to influential outliers and curved relationships."),
+                    ("Broader regression families", "Leads to logistic regression and generalized linear models when the response structure changes."),
+                ],
+            ),
+        ]
+
     branch_parts: list[str] = []
-    for index, (label, stage_questions) in enumerate(stages, start=1):
-        questions_markup = "".join(
-            '<div class="ini-nc-knowledge-map__leaf">'
-            '<span class="ini-nc-knowledge-map__leaf-dot"></span>'
-            f'<span>{escape(item)}</span>'
-            '</div>'
-            for item in stage_questions
-        )
+    for index, (label, stage_questions) in enumerate(expanded_stages, start=1):
+        leaf_parts: list[str] = []
+        for item in stage_questions:
+            if isinstance(item, (tuple, list)) and len(item) >= 2:
+                leaf_content = (
+                    '<span class="ini-nc-knowledge-map__leaf-copy">'
+                    f'<strong class="ini-nc-knowledge-map__leaf-title">{escape(str(item[0]))}</strong>'
+                    f'<span class="ini-nc-knowledge-map__leaf-description">{escape(str(item[1]))}</span>'
+                    '</span>'
+                )
+            else:
+                leaf_content = f'<span>{escape(str(item))}</span>'
+            leaf_parts.append(
+                '<div class="ini-nc-knowledge-map__leaf">'
+                '<span class="ini-nc-knowledge-map__leaf-dot"></span>'
+                f'{leaf_content}'
+                '</div>'
+            )
+        questions_markup = "".join(leaf_parts)
         side = "left" if index % 2 else "right"
         branch_parts.append(
             f'<section class="ini-nc-knowledge-map__branch-flow ini-nc-knowledge-map__branch-flow--{side}">'
