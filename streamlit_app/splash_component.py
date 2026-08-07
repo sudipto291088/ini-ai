@@ -1,7 +1,4 @@
-"""Opening Mukut splash for each fresh InI.ai page load."""
-
-from collections.abc import Callable
-from typing import Optional
+"""Opening Mukut splash shown once per InI.ai browser-tab session."""
 
 import streamlit as st
 
@@ -74,16 +71,14 @@ _SPLASH_COMPONENT = st.components.v2.component(
     """,
     js="""
     export default function (component) {
-      const { parentElement, data, setTriggerValue } = component;
+      const { parentElement, data } = component;
       const root = parentElement.querySelector('#ini-opening-splash-root');
       if (!root) return;
 
-      const loadId = String(Math.round(performance.timeOrigin));
-      const completedKey = 'ini_opening_splash_completed_load';
-      const startedKey = `ini_opening_splash_started_${loadId}`;
-      const audienceKey = `ini_opening_splash_audience_${loadId}`;
+      const completedKey = 'ini_opening_splash_seen_session';
+      const startedKey = 'ini_opening_splash_started_session';
 
-      if (sessionStorage.getItem(completedKey) === loadId) {
+      if (sessionStorage.getItem(completedKey) === '1') {
         root.innerHTML = '';
         return;
       }
@@ -116,13 +111,6 @@ _SPLASH_COMPONENT = st.components.v2.component(
       window.visualViewport?.addEventListener('resize', syncHostToViewport);
       window.visualViewport?.addEventListener('scroll', syncHostToViewport);
 
-      if (!sessionStorage.getItem(audienceKey)) {
-        sessionStorage.setItem(
-          audienceKey,
-          localStorage.getItem('ini_fce_seen') === '1' ? 'returning' : 'first-time',
-        );
-      }
-      const audience = sessionStorage.getItem(audienceKey) || 'returning';
       const startedAt = Number(sessionStorage.getItem(startedKey)) || Date.now();
       sessionStorage.setItem(startedKey, String(startedAt));
 
@@ -137,10 +125,10 @@ _SPLASH_COMPONENT = st.components.v2.component(
         overlay?.classList.add('is-leaving');
       }, Math.max(0, visibleFor - elapsed));
       const finishTimer = window.setTimeout(() => {
-        sessionStorage.setItem(completedKey, loadId);
+        sessionStorage.setItem(completedKey, '1');
+        sessionStorage.removeItem(startedKey);
         root.innerHTML = '';
         restoreHost();
-        setTriggerValue('complete', audience);
       }, Math.max(0, visibleFor + 430 - elapsed));
 
       return () => {
@@ -157,12 +145,9 @@ def render_app_splash(
     *,
     icon_data: str,
     key: str = "ini_app_splash",
-    on_complete_change: Optional[Callable[[], None]] = None,
-) -> Optional[str]:
-    """Render the splash and return ``first-time`` or ``returning`` on completion."""
-    result = _SPLASH_COMPONENT(
+) -> None:
+    """Render the splash once for the lifetime of the browser-tab session."""
+    _SPLASH_COMPONENT(
         key=key,
         data={"icon_data": icon_data},
-        on_complete_change=on_complete_change or (lambda: None),
     )
-    return getattr(result, "complete", None)

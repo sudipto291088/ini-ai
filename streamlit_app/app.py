@@ -2747,10 +2747,6 @@ if "fce_force_open" not in st.session_state:
 if "fce_quote" not in st.session_state:
     st.session_state.fce_quote = secrets.choice(FCE_QUOTES)
 
-if "splash_pending_audience" not in st.session_state:
-    st.session_state.splash_pending_audience = None
-
-
 def _capture_fce_action() -> None:
     """Persist a CCv2 trigger before any Streamlit refresh can replace it."""
     component_state = st.session_state.get("ini_fce")
@@ -2758,30 +2754,12 @@ def _capture_fce_action() -> None:
     if action:
         st.session_state.fce_pending_action = action
 
-
-def _capture_splash_completion() -> None:
-    """Capture the browser's first-time/returning result before rerendering."""
-    component_state = st.session_state.get("ini_app_splash")
-    audience = getattr(component_state, "complete", None)
-    if audience in {"first-time", "returning"}:
-        st.session_state.splash_pending_audience = audience
-
-
-if st.session_state.splash_pending_audience:
-    splash_audience = st.session_state.splash_pending_audience
-    st.session_state.splash_pending_audience = None
-    if splash_audience == "returning":
-        _reset_query_to_page("home")
-        st.session_state.page = "Home"
-        st.rerun()
-
 splash_icon_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
 splash_icon_data = "data:image/png;base64," + base64.b64encode(
     splash_icon_path.read_bytes()
 ).decode("ascii")
 render_app_splash(
     icon_data=splash_icon_data,
-    on_complete_change=_capture_splash_completion,
 )
 
 if "chat" not in st.session_state:
