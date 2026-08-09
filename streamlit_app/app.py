@@ -9116,6 +9116,13 @@ def page_new_chat() -> None:
 
             [data-testid="stVerticalBlock"]:has(.nc-landing-marker) {{
                 min-height: calc(100vh - 70px);
+                position: relative;
+                isolation: isolate;
+                background:
+                    radial-gradient(ellipse 72% 58% at 50% 43%,
+                        rgba(245, 27, 63, 0.058) 0%,
+                        rgba(245, 27, 63, 0.025) 42%,
+                        rgba(245, 27, 63, 0) 76%);
             }}
 
             .nc-landing-marker {{
@@ -9169,12 +9176,16 @@ def page_new_chat() -> None:
             }}
 
             .nc-landing-heading {{
-                margin: 10px auto 0;
+                width: min(100%, 860px);
+                margin: 18px auto 0;
+                transform: translateX(-84px);
                 color: #111827;
-                font-size: 30px;
-                font-weight: 760;
-                line-height: 1.2;
+                font-size: clamp(45px, 4.15vw, 60px);
+                font-weight: 610;
+                line-height: 1.12;
+                letter-spacing: 0.012em;
                 text-align: center;
+                white-space: nowrap;
             }}
 
             .nc-landing-greeting {{
@@ -9187,10 +9198,12 @@ def page_new_chat() -> None:
             }}
 
             .nc-landing-subtitle {{
-                margin: 10px auto 28px;
-                color: #667085;
-                font-size: 15px;
-                line-height: 1.5;
+                margin: 18px auto 30px;
+                color: #171717;
+                font-size: 23px;
+                font-weight: 430;
+                line-height: 1.4;
+                letter-spacing: 0.006em;
                 text-align: center;
             }}
 
@@ -9451,6 +9464,233 @@ def page_new_chat() -> None:
                 mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m12 3 7.8 4.5v9L12 21l-7.8-4.5v-9Z'/%3E%3Ccircle cx='12' cy='12' r='2.3'/%3E%3Cpath d='M12 5v4.7M18 8.5l-4 2.3M18 15.5l-4-2.3M12 19v-4.7M6 15.5l4-2.3M6 8.5l4 2.3'/%3E%3C/svg%3E");
             }}
 
+            [data-testid="stElementContainer"]:has(.nc-explore-label) {{
+                margin-top: 36px;
+            }}
+
+            .nc-explore-label {{
+                display: flex;
+                align-items: center;
+                gap: 18px;
+                color: #536071;
+                font-size: 16px;
+                font-weight: 520;
+                text-align: center;
+                text-transform: none;
+            }}
+
+            .nc-explore-label::before,
+            .nc-explore-label::after {{
+                height: 1px;
+                flex: 1;
+                background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.32));
+                content: "";
+            }}
+
+            .nc-explore-label::after {{
+                background: linear-gradient(90deg, rgba(148, 163, 184, 0.32), transparent);
+            }}
+
+            .st-key-nc_explore_carousel {{
+                width: min(100%, 960px);
+                margin: 0 auto;
+            }}
+
+            .st-key-nc_explore_carousel
+            > div[data-testid="stLayoutWrapper"]
+            > div[data-testid="stHorizontalBlock"] {{
+                width: 100% !important;
+                display: flex !important;
+                grid-template-columns: none !important;
+                align-items: center;
+                gap: 14px;
+            }}
+
+            .st-key-nc_explore_carousel
+            > div[data-testid="stLayoutWrapper"]
+            > div[data-testid="stHorizontalBlock"]
+            > div[data-testid="stColumn"] {{
+                min-width: 0 !important;
+                width: auto !important;
+            }}
+
+            .st-key-nc_explore_carousel
+            > div[data-testid="stLayoutWrapper"]
+            > div[data-testid="stHorizontalBlock"]
+            > div[data-testid="stColumn"]:first-child,
+            .st-key-nc_explore_carousel
+            > div[data-testid="stLayoutWrapper"]
+            > div[data-testid="stHorizontalBlock"]
+            > div[data-testid="stColumn"]:last-child {{
+                flex: 0 0 7.5% !important;
+            }}
+
+            .st-key-nc_explore_carousel
+            > div[data-testid="stLayoutWrapper"]
+            > div[data-testid="stHorizontalBlock"]
+            > div[data-testid="stColumn"]:nth-child(2) {{
+                flex: 1 1 auto !important;
+            }}
+
+            .st-key-nc_explore_grid
+            div[data-testid="stHorizontalBlock"] {{
+                width: 100% !important;
+                display: flex !important;
+                grid-template-columns: none !important;
+                gap: 14px;
+                margin-inline: 0 !important;
+                margin-bottom: 14px;
+            }}
+
+            .st-key-nc_explore_grid
+            div[data-testid="stHorizontalBlock"]
+            > div[data-testid="stColumn"] {{
+                width: 0 !important;
+                min-width: 0 !important;
+                flex: 1 1 0 !important;
+            }}
+
+            .st-key-nc_explore_grid div.stButton > button {{
+                position: relative;
+                width: 100% !important;
+                height: 106px !important;
+                min-height: 106px !important;
+                display: flex !important;
+                align-items: flex-start !important;
+                justify-content: center !important;
+                flex-direction: column !important;
+                gap: 3px !important;
+                padding: 20px 24px 20px 84px !important;
+                overflow: hidden !important;
+                border: 1px solid rgba(215, 220, 227, 0.9) !important;
+                border-radius: 18px !important;
+                color: #111827 !important;
+                background: rgba(255, 255, 255, 0.9) !important;
+                box-shadow:
+                    0 12px 30px rgba(15, 23, 42, 0.045),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.98) !important;
+                transition: transform 150ms ease, border-color 150ms ease,
+                    box-shadow 150ms ease, background 150ms ease;
+            }}
+
+            .st-key-nc_explore_grid div.stButton > button:hover {{
+                transform: translateY(-2px);
+                border-color: rgba(245, 27, 63, 0.32) !important;
+                color: #111827 !important;
+                background: rgba(255, 250, 251, 0.96) !important;
+                box-shadow: 0 16px 36px rgba(92, 25, 38, 0.085) !important;
+            }}
+
+            .st-key-nc_explore_grid div.stButton > button p {{
+                margin: 0 !important;
+                overflow: visible !important;
+                color: #111827 !important;
+                -webkit-text-fill-color: #111827 !important;
+                font-size: 16px !important;
+                font-weight: 720 !important;
+                line-height: 1.3 !important;
+                text-align: left !important;
+                text-overflow: clip !important;
+                white-space: normal !important;
+            }}
+
+            .st-key-nc_explore_grid div.stButton > button::before {{
+                content: "";
+                display: block;
+                position: absolute;
+                top: 35px;
+                left: 28px;
+                width: 31px;
+                height: 31px;
+                flex: 0 0 31px;
+                background: #172033;
+                -webkit-mask-position: center;
+                mask-position: center;
+                -webkit-mask-repeat: no-repeat;
+                mask-repeat: no-repeat;
+                -webkit-mask-size: contain;
+                mask-size: contain;
+            }}
+
+            .st-key-nc_explore_grid div.stButton > button::after {{
+                display: block;
+                color: #667085;
+                font-size: 14px;
+                font-weight: 450;
+                line-height: 1.3;
+                text-align: left;
+            }}
+
+            .st-key-nc_explore_ai button::after {{ content: "systems"; }}
+            .st-key-nc_explore_quantum button::after {{ content: "computation"; }}
+            .st-key-nc_explore_cognitive button::after {{ content: "minds"; }}
+            .st-key-nc_explore_kubernetes button::after {{ content: "infrastructure"; }}
+            .st-key-nc_explore_ml button::after {{ content: "patterns"; }}
+            .st-key-nc_explore_data button::after {{ content: "evidence"; }}
+            .st-key-nc_explore_neural button::after {{ content: "representations"; }}
+            .st-key-nc_explore_vision button::after {{ content: "perception"; }}
+            .st-key-nc_explore_nlp button::after {{ content: "language"; }}
+            .st-key-nc_explore_security button::after {{ content: "resilience"; }}
+            .st-key-nc_explore_cloud button::after {{ content: "scale"; }}
+            .st-key-nc_explore_robotics button::after {{ content: "autonomy"; }}
+
+            .st-key-nc_explore_ml button::before {{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='5' cy='17' r='2'/%3E%3Ccircle cx='12' cy='7' r='2'/%3E%3Ccircle cx='19' cy='14' r='2'/%3E%3Cpath d='m6.5 15.5 4-6.5M14 8l3.5 4.5M7 17h10'/%3E%3C/svg%3E"); }}
+            .st-key-nc_explore_data button::before {{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cellipse cx='12' cy='5' rx='8' ry='3'/%3E%3Cpath d='M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6'/%3E%3C/svg%3E"); }}
+            .st-key-nc_explore_neural button::before {{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8'%3E%3Ccircle cx='5' cy='6' r='2'/%3E%3Ccircle cx='5' cy='18' r='2'/%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Ccircle cx='19' cy='5' r='2'/%3E%3Ccircle cx='19' cy='19' r='2'/%3E%3Cpath d='m7 7 3.5 3.5M7 17l3.5-3.5M14 11l3.5-4M14 13l3.5 4'/%3E%3C/svg%3E"); }}
+            .st-key-nc_explore_vision button::before {{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpath d='M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E"); }}
+            .st-key-nc_explore_nlp button::before {{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-7l-5 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z'/%3E%3Cpath d='M7 9h10M7 13h6'/%3E%3C/svg%3E"); }}
+            .st-key-nc_explore_security button::before {{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpath d='M12 3 20 6v5c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10V6Z'/%3E%3Cpath d='m8.5 12 2.2 2.2 4.8-5'/%3E%3C/svg%3E"); }}
+            .st-key-nc_explore_cloud button::before {{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpath d='M7 18h11a4 4 0 0 0 .5-8A7 7 0 0 0 5.2 8.2 5 5 0 0 0 7 18Z'/%3E%3C/svg%3E"); }}
+            .st-key-nc_explore_robotics button::before {{ -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Crect x='4' y='7' width='16' height='12' rx='3'/%3E%3Cpath d='M12 3v4M8 19v2M16 19v2'/%3E%3Ccircle cx='9' cy='12' r='1' fill='black'/%3E%3Ccircle cx='15' cy='12' r='1' fill='black'/%3E%3Cpath d='M9 16h6'/%3E%3C/svg%3E"); }}
+
+            .st-key-nc_explore_previous button,
+            .st-key-nc_explore_next button {{
+                width: 42px !important;
+                min-width: 42px !important;
+                height: 42px !important;
+                min-height: 42px !important;
+                padding: 0 !important;
+                border: 1px solid rgba(213, 218, 225, 0.92) !important;
+                border-radius: 50% !important;
+                color: #111827 !important;
+                background: rgba(255, 255, 255, 0.94) !important;
+                box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06) !important;
+            }}
+
+            .st-key-nc_explore_previous button:hover,
+            .st-key-nc_explore_next button:hover {{
+                border-color: rgba(245, 27, 63, 0.38) !important;
+                color: #d91639 !important;
+                background: #fffafa !important;
+            }}
+
+            .nc-explore-pagination {{
+                display: flex;
+                justify-content: center;
+                gap: 11px;
+                margin: 4px auto 0;
+            }}
+
+            .nc-explore-pagination span {{
+                width: 9px;
+                height: 9px;
+                border-radius: 50%;
+                background: #d5d8dd;
+            }}
+
+            .nc-explore-pagination span.is-active {{
+                background: #f51b3f;
+                box-shadow: 0 0 0 4px rgba(245, 27, 63, 0.08);
+            }}
+
+            .nc-explore-footer {{
+                margin: 24px auto 0;
+                color: #536071;
+                font-size: 14px;
+                font-weight: 450;
+                text-align: center;
+            }}
+
             @media (max-width: 1100px) {{
                 div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_ai) {{
                     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -9484,13 +9724,18 @@ def page_new_chat() -> None:
                 .nc-landing-heading {{
                     max-width: 92%;
                     margin-top: 18px;
-                    font-size: 25px;
+                    transform: none;
+                    font-size: clamp(29px, 8.4vw, 37px);
+                    font-weight: 610;
+                    line-height: 1.16;
+                    white-space: normal;
                 }}
 
                 .nc-landing-subtitle {{
                     max-width: 92%;
                     margin-bottom: 22px;
-                    font-size: 14px;
+                    color: #171717;
+                    font-size: 17px;
                 }}
 
                 .st-key-nc_landing_composer {{
@@ -9521,6 +9766,51 @@ def page_new_chat() -> None:
 
                 [data-testid="stElementContainer"]:has(.nc-explore-label) {{
                     width: calc(100% - 18px);
+                }}
+
+                .st-key-nc_explore_carousel {{
+                    width: calc(100% - 4px);
+                }}
+
+                .st-key-nc_explore_carousel
+                > div[data-testid="stHorizontalBlock"] {{
+                    gap: 5px;
+                }}
+
+                .st-key-nc_explore_grid
+                div[data-testid="stHorizontalBlock"] {{
+                    gap: 8px;
+                    margin-bottom: 8px;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button {{
+                    height: 96px !important;
+                    min-height: 96px !important;
+                    padding: 16px 12px 16px 52px !important;
+                    border-radius: 15px !important;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button::before {{
+                    top: 34px;
+                    left: 16px;
+                    width: 24px;
+                    height: 24px;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button p {{
+                    font-size: 13px !important;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button::after {{
+                    font-size: 12px;
+                }}
+
+                .st-key-nc_explore_previous button,
+                .st-key-nc_explore_next button {{
+                    width: 34px !important;
+                    min-width: 34px !important;
+                    height: 34px !important;
+                    min-height: 34px !important;
                 }}
             }}
 
@@ -9596,18 +9886,82 @@ def page_new_chat() -> None:
                     use_container_width=True,
                 )
 
-        st.markdown('<div class="nc-explore-label">Explore</div>', unsafe_allow_html=True)
-        explore_cols = st.columns(4, gap="small")
+        st.markdown(
+            '<div class="nc-explore-label">Explore a direction</div>',
+            unsafe_allow_html=True,
+        )
         explore_items = [
             ("Artificial intelligence", "nc_explore_ai"),
             ("Quantum computing", "nc_explore_quantum"),
             ("Cognitive science", "nc_explore_cognitive"),
             ("Kubernetes", "nc_explore_kubernetes"),
+            ("Machine learning", "nc_explore_ml"),
+            ("Data science", "nc_explore_data"),
+            ("Neural networks", "nc_explore_neural"),
+            ("Computer vision", "nc_explore_vision"),
+            ("Natural language processing", "nc_explore_nlp"),
+            ("Cybersecurity", "nc_explore_security"),
+            ("Cloud computing", "nc_explore_cloud"),
+            ("Robotics", "nc_explore_robotics"),
         ]
-        for col, (label, key) in zip(explore_cols, explore_items):
-            with col:
-                if st.button(label, key=key, use_container_width=True):
-                    explore_topic = label
+        explore_page_count = len(explore_items) // 4
+        st.session_state.setdefault("nc_explore_page", 0)
+        explore_page = int(st.session_state.get("nc_explore_page", 0)) % explore_page_count
+        page_items = explore_items[explore_page * 4 : (explore_page + 1) * 4]
+
+        with st.container(key="nc_explore_carousel"):
+            previous_col, cards_col, next_col = st.columns(
+                [0.075, 0.85, 0.075],
+                vertical_alignment="center",
+                gap="small",
+            )
+            with previous_col:
+                if st.button(
+                    "‹",
+                    key="nc_explore_previous",
+                    help="Previous topics",
+                    width="content",
+                ):
+                    st.session_state.nc_explore_page = (
+                        explore_page - 1
+                    ) % explore_page_count
+                    st.rerun()
+
+            with cards_col:
+                with st.container(key="nc_explore_grid"):
+                    for row_start in (0, 2):
+                        row_cols = st.columns(2, gap="small")
+                        for col, (label, key) in zip(
+                            row_cols,
+                            page_items[row_start : row_start + 2],
+                        ):
+                            with col:
+                                if st.button(label, key=key, width="stretch"):
+                                    explore_topic = label
+
+            with next_col:
+                if st.button(
+                    "›",
+                    key="nc_explore_next",
+                    help="Next topics",
+                    width="content",
+                ):
+                    st.session_state.nc_explore_page = (
+                        explore_page + 1
+                    ) % explore_page_count
+                    st.rerun()
+
+        pagination_dots = "".join(
+            '<span class="is-active"></span>' if index == explore_page else "<span></span>"
+            for index in range(explore_page_count)
+        )
+        st.markdown(
+            f'<div class="nc-explore-pagination">{pagination_dots}</div>'
+            '<div class="nc-explore-footer">'
+            'Questions become maps. Maps become understanding.'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
         if illustrate_run:
             _queue_new_chat_request(
