@@ -18,7 +18,8 @@ _STOP_WORDS = {
 _SPECIFIC_SIGNALS = re.compile(
     r"^(?:how|why|when|where|which)\b|"
     r"\b(?:compare|difference|different|relate|relationship|cause|causes|"
-    r"advantages?|limitations?|pitfalls?|main types?|classifications?|"
+    r"advantages?|limitations?|pitfalls?|applications?|uses?|used|"
+    r"prevent|prevented|avoid|avoided|mitigate|mitigated|main types?|classifications?|"
     r"when should|how should)\b",
     re.IGNORECASE,
 )
@@ -28,7 +29,7 @@ _SPECIALIZATION_TERMS = {
     "frameworks", "recurrent", "reverse mode", "truncating",
 }
 
-FOCUS_MATCHER_VERSION = 5
+FOCUS_MATCHER_VERSION = 6
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,28 @@ def _tokens(text: str) -> set[str]:
         for token in _normalized(text).split()
         if len(token) > 2 and token not in _STOP_WORDS
     }
+
+
+def _intent_terms(text: str) -> set[str]:
+    """Collapse common question wording into the learning intent it expresses."""
+    normalized = _normalized(text)
+    intents: set[str] = set()
+    families = {
+        "cause": ("why", "cause", "causes", "occur", "happen", "arise"),
+        "prevention": (
+            "prevent", "prevented", "avoid", "avoided", "mitigate", "mitigated",
+            "reduce", "fix", "remedy", "address",
+        ),
+        "application": ("application", "applications", "use", "used", "uses", "real world"),
+        "classification": ("type", "types", "classification", "classifications", "kinds"),
+        "selection": ("when", "choose", "chosen", "select", "appropriate"),
+        "mechanism": ("how", "work", "works", "working", "mechanism", "compute", "process"),
+    }
+    words = set(normalized.split())
+    for intent, cues in families.items():
+        if any((cue in words if " " not in cue else cue in normalized) for cue in cues):
+            intents.add(intent)
+    return intents
 
 
 def is_specific_learning_question(prompt: str) -> bool:
@@ -109,6 +132,7 @@ def _find_best_match(
         )
         if signal in prompt_norm
     }
+    prompt_intents = _intent_terms(prompt)
     asks_application = bool(
         re.match(r"^how\s+(?:does|do|is|are|can)\b", prompt_norm)
         and re.search(r"\b(?:use|used|uses|apply|applied|application|applications)\b", prompt_norm)
@@ -116,6 +140,9 @@ def _find_best_match(
     asks_how_mechanism = bool(
         re.match(r"^how\s+(?:does|do|is|are|can)\b", prompt_norm)
         and not asks_application
+    )
+    asks_how_mechanism = asks_how_mechanism and not bool(
+        prompt_intents & {"application", "prevention", "selection"}
     )
     preferred_sections: set[str] = set()
     if asks_application:
@@ -134,6 +161,10 @@ def _find_best_match(
         preferred_sections.update({"orientation", "foundations"})
     if "relate" in prompt_norm or "relationship" in prompt_norm:
         preferred_sections.update({"foundations", "applications"})
+    if "prevention" in prompt_intents:
+        preferred_sections.update({"methods & tools", "pitfalls"})
+    if "application" in prompt_intents:
+        preferred_sections.add("applications")
 
     best: Optional[DirectAnswerMatch] = None
     for section, items in categories.items():
@@ -157,6 +188,27 @@ def _find_best_match(
             signal_bonus = 0.0
             if any(signal in question_norm for signal in prompt_signals):
                 signal_bonus = 0.12
+            question_intents = _intent_terms(question)
+            intent_overlap = prompt_intents & question_intents
+            intent_bonus = min(0.36, 0.18 * len(intent_overlap))
+            missing_intent_penalty = min(
+                0.36,
+                0.18 * len(prompt_intents - question_intents),
+            )
+            section_name = str(section).lower()
+            section_intent_bonus = 0.0
+            section_intent_penalty = 0.0
+            if "cause" in prompt_intents and section_name == "mechanisms":
+                section_intent_bonus += 0.34
+            if "prevention" in prompt_intents and section_name in {
+                "methods & tools", "pitfalls"
+            }:
+                section_intent_bonus += 0.34
+            if "application" in prompt_intents and section_name == "applications":
+                section_intent_bonus += 0.34
+            if prompt_intents & {"cause", "prevention", "application", "selection"}:
+                if section_name == "orientation":
+                    section_intent_penalty += 0.32
             section_bonus = 0.18 if str(section).lower() in preferred_sections else 0.0
             core_mechanism_bonus = 0.0
             if asks_how_mechanism:
@@ -185,16 +237,20 @@ def _find_best_match(
                 + (0.34 * question_coverage)
                 + (0.20 * sequence)
                 + signal_bonus
+                + intent_bonus
+                + section_intent_bonus
                 + section_bonus
                 + core_mechanism_bonus
                 - intent_mismatch_penalty
+                - missing_intent_penalty
+                - section_intent_penalty
                 - min(specialization_penalty, 0.34)
             )
             candidate = DirectAnswerMatch(str(section), question, score)
             if best is None or candidate.score > best.score:
                 best = candidate
 
-    return best if best and best.score >= 0.30 else None
+    return best if best and best.score >= 0.22 else None
 
 
 def find_direct_answer_matches(

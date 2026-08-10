@@ -532,7 +532,10 @@ def generate_dynamic_answer_result(
         # response (profile, explanation, loop, paths, map context, and journey).
         # Its previous ORIENT ceiling could truncate the machine-readable blocks.
         if isinstance(meta, dict) and str(meta.get("level") or "").lower() == "intro":
-            answer_token_limit = max(answer_token_limit, 2200)
+            # 2,200 tokens proved marginal for classification-heavy topics and
+            # caused repeated continuation/retry calls. A larger single-pass
+            # ceiling is both more reliable and usually less wasteful.
+            answer_token_limit = max(answer_token_limit, 3200)
 
 
     payload: Dict[str, Any] = {

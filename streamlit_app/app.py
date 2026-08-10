@@ -82,10 +82,11 @@ import api.question_map_focus as question_map_focus
 # normal app reruns and production startup do not reload the module.
 if (
     not hasattr(question_map_focus, "find_direct_answer_matches")
-    or getattr(question_map_focus, "FOCUS_MATCHER_VERSION", 0) < 5
+    or getattr(question_map_focus, "FOCUS_MATCHER_VERSION", 0) < 6
 ):
     question_map_focus = importlib.reload(question_map_focus)
 find_direct_answer_matches = question_map_focus.find_direct_answer_matches
+FOCUS_MATCHER_VERSION = question_map_focus.FOCUS_MATCHER_VERSION
 from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
 from splash_component import render_app_splash
@@ -164,7 +165,7 @@ span{
   min-height: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   pointer-events: none !important;
 }
 
@@ -274,6 +275,24 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
 
 div[data-testid="stSidebar"] .block-container{
   padding-top: 1rem;
+}
+
+/* Keep the navigation rail binary: collapsed or one stable open width.
+   Streamlit otherwise exposes an 8px drag handle and arbitrary widths. */
+[data-testid="stSidebar"] div[style*="cursor: col-resize"] {
+  display: none !important;
+  pointer-events: none !important;
+}
+@media (min-width: 721px) {
+  [data-testid="stSidebar"][aria-expanded="true"] {
+    width: 288px !important;
+    min-width: 288px !important;
+    max-width: 288px !important;
+  }
+  [data-testid="stSidebar"][aria-expanded="true"] .block-container {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 
 /* Sidebar navigation: clean text rows without button/card chrome. */
@@ -2766,24 +2785,15 @@ div[class*="st-key-direct_answer_pointer_row_"] {
   overflow: visible !important;
 }
 div[class*="st-key-direct_answer_pointer_row_"] [data-testid="stHorizontalBlock"] {
-  position: absolute !important;
-  left: 0 !important;
-  /* The stage selector ends before the right-aligned Hide answers control.
-     Match that selector width so each speech tail points at its real stage. */
-  /* The radio group reserves the trailing 48 px occupied by Hide answers. */
-  right: 48px !important;
-  width: calc(100% - 48px) !important;
-  bottom: 8px !important;
-  display: grid !important;
-  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
-  gap: 8px !important;
+  display: contents !important;
   overflow: visible !important;
 }
+div[class*="st-key-direct_answer_pointer_row_"] > [data-testid="stLayoutWrapper"],
 div[class*="st-key-direct_answer_pointer_row_"] [data-testid="stHorizontalBlock"]
-  > div[data-testid="stColumn"] {
-  width: auto !important;
-  min-width: 0 !important;
-  flex: none !important;
+  > div[data-testid="stColumn"],
+div[class*="st-key-direct_answer_pointer_row_"] [data-testid="stHorizontalBlock"]
+  > div[data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+  display: contents !important;
 }
 .st-key-root_question_map_panel [data-testid="stRadio"] div[role="radiogroup"],
 div[class*="st-key-branch_question_map_panel_"]
@@ -2815,20 +2825,31 @@ div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"]
   width: 100% !important;
   justify-content: center !important;
 }
-div[class*="st-key-direct_answer_pointer_"] {
-  display: flex !important;
-  justify-content: center !important;
+.st-key-root_question_map_panel [data-testid="stRadio"]
+  div[role="radiogroup"] label p,
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"]
+  div[role="radiogroup"] label p {
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+div[class*="st-key-direct_answer_pointer_stage_"] {
+  position: fixed !important;
+  left: var(--ini-direct-pointer-left, 0px) !important;
+  top: var(--ini-direct-pointer-top, 0px) !important;
+  transform: translate(-50%, calc(-100% - 10px)) !important;
+  z-index: 42 !important;
   overflow: visible !important;
 }
-div[class*="st-key-direct_answer_pointer_"] div.stButton,
-div[class*="st-key-direct_answer_pointer_"] div.stButton button {
+div[class*="st-key-direct_answer_pointer_stage_"] div.stButton,
+div[class*="st-key-direct_answer_pointer_stage_"] div.stButton button {
   overflow: visible !important;
 }
-div[class*="st-key-direct_answer_pointer_"] div.stButton button,
-div[class*="st-key-direct_answer_pointer_"] button[kind="secondary"] {
+div[class*="st-key-direct_answer_pointer_stage_"] div.stButton button,
+div[class*="st-key-direct_answer_pointer_stage_"] button[kind="secondary"] {
   position: relative !important;
-  width: 100% !important;
-  min-width: 0 !important;
+  width: max-content !important;
+  min-width: 116px !important;
   max-width: none !important;
   min-height: 34px !important;
   margin: 0 !important;
@@ -2842,41 +2863,115 @@ div[class*="st-key-direct_answer_pointer_"] button[kind="secondary"] {
   font-weight: 650 !important;
   line-height: 1 !important;
   white-space: nowrap !important;
+  overflow: visible !important;
   animation: ini-direct-answer-nudge 5.8s ease-in-out infinite !important;
 }
-div[class*="st-key-direct_answer_pointer_"] div.stButton button::after {
+div[class*="st-key-direct_answer_pointer_stage_"] div.stButton button p {
+  width: auto !important;
+  max-width: none !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+}
+div[class*="st-key-direct_answer_pointer_stage_"] div.stButton button::before {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: -7px;
-  width: 12px;
-  height: 12px;
-  border-right: 1.5px solid rgba(245, 27, 63, 0.72);
-  border-bottom: 1.5px solid rgba(245, 27, 63, 0.72);
-  background: #ffffff;
-  transform: translateX(-50%) rotate(45deg);
+  bottom: -12px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 12px solid rgba(245, 27, 63, 0.72);
+  transform: translateX(-50%);
   z-index: 2;
 }
-div[class*="st-key-direct_answer_pointer_"] div.stButton button:hover {
+div[class*="st-key-direct_answer_pointer_stage_"] div.stButton button::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 9px solid #ffffff;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+div[class*="st-key-direct_answer_pointer_stage_"] div.stButton button:hover {
   border-color: #f51b3f !important;
   background: #fffafb !important;
   box-shadow: 0 9px 22px rgba(245, 27, 63, 0.13) !important;
 }
 @media (prefers-reduced-motion: reduce) {
-  div[class*="st-key-direct_answer_pointer_"] div.stButton button {
+  div[class*="st-key-direct_answer_pointer_stage_"] div.stButton button {
     animation: none !important;
   }
 }
-@media (max-width: 700px) {
+@media (max-width: 1600px) {
+  .st-key-root_question_map_panel [data-testid="stRadio"],
+  div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"] {
+    width: 100% !important;
+    overflow: visible !important;
+  }
+  .st-key-root_question_map_panel [data-testid="stRadio"] div[role="radiogroup"],
+  div[class*="st-key-branch_question_map_panel_"]
+    [data-testid="stRadio"] div[role="radiogroup"] {
+    display: flex !important;
+    min-width: 0 !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+  }
+  .st-key-root_question_map_panel [data-testid="stRadio"]
+    div[role="radiogroup"] label,
+  div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"]
+    div[role="radiogroup"] label {
+    width: auto !important;
+    min-width: max-content !important;
+    flex: 0 0 auto !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 8px 12px !important;
+  }
+  .st-key-root_question_map_panel [data-testid="stRadio"]
+    div[role="radiogroup"] label p,
+  div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"]
+    div[role="radiogroup"] label p {
+    width: auto !important;
+    white-space: nowrap !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
   div[class*="st-key-direct_answer_pointer_row_"] {
-    min-width: 760px !important;
+    min-width: 0 !important;
   }
   div[class*="st-key-direct_answer_pointer_row_"] [data-testid="stHorizontalBlock"] {
     right: 0 !important;
   }
-  div[class*="st-key-direct_answer_pointer_"] div.stButton button,
-  div[class*="st-key-direct_answer_pointer_"] button[kind="secondary"] {
+  div[class*="st-key-direct_answer_pointer_stage_"] div.stButton button,
+  div[class*="st-key-direct_answer_pointer_stage_"] button[kind="secondary"] {
     font-size: 10px !important;
+  }
+}
+@media (max-width: 700px) {
+  div[class*="st-key-direct_answer_pointer_row_"] {
+    height: 42px !important;
+    min-height: 42px !important;
+    margin: 0 !important;
+  }
+  div[class*="st-key-direct_answer_pointer_stage_"] {
+    width: 116px !important;
+    min-width: 116px !important;
+    overflow: visible !important;
+  }
+  div[class*="st-key-direct_answer_pointer_stage_"] div.stButton,
+  div[class*="st-key-direct_answer_pointer_stage_"] div.stButton button {
+    display: flex !important;
+    width: 116px !important;
+    min-width: 116px !important;
+    overflow: visible !important;
   }
 }
 .st-key-root_question_map_content [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div > div:first-child,
@@ -3998,6 +4093,10 @@ def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dic
             (resp.get("stop_reason") or "").strip().lower() == "max_output_tokens"
         ):
             validation["valid"] = False
+            validation["displayable"] = False
+            validation.setdefault("fatal_issues", []).append(
+                "provider output remained truncated after continuation"
+            )
             validation.setdefault("issues", []).append(
                 "provider output remained truncated after continuation"
             )
@@ -4016,6 +4115,10 @@ def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dic
                 == "max_output_tokens"
             ):
                 retry_validation["valid"] = False
+                retry_validation["displayable"] = False
+                retry_validation.setdefault("fatal_issues", []).append(
+                    "provider retry remained truncated"
+                )
                 retry_validation.setdefault("issues", []).append(
                     "provider retry remained truncated"
                 )
@@ -4027,8 +4130,41 @@ def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dic
                 )
                 validation = retry_validation
             else:
-                validation = retry_validation
-        if not validation.get("valid"):
+                # Prefer the most complete safe candidate. Quality issues are
+                # still reported, but a structurally complete response is not
+                # replaced by an opaque failure card.
+                candidates = [validation, retry_validation]
+                displayable = [item for item in candidates if item.get("displayable")]
+                if displayable:
+                    validation = min(
+                        displayable,
+                        key=lambda item: len(item.get("issues") or []),
+                    )
+                    answer = str(validation.get("answer") or "").strip()
+                    validation.setdefault("repairs", []).append(
+                        "preserved structurally complete response despite non-fatal quality warnings"
+                    )
+                else:
+                    validation = retry_validation
+                    fallback_resp = fetch_study(topic, mode="focused")
+                    fallback_answer = normalize_whitespace_for_readability(
+                        normalize_mojibake(fallback_resp.get("answer", "") or "")
+                    ).strip()
+                    if (
+                        len(fallback_answer.split()) >= 35
+                        and fallback_answer.casefold() != "no answer generated."
+                    ):
+                        answer = fallback_answer
+                        validation = {
+                            "valid": True,
+                            "displayable": True,
+                            "fatal_issues": [],
+                            "issues": list(retry_validation.get("issues") or []),
+                            "repairs": [
+                                "replaced incomplete structured draft with a focused topic-specific answer"
+                            ],
+                        }
+        if not validation.get("valid") and not validation.get("displayable"):
             safe_topic = re.sub(r"[<>]", "", re.sub(r"\s+", " ", topic)).strip()
             safe_topic = re.sub(r"[.!?]+$", "", safe_topic).strip()
             answer = (
@@ -5259,6 +5395,78 @@ st.iframe(
         };
 
         collapseMobileSidebar();
+      } catch (err) {}
+    })();
+    </script>
+    """,
+    height=1,
+    tab_index=-1,
+)
+
+# Keep each dismissible speech bubble attached to the exact Question Map stage
+# it describes, including when the stage capsules wrap on narrow screens.
+st.iframe(
+    """
+    <script>
+    (() => {
+      try {
+        const doc = window.parent.document;
+        const win = window.parent;
+        const old = win.__iniDirectAnswerPointerSync;
+        if (old?.observer) old.observer.disconnect();
+        if (old?.resizeObserver) old.resizeObserver.disconnect();
+        if (old?.onResize) win.removeEventListener('resize', old.onResize);
+        if (old?.onScroll) doc.removeEventListener('scroll', old.onScroll, true);
+
+        let frame = 0;
+        const sync = () => {
+          frame = 0;
+          const pointers = doc.querySelectorAll(
+            'div[class*="st-key-direct_answer_pointer_stage_"]'
+          );
+          for (const pointer of pointers) {
+            const stageMatch = pointer.className.match(
+              /st-key-direct_answer_pointer_stage_(\\d)_/
+            );
+            if (!stageMatch) continue;
+            const stageIndex = Number(stageMatch[1]);
+            const panel = pointer.closest(
+              '.st-key-root_question_map_panel, '
+              + 'div[class*="st-key-branch_question_map_panel_"]'
+            );
+            if (panel) resizeObserver.observe(panel);
+            const stages = panel?.querySelectorAll(
+              '[data-testid="stRadioOption"]'
+            );
+            const stage = stages?.[stageIndex];
+            if (!stage) continue;
+
+            const stageRect = stage.getBoundingClientRect();
+            pointer.style.setProperty(
+              '--ini-direct-pointer-left',
+              `${stageRect.left + stageRect.width / 2}px`
+            );
+            pointer.style.setProperty(
+              '--ini-direct-pointer-top',
+              `${stageRect.top}px`
+            );
+          }
+        };
+        const schedule = () => {
+          if (!frame) frame = win.requestAnimationFrame(sync);
+        };
+        const observer = new MutationObserver(schedule);
+        observer.observe(doc.body, { childList: true, subtree: true });
+        const resizeObserver = new ResizeObserver(schedule);
+        resizeObserver.observe(doc.documentElement);
+        const onResize = schedule;
+        const onScroll = schedule;
+        win.addEventListener('resize', onResize, { passive: true });
+        doc.addEventListener('scroll', onScroll, { passive: true, capture: true });
+        win.__iniDirectAnswerPointerSync = {
+          observer, resizeObserver, onResize, onScroll
+        };
+        schedule();
       } catch (err) {}
     })();
     </script>
@@ -6669,27 +6877,17 @@ def page_new_chat() -> None:
         ]
         matched_stages = {match.section for match in matches}
         control_token = abs(hash(notice_key))
-        stage_widths = [1.0, 1.06, 1.08, 1.34, 1.16, 0.72, 1.48]
-        with st.container(key=f"direct_answer_pointer_row_{control_token}"):
-            pointer_columns = st.columns(
-                stage_widths,
-                gap="small",
-                vertical_alignment="bottom",
-            )
-            for stage_index, (section, column) in enumerate(
-                zip(question_map_stages, pointer_columns)
-            ):
-                if section not in matched_stages:
-                    continue
-                with column:
-                    st.button(
+        for stage_index, section in enumerate(question_map_stages):
+            if section not in matched_stages:
+                continue
+            st.button(
                         "Direct answer ×",
-                        key=f"direct_answer_pointer_{control_token}_{stage_index}",
-                        width="stretch",
-                        help="Dismiss this guide",
-                        on_click=_dismiss_direct_answer_notice,
-                        args=(dismissed_state_key,),
-                    )
+                    key=f"direct_answer_pointer_stage_{stage_index}_{control_token}",
+                    width="content",
+                    help="Dismiss this guide",
+                    on_click=_dismiss_direct_answer_notice,
+                    args=(dismissed_state_key,),
+            )
 
     def _discussion_questions_for(topic: str, set_number: int = 1) -> List[str]:
         clean_topic = (topic or "this topic").strip()
@@ -6908,8 +7106,13 @@ def page_new_chat() -> None:
                 cats,
             )
             section_state_key = f"branch_{branch_idx}_qm_section"
-            if direct_answer_matches and section_state_key not in st.session_state:
+            matcher_state_key = f"{section_state_key}_matcher_version"
+            if direct_answer_matches and (
+                section_state_key not in st.session_state
+                or st.session_state.get(matcher_state_key) != FOCUS_MATCHER_VERSION
+            ):
                 st.session_state[section_state_key] = direct_answer_matches[0].section
+                st.session_state[matcher_state_key] = FOCUS_MATCHER_VERSION
 
             question_map_panel = st.container(
                 border=True,
@@ -6936,12 +7139,6 @@ def page_new_chat() -> None:
                 branch_notice_key = (
                     f"direct_answer_notice_branch_{branch_idx}_{abs(hash(str(branch.get('topic') or branch.get('prompt') or '')))}"
                 )
-                _render_direct_answer_notice(
-                    direct_answer_matches,
-                    section_state_key=section_state_key,
-                    notice_key=branch_notice_key,
-                    dismissed_state_key=f"{branch_notice_key}_dismissed",
-                )
                 question_map_content = question_map_panel
                 selected_section = st.radio(
                     "Question Map section",
@@ -6949,6 +7146,12 @@ def page_new_chat() -> None:
                     horizontal=True,
                     label_visibility="collapsed",
                     key=section_state_key,
+                )
+                _render_direct_answer_notice(
+                    direct_answer_matches,
+                    section_state_key=section_state_key,
+                    notice_key=branch_notice_key,
+                    dismissed_state_key=f"{branch_notice_key}_dismissed",
                 )
 
             for section, cat_keys in ladder:
@@ -10553,6 +10756,15 @@ def page_new_chat() -> None:
                 width: min(980px, calc(100vw - 288px));
             }
 
+            @media (min-width: 721px) {
+                [data-testid="stAppViewContainer"]:has(
+                    [data-testid="stSidebar"][aria-expanded="true"]
+                ) div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
+                    left: calc(50% + 144px);
+                    width: min(980px, calc(100vw - 320px));
+                }
+            }
+
             [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
                 padding-bottom: 112px !important;
             }
@@ -11470,8 +11682,13 @@ def page_new_chat() -> None:
                 or ""
             )
             direct_answer_matches = find_direct_answer_matches(root_prompt, cats)
-            if direct_answer_matches and "root_qm_section" not in st.session_state:
+            if direct_answer_matches and (
+                "root_qm_section" not in st.session_state
+                or st.session_state.get("root_qm_matcher_version")
+                != FOCUS_MATCHER_VERSION
+            ):
                 st.session_state.root_qm_section = direct_answer_matches[0].section
+                st.session_state.root_qm_matcher_version = FOCUS_MATCHER_VERSION
 
             question_map_panel = st.container(
                 border=True,
@@ -11498,12 +11715,6 @@ def page_new_chat() -> None:
                 root_notice_key = (
                     f"direct_answer_notice_root_{abs(hash(root_prompt))}"
                 )
-                _render_direct_answer_notice(
-                    direct_answer_matches,
-                    section_state_key="root_qm_section",
-                    notice_key=root_notice_key,
-                    dismissed_state_key=f"{root_notice_key}_dismissed",
-                )
                 question_map_content = question_map_panel
                 selected_section = st.radio(
                     "Question Map section",
@@ -11511,6 +11722,12 @@ def page_new_chat() -> None:
                     horizontal=True,
                     label_visibility="collapsed",
                     key="root_qm_section",
+                )
+                _render_direct_answer_notice(
+                    direct_answer_matches,
+                    section_state_key="root_qm_section",
+                    notice_key=root_notice_key,
+                    dismissed_state_key=f"{root_notice_key}_dismissed",
                 )
 
             for section, cat_keys in ladder:

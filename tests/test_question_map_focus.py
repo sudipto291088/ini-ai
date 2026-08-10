@@ -161,6 +161,30 @@ class QuestionMapFocusTests(unittest.TestCase):
         self.assertEqual([match.part_index for match in matches], [1, 2, 3])
         self.assertEqual(len({match.question for match in matches}), 3)
 
+    def test_cause_and_prevention_select_two_direct_answers(self):
+        categories = {
+            "Orientation": [{"question": "What are vanishing gradients?"}],
+            "Mechanisms": [{"question": "Why do gradients vanish as they propagate through deep networks?"}],
+            "Methods & Tools": [{"question": "Which initialization, activation, and normalization methods prevent vanishing gradients?"}],
+        }
+        matches = find_direct_answer_matches(
+            "Why do vanishing gradients occur in deep neural networks, and how can they be prevented?",
+            categories,
+        )
+        self.assertEqual([match.section for match in matches], ["Mechanisms", "Methods & Tools"])
+
+    def test_main_applications_selects_applications(self):
+        categories = {
+            "Orientation": [{"question": "What is principal component analysis?"}],
+            "Applications": [{"question": "Where is principal component analysis used in practice?"}],
+        }
+        match = find_direct_answer_match(
+            "What are the main applications of principal component analysis?",
+            categories,
+        )
+        self.assertIsNotNone(match)
+        self.assertEqual(match.section, "Applications")
+
 
 if __name__ == "__main__":
     unittest.main()

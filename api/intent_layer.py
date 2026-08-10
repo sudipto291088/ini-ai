@@ -511,6 +511,12 @@ def _looks_like_direct_factual_query(text: str) -> bool:
     if _is_known_technical_topic(text):
         return False
 
+    # "Where is X used?" asks for the applications of a subject. It is a
+    # learning request, not a location lookup, even though it begins with
+    # the otherwise factual-looking word "where".
+    if re.match(r"^where\s+(?:is|are|does|do)\b.*\b(?:used|use|applied|apply)\b", s):
+        return False
+
     # A definition request is usually a learning request, even when the
     # subject has not yet been added to our small known-topic vocabulary.
     # Reserve the direct-fact path for genuinely time-sensitive or lookup-like

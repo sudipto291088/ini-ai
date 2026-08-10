@@ -64,6 +64,32 @@ class StructuredValidationTests(unittest.TestCase):
         self.assertTrue(result["valid"])
         self.assertEqual(result["issues"], [])
 
+    def test_complete_response_with_quality_warning_remains_displayable(self) -> None:
+        warned = VALID_RESPONSE.replace(
+            "w = w - eta * grad(L(w))",
+            "Parameter change depends on slope and step size",
+        )
+        result = validate_structured_learning_answer(warned)
+        self.assertFalse(result["valid"])
+        self.assertTrue(result["displayable"])
+        self.assertEqual(result["fatal_issues"], [])
+
+    def test_missing_required_block_is_not_displayable(self) -> None:
+        malformed = VALID_RESPONSE
+        for block in ("YOUR_QUESTION", "LEARNING_LOOP", "CONTINUE_JOURNEY"):
+            malformed = malformed.replace(f"<{block}>", "").replace(f"</{block}>", "")
+        result = validate_structured_learning_answer(malformed)
+        self.assertFalse(result["displayable"])
+        self.assertTrue(result["fatal_issues"])
+
+    def test_one_malformed_card_does_not_withhold_complete_answer(self) -> None:
+        malformed = VALID_RESPONSE.replace("<YOUR_QUESTION>", "").replace(
+            "</YOUR_QUESTION>", ""
+        )
+        result = validate_structured_learning_answer(malformed)
+        self.assertFalse(result["valid"])
+        self.assertTrue(result["displayable"])
+
     def test_repairs_a_safely_repairable_formula_delimiter(self) -> None:
         malformed = VALID_RESPONSE.replace(
             "w = w - eta * grad(L(w))",

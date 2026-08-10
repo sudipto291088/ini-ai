@@ -127,6 +127,16 @@ def test_substantive_how_questions_use_structured_learning():
         assert result["should_answer_direct"] is False
 
 
+def test_where_used_question_uses_structured_learning_not_location_lookup():
+    result = detect_intent(
+        "Where is the Fourier transform used in real-world signal processing?"
+    )
+
+    assert result["intent"] == "topic_explore"
+    assert result["should_interrogate"] is True
+    assert result["should_answer_direct"] is False
+
+
 def test_quant_artificial_intelligence_uses_structured_learning():
     prompt = "what is quant artificial intelligence"
 

@@ -368,9 +368,25 @@ def validate_structured_learning_answer(answer: str) -> dict[str, Any]:
         if malformed_bell:
             issues.append("Bell-state formula contains single-qubit basis states")
 
+    # The renderer can safely omit or simplify one malformed optional card.
+    # Withholding the entire answer is reserved for genuinely incomplete
+    # output: leaked prompt scaffolding or several absent structural blocks.
+    present_required_blocks = sum(bool(_block(source, name)) for name in REQUIRED_BLOCKS)
+    fatal_issues = [
+        issue
+        for issue in issues
+        if issue.startswith("prompt placeholder text leaked")
+    ]
+    if present_required_blocks < 4:
+        fatal_issues.extend(
+            issue for issue in issues if issue.startswith("missing or empty ")
+        )
+
     return {
         "answer": source,
         "valid": not issues,
+        "displayable": not fatal_issues,
+        "fatal_issues": fatal_issues,
         "issues": issues,
         "repairs": repairs,
     }
