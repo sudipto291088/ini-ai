@@ -11,6 +11,7 @@ from api.llm_answers import llm_enabled, generate_dynamic_answer
 from api.study_ai import study_ai
 from api.intent_layer import detect_intent
 from api.wikidata_knowledge import wikidata_enabled
+from api.wikipedia_knowledge import wikipedia_enabled
 
 
 class TopicIn(BaseModel):
@@ -112,9 +113,10 @@ def health():
         "status": "ok",
         "service": "InI.ai",
         "version": "0.1",
-        "components": ["interrogate", "illustrate", "resume", "study_ai", "wikidata"],
+        "components": ["interrogate", "illustrate", "resume", "study_ai", "wikidata", "wikipedia"],
         "llm_enabled": llm_enabled(),
         "wikidata_enabled": wikidata_enabled(),
+        "wikipedia_enabled": wikipedia_enabled(),
     }
 
 

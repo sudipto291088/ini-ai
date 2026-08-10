@@ -1,5 +1,6 @@
 import re
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple, List
 
@@ -8,6 +9,10 @@ import requests
 from api.wikidata_knowledge import (
     format_wikidata_prompt_context,
     retrieve_wikidata_context,
+)
+from api.wikipedia_knowledge import (
+    format_wikipedia_prompt_context,
+    retrieve_wikipedia_context,
 )
 
 
@@ -480,9 +485,22 @@ def generate_dynamic_answer_result(
 
     wikidata_context: Dict[str, Any] = {}
     wikidata_prompt_context = ""
+    wikipedia_context: Dict[str, Any] = {}
+    wikipedia_prompt_context = ""
     if not (isinstance(meta, dict) and str(meta.get("mode") or "").lower() == "warmup"):
-        wikidata_context = retrieve_wikidata_context(topic)
+        # The two independent public lookups run together so adding a second
+        # source does not double the user's retrieval wait.
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            wikidata_future = executor.submit(retrieve_wikidata_context, topic)
+            wikipedia_future = executor.submit(retrieve_wikipedia_context, topic)
+            wikidata_context = wikidata_future.result()
+            wikipedia_context = wikipedia_future.result()
         wikidata_prompt_context = format_wikidata_prompt_context(wikidata_context)
+        wikipedia_prompt_context = format_wikipedia_prompt_context(wikipedia_context)
+
+    knowledge_sources = [
+        context for context in (wikidata_context, wikipedia_context) if context
+    ]
 
     user_prompt = (
         f"Topic: {topic}\n"
@@ -492,6 +510,7 @@ def generate_dynamic_answer_result(
         f"Era hints (if relevant): {era_hint}\n\n"
         f"Answer style guidance: {archetype_hint}\n"
         f"{wikidata_prompt_context}\n\n"
+        f"{wikipedia_prompt_context}\n\n"
         f"User question / instruction:\n{question}\n"
     )
 
@@ -615,7 +634,7 @@ def generate_dynamic_answer_result(
                 "http_status": 200,
                 "error": "incomplete_no_text",
                 "raw": data if INI_LLM_DEBUG else None,
-                "knowledge_sources": [wikidata_context] if wikidata_context else [],
+                "knowledge_sources": knowledge_sources,
             }
 
         # Normalize again at the end (second pass, prevents regressions)
@@ -646,7 +665,7 @@ def generate_dynamic_answer_result(
             "http_status": 200,
             "error": None,
             "raw": data if INI_LLM_DEBUG else None,
-            "knowledge_sources": [wikidata_context] if wikidata_context else [],
+            "knowledge_sources": knowledge_sources,
         }
 
     except Exception as e:
@@ -664,7 +683,7 @@ def generate_dynamic_answer_result(
             "http_status": None,
             "error": f"{type(e).__name__}: {e}",
             "raw": None,
-            "knowledge_sources": [wikidata_context] if wikidata_context else [],
+            "knowledge_sources": knowledge_sources,
         }
 
 

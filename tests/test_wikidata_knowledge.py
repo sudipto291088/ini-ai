@@ -176,8 +176,8 @@ class WikidataKnowledgeTests(unittest.TestCase):
         llm.OPENAI_API_KEY = "test-key"
         try:
             with patch.object(llm, "retrieve_wikidata_context", return_value=context), patch.object(
-                llm.requests, "post", side_effect=fake_post
-            ):
+                llm, "retrieve_wikipedia_context", return_value={}
+            ), patch.object(llm.requests, "post", side_effect=fake_post):
                 result = llm.generate_dynamic_answer_result(
                     topic="linear regression",
                     topic_type="concept",
