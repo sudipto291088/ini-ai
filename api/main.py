@@ -10,6 +10,7 @@ from api.resume import resume as resume_logic
 from api.llm_answers import llm_enabled, generate_dynamic_answer
 from api.study_ai import study_ai
 from api.intent_layer import detect_intent
+from api.wikidata_knowledge import wikidata_enabled
 
 
 class TopicIn(BaseModel):
@@ -111,8 +112,9 @@ def health():
         "status": "ok",
         "service": "InI.ai",
         "version": "0.1",
-        "components": ["interrogate", "illustrate", "resume", "study_ai"],
+        "components": ["interrogate", "illustrate", "resume", "study_ai", "wikidata"],
         "llm_enabled": llm_enabled(),
+        "wikidata_enabled": wikidata_enabled(),
     }
 
 

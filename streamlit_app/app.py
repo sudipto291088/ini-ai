@@ -4,6 +4,7 @@ import time
 import re
 import secrets
 import base64
+import importlib
 from contextlib import nullcontext
 from html import escape
 from datetime import datetime
@@ -73,6 +74,18 @@ except ModuleNotFoundError as exc:
 from api.interrogate import extract_topic as extract_learning_topic
 from api.capability_boundary import assess_capability
 from api.conversation_interpreter import interpret_turn
+from api.intent_layer import detect_intent
+import api.question_map_focus as question_map_focus
+
+# Streamlit can retain an older imported helper during a development hot
+# reload. Refresh when the matcher contract or scoring version has changed;
+# normal app reruns and production startup do not reload the module.
+if (
+    not hasattr(question_map_focus, "find_direct_answer_matches")
+    or getattr(question_map_focus, "FOCUS_MATCHER_VERSION", 0) < 5
+):
+    question_map_focus = importlib.reload(question_map_focus)
+find_direct_answer_matches = question_map_focus.find_direct_answer_matches
 from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
 from splash_component import render_app_splash
@@ -2559,6 +2572,251 @@ div[class*="st-key-branch_question_map_panel_"] div.stButton > button:hover {
   border-color: transparent !important;
   background: #f8fafc !important;
   box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04) !important;
+}
+div[class*="st-key-direct_answer_qmap_"] {
+  margin: 8px 0 10px !important;
+  padding: 7px !important;
+  border: 1px solid rgba(245, 27, 63, 0.32) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, rgba(255, 246, 248, 0.96), rgba(255, 255, 255, 0.98)) !important;
+  box-shadow: 0 12px 30px rgba(245, 27, 63, 0.09) !important;
+}
+div[class*="st-key-direct_answer_qmap_"] .ini-qmap-direct-answer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 1px 7px 3px;
+  color: #b31231;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+div[class*="st-key-direct_answer_qmap_"] .ini-qmap-direct-answer-label::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f51b3f;
+  box-shadow: 0 0 0 4px rgba(245, 27, 63, 0.08);
+}
+div[class*="st-key-direct_answer_qmap_"] div.stButton > button {
+  margin: 0 !important;
+  border: 1px solid rgba(245, 27, 63, 0.22) !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07) !important;
+}
+div[class*="st-key-direct_answer_qmap_"] div.stButton > button:hover {
+  border-color: rgba(245, 27, 63, 0.42) !important;
+  background: #fffafb !important;
+  box-shadow: 0 11px 25px rgba(245, 27, 63, 0.11) !important;
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"] {
+  --ini-direct-tail-left: 38px;
+  position: relative !important;
+  width: fit-content !important;
+  max-width: min(100%, 560px) !important;
+  margin: 3px 0 18px 8px !important;
+  padding: 9px 38px 9px 13px !important;
+  border: 1px solid rgba(28, 36, 52, 0.14) !important;
+  border-radius: 18px 18px 18px 6px !important;
+  background: rgba(255, 255, 255, 0.985) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.105), 0 2px 7px rgba(245, 27, 63, 0.06) !important;
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"]::before,
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"]::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  transform: rotate(45deg);
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"]::before {
+  left: var(--ini-direct-tail-left);
+  bottom: -9px;
+  width: 17px;
+  height: 17px;
+  border-right: 1px solid rgba(28, 36, 52, 0.14);
+  border-bottom: 1px solid rgba(28, 36, 52, 0.14);
+  background: #ffffff;
+  box-shadow: 4px 4px 9px rgba(15, 23, 42, 0.045);
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"]::after {
+  left: calc(var(--ini-direct-tail-left) - 1px);
+  bottom: -2px;
+  width: 19px;
+  height: 10px;
+  background: #ffffff;
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_1"] { --ini-direct-tail-left: 132px; }
+div[class*="st-key-direct_answer_notice_"][class*="_tail_2"] { --ini-direct-tail-left: 244px; }
+div[class*="st-key-direct_answer_notice_"][class*="_tail_3"] { --ini-direct-tail-left: 356px; }
+div[class*="st-key-direct_answer_notice_"][class*="_tail_4"],
+div[class*="st-key-direct_answer_notice_"][class*="_tail_5"],
+div[class*="st-key-direct_answer_notice_"][class*="_tail_6"] { --ini-direct-tail-left: 456px; }
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"] > div {
+  position: relative;
+  z-index: 1;
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"] .ini-qmap-direct-notice-title {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  color: #1b2230;
+  font-size: 12.5px;
+  font-weight: 620;
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"] .ini-qmap-direct-notice-title::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #f51b3f;
+  box-shadow: 0 0 0 4px rgba(245, 27, 63, 0.075);
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"] div.stButton > button {
+  width: auto !important;
+  min-height: 28px !important;
+  margin: 0 !important;
+  padding: 4px 9px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(245, 27, 63, 0.065) !important;
+  box-shadow: none !important;
+  color: #bc1734 !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"] div.stButton > button:hover {
+  background: rgba(245, 27, 63, 0.12) !important;
+  transform: none !important;
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"] [class*="st-key-direct_answer_notice_close_"] {
+  position: absolute !important;
+  top: 6px !important;
+  right: 7px !important;
+  z-index: 4 !important;
+  width: 24px !important;
+  height: 24px !important;
+  flex: 0 0 24px !important;
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"] [class*="st-key-direct_answer_notice_close_"] div.stButton,
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"] [class*="st-key-direct_answer_notice_close_"] div.stButton > button {
+  width: 24px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"] [class*="st-key-direct_answer_notice_close_"] div.stButton > button {
+  padding: 2px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #7b8493 !important;
+  font-size: 15px !important;
+  box-shadow: none !important;
+}
+div[class*="st-key-direct_answer_notice_"][class*="_tail_"] [class*="st-key-direct_answer_notice_close_"] button[kind="secondary"] {
+  width: 24px !important;
+  min-width: 24px !important;
+  max-width: 24px !important;
+}
+@media (max-width: 700px) {
+  div[class*="st-key-direct_answer_notice_"][class*="_tail_"] {
+    --ini-direct-tail-left: 24px !important;
+    width: calc(100% - 16px) !important;
+    max-width: calc(100% - 16px) !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+  }
+  div[class*="st-key-direct_answer_notice_"][class*="_tail_"] .ini-qmap-direct-notice-title {
+    width: 100%;
+  }
+}
+@keyframes ini-direct-answer-nudge {
+  0%, 64%, 74%, 84%, 100% { transform: translateY(0) scale(1); }
+  68% { transform: translateY(-3px) scale(1.025); }
+  78% { transform: translateY(-2px) scale(1.012); }
+}
+div[class*="st-key-direct_answer_pointer_row_"] {
+  position: relative !important;
+  z-index: 40 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+div[class*="st-key-direct_answer_pointer_row_"] [data-testid="stHorizontalBlock"] {
+  position: absolute !important;
+  left: 0 !important;
+  /* The stage selector ends before the right-aligned Hide answers control.
+     Match that selector width so each speech tail points at its real stage. */
+  right: 260px !important;
+  bottom: 8px !important;
+  overflow: visible !important;
+}
+div[class*="st-key-direct_answer_pointer_"] {
+  display: flex !important;
+  justify-content: center !important;
+  overflow: visible !important;
+}
+div[class*="st-key-direct_answer_pointer_"] div.stButton,
+div[class*="st-key-direct_answer_pointer_"] div.stButton button {
+  overflow: visible !important;
+}
+div[class*="st-key-direct_answer_pointer_"] div.stButton button,
+div[class*="st-key-direct_answer_pointer_"] button[kind="secondary"] {
+  position: relative !important;
+  width: 132px !important;
+  min-width: 132px !important;
+  max-width: 132px !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+  padding: 6px 7px !important;
+  border: 1.5px solid rgba(245, 27, 63, 0.72) !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.10) !important;
+  color: #171d2a !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  animation: ini-direct-answer-nudge 5.8s ease-in-out infinite !important;
+}
+div[class*="st-key-direct_answer_pointer_"] div.stButton button::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  border-right: 1.5px solid rgba(245, 27, 63, 0.72);
+  border-bottom: 1.5px solid rgba(245, 27, 63, 0.72);
+  background: #ffffff;
+  transform: translateX(-50%) rotate(45deg);
+  z-index: 2;
+}
+div[class*="st-key-direct_answer_pointer_"] div.stButton button:hover {
+  border-color: #f51b3f !important;
+  background: #fffafb !important;
+  box-shadow: 0 9px 22px rgba(245, 27, 63, 0.13) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  div[class*="st-key-direct_answer_pointer_"] div.stButton button {
+    animation: none !important;
+  }
+}
+@media (max-width: 700px) {
+  div[class*="st-key-direct_answer_pointer_row_"] {
+    min-width: 760px !important;
+  }
+  div[class*="st-key-direct_answer_pointer_row_"] [data-testid="stHorizontalBlock"] {
+    right: 0 !important;
+  }
+  div[class*="st-key-direct_answer_pointer_"] div.stButton button,
+  div[class*="st-key-direct_answer_pointer_"] button[kind="secondary"] {
+    font-size: 10px !important;
+  }
 }
 .st-key-root_question_map_content [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div > div:first-child,
 div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div > div:first-child {
@@ -6323,6 +6581,55 @@ def page_new_chat() -> None:
             unsafe_allow_html=True,
         )
 
+    def _select_question_map_section(state_key: str, section: str) -> None:
+        st.session_state[state_key] = section
+
+    def _dismiss_direct_answer_notice(state_key: str) -> None:
+        st.session_state[state_key] = True
+
+    def _render_direct_answer_notice(
+        matches: List[Any],
+        *,
+        section_state_key: str,
+        notice_key: str,
+        dismissed_state_key: str,
+    ) -> None:
+        if not matches or st.session_state.get(dismissed_state_key, False):
+            return
+
+        question_map_stages = [
+            "Orientation",
+            "Foundations",
+            "Mechanisms",
+            "Methods & Tools",
+            "Applications",
+            "Pitfalls",
+            "Advanced / Future",
+        ]
+        matched_stages = {match.section for match in matches}
+        control_token = abs(hash(notice_key))
+        stage_widths = [1.0, 1.06, 1.08, 1.34, 1.16, 0.72, 1.48]
+        with st.container(key=f"direct_answer_pointer_row_{control_token}"):
+            pointer_columns = st.columns(
+                stage_widths,
+                gap="small",
+                vertical_alignment="bottom",
+            )
+            for stage_index, (section, column) in enumerate(
+                zip(question_map_stages, pointer_columns)
+            ):
+                if section not in matched_stages:
+                    continue
+                with column:
+                    st.button(
+                        "Direct answer ×",
+                        key=f"direct_answer_pointer_{control_token}_{stage_index}",
+                        width="stretch",
+                        help="Dismiss this guide",
+                        on_click=_dismiss_direct_answer_notice,
+                        args=(dismissed_state_key,),
+                    )
+
     def _discussion_questions_for(topic: str, set_number: int = 1) -> List[str]:
         clean_topic = (topic or "this topic").strip()
         plural_topic = clean_topic.lower().endswith("s")
@@ -6535,6 +6842,13 @@ def page_new_chat() -> None:
                 ("Pitfalls", ["Pitfalls"]),
                 ("Advanced / Future", ["Advanced / Future"]),
             ]
+            direct_answer_matches = find_direct_answer_matches(
+                str(branch.get("topic") or branch.get("prompt") or ""),
+                cats,
+            )
+            section_state_key = f"branch_{branch_idx}_qm_section"
+            if direct_answer_matches and section_state_key not in st.session_state:
+                st.session_state[section_state_key] = direct_answer_matches[0].section
 
             question_map_panel = st.container(
                 border=True,
@@ -6558,13 +6872,22 @@ def page_new_chat() -> None:
                         key=f"branch_hide_answers_{branch_idx}",
                     )
 
+                branch_notice_key = (
+                    f"direct_answer_notice_branch_{branch_idx}_{abs(hash(str(branch.get('topic') or branch.get('prompt') or '')))}"
+                )
+                _render_direct_answer_notice(
+                    direct_answer_matches,
+                    section_state_key=section_state_key,
+                    notice_key=branch_notice_key,
+                    dismissed_state_key=f"{branch_notice_key}_dismissed",
+                )
                 question_map_content = question_map_panel
                 selected_section = st.radio(
                     "Question Map section",
                     [section for section, _ in ladder],
                     horizontal=True,
                     label_visibility="collapsed",
-                    key=f"branch_{branch_idx}_qm_section",
+                    key=section_state_key,
                 )
 
             for section, cat_keys in ladder:
@@ -6586,11 +6909,38 @@ def page_new_chat() -> None:
                         is_open = q in branch_open_questions
                         button_label = f"✓ {q}" if visited else q
 
-                        if question_map_content.button(
-                            button_label,
-                            key=f"branch_{branch_idx}_q_{section}_{q}",
-                            type="secondary",
-                        ):
+                        direct_answer_match = next(
+                            (
+                                match
+                                for match in direct_answer_matches
+                                if q == match.question
+                            ),
+                            None,
+                        )
+                        if direct_answer_match:
+                            with question_map_content:
+                                with st.container(
+                                    key=f"direct_answer_qmap_branch_{branch_idx}_{section}_{abs(hash(q))}",
+                                ):
+                                    st.markdown(
+                                        '<div class="ini-qmap-direct-answer-label">'
+                                        f'Direct answer {direct_answer_match.part_index} of '
+                                        f'{direct_answer_match.total_parts}</div>',
+                                        unsafe_allow_html=True,
+                                    )
+                                    question_clicked = st.button(
+                                        button_label,
+                                        key=f"branch_{branch_idx}_q_{section}_{q}",
+                                        type="secondary",
+                                    )
+                        else:
+                            question_clicked = question_map_content.button(
+                                button_label,
+                                key=f"branch_{branch_idx}_q_{section}_{q}",
+                                type="secondary",
+                            )
+
+                        if question_clicked:
                             branch_visited_questions.add(q)
 
                             if is_open:
@@ -7333,6 +7683,10 @@ def page_new_chat() -> None:
             if interpreted_turn.has_substantive_text
             else display_topic_text
         )
+        semantic_intent = detect_intent(semantic_topic_text)
+        substantive_learning_turn = bool(
+            semantic_intent.get("should_interrogate", False)
+        )
         active_capability_boundary = st.session_state.get(
             "chat_active_capability_boundary"
         )
@@ -7577,7 +7931,11 @@ def page_new_chat() -> None:
                 r"[^a-z0-9 ]+", " ", display_topic_text.lower()
             ).strip()
             if (
-                re.search(r"\b(you|your|yours|we|our|ours|this|that|it)\b", general_reply)
+                not substantive_learning_turn
+                and re.search(
+                    r"\b(you|your|yours|we|our|ours|this|that|it)\b",
+                    general_reply,
+                )
                 and len(general_reply.split()) <= 24
                 and not re.search(
                     r"\b(question map|qmap|generate|create|build|teach me|explain)\b",
@@ -7588,6 +7946,7 @@ def page_new_chat() -> None:
 
         if (
             not discussion_freeform_followup
+            and not substantive_learning_turn
             and not qm_confirmation_accepted
             and _looks_like_answer_to_last_question(
                 display_topic_text,
@@ -10924,6 +11283,15 @@ def page_new_chat() -> None:
                 ("Advanced / Future", ["Advanced / Future"]),
             ]
 
+            root_prompt = str(
+                st.session_state.chat_root_topic
+                or st.session_state.chat.get("topic")
+                or ""
+            )
+            direct_answer_matches = find_direct_answer_matches(root_prompt, cats)
+            if direct_answer_matches and "root_qm_section" not in st.session_state:
+                st.session_state.root_qm_section = direct_answer_matches[0].section
+
             question_map_panel = st.container(
                 border=True,
                 key="root_question_map_panel",
@@ -10946,6 +11314,15 @@ def page_new_chat() -> None:
                         key="hide_answers_newchat",
                     )
 
+                root_notice_key = (
+                    f"direct_answer_notice_root_{abs(hash(root_prompt))}"
+                )
+                _render_direct_answer_notice(
+                    direct_answer_matches,
+                    section_state_key="root_qm_section",
+                    notice_key=root_notice_key,
+                    dismissed_state_key=f"{root_notice_key}_dismissed",
+                )
                 question_map_content = question_map_panel
                 selected_section = st.radio(
                     "Question Map section",
@@ -10976,11 +11353,38 @@ def page_new_chat() -> None:
 
                         button_label = f"✓ {q}" if visited else q
 
-                        if question_map_content.button(
-                            button_label,
-                            key=f"q_{section}_{q}",
-                            type="secondary",
-                        ):
+                        direct_answer_match = next(
+                            (
+                                match
+                                for match in direct_answer_matches
+                                if q == match.question
+                            ),
+                            None,
+                        )
+                        if direct_answer_match:
+                            with question_map_content:
+                                with st.container(
+                                    key=f"direct_answer_qmap_root_{section}_{abs(hash(q))}",
+                                ):
+                                    st.markdown(
+                                        '<div class="ini-qmap-direct-answer-label">'
+                                        f'Direct answer {direct_answer_match.part_index} of '
+                                        f'{direct_answer_match.total_parts}</div>',
+                                        unsafe_allow_html=True,
+                                    )
+                                    question_clicked = st.button(
+                                        button_label,
+                                        key=f"q_{section}_{q}",
+                                        type="secondary",
+                                    )
+                        else:
+                            question_clicked = question_map_content.button(
+                                button_label,
+                                key=f"q_{section}_{q}",
+                                type="secondary",
+                            )
+
+                        if question_clicked:
                             st.session_state.chat_visited_questions.add(q)
 
                             if is_open:

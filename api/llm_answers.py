@@ -5,6 +5,11 @@ from typing import Optional, Dict, Any, Tuple, List
 
 import requests
 
+from api.wikidata_knowledge import (
+    format_wikidata_prompt_context,
+    retrieve_wikidata_context,
+)
+
 
 # ============================================================
 # Load .env from repo root (works no matter where uvicorn starts)
@@ -473,6 +478,12 @@ def generate_dynamic_answer_result(
             f"{k}={meta.get(k)}" for k in list(meta.keys())[:8]
         )
 
+    wikidata_context: Dict[str, Any] = {}
+    wikidata_prompt_context = ""
+    if not (isinstance(meta, dict) and str(meta.get("mode") or "").lower() == "warmup"):
+        wikidata_context = retrieve_wikidata_context(topic)
+        wikidata_prompt_context = format_wikidata_prompt_context(wikidata_context)
+
     user_prompt = (
         f"Topic: {topic}\n"
         f"Topic type: {topic_type}\n"
@@ -480,6 +491,7 @@ def generate_dynamic_answer_result(
         f"{meta_txt}\n"
         f"Era hints (if relevant): {era_hint}\n\n"
         f"Answer style guidance: {archetype_hint}\n"
+        f"{wikidata_prompt_context}\n\n"
         f"User question / instruction:\n{question}\n"
     )
 
@@ -600,6 +612,7 @@ def generate_dynamic_answer_result(
                 "http_status": 200,
                 "error": "incomplete_no_text",
                 "raw": data if INI_LLM_DEBUG else None,
+                "knowledge_sources": [wikidata_context] if wikidata_context else [],
             }
 
         # Normalize again at the end (second pass, prevents regressions)
@@ -630,6 +643,7 @@ def generate_dynamic_answer_result(
             "http_status": 200,
             "error": None,
             "raw": data if INI_LLM_DEBUG else None,
+            "knowledge_sources": [wikidata_context] if wikidata_context else [],
         }
 
     except Exception as e:
@@ -647,6 +661,7 @@ def generate_dynamic_answer_result(
             "http_status": None,
             "error": f"{type(e).__name__}: {e}",
             "raw": None,
+            "knowledge_sources": [wikidata_context] if wikidata_context else [],
         }
 
 

@@ -367,6 +367,16 @@ def _is_affirmation(text: str) -> bool:
     if _contains_phrase(s, AFFIRM_PHRASES):
         return True
 
+    # Praise addressed to InI is a conversational acknowledgement, not a
+    # learning topic that should generate a Question Map.
+    if re.match(
+        r"^(?:(?:well done)|(?:(?:amazing|great|good|excellent|fantastic|"
+        r"awesome|nice|wonderful|brilliant|perfect)\s+(?:job|work)))"
+        r"(?:\s+(?:ini|inl|buddy|bro|man|friend))?$",
+        s,
+    ):
+        return True
+
     # Natural acknowledgements are conversation, not learning topics.
     return bool(
         re.match(

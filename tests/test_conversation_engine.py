@@ -109,6 +109,14 @@ class ConversationEngineTests(unittest.TestCase):
                 self.assertEqual(result["intent"], intent)
                 self.assertFalse(result.get("categories"))
 
+    def test_praise_for_ini_is_conversation_not_a_learning_topic(self):
+        for message in ("Good job InI", "Amazing job ini", "Well done InI"):
+            with self.subTest(message=message):
+                result = interrogate(message)
+                self.assertEqual(result["response_mode"], "conversation")
+                self.assertEqual(result["intent"], "affirmation")
+                self.assertFalse(result.get("categories"))
+
     def test_correction_about_question_map_stays_conversational(self):
         result = interrogate("why are you going to generate a question map for that?")
         self.assertEqual(result["response_mode"], "conversation")
@@ -153,6 +161,15 @@ class ConversationEngineTests(unittest.TestCase):
 
     def test_unknown_concept_definition_routes_to_learning(self):
         result = detect_intent("What is quantum entanglement?")
+        self.assertEqual(result["intent"], "topic_explore")
+        self.assertTrue(result["should_interrogate"])
+        self.assertFalse(result["should_answer_direct"])
+
+    def test_compound_learning_question_routes_to_full_interrogate(self):
+        result = detect_intent(
+            "What is linear regression, what are its main types, and how does "
+            "it relate to regression analysis and machine learning?"
+        )
         self.assertEqual(result["intent"], "topic_explore")
         self.assertTrue(result["should_interrogate"])
         self.assertFalse(result["should_answer_direct"])

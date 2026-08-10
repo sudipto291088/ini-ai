@@ -1231,6 +1231,7 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
             "answer": "No answer generated.",
             "incomplete": False,
             "stop_reason": None,
+            "knowledge_sources": result.get("knowledge_sources", []),
         }
 
     # Legacy safety: if debug strings leak into ans, suppress it (do not show raw debug)
@@ -1256,6 +1257,7 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         "answer": ans,
         "incomplete": incomplete,
         "stop_reason": stop_reason,
+        "knowledge_sources": result.get("knowledge_sources", []),
     }
 
 
