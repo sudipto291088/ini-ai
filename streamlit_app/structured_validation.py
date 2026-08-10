@@ -109,6 +109,80 @@ def _repair_update_rule(text: str) -> tuple[str, bool]:
     return text[: match.start()] + replacement + text[match.end() :], True
 
 
+def _repair_rag_relationship(text: str, subject: str) -> tuple[str, bool]:
+    """Replace a common product-form RAG shortcut with marginalization."""
+    evidence = f"{subject} {text}".casefold()
+    if not any(
+        marker in evidence
+        for marker in ("retrieval-augmented", "retrieval augmented", " rag ")
+    ):
+        return text, False
+
+    current = _tag_value(_block(text, "CORE_EXPLANATION"), "UPDATE_RULE")
+    normalized = re.sub(r"\s+", " ", current).casefold()
+    product_shortcut = (
+        "p(answer | query, docs)" in normalized
+        and "p(docs | query)" in normalized
+    )
+    weighted_shortcut = (
+        ("pgen" in normalized or "p_generate" in normalized)
+        and any(
+            marker in normalized
+            for marker in ("pret", "scoreretriever", "p_retrieve")
+        )
+        and ("∝" in current or "proportional" in normalized)
+    )
+    if not (product_shortcut or weighted_shortcut):
+        return text, False
+
+    if weighted_shortcut:
+        corrected = (
+            "P(answer | q) = sum_c [P_retrieve(c | q) * "
+            "P_generate(answer | q, c)]"
+        )
+    else:
+        corrected = (
+            "p(answer | query) = sum_docs [p(docs | query) * "
+            "p(answer | query, docs)]"
+        )
+    repaired = re.sub(
+        r"<UPDATE_RULE>.*?</UPDATE_RULE>",
+        f"<UPDATE_RULE>{corrected}</UPDATE_RULE>",
+        text,
+        count=1,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    if weighted_shortcut:
+        variables = _block(repaired, "VARIABLES")
+        additions = {
+            "answer": "generated answer",
+            "q": "user query",
+            "c": "retrieved context",
+            "P_retrieve": "normalized retrieval probability",
+            "P_generate": "generator probability conditioned on retrieved context",
+        }
+        existing = {
+            line.split("::", 1)[0].strip().casefold()
+            for line in variables.splitlines()
+            if "::" in line
+        }
+        missing = [
+            f"{name} :: {meaning}"
+            for name, meaning in additions.items()
+            if name.casefold() not in existing
+        ]
+        if missing:
+            replacement = variables.rstrip() + "\n" + "\n".join(missing)
+            repaired = re.sub(
+                r"<VARIABLES>.*?</VARIABLES>",
+                f"<VARIABLES>{replacement}</VARIABLES>",
+                repaired,
+                count=1,
+                flags=re.IGNORECASE | re.DOTALL,
+            )
+    return repaired, repaired != text
+
+
 def _repair_quantum_entanglement_content(
     text: str,
     subject: str,
@@ -201,6 +275,9 @@ def validate_structured_learning_answer(answer: str) -> dict[str, Any]:
             issues.append("TOPIC_PROFILE missing: " + ", ".join(missing))
 
     subject = str(profile.get("Subject") or "") if isinstance(profile, dict) else ""
+    source, rag_repaired = _repair_rag_relationship(source, subject)
+    if rag_repaired:
+        repairs.append("corrected RAG marginalization relationship")
     source, semantic_repairs = _repair_quantum_entanglement_content(source, subject)
     repairs.extend(semantic_repairs)
 

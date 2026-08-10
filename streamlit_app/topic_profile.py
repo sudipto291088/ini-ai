@@ -82,6 +82,23 @@ def _correct_difficulty(
     ):
         return set_difficulty("Advanced")
 
+    conceptual_mechanism_question = bool(
+        re.match(r"^(?:how\s+(?:do|does)|why\s+(?:do|does)|explain\s+how)\b", query)
+    )
+    explicitly_advanced_request = any(cue in query for cue in advanced_query_cues) or bool(
+        re.search(
+            r"\b(?:implement|derive|prove|formal|research-level|graduate-level|"
+            r"architecture\s+design|complexity\s+analysis)\b",
+            query,
+        )
+    )
+    if (
+        conceptual_mechanism_question
+        and not explicitly_advanced_request
+        and current_difficulty == "advanced"
+    ):
+        return set_difficulty("Intermediate")
+
     advanced_topic_signals = (
         "backpropagation",
         "deep neural network",

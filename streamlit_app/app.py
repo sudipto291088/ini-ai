@@ -1525,6 +1525,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
 .ini-nc-knowledge-map {
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
   padding: 20px 22px 22px;
   overflow: hidden;
 }
@@ -1536,7 +1537,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   margin: 12px 0 20px;
 }
 .ini-nc-overview-grid > .ini-topic-profile {
-  height: 410px;
+  height: 420px;
   min-width: 0;
   margin: 0;
   box-sizing: border-box;
@@ -1550,6 +1551,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
 .ini-nc-knowledge-map__compact {
   display: flex;
   flex: 1 1 auto;
+  width: 100%;
   min-height: 0;
   flex-direction: column;
   align-items: center;
@@ -1571,6 +1573,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
 .ini-nc-knowledge-map__compact .ini-nc-knowledge-map__node--question strong {
   font-size: 14px;
   line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 .ini-nc-knowledge-map__compact .ini-nc-knowledge-map__connector {
   height: 10px;
@@ -1581,6 +1584,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   width: 100%;
+  min-width: 0;
 }
 .ini-nc-knowledge-map__compact-stages::before {
   position: absolute;
@@ -1606,6 +1610,12 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   color: #4d586b;
   font-size: 11.5px;
   line-height: 1.3;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.ini-nc-knowledge-map__compact-stage > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .ini-nc-knowledge-map__compact-stage-number {
   flex: 0 0 auto;
@@ -2068,7 +2078,17 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
     grid-template-columns: 1fr;
   }
   .ini-nc-overview-grid > .ini-topic-profile {
-    height: 390px;
+    height: auto;
+    min-height: 390px;
+  }
+  .ini-nc-knowledge-map {
+    overflow: visible;
+  }
+  .ini-nc-knowledge-map__compact {
+    flex: 0 0 auto;
+  }
+  .ini-nc-knowledge-map__compact-stages {
+    margin-bottom: 2px;
   }
   .ini-nc-knowledge-map__level {
     grid-template-columns: 1fr;
@@ -2750,9 +2770,50 @@ div[class*="st-key-direct_answer_pointer_row_"] [data-testid="stHorizontalBlock"
   left: 0 !important;
   /* The stage selector ends before the right-aligned Hide answers control.
      Match that selector width so each speech tail points at its real stage. */
-  right: 260px !important;
+  /* The radio group reserves the trailing 48 px occupied by Hide answers. */
+  right: 48px !important;
+  width: calc(100% - 48px) !important;
   bottom: 8px !important;
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 8px !important;
   overflow: visible !important;
+}
+div[class*="st-key-direct_answer_pointer_row_"] [data-testid="stHorizontalBlock"]
+  > div[data-testid="stColumn"] {
+  width: auto !important;
+  min-width: 0 !important;
+  flex: none !important;
+}
+.st-key-root_question_map_panel [data-testid="stRadio"] div[role="radiogroup"],
+div[class*="st-key-branch_question_map_panel_"]
+  [data-testid="stRadio"] div[role="radiogroup"] {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+.st-key-root_question_map_panel [data-testid="stRadio"] div[role="radiogroup"] label,
+div[class*="st-key-branch_question_map_panel_"]
+  [data-testid="stRadio"] div[role="radiogroup"] label {
+  width: 100% !important;
+  min-width: 0 !important;
+  justify-content: center !important;
+  padding-inline: 7px !important;
+  text-align: center !important;
+}
+.st-key-root_question_map_panel [data-testid="stRadio"]
+  div[role="radiogroup"] label > div,
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"]
+  div[role="radiogroup"] label > div {
+  justify-content: center !important;
+  text-align: center !important;
+}
+.st-key-root_question_map_panel [data-testid="stRadio"]
+  div[role="radiogroup"] label > div > div,
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"]
+  div[role="radiogroup"] label > div > div {
+  width: 100% !important;
+  justify-content: center !important;
 }
 div[class*="st-key-direct_answer_pointer_"] {
   display: flex !important;
@@ -2766,9 +2827,9 @@ div[class*="st-key-direct_answer_pointer_"] div.stButton button {
 div[class*="st-key-direct_answer_pointer_"] div.stButton button,
 div[class*="st-key-direct_answer_pointer_"] button[kind="secondary"] {
   position: relative !important;
-  width: 132px !important;
-  min-width: 132px !important;
-  max-width: 132px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
   min-height: 34px !important;
   margin: 0 !important;
   padding: 6px 7px !important;

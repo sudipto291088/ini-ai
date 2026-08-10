@@ -22,6 +22,17 @@ class ContextAwareResponseModeTests(unittest.TestCase):
                 self.assertEqual(result["response_mode"], "carm")
                 self.assertEqual(result["context_intent"], expected_intent)
 
+    def test_error_correction_concept_remains_a_learning_query(self):
+        prompt = (
+            "What is quantum error correction, and why is it necessary for "
+            "reliable quantum computing?"
+        )
+
+        result = classify_context(prompt)
+
+        self.assertEqual(result["response_mode"], "question_map")
+        self.assertEqual(result["context_intent"], "learning")
+
     def test_ambiguous_local_mcp_request_asks_for_host(self):
         result = interrogate("My wife wants to add an MCP server in the local system")
         self.assertEqual(result["response_mode"], "carm")

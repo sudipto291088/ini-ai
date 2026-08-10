@@ -72,6 +72,18 @@ class TopicProfileTests(unittest.TestCase):
             with self.subTest(query=query):
                 rows, _ = extract_topic_profile(answer, query)
                 self.assertIn(("Difficulty", "Intermediate"), rows)
+
+    def test_conceptual_cnn_mechanism_is_intermediate_not_advanced(self) -> None:
+        answer = """<TOPIC_PROFILE>
+{"Entity type":"Concept","Subject":"Convolutional neural networks","Mathematical foundation":"Linear algebra; multivariable calculus","Prerequisites":"Basic neural networks; gradients; image processing","Difficulty":"Advanced"}
+</TOPIC_PROFILE>"""
+
+        rows, _ = extract_topic_profile(
+            answer,
+            "How do convolutional neural networks recognize objects within complex images?",
+        )
+
+        self.assertIn(("Difficulty", "Intermediate"), rows)
     def test_extracts_adaptive_profile_and_preserves_introduction(self):
         answer = """
 <TOPIC_PROFILE>

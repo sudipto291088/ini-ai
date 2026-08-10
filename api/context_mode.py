@@ -34,6 +34,27 @@ def classify_context(text: str) -> Dict[str, Any]:
     if not normalized:
         return {"response_mode": "question_map", "context_intent": "learning"}
 
+    # Scientific and engineering topics frequently contain words such as
+    # "error", "failure", or "correction" without describing a broken user
+    # system. Keep definition/mechanism questions in the learning pipeline;
+    # practical repair wording below can still select troubleshooting.
+    conceptual_error_topic = bool(
+        re.match(r"^(?:what\s+(?:is|are)|explain|define|how\s+(?:does|do))\b", normalized)
+        and re.search(
+            r"\b(?:error\s+correction|error-correct(?:ing|ion)|error\s+detection|"
+            r"error\s+rate|failure\s+mode)\b",
+            normalized,
+        )
+        and not re.search(
+            r"\b(?:my|our|fix\s+(?:it|this)|how\s+do\s+i\s+fix|not\s+working|"
+            r"doesn't\s+work|does\s+not\s+work|crash(?:ed|ing)?|"
+            r"traceback|exception)\b",
+            normalized,
+        )
+    )
+    if conceptual_error_topic:
+        return {"response_mode": "question_map", "context_intent": "learning"}
+
     context_intent = "learning"
     if any(cue in normalized for cue in DEBUGGING_CUES):
         context_intent = "debugging"

@@ -76,6 +76,67 @@ class StructuredValidationTests(unittest.TestCase):
         self.assertIn("balanced update-rule delimiters", result["repairs"])
         self.assertIn("grad(L(w))", result["answer"])
 
+    def test_repairs_product_form_rag_relationship(self) -> None:
+        malformed = VALID_RESPONSE.replace(
+            '"Subject":"Gradient descent"',
+            '"Subject":"Retrieval-Augmented Generation"',
+        ).replace(
+            "w = w - eta * grad(L(w))",
+            "p(answer | query, docs) proportional-to "
+            "p(answer | query, context(docs)) * p(docs | query)",
+        ).replace(
+            "w :: model parameters\neta :: learning rate\nL :: loss function",
+            "answer :: generated answer\nquery :: user query\ndocs :: retrieved documents",
+        )
+
+        result = validate_structured_learning_answer(malformed)
+
+        self.assertTrue(result["valid"])
+        self.assertIn(
+            "corrected RAG marginalization relationship",
+            result["repairs"],
+        )
+        self.assertIn("sum_docs", result["answer"])
+
+    def test_repairs_proportional_rag_retriever_generator_shortcut(self) -> None:
+        malformed = VALID_RESPONSE.replace(
+            '"Subject":"Gradient descent"',
+            '"Subject":"Retrieval-Augmented Generation (RAG)"',
+        ).replace(
+            "w = w - eta * grad(L(w))",
+            "P(answer|q,D) ∝ Pgen(answer|q,ctx) × Pret(ctx|q)",
+        ).replace(
+            "w :: model parameters\neta :: learning rate\nL :: loss function",
+            "answer :: generated answer\nq :: user query\nD :: corpus\nctx :: retrieved context\nPret :: retriever probability\nPgen :: generator probability",
+        )
+
+        result = validate_structured_learning_answer(malformed)
+
+        self.assertTrue(result["valid"])
+        self.assertIn(
+            "corrected RAG marginalization relationship",
+            result["repairs"],
+        )
+        self.assertIn("sum_c", result["answer"])
+
+    def test_repairs_retrieval_score_rag_shortcut(self) -> None:
+        malformed = VALID_RESPONSE.replace(
+            '"Subject":"Gradient descent"',
+            '"Subject":"Retrieval-Augmented Generation (RAG)"',
+        ).replace(
+            "w = w - eta * grad(L(w))",
+            "P(R|q,c) ∝ Scoreretriever(q,c) * Pgen(token|context+c,q)",
+        ).replace(
+            "w :: model parameters\neta :: learning rate\nL :: loss function",
+            "R :: relevance\nq :: query\nc :: retrieved passage\nScoreretriever :: retrieval score\nPgen :: generator probability",
+        )
+
+        result = validate_structured_learning_answer(malformed)
+
+        self.assertTrue(result["valid"])
+        self.assertIn("sum_c", result["answer"])
+        self.assertIn("P_retrieve :: normalized retrieval probability", result["answer"])
+
     def test_rejects_missing_cards_and_prompt_placeholders(self) -> None:
         malformed = VALID_RESPONSE.replace(
             "Gradient descent update",
