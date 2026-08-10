@@ -9598,14 +9598,14 @@ def page_new_chat() -> None:
             .nc-landing-heading {{
                 width: min(100%, 860px);
                 margin: 18px auto 0;
-                transform: translateX(-84px);
+                transform: translateX(-139px);
                 color: #111827;
-                font-size: clamp(45px, 4.15vw, 60px);
+                font-size: clamp(49px, 4.55vw, 66px);
                 font-weight: 610;
                 line-height: 1.12;
                 letter-spacing: 0.012em;
                 text-align: center;
-                white-space: nowrap;
+                white-space: nowrap !important;
             }}
 
             .nc-landing-greeting {{
@@ -10119,8 +10119,8 @@ def page_new_chat() -> None:
                 .nc-landing-heading {{
                     width: min(calc(100% - 40px), 860px);
                     transform: none;
-                    font-size: clamp(34px, 5.2vw, 50px);
-                    white-space: normal;
+                    font-size: clamp(38px, 5.55vw, 56px);
+                    white-space: nowrap !important;
                 }}
 
                 .nc-landing-subtitle,
@@ -10175,10 +10175,10 @@ def page_new_chat() -> None:
                     max-width: 92%;
                     margin-top: 18px;
                     transform: none;
-                    font-size: clamp(29px, 8.4vw, 37px);
+                    font-size: clamp(18px, 5.6vw, 42px);
                     font-weight: 610;
                     line-height: 1.16;
-                    white-space: normal;
+                    white-space: nowrap !important;
                 }}
 
                 .nc-landing-subtitle {{
