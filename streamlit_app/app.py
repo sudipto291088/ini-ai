@@ -9608,6 +9608,14 @@ def page_new_chat() -> None:
                 white-space: nowrap !important;
             }}
 
+            /* Size the landing copy from its real content lane, not the full
+               browser viewport. This keeps it inside the space left beside
+               the desktop sidebar and also inside narrow mobile screens. */
+            [data-testid="stElementContainer"]:has(.nc-landing-heading),
+            [data-testid="stElementContainer"]:has(.nc-landing-subtitle) {{
+                container-type: inline-size;
+            }}
+
             .nc-landing-greeting {{
                 margin: 20px auto 0;
                 color: #4b5563;
@@ -9625,6 +9633,7 @@ def page_new_chat() -> None:
                 line-height: 1.4;
                 letter-spacing: 0.006em;
                 text-align: center;
+                white-space: nowrap;
             }}
 
             .st-key-nc_landing_composer {{
@@ -10119,7 +10128,9 @@ def page_new_chat() -> None:
                 .nc-landing-heading {{
                     width: min(calc(100% - 40px), 860px);
                     transform: none;
-                    font-size: clamp(38px, 5.55vw, 56px);
+                    /* Fit the full sentence inside the narrowed desktop content
+                       lane instead of letting either edge fall behind the shell. */
+                    font-size: clamp(13px, 5cqw, 56px);
                     white-space: nowrap !important;
                 }}
 
@@ -10127,6 +10138,11 @@ def page_new_chat() -> None:
                 .st-key-nc_landing_composer,
                 [data-testid="stElementContainer"]:has(.nc-explore-label) {{
                     width: min(calc(100% - 40px), 860px);
+                }}
+
+                .nc-landing-subtitle {{
+                    font-size: clamp(11px, 2.1cqw, 23px);
+                    white-space: nowrap;
                 }}
 
                 .st-key-nc_explore_carousel {{
@@ -10145,6 +10161,14 @@ def page_new_chat() -> None:
                 div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_ai) {{
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                     gap: 8px;
+                }}
+            }}
+
+            /* Bridge the narrow desktop shell immediately above the 1100px
+               breakpoint without moving or resizing the UIB. */
+            @media (min-width: 1101px) and (max-width: 1160px) {{
+                .nc-landing-heading {{
+                    transform: translateX(-120px);
                 }}
             }}
 
@@ -10175,7 +10199,9 @@ def page_new_chat() -> None:
                     max-width: 92%;
                     margin-top: 18px;
                     transform: none;
-                    font-size: clamp(18px, 5.6vw, 42px);
+                    /* Mobile has a wider usable lane after the sidebar collapses.
+                       Scale against that lane so the phrase stays fully visible. */
+                    font-size: clamp(13px, 5cqw, 42px);
                     font-weight: 610;
                     line-height: 1.16;
                     white-space: nowrap !important;
@@ -10185,7 +10211,8 @@ def page_new_chat() -> None:
                     max-width: 92%;
                     margin-bottom: 22px;
                     color: #171717;
-                    font-size: 17px;
+                    font-size: clamp(11px, 2.8cqw, 17px);
+                    white-space: nowrap;
                 }}
 
                 .st-key-nc_landing_composer {{
@@ -10304,6 +10331,26 @@ def page_new_chat() -> None:
 
                 .st-key-nc_explore_grid div.stButton > button::after {{
                     font-size: 12px;
+                }}
+            }}
+
+            @media (max-width: 420px) {{
+                .st-key-nc_explore_grid div.stButton > button {{
+                    height: 112px !important;
+                    min-height: 112px !important;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button p {{
+                    font-size: 12px !important;
+                    line-height: 1.2 !important;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button::after {{
+                    max-width: 100%;
+                    font-size: 11px;
+                    line-height: 1.2;
+                    white-space: normal;
+                    overflow-wrap: anywhere;
                 }}
             }}
 
