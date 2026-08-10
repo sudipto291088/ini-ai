@@ -10051,6 +10051,36 @@ def page_new_chat() -> None:
             }}
 
             @media (max-width: 1100px) {{
+                [data-testid="stElementContainer"]:has(.nc-landing-brand) {{
+                    width: min(calc(100% - 40px), 860px);
+                }}
+
+                .nc-landing-heading {{
+                    width: min(calc(100% - 40px), 860px);
+                    transform: none;
+                    font-size: clamp(34px, 5.2vw, 50px);
+                    white-space: normal;
+                }}
+
+                .nc-landing-subtitle,
+                .st-key-nc_landing_composer,
+                [data-testid="stElementContainer"]:has(.nc-explore-label) {{
+                    width: min(calc(100% - 40px), 860px);
+                }}
+
+                .st-key-nc_explore_carousel {{
+                    width: min(calc(100% - 20px), 900px);
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button {{
+                    padding-left: 66px !important;
+                    padding-right: 16px !important;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button::before {{
+                    left: 22px;
+                }}
+
                 div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_ai) {{
                     grid-template-columns: repeat(2, minmax(0, 1fr));
                     gap: 8px;
@@ -10132,6 +10162,7 @@ def page_new_chat() -> None:
                 }}
 
                 .st-key-nc_explore_carousel
+                > div[data-testid="stLayoutWrapper"]
                 > div[data-testid="stHorizontalBlock"] {{
                     gap: 5px;
                 }}
@@ -10158,6 +10189,7 @@ def page_new_chat() -> None:
 
                 .st-key-nc_explore_grid div.stButton > button p {{
                     font-size: 13px !important;
+                    overflow-wrap: anywhere !important;
                 }}
 
                 .st-key-nc_explore_grid div.stButton > button::after {{
@@ -10170,6 +10202,47 @@ def page_new_chat() -> None:
                     min-width: 34px !important;
                     height: 34px !important;
                     min-height: 34px !important;
+                }}
+            }}
+
+            @media (min-width: 761px) and (max-width: 900px) {{
+                .st-key-nc_explore_carousel
+                > div[data-testid="stLayoutWrapper"]
+                > div[data-testid="stHorizontalBlock"] {{
+                    gap: 7px;
+                }}
+
+                .st-key-nc_explore_carousel
+                > div[data-testid="stLayoutWrapper"]
+                > div[data-testid="stHorizontalBlock"]
+                > div[data-testid="stColumn"]:first-child,
+                .st-key-nc_explore_carousel
+                > div[data-testid="stLayoutWrapper"]
+                > div[data-testid="stHorizontalBlock"]
+                > div[data-testid="stColumn"]:last-child {{
+                    flex-basis: 6% !important;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button {{
+                    height: 94px !important;
+                    min-height: 94px !important;
+                    padding: 15px 10px 15px 48px !important;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button::before {{
+                    top: 33px;
+                    left: 15px;
+                    width: 23px;
+                    height: 23px;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button p {{
+                    font-size: 13px !important;
+                    overflow-wrap: anywhere !important;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button::after {{
+                    font-size: 12px;
                 }}
             }}
 
