@@ -286,7 +286,7 @@ div[data-testid="stSidebar"] .block-container{
 
 .ini-sidebar-logo{display:flex; align-items:center; justify-content:center; margin:0 0 10px; padding:0;}
 .ini-sidebar-section{color:var(--muted); font-size:15px; font-weight:560; letter-spacing:.01em; margin:14px 0 5px;}
-.ini-chat-section-title{font-size:17px; margin-top:15px; margin-bottom:7px;}
+.ini-chat-section-title{font-size:15px; font-weight:560; margin-top:15px; margin-bottom:7px;}
 .ini-sidebar-session-list{
   max-height:450px; /* six 75px mockup-style rows */
   overflow-y:visible !important;
@@ -326,33 +326,42 @@ div[data-testid="stSidebar"] .block-container{
 .ini-sidebar-nav{
   display:flex;
   flex-direction:column;
-  gap:2px;
-  margin-top:7px;
+  gap:4px;
+  margin-top:9px;
 }
 .ini-sidebar-nav-card{
   display:flex;
   align-items:center;
-  min-height:38px;
-  padding:8px 4px;
+  gap:12px;
+  min-height:42px;
+  padding:9px 8px;
   border:0;
   border-radius:8px;
   background:transparent;
   color:var(--ink) !important;
-  font-size:13px;
-  font-weight:570;
+  font-size:14.5px;
+  font-weight:540;
   line-height:1.25;
   text-decoration:none !important;
   box-shadow:none;
   transition:background 160ms ease, color 160ms ease;
 }
+.ini-sidebar-nav-icon{
+  width:21px;
+  height:21px;
+  flex:0 0 21px;
+  color:#f51b3f;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
 .ini-sidebar-nav-card:hover{
-  background:rgba(15,23,42,.035);
+  background:rgba(100,116,139,.07);
   text-decoration:none !important;
 }
 .ini-sidebar-nav-card.is-active{
-  background:rgba(245,27,63,.055);
-  box-shadow:inset 3px 0 0 #f51b3f;
-  font-weight:620;
+  background:rgba(148,163,184,.075);
+  box-shadow:none;
+  font-weight:570;
 }
 
 /* Prevent Continue wrapping */
@@ -432,17 +441,17 @@ button[kind="secondary"]{
   border-bottom:1px solid rgba(148,163,184,.16);
 }
 .ini_session_row:last-child{border-bottom:0;}
-.ini_sidebar_link.ini_session_lead{display:grid !important; grid-template-columns:32px minmax(0,1fr); align-items:center; column-gap:11px; min-width:0; flex:1; height:100%; padding:0 !important;}
-.ini_session_icon{display:block; width:32px; height:32px; align-self:center; color:#111827;}
+.ini_sidebar_link.ini_session_lead{display:grid !important; grid-template-columns:36px minmax(0,1fr); align-items:center; column-gap:10px; min-width:0; flex:1; height:100%; padding:0 !important;}
+.ini_session_icon{display:block; width:36px; height:36px; align-self:center; color:#111827;}
 .ini_session_copy{display:flex; flex-direction:column; justify-content:center; min-width:0; height:100%;}
-.ini_session_title{display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:570; line-height:1.25; color:var(--ink);}
-.ini_session_date{font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.15;}
+.ini_session_title{display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:15.5px; font-weight:540; line-height:1.2; color:var(--ink);}
+.ini_session_date{font-size:12.5px; font-weight:430; color:var(--muted); margin-top:4px; line-height:1.1;}
 
 .ini_session_menu{
   position:relative;
-  min-width:18px;
+  min-width:20px;
   text-align:right;
-  opacity:.58;
+  opacity:.86;
   transition:opacity 0.15s ease;
 }
 
@@ -457,8 +466,8 @@ button[kind="secondary"]{
 .ini_session_menu summary{
   list-style:none;
   cursor:pointer;
-  color:#9aa0a6;
-  font-size:22px;
+  color:#667085;
+  font-size:24px;
   line-height:1;
   user-select:none;
 }
@@ -3194,6 +3203,22 @@ def _format_short_mmdd(created_at: str) -> str:
     return ""
 
 
+def _format_sidebar_date(created_at: str) -> str:
+    """Human-readable date used by the mockup-style sidebar rows."""
+    s = (created_at or "").strip()
+    if not s:
+        return ""
+
+    for fmt in ("%b %d.%Y", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+        try:
+            dt = datetime.strptime(s, fmt)
+            return f"{dt.strftime('%b')} {dt.day}, {dt.year}"
+        except Exception:
+            pass
+
+    return ""
+
+
 def _query_href(**updates: Optional[str]) -> str:
     params: Dict[str, str] = {}
     for key, value in st.query_params.items():
@@ -5331,13 +5356,13 @@ with st.sidebar:
         f"""
         <div class="ini-sidebar-nav">
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'home' else ''}"
-             href="{intro_nav_href}" target="_self">🏠&nbsp;&nbsp;Introduction</a>
+             href="{intro_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3.5 10.7 12 3.8l8.5 6.9" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 9.3v10h13v-10M9.3 19.3v-5.8h5.4v5.8" stroke="currentColor" stroke-width="1.7"/></svg><span>Introduction</span></a>
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'chat' else ''}"
-             href="{chat_nav_href}" target="_self">💬&nbsp;&nbsp;New Chat</a>
+             href="{chat_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5.2 5.5h13.6a3.2 3.2 0 0 1 3.2 3.2v5.1a3.2 3.2 0 0 1-3.2 3.2h-6.4L7 20.4 8.1 17H5.2A3.2 3.2 0 0 1 2 13.8V8.7a3.2 3.2 0 0 1 3.2-3.2Z" stroke="currentColor" stroke-width="1.7"/></svg><span>New Chat</span></a>
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'learn' else ''}"
-             href="{learn_nav_href}" target="_self">📚&nbsp;&nbsp;My New Learning</a>
+             href="{learn_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 5.2-7.8 4L12 13.3l7.8-4.1L12 5.2Z" stroke="currentColor" stroke-width="1.7"/><path d="m5.8 11.6-1.6.9 7.8 4.1 7.8-4.1-1.6-.9M5.8 14.9l-1.6.9 7.8 4.1 7.8-4.1-1.6-.9" stroke="currentColor" stroke-width="1.7"/></svg><span>My New Learning</span></a>
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'proj' else ''}"
-             href="{project_nav_href}" target="_self">🧩&nbsp;&nbsp;New Project</a>
+             href="{project_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.3 3.5h3.2v3.1a2 2 0 1 0 4 0V3.5h3v5h-3a2 2 0 1 0 0 4h3v8h-8v-3a2 2 0 1 0-4 0v3h-3v-8h3a2 2 0 1 0 0-4h-3v-5h4.8Z" stroke="currentColor" stroke-width="1.65"/></svg><span>New Project</span></a>
         </div>
         """,
         unsafe_allow_html=True,
@@ -5360,7 +5385,7 @@ with st.sidebar:
         html = []
         for sid, title, created_at, updated_at in chat_rows:
             label = truncate_session_text((title or "New Chat Session").strip(), max_chars=26)
-            mmdd = _format_short_mmdd(created_at or "")
+            sidebar_date = _format_sidebar_date(created_at or "")
 
             html.append(f"""
             <div class="ini_session_row">
@@ -5370,7 +5395,7 @@ with st.sidebar:
                 </svg>
                 <span class="ini_session_copy">
                   <span class="ini_session_title">{label}</span>
-                  <span class="ini_session_date">{mmdd}</span>
+                  <span class="ini_session_date">{sidebar_date}</span>
                 </span>
               </a>
               <div class="ini_session_menu">
