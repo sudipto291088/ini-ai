@@ -217,8 +217,8 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
   border: 1px solid rgba(148, 163, 184, 0.17);
   border-radius: 14px;
   background: var(--card);
-  padding: 10px 10px;
-  margin: 10px 0 12px 0;
+  padding: 12px 13px;
+  margin: 6px 0 11px 0;
   box-shadow:
     0 10px 26px rgba(15, 23, 42, 0.055),
     0 2px 7px rgba(15, 23, 42, 0.035);
@@ -226,21 +226,28 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
 .clock_center{
   display:flex;
   align-items:center;
-  justify-content:center;
-  gap: 8px;
-  margin-top: 2px;
+  justify-content:space-between;
+  gap: 12px;
 }
+.clock_date_group,
+.clock_time_group{display:flex; align-items:center; gap:9px; min-width:0;}
+.clock_time_group{padding-left:12px; border-left:1px solid rgba(148,163,184,.22);}
+.clock_calendar_icon,
+.clock_face_icon{width:31px; height:31px; color:#111827; flex:0 0 auto;}
+.clock_date_stack{display:flex; flex-direction:column; min-width:0; line-height:1.12;}
+.clock_day{font-size:11px; font-weight:520; color:var(--muted);}
+.clock_date{font-size:13px; font-weight:610; color:var(--ink); white-space:nowrap;}
 .clock_time{
-  font-size: 36px;
-  font-weight: 750;
+  font-size: 22px;
+  font-weight: 620;
   line-height: 1;
   letter-spacing: 0.5px;
 }
 .clock_ampm{
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 10px;
+  font-weight: 560;
   color: var(--muted);
-  margin-top: 12px;
+  margin-top: 5px;
 }
 .clock_row_bottom{
   display:flex;
@@ -274,8 +281,28 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
 .bigtitle{ font-size: 30px; font-weight: 750; margin: 0 0 12px 0; }
 
 div[data-testid="stSidebar"] .block-container{
-  padding-top: 1rem;
+  padding-top: .35rem;
 }
+
+.ini-sidebar-logo{display:flex; align-items:center; justify-content:center; margin:0 0 10px; padding:0;}
+.ini-sidebar-section{color:var(--muted); font-size:15px; font-weight:560; letter-spacing:.01em; margin:14px 0 5px;}
+.ini-chat-section-title{font-size:17px; margin-top:15px; margin-bottom:7px;}
+.ini-sidebar-session-list{
+  max-height:450px; /* six 75px mockup-style rows */
+  overflow-y:visible !important;
+  overflow-x:clip;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(100,116,139,.28) transparent;
+  padding-right:3px;
+}
+.ini-sidebar-session-list.is-scrollable{overflow-y:auto !important;}
+.ini-sidebar-session-list::-webkit-scrollbar{width:5px;}
+.ini-sidebar-session-list::-webkit-scrollbar-thumb{background:rgba(100,116,139,.24); border-radius:999px;}
+.ini-sidebar-session-list::-webkit-scrollbar-track{background:transparent;}
+.ini-sidebar-empty{display:flex; align-items:center; gap:10px; padding:10px 2px 4px; color:var(--muted);}
+.ini-sidebar-empty-icon{font-size:21px; color:#f51b3f; line-height:1;}
+.ini-sidebar-empty-title{font-size:13px; font-weight:570; color:var(--ink);}
+.ini-sidebar-empty-copy{font-size:11px; margin-top:2px; line-height:1.35;}
 
 /* Keep the navigation rail binary: collapsed or one stable open width.
    Streamlit otherwise exposes an 8px drag handle and arbitrary widths. */
@@ -312,7 +339,7 @@ div[data-testid="stSidebar"] .block-container{
   background:transparent;
   color:var(--ink) !important;
   font-size:13px;
-  font-weight:650;
+  font-weight:570;
   line-height:1.25;
   text-decoration:none !important;
   box-shadow:none;
@@ -323,8 +350,9 @@ div[data-testid="stSidebar"] .block-container{
   text-decoration:none !important;
 }
 .ini-sidebar-nav-card.is-active{
-  background:transparent;
-  font-weight:760;
+  background:rgba(245,27,63,.055);
+  box-shadow:inset 3px 0 0 #f51b3f;
+  font-weight:620;
 }
 
 /* Prevent Continue wrapping */
@@ -397,14 +425,24 @@ button[kind="secondary"]{
   align-items:center;
   justify-content:space-between;
   gap:8px;
-  margin: 2px 0 6px 0;
+  height:75px;
+  min-height:75px;
+  padding:8px 3px;
+  margin:0;
+  border-bottom:1px solid rgba(148,163,184,.16);
 }
+.ini_session_row:last-child{border-bottom:0;}
+.ini_sidebar_link.ini_session_lead{display:grid !important; grid-template-columns:32px minmax(0,1fr); align-items:center; column-gap:11px; min-width:0; flex:1; height:100%; padding:0 !important;}
+.ini_session_icon{display:block; width:32px; height:32px; align-self:center; color:#111827;}
+.ini_session_copy{display:flex; flex-direction:column; justify-content:center; min-width:0; height:100%;}
+.ini_session_title{display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:570; line-height:1.25; color:var(--ink);}
+.ini_session_date{font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.15;}
 
 .ini_session_menu{
   position:relative;
   min-width:18px;
   text-align:right;
-  opacity:0;
+  opacity:.58;
   transition:opacity 0.15s ease;
 }
 
@@ -420,7 +458,7 @@ button[kind="secondary"]{
   list-style:none;
   cursor:pointer;
   color:#9aa0a6;
-  font-size:18px;
+  font-size:22px;
   line-height:1;
   user-select:none;
 }
@@ -485,9 +523,12 @@ button[kind="secondary"]{
   text-decoration:none !important;
   color: var(--ink) !important;
   text-align:left !important;
-  padding: 6px 0;
+  padding: 5px 0;
   line-height: 1.4;
+  font-size:12.5px;
+  font-weight:520;
 }
+.ini_sidebar_link.ini_session_lead{display:grid !important;}
 .ini_sidebar_link:hover{
   text-decoration:none !important;
 }
@@ -3626,6 +3667,7 @@ def _empty_new_chat_state() -> Dict[str, Any]:
         "chat_branch_answers": [],
         "chat_query_log": [],
         "chat_active_discussion": None,
+        "chat_active_carm_context": None,
         "chat_study_mode_established": False,
         "chat_user_profile": {},
     }
@@ -3645,6 +3687,7 @@ def _reset_new_chat_state() -> None:
     st.session_state.chat_query_log = []
     st.session_state.chat_pending_discussion_action = None
     st.session_state.chat_active_discussion = None
+    st.session_state.chat_active_carm_context = None
     st.session_state.chat_study_mode_established = False
     st.session_state.chat_user_profile = {}
     st.session_state.chat_top_topic_input = ""
@@ -3684,6 +3727,7 @@ def _current_new_chat_payload() -> Dict[str, Any]:
         "chat_branch_answers": st.session_state.chat_branch_answers,
         "chat_query_log": st.session_state.chat_query_log,
         "chat_active_discussion": st.session_state.chat_active_discussion,
+        "chat_active_carm_context": st.session_state.chat_active_carm_context,
         "chat_study_mode_established": st.session_state.chat_study_mode_established,
         "chat_user_profile": st.session_state.chat_user_profile,
 
@@ -3823,6 +3867,7 @@ def _load_new_chat_session(sid: str) -> bool:
     st.session_state.chat_branch_answers = payload.get("chat_branch_answers") or []
     st.session_state.chat_query_log = payload.get("chat_query_log") or []
     st.session_state.chat_active_discussion = payload.get("chat_active_discussion")
+    st.session_state.chat_active_carm_context = payload.get("chat_active_carm_context")
     st.session_state.chat_study_mode_established = bool(
         payload.get("chat_study_mode_established", False)
     )
@@ -5222,7 +5267,7 @@ with st.sidebar:
     sidebar_logo_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
     sidebar_logo_data = base64.b64encode(sidebar_logo_path.read_bytes()).decode("ascii")
     st.markdown(
-        f'''<div style="display:flex; align-items:center; justify-content:center; margin:3px 0 18px; padding:2px 0;">
+        f'''<div class="ini-sidebar-logo">
               <img src="data:image/png;base64,{sidebar_logo_data}" alt="" style="display:block; width:43px; height:70px; object-fit:contain; margin-right:2px; filter:drop-shadow(0 3px 6px rgba(245,27,63,.12));">
               <div style="display:flex; flex-direction:column; align-items:flex-start; justify-content:center; margin-left:2px;">
                 <span style="font-size:35px; font-weight:700; line-height:1; letter-spacing:-1.3px; color:#0f172a;">InI<span style="color:#f51b3f;">.ai</span></span>
@@ -5238,12 +5283,25 @@ with st.sidebar:
             f'''
             <div class="clock_tile">
               <div class="clock_center">
-                <div class="clock_time">{cp["time"]}</div>
-                <div class="clock_ampm">{cp["ampm"]}</div>
-              </div>
-              <div class="clock_row_bottom">
-                <div class="clock_box">{cp["date"]}</div>
-                <div class="clock_box">{cp["dow"]}</div>
+                <div class="clock_date_group">
+                  <svg class="clock_calendar_icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                    <rect x="4.5" y="7.5" width="23" height="20" rx="4" stroke="currentColor" stroke-width="1.7"/>
+                    <path d="M4.5 12.5h23M10 4.5v6M22 4.5v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                    <circle cx="23" cy="23" r="1.6" fill="#f51b3f"/>
+                  </svg>
+                  <div class="clock_date_stack">
+                    <span class="clock_day">{cp["dow"]}</span>
+                    <span class="clock_date">{cp["date"]}</span>
+                  </div>
+                </div>
+                <div class="clock_time_group">
+                  <svg class="clock_face_icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                    <circle cx="16" cy="16" r="11.5" stroke="currentColor" stroke-width="1.7"/>
+                    <path d="M16 9.5V16l4.2 3" stroke="#f51b3f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  <div class="clock_time">{cp["time"]}</div>
+                  <div class="clock_ampm">{cp["ampm"]}</div>
+                </div>
               </div>
             </div>
             ''',
@@ -5264,7 +5322,7 @@ with st.sidebar:
 
     st.markdown('<span class="badge" style="margin-left:11px;">v0.1.5 &middot; Question Intelligence</span>', unsafe_allow_html=True)
 
-    st.markdown('<div class="small" style="color:var(--muted); font-weight:750; margin-top:10px;">Navigation</div>', unsafe_allow_html=True)
+    st.markdown('<div class="ini-sidebar-section">Navigation</div>', unsafe_allow_html=True)
     intro_nav_href = _private_href(page="home")
     chat_nav_href = _private_href(page="chat")
     learn_nav_href = _private_href(page="learn")
@@ -5291,7 +5349,7 @@ with st.sidebar:
             st.session_state.api_base = st.text_input("API base", st.session_state.api_base)
 
     st.markdown("<hr/>", unsafe_allow_html=True)
-    st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Chat</div>', unsafe_allow_html=True)
+    st.markdown('<div class="ini-sidebar-section ini-chat-section-title">Your Chat</div>', unsafe_allow_html=True)
 
     chat_rows = [
         row
@@ -5301,13 +5359,20 @@ with st.sidebar:
     if chat_rows:
         html = []
         for sid, title, created_at, updated_at in chat_rows:
-            label = truncate_session_text((title or "New Chat Session").strip(), max_chars=28)
+            label = truncate_session_text((title or "New Chat Session").strip(), max_chars=26)
             mmdd = _format_short_mmdd(created_at or "")
-            display = f"{label} {mmdd}".strip()
 
             html.append(f"""
             <div class="ini_session_row">
-              <a class="ini_sidebar_link" href="{_chat_popup_href(sid)}" target="_self">{display}</a>
+              <a class="ini_sidebar_link ini_session_lead" href="{_chat_popup_href(sid)}" target="_self">
+                <svg class="ini_session_icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                  <path d="M7 6h18a4 4 0 0 1 4 4v9a4 4 0 0 1-4 4h-9l-6.6 4.4 1.2-4.4H7a4 4 0 0 1-4-4v-9a4 4 0 0 1 4-4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                </svg>
+                <span class="ini_session_copy">
+                  <span class="ini_session_title">{label}</span>
+                  <span class="ini_session_date">{mmdd}</span>
+                </span>
+              </a>
               <div class="ini_session_menu">
                 <details>
                   <summary>⋯</summary>
@@ -5320,12 +5385,19 @@ with st.sidebar:
             </div>
             """)
 
-        st.markdown("\n".join(html), unsafe_allow_html=True)
+        st.markdown(
+            '<div class="ini-sidebar-session-list'
+            + (' is-scrollable' if len(chat_rows) > 6 else '')
+            + '">'
+            + re.sub(r">\s+<", "><", "".join(html)).strip()
+            + '</div>',
+            unsafe_allow_html=True,
+        )
     else:
         st.markdown('<div class="small" style="color:var(--muted);">No chat sessions yet.</div>', unsafe_allow_html=True)
 
     st.markdown("<hr/>", unsafe_allow_html=True)
-    st.markdown('<div class="small" style="color:var(--muted); font-weight:750;">Your Learning</div>', unsafe_allow_html=True)
+    st.markdown('<div class="ini-sidebar-section">Your Learning</div>', unsafe_allow_html=True)
 
 
     rows = [
@@ -5336,13 +5408,20 @@ with st.sidebar:
     if rows:
         html = []
         for sid, title, created_at, updated_at in rows:
-            label = truncate_session_text((title or "Learning Session").strip(), max_chars=28)
+            label = truncate_session_text((title or "Learning Session").strip(), max_chars=26)
             mmdd = _format_short_mmdd(created_at or "")
-            display = f"{label} {mmdd}".strip()
 
             html.append(f"""
             <div class="ini_session_row">
-            <a class="ini_sidebar_link" href="{_learn_session_href(sid)}" target="_self">{display}</a>
+            <a class="ini_sidebar_link ini_session_lead" href="{_learn_session_href(sid)}" target="_self">
+              <svg class="ini_session_icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <path d="M5 7.5c4.4 0 7.6 1 11 3.4v15C12.6 23.5 9.4 22.5 5 22.5v-15Zm22 0c-4.4 0-7.6 1-11 3.4v15c3.4-2.4 6.6-3.4 11-3.4v-15Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+              </svg>
+              <span class="ini_session_copy">
+                <span class="ini_session_title">{label}</span>
+                <span class="ini_session_date">{mmdd}</span>
+              </span>
+            </a>
             <div class="ini_session_menu">
                 <details>
                 <summary>⋯</summary>
@@ -5355,9 +5434,23 @@ with st.sidebar:
             </div>
             """)
 
-        st.markdown("\n".join(html), unsafe_allow_html=True)
+        st.markdown(
+            '<div class="ini-sidebar-session-list'
+            + (' is-scrollable' if len(rows) > 6 else '')
+            + '">'
+            + re.sub(r">\s+<", "><", "".join(html)).strip()
+            + '</div>',
+            unsafe_allow_html=True,
+        )
     else:
-        st.markdown('<div class="small" style="color:var(--muted);">No learning sessions yet.</div>', unsafe_allow_html=True)
+        st.markdown(
+            '''<div class="ini-sidebar-empty">
+                 <span class="ini-sidebar-empty-icon">♧</span>
+                 <div><div class="ini-sidebar-empty-title">No active learning yet</div>
+                 <div class="ini-sidebar-empty-copy">Saved learning paths will appear here.</div></div>
+               </div>''',
+            unsafe_allow_html=True,
+        )
 
 # On phones, begin with navigation collapsed. The document-level marker keeps
 # Streamlit reruns from closing the drawer again after the user opens it.
@@ -8071,6 +8164,39 @@ def page_new_chat() -> None:
             else ""
         )
         active_carm_context = st.session_state.get("chat_active_carm_context")
+        if not isinstance(active_carm_context, dict):
+            # Rebuild practical context from persisted response payloads. This
+            # protects natural replies such as "I don't know" after a reload,
+            # deployment restart, or reopening an older chat.
+            persisted_direct_candidates: List[Dict[str, Any]] = []
+            for prior_item in reversed(st.session_state.chat_branch_answers or []):
+                if not isinstance(prior_item, dict) or prior_item.get("kind") != "direct":
+                    continue
+                prior_payload = prior_item.get("direct_answer") or {}
+                if isinstance(prior_payload, dict):
+                    persisted_direct_candidates.append(prior_payload)
+            for prior_payload in (
+                st.session_state.get("chat_direct_answer"),
+                st.session_state.get("chat_root_direct_answer"),
+            ):
+                if isinstance(prior_payload, dict):
+                    persisted_direct_candidates.append(prior_payload)
+
+            for prior_payload in persisted_direct_candidates:
+                if str(prior_payload.get("response_mode") or "").lower() != "carm":
+                    continue
+                prior_prompt = str(prior_payload.get("prompt") or "").strip()
+                prior_answer = str(prior_payload.get("text") or "").strip()
+                if not prior_prompt:
+                    continue
+                active_carm_context = {
+                    "original_request": prior_prompt,
+                    "resolved_request": prior_prompt[-2400:],
+                    "last_answer": prior_answer[-3200:],
+                    "context_intent": str(prior_payload.get("context_intent") or ""),
+                }
+                st.session_state.chat_active_carm_context = active_carm_context
+                break
         used_active_carm_context = False
 
         pending_qm = st.session_state.get("chat_pending_qm_confirmation")
@@ -8348,6 +8474,12 @@ def page_new_chat() -> None:
                             alternate_topic_recommendation
                         ),
                     }
+                elif used_active_carm_context:
+                    # The latest message may look conversational in isolation
+                    # (for example, "I don't know"), but it belongs to the
+                    # active practical request. Route the reconstructed request
+                    # through CARM before any standalone conversation shortcut.
+                    data = fetch_interrogate(topic_text)
                 elif local_conversation_answer:
                     if topic_recommendation_request:
                         st.session_state.chat_pending_qm_confirmation = {
@@ -8637,7 +8769,14 @@ def page_new_chat() -> None:
                             if recommended_topic
                             else qm_discussion_topic or display_topic_text
                         ),
-                        "suppress_profile": bool(data.get("suppress_profile", False)),
+                        # A contextual CARM reply belongs to the existing
+                        # implementation guide; repeating a new Topic Profile
+                        # would incorrectly label replies such as "I don't
+                        # know" as standalone subjects.
+                        "suppress_profile": bool(
+                            data.get("suppress_profile", False)
+                            or used_active_carm_context
+                        ),
                         "show_action_buttons": bool(qm_discussion_topic),
                         "clarification_title": (
                             "Choose how to continue"

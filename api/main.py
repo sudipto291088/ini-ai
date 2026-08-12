@@ -12,6 +12,7 @@ from api.study_ai import study_ai
 from api.intent_layer import detect_intent
 from api.wikidata_knowledge import wikidata_enabled
 from api.wikipedia_knowledge import wikipedia_enabled
+from api.wikibooks_knowledge import wikibooks_enabled
 
 
 class TopicIn(BaseModel):
@@ -113,10 +114,11 @@ def health():
         "status": "ok",
         "service": "InI.ai",
         "version": "0.1",
-        "components": ["interrogate", "illustrate", "resume", "study_ai", "wikidata", "wikipedia"],
+        "components": ["interrogate", "illustrate", "resume", "study_ai", "wikidata", "wikipedia", "wikibooks"],
         "llm_enabled": llm_enabled(),
         "wikidata_enabled": wikidata_enabled(),
         "wikipedia_enabled": wikipedia_enabled(),
+        "wikibooks_enabled": wikibooks_enabled(),
     }
 
 

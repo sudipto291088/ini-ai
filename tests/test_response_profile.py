@@ -25,6 +25,18 @@ class ResponseProfileTests(unittest.TestCase):
         self.assertEqual(rows["Entity type"], "Procedure")
         self.assertEqual(rows["Broad field"], "Technical configuration")
 
+    def test_enterprise_bridge_is_classified_as_implementation_guidance(self):
+        rows = dict(
+            build_response_profile(
+                "How do I add Siebel CRM as a local MCP server?",
+                response_mode="carm",
+                context_intent="integration",
+            )
+        )
+        self.assertEqual(rows["Name type"], "Implementation guidance")
+        self.assertEqual(rows["Entity type"], "Technical integration and configuration")
+        self.assertEqual(rows["Broad field"], "Systems integration")
+
 
 if __name__ == "__main__":
     unittest.main()

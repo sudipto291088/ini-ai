@@ -213,6 +213,10 @@ def build_response_profile(
             "Problem-solving request", "Operational issue", "Technical troubleshooting",
             "Failure conditions, diagnosis, recovery, prevention",
         ),
+        "integration": (
+            "Implementation guidance", "Technical integration and configuration", "Systems integration",
+            "Source system, integration interface, MCP bridge, client, security",
+        ),
     }
     if context_intent in practical:
         name_type, entity_type, broad_field, related = practical[context_intent]

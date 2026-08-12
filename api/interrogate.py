@@ -109,6 +109,15 @@ def extract_topic(user_text: str) -> str:
         for cue in ("add", "install", "set up", "setup", "configure", "run")
     )
     if mentions_mcp and mentions_local and mentions_setup:
+        integration_match = re.search(
+            r"\b(?:add|expose|use)\s+(.+?)\s+as\s+(?:a\s+)?(?:local\s+)?(?:mcp|model context protocol)\s+(?:server|bridge)\b",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if integration_match:
+            target = re.sub(r"\s+", " ", integration_match.group(1)).strip(" ,.;:?!")
+            if target:
+                return f"{target} and local MCP integration"
         return "Setting up an MCP server locally"
 
     # Strip chained command phrases. Natural requests often stack them (for

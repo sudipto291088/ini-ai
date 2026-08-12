@@ -24,6 +24,21 @@ MCP_HOSTS = (
 )
 
 
+def _mcp_integration_target(text: str) -> str:
+    """Return a named system being connected through MCP, if one is present."""
+    patterns = (
+        r"\b(?:add|expose|use)\s+(.+?)\s+as\s+(?:a\s+)?(?:local\s+)?(?:mcp|model context protocol)\s+(?:server|bridge)\b",
+        r"\b(?:connect|integrate)\s+(.+?)\s+(?:to|with|through|via)\s+(?:a\s+)?(?:local\s+)?(?:mcp|model context protocol)\b",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            target = re.sub(r"\s+", " ", match.group(1)).strip(" ,.;:?!")
+            if target and target not in {"an", "a", "the", "server"}:
+                return target
+    return ""
+
+
 def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "").strip().lower())
 
@@ -55,6 +70,8 @@ def classify_context(text: str) -> Dict[str, Any]:
     if conceptual_error_topic:
         return {"response_mode": "question_map", "context_intent": "learning"}
 
+    integration_target = _mcp_integration_target(normalized)
+
     context_intent = "learning"
     if any(cue in normalized for cue in DEBUGGING_CUES):
         context_intent = "debugging"
@@ -69,6 +86,8 @@ def classify_context(text: str) -> Dict[str, Any]:
     )
     if is_local_mcp:
         context_intent = "installation"
+    if integration_target:
+        context_intent = "integration"
 
     if context_intent == "learning":
         return {"response_mode": "question_map", "context_intent": context_intent}
@@ -81,7 +100,7 @@ def classify_context(text: str) -> Dict[str, Any]:
         any(host in normalized for host in MCP_HOSTS)
         or "application or tool specified by the user is" in normalized
     )
-    if is_local_mcp and not has_explicit_host:
+    if is_local_mcp and not has_explicit_host and not integration_target:
         clarification_required = True
         clarification_question = (
             "Which application do you want the local MCP server to connect to? "
@@ -100,6 +119,7 @@ def classify_context(text: str) -> Dict[str, Any]:
         "clarification_required": clarification_required,
         "clarification_question": clarification_question,
         "clarification_options": clarification_options,
+        "integration_target": integration_target,
     }
 
 
@@ -109,11 +129,16 @@ def build_carm_answer_prompt(user_text: str, context_intent: str) -> str:
         "installation": "complete a practical installation or configuration",
         "debugging": "identify why something is failing and fix it safely",
         "troubleshooting": "diagnose the problem and restore expected behaviour",
+        "integration": "guide a first-time implementer through a safe, controlled bridge between the named system and an MCP client",
     }
     objective = labels.get(context_intent, "solve the immediate practical problem")
     normalized = _normalize(user_text)
+    integration_followup = bool(
+        context_intent == "integration"
+        and "continue this active practical request" in normalized
+    )
     mcp_guardrails = ""
-    if "mcp" in normalized or "model context protocol" in normalized:
+    if ("mcp" in normalized or "model context protocol" in normalized) and context_intent != "integration":
         mcp_guardrails = """
 
 MCP accuracy guardrails (mandatory):
@@ -130,15 +155,51 @@ MCP accuracy guardrails (mandatory):
 - When the provider is unspecified, do not include a made-up "Example" command or URL at all. Show only the verified syntax with uppercase placeholders; never emit `/path/to/...`, `example.com`, `--serve`, or a sample port.
 """.rstrip()
 
-    return f"""
-Use InI.ai Context-Aware Response Mode for this request.
+    integration_guardrails = ""
+    if context_intent == "integration" and integration_followup:
+        integration_guardrails = """
 
-Original user request: {user_text}
-Likely objective: {objective}
-{mcp_guardrails}
+Enterprise integration continuation guardrails (mandatory):
+- This is a reply inside an active implementation-guidance conversation, not a new topic. Never generate a Question Map for the reply itself.
+- Read the original request, previous-answer tail, and latest reply included in the user text.
+- If the user says they do not know, reassure them briefly and convert the missing details into one manageable discovery step at a time. Explain exactly whom to ask or what system screen/document to check first.
+- If the user provides only some answers, acknowledge what is known and ask only for the missing information; do not repeat answered questions.
+- Do not provide an implementation procedure until the environment details required for safe, accurate instructions are known.
+- Keep the response under 180 words. Use plain language, no profile-like teaching structure, no Question Map, no "Explore next", and no unrelated concepts.
+- End with one concrete next action and wait for the user's reply.
+""".rstrip()
+    elif context_intent == "integration":
+        integration_guardrails = """
 
-Answer the original request, not this instruction. Adapt the structure naturally.
+Enterprise integration guardrails (mandatory):
+- MCP means Model Context Protocol. Never expand it any other way.
+- This is the first turn of a staged implementation conversation. Override any general instruction to provide a complete procedure now.
+- In no more than 220 words, give exactly two headings: "Immediate intent" and "Before we build it". Under "Immediate intent", include the plain-language correction, the flow `target system -> supported interface -> local MCP bridge -> MCP client`, and exactly one short sentence (maximum 20 words) explaining each of those four pieces. Under "Before we build it", include exactly four numbered questions.
+- The four questions must ask for: (1) system version/deployment, (2) which programmatic interface is enabled, (3) the intended MCP client, and (4) the first read-only operation to expose.
+- Explain briefly why each answer is needed and how the user can find it or who can confirm it. Do not assume the user knows technical terminology.
+- Immediately after question 4, add this single unheaded call to action: "Reply with whatever you know. ‘I don’t know’ is a valid answer, and InI will guide you from there." Then stop.
+- Do not include "Start here", implementation steps, code, commands, configuration, tools, packages, endpoints, credentials, security checklists, assumptions, verification, diagnostics, failure modes, examples, additional follow-ups, or an "Explore next" section on this first turn.
+- Never assume Codex or another product is the MCP client. Never claim the target system itself becomes an MCP server.
+- Never invent vendor capabilities. Mention an interface only as something the system administrator must confirm.
+- After the user supplies the four answers, a later response may provide a phased, read-only-first implementation plan with the necessary safeguards.
+- The Siebel CRM question is the reference specimen, but apply this staged behavior generally to other named integration targets.
+""".rstrip()
 
+    if context_intent == "integration" and integration_followup:
+        requirements = """
+Requirements:
+- Preserve the active integration context and respond only to the user's latest reply.
+- Give one calm, practical next step and then stop.
+""".strip()
+    elif context_intent == "integration":
+        requirements = """
+Requirements:
+- Follow the enterprise integration guardrails exactly; they replace the normal practical-answer structure for this first turn.
+- Use only the two required headings and stop after the required one-sentence call to action.
+- Avoid filler, sales language, and repeated restatement.
+""".strip()
+    else:
+        requirements = """
 Requirements:
 - Begin with one calm sentence confirming the likely objective under the heading "Immediate intent".
 - Put the actionable answer immediately after it under "Start here".
@@ -149,7 +210,19 @@ Requirements:
 - For debugging, lead with the most likely cause and the shortest safe diagnostic sequence.
 - End with "Explore next" and 2 to 4 numbered questions that reveal the surrounding knowledge landscape.
 - "Explore next" must be the final section; do not append a second suggested-follow-ups section.
-- Keep the complete response under 400 words. Reserve enough output for and always include the final "Explore next" section.
+- Keep the complete response under 550 words. Prefer clarity and continuity over exhaustive implementation detail, and reserve enough output for the final "Explore next" section.
 - Do not generate a full seven-section Question Map.
 - Avoid filler, sales language, and repeated restatement.
+""".strip()
+
+    return f"""
+Use InI.ai Context-Aware Response Mode for this request.
+
+Original user request: {user_text}
+Likely objective: {objective}
+{mcp_guardrails}
+{integration_guardrails}
+
+Answer the original request, not this instruction. Adapt the structure naturally.
+{requirements}
 """.strip()

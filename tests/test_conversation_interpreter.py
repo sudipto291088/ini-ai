@@ -44,6 +44,5 @@ class ConversationInterpreterTests(unittest.TestCase):
         self.assertEqual(turn.raw_text, "Yeah, machine learning!")
         self.assertEqual(turn.semantic_text, "machine learning!")
 
-
 if __name__ == "__main__":
     unittest.main()

@@ -49,6 +49,56 @@ class ContextAwareResponseModeTests(unittest.TestCase):
         self.assertFalse(result["needs_clarification"])
         self.assertIn("Context-Aware Response Mode", result["direct_answer_prompt"])
 
+    def test_named_enterprise_system_routes_to_mcp_bridge_answer(self):
+        result = interrogate("How do I add Siebel CRM as a local MCP server?")
+        self.assertEqual(result["response_mode"], "carm")
+        self.assertEqual(result["context_intent"], "integration")
+        self.assertTrue(result["should_answer_direct"])
+        self.assertFalse(result["needs_clarification"])
+        self.assertEqual(result["topic"], "Siebel CRM and local MCP integration")
+        prompt = result["direct_answer_prompt"]
+        self.assertIn("local MCP bridge", prompt)
+        self.assertIn("target system -> supported interface", prompt)
+        self.assertIn("first turn of a staged implementation conversation", prompt)
+        self.assertIn("no more than 220 words", prompt)
+        self.assertIn("exactly four numbered questions", prompt)
+        self.assertIn("‘I don’t know’ is a valid answer", prompt)
+        self.assertIn("Then stop", prompt)
+        self.assertIn("implementation steps, code, commands", prompt)
+        self.assertIn("Never assume Codex", prompt)
+        self.assertIn("apply this staged behavior generally", prompt)
+        self.assertNotIn("target 350 to 500 words", prompt)
+        self.assertNotIn('End with "Explore next"', prompt)
+        self.assertNotIn("reserve enough output for the final", prompt)
+        self.assertNotIn("Codex supports local STDIO servers", prompt)
+
+    def test_other_named_systems_use_same_general_integration_route(self):
+        for system in ("Salesforce", "SAP", "PostgreSQL"):
+            with self.subTest(system=system):
+                result = classify_context(
+                    f"How do I add {system} as a local MCP server?"
+                )
+                self.assertEqual(result["context_intent"], "integration")
+                self.assertFalse(result["clarification_required"])
+                self.assertEqual(result["integration_target"], system.lower())
+
+    def test_uncertain_reply_stays_inside_active_integration_guidance(self):
+        continued = (
+            "Continue this active practical request: How do I add Siebel CRM as a local MCP server?\n\n"
+            "The end of InI's previous answer was: Before we build it...\n\n"
+            "The user's latest natural-language reply is: I don't know.\n"
+            "Interpret that reply as context for the active request."
+        )
+        result = interrogate(continued)
+        self.assertEqual(result["response_mode"], "carm")
+        self.assertEqual(result["context_intent"], "integration")
+        prompt = result["direct_answer_prompt"]
+        self.assertIn("active implementation-guidance conversation", prompt)
+        self.assertIn("Never generate a Question Map", prompt)
+        self.assertIn("If the user says they do not know", prompt)
+        self.assertIn("one manageable discovery step at a time", prompt)
+        self.assertNotIn("exactly four numbered questions", prompt)
+
     def test_vscode_clarification_answer_completes_mcp_request(self):
         for host_spelling in ("VSCode", "VS Code", "Visual Studio Code"):
             with self.subTest(host_spelling=host_spelling):

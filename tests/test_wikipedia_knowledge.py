@@ -146,6 +146,8 @@ class WikipediaKnowledgeTests(unittest.TestCase):
                 llm, "retrieve_wikipedia_context", return_value=wikipedia
             ), patch.object(
                 llm, "format_wikipedia_prompt_context", return_value="WIKIPEDIA CONTEXT"
+            ), patch.object(
+                llm, "retrieve_wikibooks_context", return_value={}
             ), patch.object(llm.requests, "post", side_effect=fake_post):
                 result = llm.generate_dynamic_answer_result(
                     topic="linear regression",
