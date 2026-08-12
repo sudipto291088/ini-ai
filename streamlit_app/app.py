@@ -364,9 +364,9 @@ div[data-testid="stSidebar"] .block-container{
   transition:background 160ms ease, color 160ms ease;
 }
 .ini-sidebar-nav-icon{
-  width:21px;
-  height:21px;
-  flex:0 0 21px;
+  width:27px;
+  height:27px;
+  flex:0 0 27px;
   color:#f51b3f;
   stroke-linecap:round;
   stroke-linejoin:round;
