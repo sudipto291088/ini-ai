@@ -214,11 +214,11 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
 /* --- Sidebar clock tile --- */
 .clock_tile{
   width: 100%;
-  border: 1px solid rgba(148, 163, 184, 0.17);
-  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.20);
+  border-radius: 12px;
   background: var(--card);
-  padding: 12px 13px;
-  margin: 6px 0 11px 0;
+  padding: 13px 11px;
+  margin: 6px 0 12px 0;
   box-shadow:
     0 10px 26px rgba(15, 23, 42, 0.055),
     0 2px 7px rgba(15, 23, 42, 0.035);
@@ -230,22 +230,23 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
   gap: 12px;
 }
 .clock_date_group,
-.clock_time_group{display:flex; align-items:center; gap:9px; min-width:0;}
-.clock_time_group{padding-left:12px; border-left:1px solid rgba(148,163,184,.22);}
+.clock_time_group{display:flex; align-items:center; gap:7px; min-width:0;}
+.clock_date_group{flex:1; overflow:hidden;}
+.clock_time_group{margin-left:6px; padding-left:12px; border-left:1px solid rgba(148,163,184,.26); flex:0 0 auto;}
 .clock_calendar_icon,
-.clock_face_icon{width:31px; height:31px; color:#111827; flex:0 0 auto;}
-.clock_date_stack{display:flex; flex-direction:column; min-width:0; line-height:1.12;}
-.clock_day{font-size:11px; font-weight:520; color:var(--muted);}
-.clock_date{font-size:13px; font-weight:610; color:var(--ink); white-space:nowrap;}
+.clock_face_icon{width:25px; height:25px; color:#111827; flex:0 0 auto;}
+.clock_date_stack{display:flex; flex-direction:column; min-width:0; line-height:1.05;}
+.clock_day{font-size:9px; font-weight:520; color:#667085; white-space:nowrap;}
+.clock_date{font-size:10.5px; font-weight:550; color:#344054; white-space:nowrap;}
 .clock_time{
-  font-size: 22px;
-  font-weight: 620;
+  font-size: 17px;
+  font-weight: 560;
   line-height: 1;
   letter-spacing: 0.5px;
 }
 .clock_ampm{
-  font-size: 10px;
-  font-weight: 560;
+  font-size: 9px;
+  font-weight: 520;
   color: var(--muted);
   margin-top: 5px;
 }
@@ -267,16 +268,21 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
 }
 
 .badge{
-  display:inline-block;
-  padding: 3px 10px;
-  border-radius:999px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  min-height:34px;
+  padding: 7px 12px;
+  border-radius:9px;
   font-size:12px;
-  border:1px solid rgba(148, 163, 184, 0.16);
-  background:rgba(248, 250, 252, 0.68);
-  box-shadow:
-    0 5px 14px rgba(15, 23, 42, 0.045),
-    0 1px 3px rgba(15, 23, 42, 0.025);
+  font-weight:500;
+  color:#475467;
+  border:1px solid rgba(148, 163, 184, 0.25);
+  background:rgba(255,255,255,.76);
+  box-shadow:none;
 }
+.badge::before{content:""; width:7px; height:7px; border-radius:50%; background:#f51b3f; box-shadow:0 0 0 3px rgba(245,27,63,.08);}
 .small{ font-size: 12px; }
 .bigtitle{ font-size: 30px; font-weight: 750; margin: 0 0 12px 0; }
 
@@ -285,8 +291,8 @@ div[data-testid="stSidebar"] .block-container{
 }
 
 .ini-sidebar-logo{display:flex; align-items:center; justify-content:center; margin:0 0 10px; padding:0;}
-.ini-sidebar-section{color:var(--muted); font-size:13px; font-weight:560; letter-spacing:.01em; margin:14px 0 5px;}
-.ini-chat-section-title{font-size:13px; font-weight:560; margin-top:3px; margin-bottom:4px;}
+.ini-sidebar-section{color:var(--muted); font-size:11px; font-weight:560; letter-spacing:.01em; margin:14px 0 5px;}
+.ini-chat-section-title{font-size:11px; font-weight:560; margin-top:3px; margin-bottom:4px;}
 .ini-chat-divider{height:1px; background:rgba(148,163,184,.42); margin:8px 0 1px;}
 .ini-sidebar-session-list{
   max-height:450px; /* six 75px mockup-style rows */
@@ -3135,7 +3141,8 @@ def new_msg_id(prefix: str) -> str:
 def clock_parts() -> Dict[str, str]:
     now = _user_now()
     t = now.strftime("%I:%M").lstrip("0") or now.strftime("%I:%M")
-    return {"time": t, "ampm": now.strftime("%p"), "date": now.strftime("%m/%d"), "dow": now.strftime("%a")}
+    full_date = f"{now.strftime('%b')} {now.day}, {now.year}"
+    return {"time": t, "ampm": now.strftime("%p"), "date": full_date, "dow": now.strftime("%a")}
 
 
 def normalize_mojibake(s: str) -> str:
@@ -5380,7 +5387,7 @@ with st.sidebar:
         _render_clock_tile()
         st.caption("Tip: install 'streamlit-autorefresh' to enable a live-updating clock.")
 
-    st.markdown('<span class="badge" style="margin-left:11px;">v0.1.5 &middot; Question Intelligence</span>', unsafe_allow_html=True)
+    st.markdown('<div class="badge">v0.1.5 &nbsp;&middot;&nbsp; Question Intelligence</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="ini-sidebar-section">Navigation</div>', unsafe_allow_html=True)
     intro_nav_href = _private_href(page="home")
