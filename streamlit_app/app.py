@@ -217,27 +217,27 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
   border: 1px solid rgba(148, 163, 184, 0.20);
   border-radius: 12px;
   background: var(--card);
-  padding: 13px 11px;
+  padding: 14px 12px 11px;
   margin: 6px 0 12px 0;
   box-shadow:
     0 10px 26px rgba(15, 23, 42, 0.055),
     0 2px 7px rgba(15, 23, 42, 0.035);
 }
 .clock_center{
-  display:flex;
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto;
   align-items:center;
-  justify-content:space-between;
-  gap: 12px;
+  gap: 9px;
 }
 .clock_date_group,
 .clock_time_group{display:flex; align-items:center; gap:7px; min-width:0;}
-.clock_date_group{flex:1; overflow:hidden;}
-.clock_time_group{margin-left:6px; padding-left:12px; border-left:1px solid rgba(148,163,184,.26); flex:0 0 auto;}
+.clock_date_group{overflow:visible;}
+.clock_time_group{padding-left:10px; border-left:1px solid rgba(148,163,184,.30);}
 .clock_calendar_icon,
 .clock_face_icon{width:25px; height:25px; color:#111827; flex:0 0 auto;}
 .clock_date_stack{display:flex; flex-direction:column; min-width:0; line-height:1.05;}
 .clock_day{font-size:9px; font-weight:520; color:#667085; white-space:nowrap;}
-.clock_date{font-size:10.5px; font-weight:550; color:#344054; white-space:nowrap;}
+.clock_date{font-size:10px; font-weight:550; color:#344054; white-space:nowrap; letter-spacing:-.08px;}
 .clock_time{
   font-size: 17px;
   font-weight: 560;
@@ -283,6 +283,16 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
   box-shadow:none;
 }
 .badge::before{content:""; width:7px; height:7px; border-radius:50%; background:#f51b3f; box-shadow:0 0 0 3px rgba(245,27,63,.08);}
+.clock_tile .badge{
+  min-height:0;
+  margin-top:12px;
+  padding:10px 2px 1px;
+  border:0;
+  border-top:1px solid rgba(148,163,184,.24);
+  border-radius:0;
+  background:transparent;
+  font-size:11px;
+}
 .small{ font-size: 12px; }
 .bigtitle{ font-size: 30px; font-weight: 750; margin: 0 0 12px 0; }
 
@@ -5370,6 +5380,7 @@ with st.sidebar:
                   <div class="clock_ampm">{cp["ampm"]}</div>
                 </div>
               </div>
+              <div class="badge">v0.1.5 &nbsp;&middot;&nbsp; Question Intelligence</div>
             </div>
             ''',
             unsafe_allow_html=True,
@@ -5386,8 +5397,6 @@ with st.sidebar:
     else:
         _render_clock_tile()
         st.caption("Tip: install 'streamlit-autorefresh' to enable a live-updating clock.")
-
-    st.markdown('<div class="badge">v0.1.5 &nbsp;&middot;&nbsp; Question Intelligence</div>', unsafe_allow_html=True)
 
     st.markdown('<div class="ini-sidebar-section">Navigation</div>', unsafe_allow_html=True)
     intro_nav_href = _private_href(page="home")
