@@ -285,8 +285,9 @@ div[data-testid="stSidebar"] .block-container{
 }
 
 .ini-sidebar-logo{display:flex; align-items:center; justify-content:center; margin:0 0 10px; padding:0;}
-.ini-sidebar-section{color:var(--muted); font-size:15px; font-weight:560; letter-spacing:.01em; margin:14px 0 5px;}
-.ini-chat-section-title{font-size:15px; font-weight:560; margin-top:15px; margin-bottom:7px;}
+.ini-sidebar-section{color:var(--muted); font-size:13px; font-weight:560; letter-spacing:.01em; margin:14px 0 5px;}
+.ini-chat-section-title{font-size:13px; font-weight:560; margin-top:3px; margin-bottom:4px;}
+.ini-chat-divider{height:1px; background:rgba(148,163,184,.42); margin:8px 0 1px;}
 .ini-sidebar-session-list{
   max-height:450px; /* six 75px mockup-style rows */
   overflow-y:visible !important;
@@ -474,6 +475,40 @@ button[kind="secondary"]{
 
 .ini_session_menu summary::-webkit-details-marker{
   display:none;
+}
+
+/* Compact mockup-style chat history: six complete entries before scrolling. */
+.ini-chat-session-list{
+  max-height:372px; /* six 62px rows */
+  padding-right:1px;
+}
+.ini_chat_session_row{
+  height:62px;
+  min-height:62px;
+  gap:5px;
+  padding:5px 1px;
+}
+.ini_chat_session_row .ini_sidebar_link.ini_session_lead{
+  grid-template-columns:31px minmax(0,1fr);
+  column-gap:9px;
+}
+.ini_chat_session_row .ini_session_icon{
+  width:31px;
+  height:31px;
+}
+.ini_chat_session_row .ini_session_title{
+  font-size:14px;
+  line-height:1.16;
+}
+.ini_chat_session_row .ini_session_date{
+  font-size:11px;
+  margin-top:2px;
+}
+.ini_chat_session_row .ini_session_menu{
+  min-width:17px;
+}
+.ini_chat_session_row .ini_session_menu summary{
+  font-size:21px;
 }
 
 .ini_session_dropdown{
@@ -5373,7 +5408,7 @@ with st.sidebar:
         with st.expander("API Settings (dev)", expanded=False):
             st.session_state.api_base = st.text_input("API base", st.session_state.api_base)
 
-    st.markdown("<hr/>", unsafe_allow_html=True)
+    st.markdown('<div class="ini-chat-divider"></div>', unsafe_allow_html=True)
     st.markdown('<div class="ini-sidebar-section ini-chat-section-title">Your Chat</div>', unsafe_allow_html=True)
 
     chat_rows = [
@@ -5388,10 +5423,10 @@ with st.sidebar:
             sidebar_date = _format_sidebar_date(created_at or "")
 
             html.append(f"""
-            <div class="ini_session_row">
+            <div class="ini_session_row ini_chat_session_row">
               <a class="ini_sidebar_link ini_session_lead" href="{_chat_popup_href(sid)}" target="_self">
                 <svg class="ini_session_icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-                  <path d="M7 6h18a4 4 0 0 1 4 4v9a4 4 0 0 1-4 4h-9l-6.6 4.4 1.2-4.4H7a4 4 0 0 1-4-4v-9a4 4 0 0 1 4-4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                  <path d="M4 5h24v17H14l-6 4v-4H4V5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="miter"/>
                 </svg>
                 <span class="ini_session_copy">
                   <span class="ini_session_title">{label}</span>
@@ -5400,7 +5435,7 @@ with st.sidebar:
               </a>
               <div class="ini_session_menu">
                 <details>
-                  <summary>⋯</summary>
+                  <summary>⋮</summary>
                   <div class="ini_session_dropdown">
                     <a href="{_chat_rename_href(sid)}" target="_self">Rename</a>
                     <a href="{_chat_delete_href(sid)}" target="_self">Delete</a>
@@ -5411,7 +5446,7 @@ with st.sidebar:
             """)
 
         st.markdown(
-            '<div class="ini-sidebar-session-list'
+            '<div class="ini-sidebar-session-list ini-chat-session-list'
             + (' is-scrollable' if len(chat_rows) > 6 else '')
             + '">'
             + re.sub(r">\s+<", "><", "".join(html)).strip()
