@@ -297,10 +297,10 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
 .bigtitle{ font-size: 30px; font-weight: 750; margin: 0 0 12px 0; }
 
 div[data-testid="stSidebar"] .block-container{
-  padding-top: .35rem;
+  padding-top: 8px;
 }
 
-.ini-sidebar-logo{display:flex; align-items:center; justify-content:center; margin:0 0 10px; padding:0;}
+.ini-sidebar-logo{display:flex; align-items:center; justify-content:center; margin:-38px 0 10px; padding:0;}
 .ini-sidebar-section{color:var(--muted); font-size:11px; font-weight:560; letter-spacing:.01em; margin:14px 0 5px;}
 .ini-chat-section-title{font-size:11px; font-weight:560; margin-top:3px; margin-bottom:4px;}
 .ini-chat-divider{height:1px; background:rgba(148,163,184,.42); margin:8px 0 1px;}
@@ -505,12 +505,12 @@ button[kind="secondary"]{
   padding:5px 1px;
 }
 .ini_chat_session_row .ini_sidebar_link.ini_session_lead{
-  grid-template-columns:31px minmax(0,1fr);
+  grid-template-columns:24px minmax(0,1fr);
   column-gap:9px;
 }
 .ini_chat_session_row .ini_session_icon{
-  width:31px;
-  height:31px;
+  width:24px;
+  height:24px;
 }
 .ini_chat_session_row .ini_session_title{
   font-size:11px;
