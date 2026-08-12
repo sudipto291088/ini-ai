@@ -503,7 +503,7 @@ button[kind="secondary"]{
   height:31px;
 }
 .ini_chat_session_row .ini_session_title{
-  font-size:14px;
+  font-size:11px;
   line-height:1.16;
 }
 .ini_chat_session_row .ini_session_date{
