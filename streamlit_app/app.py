@@ -367,9 +367,12 @@ div[data-testid="stSidebar"] .block-container{
   width:27px;
   height:27px;
   flex:0 0 27px;
-  color:#f51b3f;
+  color:#111827;
   stroke-linecap:round;
   stroke-linejoin:round;
+}
+.ini-sidebar-nav-card.is-active .ini-sidebar-nav-icon{
+  color:#f51b3f;
 }
 .ini-sidebar-nav-card:hover{
   background:rgba(100,116,139,.07);
