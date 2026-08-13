@@ -5621,6 +5621,19 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
+    st.markdown('<div class="ini-chat-divider"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="ini-sidebar-section ini-chat-section-title">Your Project</div>', unsafe_allow_html=True)
+    st.markdown(
+        '''<div class="ini-sidebar-empty">
+             <svg class="ini-sidebar-empty-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:21px;height:21px;flex:0 0 21px;">
+               <path d="M3.5 6.5h6l1.8 2h9.2v9.8a2.2 2.2 0 0 1-2.2 2.2H5.7a2.2 2.2 0 0 1-2.2-2.2V6.5Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/>
+             </svg>
+             <div><div class="ini-sidebar-empty-title">No active projects yet</div>
+             <div class="ini-sidebar-empty-copy">Created projects will appear here.</div></div>
+           </div>''',
+        unsafe_allow_html=True,
+    )
+
     st.markdown(
         '''<div class="ini-sidebar-footer">
              <details class="ini-sidebar-profile">
