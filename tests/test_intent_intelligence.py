@@ -98,6 +98,44 @@ def test_greetings_never_create_question_maps():
         assert result["reply"]
 
 
+def test_conversation_invitations_never_create_question_maps():
+    invitations = (
+        "lets chat",
+        "let's chat",
+        "let us talk",
+        "can we chat?",
+        "could we talk for a bit?",
+        "I want to have a conversation",
+        "shall we just talk casually?",
+        "chat with me",
+    )
+
+    for invitation in invitations:
+        intent = detect_intent(invitation)
+        assert intent["intent"] == "smalltalk"
+        assert intent["should_interrogate"] is False
+
+        result = interrogate(invitation)
+        assert result["response_mode"] == "conversation"
+        assert result["suppress_profile"] is True
+        assert result["categories"] == {}
+        assert result["topic"] == ""
+
+
+def test_conversational_lead_in_does_not_hide_named_learning_subject():
+    learning_requests = (
+        "Let's talk about machine learning",
+        "Can we chat about neural networks?",
+        "I want to talk about quantum computing",
+        "Let us have a conversation about linear regression",
+    )
+
+    for prompt in learning_requests:
+        result = detect_intent(prompt)
+        assert result["intent"] == "topic_explore"
+        assert result["should_interrogate"] is True
+
+
 def test_learning_intents_are_detected():
     examples = {
         "Explain neural networks": "explain",

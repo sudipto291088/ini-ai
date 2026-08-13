@@ -451,6 +451,44 @@ def _is_smalltalk(text: str) -> bool:
     return any(re.match(pattern, s) for pattern in relational_patterns)
 
 
+def _is_conversation_only_turn(text: str) -> bool:
+    """Gate social speech acts that do not name a subject to learn.
+
+    This is deliberately structural rather than a list of one-off spellings.
+    A conversational invitation is routed to dialogue only when the complete
+    turn contains no ``about/on + subject`` complement. Consequently, "let's
+    chat" is conversation while "let's talk about machine learning" remains a
+    legitimate learning request.
+    """
+    s = _normalize_expressive(text)
+    if not s or len(s.split()) > 18:
+        return False
+
+    # A named complement makes this substantive rather than a pure social
+    # invitation: "talk about machine learning" must remain a learning query.
+    if re.search(r"(?:^| )(?:about|on|regarding|concerning) +[a-z0-9]", s):
+        return False
+
+    social_action = (
+        r"(?:chat|talk|converse|have +(?:a +)?chat|"
+        r"have +(?:a +)?conversation)"
+    )
+    social_tail = (
+        r"(?: +(?:with +(?:me|you)|to +(?:me|you)|"
+        r"for +(?:a +)?(?:bit|while|moment)|now|please|casually|"
+        r"a +little))*"
+    )
+    invitation_patterns = (
+        rf"^(?:lets|let +us) +(?:just +)?{social_action}{social_tail}$",
+        rf"^(?:can|could|may|shall|should|would) +(?:we|i|you) +"
+        rf"(?:just +)?{social_action}{social_tail}$",
+        rf"^i +(?:want|would +like|need) +to +(?:just +)?"
+        rf"{social_action}{social_tail}$",
+        rf"^(?:please +)?{social_action}{social_tail}$",
+    )
+    return any(re.fullmatch(pattern, s) is not None for pattern in invitation_patterns)
+
+
 def _looks_like_contextual_utterance(text: str) -> bool:
     """Recognize short human continuation/correction language, not exact phrases."""
     s = _normalize_compact(text)
@@ -770,7 +808,7 @@ def detect_intent(text: str) -> Dict[str, Any]:
             "confidence": 0.98,
         }
 
-    if _is_smalltalk(raw):
+    if _is_smalltalk(raw) or _is_conversation_only_turn(raw):
         return {
             "intent": "smalltalk",
             "reply": "I am here and ready. Ask me a topic to learn, a concept to explain, or a direct factual question.",

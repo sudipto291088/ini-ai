@@ -1361,6 +1361,7 @@ def interrogate(text: str) -> Dict[str, Any]:
                 else bool(intent.get("should_answer_direct", False))
             ),
             "response_mode": "conversation" if use_conversation_engine else "standard",
+            "suppress_profile": bool(use_conversation_engine),
             "direct_answer_prompt": (
                 build_conversation_prompt(text, intent_name)
                 if use_conversation_engine else ""
