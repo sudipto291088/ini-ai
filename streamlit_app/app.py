@@ -298,6 +298,7 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
 
 div[data-testid="stSidebar"] .block-container{
   padding-top: 8px;
+  padding-bottom: 148px;
 }
 
 .ini-sidebar-logo{display:flex; align-items:center; justify-content:center; margin:-38px 0 10px; padding:0;}
@@ -320,6 +321,70 @@ div[data-testid="stSidebar"] .block-container{
 .ini-sidebar-empty-icon{font-size:21px; color:#f51b3f; line-height:1;}
 .ini-sidebar-empty-title{font-size:13px; font-weight:570; color:var(--ink);}
 .ini-sidebar-empty-copy{font-size:11px; margin-top:2px; line-height:1.35;}
+.ini-sidebar-footer{
+  position:fixed;
+  left:18px;
+  bottom:2px;
+  z-index:20;
+  width:252px;
+  padding-top:9px;
+  border-top:1px solid rgba(148,163,184,.42);
+  background:#f5f6f8;
+}
+.ini-sidebar-profile{
+  position:relative;
+}
+.ini-sidebar-profile > summary{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:38px;
+  padding:6px 7px;
+  border-radius:8px;
+  color:#111827;
+  font-size:12px;
+  font-weight:520;
+  cursor:pointer;
+  list-style:none;
+}
+.ini-sidebar-profile > summary::-webkit-details-marker{display:none;}
+.ini-sidebar-profile__chevron{margin-left:auto; color:#667085; font-size:13px;}
+.ini-sidebar-profile__menu{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:46px;
+  padding:6px;
+  border:1px solid rgba(148,163,184,.28);
+  border-radius:10px;
+  background:#fff;
+  box-shadow:0 12px 28px rgba(15,23,42,.12);
+}
+.ini-sidebar-profile__menu-item{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-height:36px;
+  padding:6px 8px;
+  border-radius:7px;
+  color:#111827;
+  font-size:12px;
+  font-weight:520;
+}
+.ini-sidebar-profile__menu-item:hover{background:rgba(100,116,139,.07);}
+.ini-sidebar-profile__menu-icon{width:18px; height:18px; flex:0 0 18px;}
+.ini-sidebar-footer__avatar{
+  display:grid;
+  place-items:center;
+  width:22px;
+  height:22px;
+  flex:0 0 22px;
+  border-radius:50%;
+  background:#111827;
+  color:#fff;
+  font-size:10px;
+  font-weight:650;
+}
 
 /* Keep the navigation rail binary: collapsed or one stable open width.
    Streamlit otherwise exposes an 8px drag handle and arbitrary widths. */
@@ -633,6 +698,11 @@ button[kind="secondary"]{
     max-width: none !important;
     margin-inline: 0 !important;
     padding-inline: 18px !important;
+  }
+
+  .ini-sidebar-footer{
+    left:18px;
+    width:calc(min(70vw, 320px) - 36px);
   }
 
   [data-testid="stSidebar"][aria-expanded="true"]
@@ -5475,8 +5545,8 @@ with st.sidebar:
     else:
         st.markdown('<div class="small" style="color:var(--muted);">No chat sessions yet.</div>', unsafe_allow_html=True)
 
-    st.markdown("<hr/>", unsafe_allow_html=True)
-    st.markdown('<div class="ini-sidebar-section">Your Learning</div>', unsafe_allow_html=True)
+    st.markdown('<div class="ini-chat-divider"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="ini-sidebar-section ini-chat-section-title">Your Learning</div>', unsafe_allow_html=True)
 
 
     rows = [
@@ -5530,6 +5600,28 @@ with st.sidebar:
                </div>''',
             unsafe_allow_html=True,
         )
+
+    st.markdown(
+        '''<div class="ini-sidebar-footer">
+             <details class="ini-sidebar-profile">
+               <summary>
+                 <span class="ini-sidebar-footer__avatar">S</span>
+                 <span>User profile</span>
+                 <span class="ini-sidebar-profile__chevron">⌃</span>
+               </summary>
+               <div class="ini-sidebar-profile__menu">
+                 <div class="ini-sidebar-profile__menu-item">
+                   <svg class="ini-sidebar-profile__menu-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                     <path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z" stroke="currentColor" stroke-width="1.6"/>
+                     <path d="M19.1 13.6a7.9 7.9 0 0 0 0-3.2l2-1.5-2-3.4-2.5 1a8.1 8.1 0 0 0-2.8-1.6L13.5 2h-3l-.4 2.9a8.1 8.1 0 0 0-2.8 1.6l-2.5-1-2 3.4 2 1.5a7.9 7.9 0 0 0 0 3.2l-2 1.5 2 3.4 2.5-1a8.1 8.1 0 0 0 2.8 1.6l.4 2.9h3l.4-2.9a8.1 8.1 0 0 0 2.8-1.6l2.5 1 2-3.4-2.1-1.5Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/>
+                   </svg>
+                   <span>Settings</span>
+                 </div>
+               </div>
+             </details>
+           </div>''',
+        unsafe_allow_html=True,
+    )
 
 # On phones, begin with navigation collapsed. The document-level marker keeps
 # Streamlit reruns from closing the drawer again after the user opens it.
