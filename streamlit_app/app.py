@@ -306,17 +306,25 @@ div[data-testid="stSidebar"] .block-container{
 .ini-chat-section-title{font-size:11px; font-weight:560; margin-top:3px; margin-bottom:4px;}
 .ini-chat-divider{height:1px; background:rgba(148,163,184,.42); margin:8px 0 1px;}
 .ini-sidebar-session-list{
-  max-height:450px; /* six 75px mockup-style rows */
+  max-height:none;
   overflow-y:visible !important;
   overflow-x:clip;
-  scrollbar-width:thin;
-  scrollbar-color:rgba(100,116,139,.28) transparent;
   padding-right:3px;
 }
-.ini-sidebar-session-list.is-scrollable{overflow-y:auto !important;}
-.ini-sidebar-session-list::-webkit-scrollbar{width:5px;}
-.ini-sidebar-session-list::-webkit-scrollbar-thumb{background:rgba(100,116,139,.24); border-radius:999px;}
-.ini-sidebar-session-list::-webkit-scrollbar-track{background:transparent;}
+.ini-sidebar-more > summary{
+  display:block;
+  padding:7px 2px 5px;
+  color:#475467;
+  font-size:11px;
+  font-weight:560;
+  cursor:pointer;
+  list-style:none;
+}
+.ini-sidebar-more > summary::-webkit-details-marker{display:none;}
+.ini-sidebar-more > summary::before{content:"See more";}
+.ini-sidebar-more[open] > summary{display:none;}
+.ini-sidebar-more:not([open]) > .ini-sidebar-more__rows{display:none;}
+.ini-sidebar-more[open] > .ini-sidebar-more__rows{display:block;}
 .ini-sidebar-empty{display:flex; align-items:center; gap:10px; padding:10px 2px 4px; color:var(--muted);}
 .ini-sidebar-empty-icon{font-size:21px; color:#f51b3f; line-height:1;}
 .ini-sidebar-empty-title{font-size:13px; font-weight:570; color:var(--ink);}
@@ -561,9 +569,9 @@ button[kind="secondary"]{
   display:none;
 }
 
-/* Compact mockup-style chat history: six complete entries before scrolling. */
+/* Compact mockup-style chat history: five entries before "See more". */
 .ini-chat-session-list{
-  max-height:372px; /* six 62px rows */
+  max-height:none;
   padding-right:1px;
 }
 .ini_chat_session_row{
@@ -5534,11 +5542,18 @@ with st.sidebar:
             </div>
             """)
 
+        visible_chat_html = re.sub(r">\s+<", "><", "".join(html[:5])).strip()
+        hidden_chat_html = re.sub(r">\s+<", "><", "".join(html[5:])).strip()
+        chat_more_html = (
+            '<details class="ini-sidebar-more"><summary></summary>'
+            f'<div class="ini-sidebar-more__rows">{hidden_chat_html}</div></details>'
+            if hidden_chat_html
+            else ''
+        )
         st.markdown(
-            '<div class="ini-sidebar-session-list ini-chat-session-list'
-            + (' is-scrollable' if len(chat_rows) > 6 else '')
-            + '">'
-            + re.sub(r">\s+<", "><", "".join(html)).strip()
+            '<div class="ini-sidebar-session-list ini-chat-session-list">'
+            + visible_chat_html
+            + chat_more_html
             + '</div>',
             unsafe_allow_html=True,
         )
@@ -5583,11 +5598,18 @@ with st.sidebar:
             </div>
             """)
 
+        visible_learning_html = re.sub(r">\s+<", "><", "".join(html[:5])).strip()
+        hidden_learning_html = re.sub(r">\s+<", "><", "".join(html[5:])).strip()
+        learning_more_html = (
+            '<details class="ini-sidebar-more"><summary></summary>'
+            f'<div class="ini-sidebar-more__rows">{hidden_learning_html}</div></details>'
+            if hidden_learning_html
+            else ''
+        )
         st.markdown(
-            '<div class="ini-sidebar-session-list'
-            + (' is-scrollable' if len(rows) > 6 else '')
-            + '">'
-            + re.sub(r">\s+<", "><", "".join(html)).strip()
+            '<div class="ini-sidebar-session-list">'
+            + visible_learning_html
+            + learning_more_html
             + '</div>',
             unsafe_allow_html=True,
         )
