@@ -2612,52 +2612,50 @@ div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] p {
 .ini-topic-profile:not(.ini-conversation-profile) > .ini-topic-profile__title,
 .ini-nc-section-title.ini-nc-qmap-marker {
   gap: 7px;
+  align-items: flex-start;
 }
 .ini-topic-profile:not(.ini-conversation-profile) > .ini-topic-profile__title::before,
 .ini-nc-section-title.ini-nc-qmap-marker::before {
-  display: inline-grid;
+  display: block;
   flex: 0 0 20px;
   width: 20px;
   height: 20px;
-  place-items: center;
+  margin-top: 3px;
   border: 0;
   border-radius: 0;
-  background: transparent;
+  background-color: #f51b3f;
   box-shadow: none;
-  color: #f51b3f;
-  content: "category";
-  font-family: "Material Symbols Rounded";
-  font-size: 18px;
-  font-style: normal;
-  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 20;
-  line-height: 1;
+  content: "";
+  -webkit-mask: var(--ini-card-icon) center / 19px 19px no-repeat;
+  mask: var(--ini-card-icon) center / 19px 19px no-repeat;
+  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v4H4zM14 15h6v4h-6z'/%3E%3C/svg%3E");
 }
 .ini-topic-profile.ini-nc-prerequisites-panel > .ini-topic-profile__title::before {
-  content: "checklist";
+  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round' d='m4 7 2 2 3-4M11 7h9M4 15l2 2 3-4M11 15h9'/%3E%3C/svg%3E");
 }
 .ini-topic-profile.ini-nc-knowledge-map > .ini-topic-profile__title::before {
-  content: "account_tree";
+  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M12 5v5M6 10h12M6 10v4M18 10v4M3.5 14h5v5h-5zM15.5 14h5v5h-5zM9.5 2.5h5v5h-5z'/%3E%3C/svg%3E");
 }
 .ini-topic-profile.ini-nc-intro-panel > .ini-topic-profile__title::before {
-  content: "menu_book";
+  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M3.5 5.5c3.7 0 6.1.8 8.5 2.5v11c-2.4-1.7-4.8-2.5-8.5-2.5zM20.5 5.5c-3.7 0-6.1.8-8.5 2.5v11c2.4-1.7 4.8-2.5 8.5-2.5z'/%3E%3C/svg%3E");
 }
 .ini-topic-profile.ini-nc-your-question > .ini-topic-profile__title::before {
-  content: "help";
+  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='black' stroke-width='1.8'/%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' d='M9.7 9a2.4 2.4 0 1 1 3.2 2.3c-.9.4-.9 1.1-.9 1.7M12 17h.01'/%3E%3C/svg%3E");
 }
 .ini-topic-profile.ini-nc-core-explanation > .ini-topic-profile__title::before {
-  content: "lightbulb";
+  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M8.5 15.5A6 6 0 1 1 15.5 15.5c-.8.6-1.2 1.3-1.3 2.2H9.8c-.1-.9-.5-1.6-1.3-2.2ZM9.5 21h5M9.8 18h4.4'/%3E%3C/svg%3E");
 }
 .ini-topic-profile.ini-nc-learning-loop > .ini-topic-profile__title::before {
-  content: "sync";
+  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M20 7v5h-5M4 17v-5h5M6.1 9a7 7 0 0 1 11.7-2L20 9M4 15l2.2 2a7 7 0 0 0 11.7-2'/%3E%3C/svg%3E");
 }
 .ini-topic-profile.ini-nc-learning-paths > .ini-topic-profile__title::before {
-  content: "route";
+  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M5 5h8a4 4 0 0 1 4 4v6M5 19h8a4 4 0 0 0 4-4M3 5h4M3 19h4M17 13l-2 2 2 2'/%3E%3C/svg%3E");
 }
 .ini-topic-profile.ini-nc-continue-journey > .ini-topic-profile__title::before {
-  content: "explore";
+  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='black' stroke-width='1.8'/%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='m15.5 8.5-2.1 4.9-4.9 2.1 2.1-4.9z'/%3E%3C/svg%3E");
 }
 .ini-nc-section-title.ini-nc-qmap-marker::before {
-  content: "hub";
+  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='2.5' fill='none' stroke='black' stroke-width='1.8'/%3E%3Ccircle cx='5' cy='6' r='2' fill='none' stroke='black' stroke-width='1.8'/%3E%3Ccircle cx='19' cy='6' r='2' fill='none' stroke='black' stroke-width='1.8'/%3E%3Ccircle cx='5' cy='18' r='2' fill='none' stroke='black' stroke-width='1.8'/%3E%3Ccircle cx='19' cy='18' r='2' fill='none' stroke='black' stroke-width='1.8'/%3E%3Cpath fill='none' stroke='black' stroke-width='1.6' d='m6.5 7.4 3.6 3M17.5 7.4l-3.6 3M6.5 16.6l3.6-3M17.5 16.6l-3.6-3'/%3E%3C/svg%3E");
 }
 .ini-nc-section-title {
   width: auto;
