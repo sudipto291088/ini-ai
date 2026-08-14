@@ -10209,6 +10209,9 @@ def page_new_chat() -> None:
             .nc-landing-subtitle__line:nth-child(6) {{ animation-name: nc-subtitle-stream-6; }}
             .nc-landing-subtitle__line:nth-child(7) {{ animation-name: nc-subtitle-stream-7; }}
 
+            .nc-landing-subtitle__segment {{ display: inline; }}
+            .nc-landing-subtitle__mobile-break {{ display: none; }}
+
             @keyframes nc-subtitle-stream-1 {{
                 0% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
                 5%, 14.27% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
@@ -10835,10 +10838,172 @@ def page_new_chat() -> None:
 
                 .nc-landing-subtitle {{
                     max-width: 92%;
+                    height: 2.8em;
                     margin-bottom: 22px;
                     color: #171717;
                     font-size: clamp(11px, 2.8cqw, 17px);
+                    white-space: normal;
+                }}
+
+                .nc-landing-subtitle__line {{
+                    width: 100%;
+                    max-width: 100%;
+                    line-height: 1.4;
+                    white-space: normal;
+                    text-wrap: balance;
+                }}
+
+                .nc-landing-subtitle__line--two-stage {{
+                    overflow: visible;
+                    clip-path: none;
+                    white-space: normal;
+                    animation-timing-function: linear;
+                }}
+
+                .nc-landing-subtitle__line--two-stage:nth-child(2) {{
+                    animation-name: nc-mobile-subtitle-parent-2;
+                }}
+
+                .nc-landing-subtitle__line--two-stage:nth-child(3) {{
+                    animation-name: nc-mobile-subtitle-parent-3;
+                }}
+
+                .nc-landing-subtitle__line--two-stage:nth-child(4) {{
+                    animation-name: nc-mobile-subtitle-parent-4;
+                }}
+
+                .nc-landing-subtitle__line--two-stage:nth-child(5) {{
+                    animation-name: nc-mobile-subtitle-parent-5;
+                }}
+
+                .nc-landing-subtitle__line--two-stage .nc-landing-subtitle__segment {{
+                    display: block;
+                    width: max-content;
+                    max-width: 100%;
+                    margin-inline: auto;
+                    overflow: hidden;
+                    opacity: 0;
+                    clip-path: inset(0 100% 0 0);
                     white-space: nowrap;
+                    animation-duration: 28s;
+                    animation-timing-function: steps(var(--segment-chars), end);
+                    animation-iteration-count: infinite;
+                }}
+
+                .nc-landing-subtitle__mobile-break {{ display: none; }}
+                .nc-landing-subtitle__line:nth-child(2) .nc-landing-subtitle__segment:first-child {{ animation-name: nc-mobile-subtitle-2a; }}
+                .nc-landing-subtitle__line:nth-child(2) .nc-landing-subtitle__segment:last-child {{ animation-name: nc-mobile-subtitle-2b; }}
+                .nc-landing-subtitle__line:nth-child(3) .nc-landing-subtitle__segment:first-child {{ animation-name: nc-mobile-subtitle-3a; }}
+                .nc-landing-subtitle__line:nth-child(3) .nc-landing-subtitle__segment:last-child {{ animation-name: nc-mobile-subtitle-3b; }}
+                .nc-landing-subtitle__line:nth-child(4) .nc-landing-subtitle__segment:first-child {{ animation-name: nc-mobile-subtitle-4a; }}
+                .nc-landing-subtitle__line:nth-child(4) .nc-landing-subtitle__segment:last-child {{ animation-name: nc-mobile-subtitle-4b; }}
+                .nc-landing-subtitle__line:nth-child(5) .nc-landing-subtitle__segment:first-child {{ animation-name: nc-mobile-subtitle-5a; }}
+                .nc-landing-subtitle__line:nth-child(5) .nc-landing-subtitle__segment:last-child {{ animation-name: nc-mobile-subtitle-5b; }}
+                .nc-landing-subtitle__line:nth-child(6) .nc-landing-subtitle__segment:first-child {{ animation-name: nc-mobile-subtitle-6a; }}
+                .nc-landing-subtitle__line:nth-child(6) .nc-landing-subtitle__segment:last-child {{ animation-name: nc-mobile-subtitle-6b; }}
+
+                .nc-landing-subtitle__line--two-stage:nth-child(6) {{
+                    animation-name: nc-mobile-subtitle-parent-6;
+                }}
+
+                @keyframes nc-mobile-subtitle-parent-2 {{
+                    0%, 14.27% {{ opacity: 0; }}
+                    14.28%, 28.55% {{ opacity: 1; }}
+                    28.56%, 100% {{ opacity: 0; }}
+                }}
+
+                @keyframes nc-mobile-subtitle-parent-3 {{
+                    0%, 28.55% {{ opacity: 0; }}
+                    28.56%, 42.84% {{ opacity: 1; }}
+                    42.85%, 100% {{ opacity: 0; }}
+                }}
+
+                @keyframes nc-mobile-subtitle-parent-4 {{
+                    0%, 42.84% {{ opacity: 0; }}
+                    42.85%, 57.12% {{ opacity: 1; }}
+                    57.13%, 100% {{ opacity: 0; }}
+                }}
+
+                @keyframes nc-mobile-subtitle-parent-5 {{
+                    0%, 57.12% {{ opacity: 0; }}
+                    57.13%, 71.41% {{ opacity: 1; }}
+                    71.42%, 100% {{ opacity: 0; }}
+                }}
+
+                @keyframes nc-mobile-subtitle-parent-6 {{
+                    0%, 71.41% {{ opacity: 0; }}
+                    71.42%, 85.69% {{ opacity: 1; }}
+                    85.70%, 100% {{ opacity: 0; }}
+                }}
+
+                @keyframes nc-mobile-subtitle-2a {{
+                    0%, 14.27% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                    14.28% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                    19.63%, 28.55% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                    28.56%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+                }}
+
+                @keyframes nc-mobile-subtitle-2b {{
+                    0%, 19.62% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                    19.63% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                    24.98%, 28.55% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                    28.56%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+                }}
+
+                @keyframes nc-mobile-subtitle-3a {{
+                    0%, 28.55% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                    28.56% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                    33.91%, 42.84% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                    42.85%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+                }}
+
+                @keyframes nc-mobile-subtitle-3b {{
+                    0%, 33.90% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                    33.91% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                    39.26%, 42.84% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                    42.85%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+                }}
+
+                @keyframes nc-mobile-subtitle-4a {{
+                    0%, 42.84% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                    42.85% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                    48.20%, 57.12% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                    57.13%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+                }}
+
+                @keyframes nc-mobile-subtitle-4b {{
+                    0%, 48.19% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                    48.20% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                    53.55%, 57.12% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                    57.13%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+                }}
+
+                @keyframes nc-mobile-subtitle-5a {{
+                    0%, 57.12% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                    57.13% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                    62.48%, 71.41% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                    71.42%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+                }}
+
+                @keyframes nc-mobile-subtitle-5b {{
+                    0%, 62.47% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                    62.48% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                    67.83%, 71.41% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                    71.42%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+                }}
+
+                @keyframes nc-mobile-subtitle-6a {{
+                    0%, 71.41% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                    71.42% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                    76.77%, 85.69% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                    85.70%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+                }}
+
+                @keyframes nc-mobile-subtitle-6b {{
+                    0%, 76.76% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                    76.77% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                    82.12%, 85.69% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                    85.70%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
                 }}
 
                 .st-key-nc_landing_composer {{
@@ -11019,11 +11184,11 @@ def page_new_chat() -> None:
             <div class="nc-landing-heading">What would you like to understand?</div>
             <div class="nc-landing-subtitle" aria-label="InI guidance">
               <span class="nc-landing-subtitle__line" style="--chars: 39">Begin with a topic, question, or idea.</span>
-              <span class="nc-landing-subtitle__line" style="--chars: 62">InI turns your first question into a structured learning path.</span>
-              <span class="nc-landing-subtitle__line" style="--chars: 69">You do not need to know the right terminology before you begin.</span>
-              <span class="nc-landing-subtitle__line" style="--chars: 94">Even an incomplete thought can become a clear path of questions, concepts, and connections.</span>
-              <span class="nc-landing-subtitle__line" style="--chars: 91">Use Interrogate to explore the topic through explanations, relationships, and questions.</span>
-              <span class="nc-landing-subtitle__line" style="--chars: 74">Use Illustrate to transform the idea into a clear visual explanation.</span>
+              <span class="nc-landing-subtitle__line nc-landing-subtitle__line--two-stage" style="--chars: 62"><span class="nc-landing-subtitle__segment" style="--segment-chars: 35">InI turns your first question into </span><span class="nc-landing-subtitle__mobile-break"><br></span><span class="nc-landing-subtitle__segment" style="--segment-chars: 27">a structured learning path.</span></span>
+              <span class="nc-landing-subtitle__line nc-landing-subtitle__line--two-stage" style="--chars: 69"><span class="nc-landing-subtitle__segment" style="--segment-chars: 37">You do not need to know the right </span><span class="nc-landing-subtitle__mobile-break"><br></span><span class="nc-landing-subtitle__segment" style="--segment-chars: 32">terminology before you begin.</span></span>
+              <span class="nc-landing-subtitle__line nc-landing-subtitle__line--two-stage" style="--chars: 94"><span class="nc-landing-subtitle__segment" style="--segment-chars: 49">Even an incomplete thought can become a clear path </span><span class="nc-landing-subtitle__mobile-break"><br></span><span class="nc-landing-subtitle__segment" style="--segment-chars: 45">of questions, concepts, and connections.</span></span>
+              <span class="nc-landing-subtitle__line nc-landing-subtitle__line--two-stage" style="--chars: 91"><span class="nc-landing-subtitle__segment" style="--segment-chars: 45">Use Interrogate to explore the topic through </span><span class="nc-landing-subtitle__mobile-break"><br></span><span class="nc-landing-subtitle__segment" style="--segment-chars: 46">explanations, relationships, and questions.</span></span>
+              <span class="nc-landing-subtitle__line nc-landing-subtitle__line--two-stage" style="--chars: 74"><span class="nc-landing-subtitle__segment" style="--segment-chars: 43">Use Illustrate to transform the idea into </span><span class="nc-landing-subtitle__mobile-break"><br></span><span class="nc-landing-subtitle__segment" style="--segment-chars: 31">a clear visual explanation.</span></span>
               <span class="nc-landing-subtitle__line" style="--chars: 44">Follow one question naturally into the next.</span>
             </div>
             """,
