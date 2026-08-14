@@ -97,6 +97,23 @@ class TopicProfileTests(unittest.TestCase):
         self.assertIn("Applied ethics", fields["Broad field"])
         self.assertEqual(fields["Difficulty"], "Beginner")
 
+    def test_ethical_decision_profile_remains_beginner_with_layered_prerequisites(self) -> None:
+        answer = """<TOPIC_PROFILE>
+{"Entity type":"Policy/Technology debate","Broad field":"Educational technology / Ethics","Subject":"Should schools use facial recognition to record student attendance","Prerequisites":"facial recognition basics; privacy concepts; school operations; elementary statistics; ethical reasoning","Related topics":"privacy; consent; bias","Difficulty":"Intermediate"}
+</TOPIC_PROFILE>
+Purpose: A school policy decision.
+Major areas: Benefits, harms, and governance.
+Who should study this next: School communities.
+"""
+
+        rows, _ = extract_topic_profile(
+            answer,
+            "Should schools use facial recognition to record student attendance?",
+        )
+        fields = dict(rows)
+
+        self.assertEqual(fields["Difficulty"], "Beginner")
+
     def test_numbered_meiotic_stage_comparisons_are_intermediate(self) -> None:
         answer = """<TOPIC_PROFILE>
 {"Entity type":"Cellular process phase", "Subject":"Meiosis", "Prerequisites":"Chromosomes; homologs; sister chromatids", "Difficulty":"Beginner"}

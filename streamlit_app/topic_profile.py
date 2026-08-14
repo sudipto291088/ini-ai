@@ -242,10 +242,17 @@ def _correct_difficulty(
         re.match(r"^why\s+(?:do|does|did|is|are)\b", query)
         or re.match(r"^how\s+(?:do|does)\b.*\b(?:differ|compare)\b", query)
     )
+    introductory_normative_decision = bool(re.match(r"^should\b", query))
     if introductory_definition and not intrinsically_intermediate:
         return set_difficulty("Beginner")
     if (
         introductory_causal_or_comparison
+        and not intrinsically_intermediate
+        and not explicitly_advanced_request
+    ):
+        return set_difficulty("Beginner")
+    if (
+        introductory_normative_decision
         and not intrinsically_intermediate
         and not explicitly_advanced_request
     ):

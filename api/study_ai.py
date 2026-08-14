@@ -1101,6 +1101,31 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         should_interrogate = bool(intent.get("should_interrogate", False))
         should_answer_direct = bool(intent.get("should_answer_direct", False))
 
+        # The full-card generator must use the same educational safety net as
+        # /interrogate.  Without it, normative questions such as "Should
+        # schools use facial recognition...?" can successfully receive a
+        # Question Map but be classified as conversation here.  The resulting
+        # plain reply then fails structured validation and the UI loses most of
+        # its learning cards.
+        normalized_topic = re.sub(
+            r"\s+",
+            " ",
+            re.sub(r"[^a-z0-9 ]+", " ", user_topic.casefold()),
+        ).strip()
+        educational_signals = (
+            "what", "why", "how", "difference", "compare", "explain",
+            "define", "benefit", "problem", "classification", "types",
+            "future", "applications", "limitations", "should",
+        )
+        looks_educational = (
+            len(normalized_topic) > 8
+            and any(signal in normalized_topic for signal in educational_signals)
+        )
+        if looks_educational and intent_name in {"", "clarify"}:
+            intent_name = "topic_explore"
+            should_interrogate = True
+            should_answer_direct = False
+
     # Normal conversational behavior: greeting / thanks / help / etc.
     if (
     mode != "focused"

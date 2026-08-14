@@ -513,6 +513,42 @@ Purpose: A partial response."""
         self.assertIn("Regenerate the complete response from scratch", prompt)
         self.assertIn("Bell-state formula contains single-qubit basis states", prompt)
 
+    def test_should_question_reaches_full_intro_generator(self) -> None:
+        captured = {}
+
+        def fake_generate(**kwargs):
+            captured.update(kwargs)
+            return {
+                "answer": "Structured draft",
+                "incomplete": False,
+                "stop_reason": None,
+            }
+
+        with (
+            patch.object(study_module, "llm_enabled", return_value=True),
+            patch.object(
+                study_module,
+                "detect_intent",
+                return_value={
+                    "intent": "clarify",
+                    "should_interrogate": False,
+                    "should_answer_direct": False,
+                    "reply": "Send a topic to explore.",
+                },
+            ),
+            patch.object(study_module, "generate_dynamic_answer_result", fake_generate),
+        ):
+            result = study_module.study_ai(
+                {
+                    "topic": "Should schools use facial recognition to record student attendance?",
+                    "mode": "intro",
+                }
+            )
+
+        self.assertEqual(result["answer"], "Structured draft")
+        self.assertIn("<TOPIC_PROFILE>", captured["question"])
+        self.assertNotEqual(result.get("llm", {}).get("reason"), "intent_reply")
+
     def test_continuation_prompt_forbids_rebuilding_sections(self) -> None:
         captured = {}
 

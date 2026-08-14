@@ -185,6 +185,29 @@ class QuestionMapFocusTests(unittest.TestCase):
         self.assertIsNotNone(match)
         self.assertEqual(match.section, "Applications")
 
+    def test_normative_question_selects_exact_decision_item(self):
+        prompt = "Should schools use facial recognition to record student attendance?"
+        categories = {
+            "Applications": [
+                {"question": prompt},
+                {
+                    "question": (
+                        "In which school scenarios does facial recognition "
+                        "attendance add clear value?"
+                    )
+                },
+            ],
+            "Pitfalls": [
+                {"question": "What privacy risks affect student biometric records?"},
+            ],
+        }
+
+        match = find_direct_answer_match(prompt, categories)
+
+        self.assertIsNotNone(match)
+        self.assertEqual(match.question, prompt)
+        self.assertEqual(match.section, "Applications")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -56,6 +56,10 @@ class ContextAwareResponseModeTests(unittest.TestCase):
         self.assertTrue(result["categories"])
         self.assertNotEqual(result.get("response_mode"), "conversation")
         self.assertNotEqual(result.get("intent"), "clarify")
+        self.assertEqual(
+            result["categories"]["Applications"][0]["question"],
+            "Should schools use facial recognition to record student attendance?",
+        )
 
     def test_ambiguous_local_mcp_request_asks_for_host(self):
         result = interrogate("My wife wants to add an MCP server in the local system")

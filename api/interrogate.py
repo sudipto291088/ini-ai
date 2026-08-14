@@ -1475,10 +1475,46 @@ def interrogate(text: str) -> Dict[str, Any]:
                     if len(llm_categories.get(cat, [])) == 0 and repair_categories.get(cat):
                         llm_categories[cat] = repair_categories[cat]
 
+            normalized_categories = _normalize_question_map_terminology(llm_categories)
+            if re.match(r"^should\b", raw_text_lower):
+                # A normative query needs one Question Map item that asks the
+                # learner's actual decision, not merely a neighboring use case.
+                # This also gives the direct-answer indicator an unambiguous
+                # target while preserving the rest of the generated map.
+                decision_question = re.sub(r"\s+", " ", text).strip()
+                if not decision_question.endswith("?"):
+                    decision_question += "?"
+                application_items = list(normalized_categories.get("Applications") or [])
+                normalized_decision = re.sub(
+                    r"[^a-z0-9]+", " ", decision_question.casefold()
+                ).strip()
+                if not any(
+                    re.sub(
+                        r"[^a-z0-9]+",
+                        " ",
+                        str(item.get("question") or "").casefold(),
+                    ).strip()
+                    == normalized_decision
+                    for item in application_items
+                    if isinstance(item, dict)
+                ):
+                    application_items.insert(
+                        0,
+                        {
+                            "id": "applications_direct_decision",
+                            "archetype": "APPLY",
+                            "question": decision_question,
+                            "answer": "",
+                            "collapsed": True,
+                            "visible": False,
+                        },
+                    )
+                    normalized_categories["Applications"] = application_items[:5]
+
             return {
                 "topic": clean_topic,
                 "topic_type": topic_type,
-                "categories": _normalize_question_map_terminology(llm_categories),
+                "categories": normalized_categories,
                 "summary": validated_summary,                
                 "confidence": confidence,
                 "notes": [

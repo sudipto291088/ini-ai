@@ -16,7 +16,7 @@ _STOP_WORDS = {
 }
 
 _SPECIFIC_SIGNALS = re.compile(
-    r"^(?:how|why|when|where|which)\b|"
+    r"^(?:how|why|when|where|which|should)\b|"
     r"\b(?:compare|difference|different|relate|relationship|cause|causes|"
     r"advantages?|limitations?|pitfalls?|applications?|uses?|used|"
     r"prevent|prevented|avoid|avoided|mitigate|mitigated|main types?|classifications?|"
@@ -66,6 +66,7 @@ def _intent_terms(text: str) -> set[str]:
         "application": ("application", "applications", "use", "used", "uses", "real world"),
         "classification": ("type", "types", "classification", "classifications", "kinds"),
         "selection": ("when", "choose", "chosen", "select", "appropriate"),
+        "decision": ("should", "adopt", "decision", "decide", "whether"),
         "mechanism": ("how", "work", "works", "working", "mechanism", "compute", "process"),
     }
     words = set(normalized.split())
@@ -165,6 +166,8 @@ def _find_best_match(
         preferred_sections.update({"methods & tools", "pitfalls"})
     if "application" in prompt_intents:
         preferred_sections.add("applications")
+    if "decision" in prompt_intents:
+        preferred_sections.update({"applications", "pitfalls"})
 
     best: Optional[DirectAnswerMatch] = None
     for section, items in categories.items():
@@ -205,6 +208,10 @@ def _find_best_match(
             }:
                 section_intent_bonus += 0.34
             if "application" in prompt_intents and section_name == "applications":
+                section_intent_bonus += 0.34
+            if "decision" in prompt_intents and section_name in {
+                "applications", "pitfalls"
+            }:
                 section_intent_bonus += 0.34
             if prompt_intents & {"cause", "prevention", "application", "selection"}:
                 if section_name == "orientation":
