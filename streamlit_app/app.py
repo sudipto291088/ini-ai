@@ -2649,7 +2649,7 @@ div[class*="st-key-qmap_answer_card_"] [data-testid="stMarkdownContainer"] p {
   --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M20 7v5h-5M4 17v-5h5M6.1 9a7 7 0 0 1 11.7-2L20 9M4 15l2.2 2a7 7 0 0 0 11.7-2'/%3E%3C/svg%3E");
 }
 .ini-topic-profile.ini-nc-learning-paths > .ini-topic-profile__title::before {
-  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M5 5h8a4 4 0 0 1 4 4v6M5 19h8a4 4 0 0 0 4-4M3 5h4M3 19h4M17 13l-2 2 2 2'/%3E%3C/svg%3E");
+  --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 19v-6.5M12 12.5 6.5 7M12 12.5 17.5 7'/%3E%3Ccircle cx='12' cy='19' r='2.1' fill='black'/%3E%3Ccircle cx='6.5' cy='7' r='2.1' fill='black'/%3E%3Ccircle cx='17.5' cy='7' r='2.1' fill='black'/%3E%3C/svg%3E");
 }
 .ini-topic-profile.ini-nc-continue-journey > .ini-topic-profile__title::before {
   --ini-card-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='black' stroke-width='1.8'/%3E%3Cpath fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='m15.5 8.5-2.1 4.9-4.9 2.1 2.1-4.9z'/%3E%3C/svg%3E");
