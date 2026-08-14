@@ -1320,6 +1320,7 @@ def interrogate(text: str) -> Dict[str, Any]:
         "future",
         "applications",
         "limitations",
+        "should",
     ]
 
     looks_educational = (
@@ -1367,6 +1368,19 @@ def interrogate(text: str) -> Dict[str, Any]:
                 if use_conversation_engine else ""
             ),
         }
+
+    # If the standalone intent detector was uncertain but the complete turn
+    # is plainly educational, normalize the route before map generation. In
+    # particular, normative "Should ...?" questions are decision-learning
+    # prompts rather than conversational clarification.
+    if looks_educational and intent_name in {"", "clarify"}:
+        intent = dict(intent)
+        intent["intent"] = "topic_explore"
+        intent["should_interrogate"] = True
+        intent_name = "topic_explore"
+        if re.match(r"^should\b", raw_text_lower):
+            response_intent = "decide"
+            intent["response_intent"] = "decide"
 
     clean_topic = extract_topic(text)
 

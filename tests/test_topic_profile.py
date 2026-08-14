@@ -56,6 +56,47 @@ class TopicProfileTests(unittest.TestCase):
                 )
                 self.assertIn(("Difficulty", expected), rows)
 
+    def test_introductory_causal_and_comparison_questions_are_beginner(self) -> None:
+        cases = (
+            (
+                "How do qualitative and quantitative research methods differ?",
+                '{"Entity type":"Concept comparison","Subject":"Qualitative and quantitative research methods","Difficulty":"Intermediate"}',
+            ),
+            (
+                "Why does inflation reduce purchasing power?",
+                '{"Entity type":"Concept","Subject":"Inflation and purchasing power","Difficulty":"Intermediate"}',
+            ),
+        )
+
+        for query, profile in cases:
+            with self.subTest(query=query):
+                rows, _ = extract_topic_profile(
+                    f"<TOPIC_PROFILE>\n{profile}\n</TOPIC_PROFILE>", query
+                )
+                self.assertIn(("Difficulty", "Beginner"), rows)
+
+    def test_missing_historical_profile_uses_subject_aware_fallback(self) -> None:
+        query = "What political, economic, and social conditions caused the French Revolution?"
+        body = "Political failure and economic crisis interacted with social inequality."
+
+        rows, preserved_body = extract_topic_profile(body, query)
+        fields = dict(rows)
+
+        self.assertEqual(fields["Entity type"], "Historical causal inquiry")
+        self.assertEqual(fields["Broad field"], "History")
+        self.assertEqual(fields["Difficulty"], "Beginner")
+        self.assertEqual(preserved_body, body)
+
+    def test_missing_ethical_profile_uses_decision_fallback(self) -> None:
+        query = "Should schools use facial recognition to record student attendance?"
+
+        rows, _ = extract_topic_profile("A balanced evaluation is required.", query)
+        fields = dict(rows)
+
+        self.assertEqual(fields["Entity type"], "Ethical decision question")
+        self.assertIn("Applied ethics", fields["Broad field"])
+        self.assertEqual(fields["Difficulty"], "Beginner")
+
     def test_numbered_meiotic_stage_comparisons_are_intermediate(self) -> None:
         answer = """<TOPIC_PROFILE>
 {"Entity type":"Cellular process phase", "Subject":"Meiosis", "Prerequisites":"Chromosomes; homologs; sister chromatids", "Difficulty":"Beginner"}

@@ -1,7 +1,8 @@
 import unittest
+from unittest.mock import patch
 
 from api.context_mode import build_carm_answer_prompt, classify_context
-from api.interrogate import interrogate
+from api.interrogate import CATEGORY_ORDER, interrogate
 
 
 class ContextAwareResponseModeTests(unittest.TestCase):
@@ -32,6 +33,29 @@ class ContextAwareResponseModeTests(unittest.TestCase):
 
         self.assertEqual(result["response_mode"], "question_map")
         self.assertEqual(result["context_intent"], "learning")
+
+    def test_should_question_is_routed_as_educational_not_conversation(self):
+        generated_categories = {
+            category: [
+                {"question": f"How does facial recognition relate to {category.lower()} {index}?"}
+                for index in range(count)
+            ]
+            for category, count in zip(CATEGORY_ORDER, (5, 4, 4, 4, 3, 3, 3))
+        }
+        with patch(
+            "api.interrogate._llm_generate_questions_only",
+            return_value=(
+                ["Ethical decision", "Facial recognition", "School attendance"],
+                generated_categories,
+            ),
+        ):
+            result = interrogate(
+                "Should schools use facial recognition to record student attendance?"
+            )
+
+        self.assertTrue(result["categories"])
+        self.assertNotEqual(result.get("response_mode"), "conversation")
+        self.assertNotEqual(result.get("intent"), "clarify")
 
     def test_ambiguous_local_mcp_request_asks_for_host(self):
         result = interrogate("My wife wants to add an MCP server in the local system")

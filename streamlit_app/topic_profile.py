@@ -34,6 +34,66 @@ _CONTINUE_JOURNEY_BLOCK = re.compile(
 )
 
 
+def build_fallback_topic_profile(user_query: str) -> list[tuple[str, str]]:
+    """Return a conservative profile when structured generation omits one."""
+    query = re.sub(r"\s+", " ", (user_query or "").strip())
+    normalized = query.casefold()
+    subject = query.rstrip(" ?.!")[:180] or "Learning question"
+
+    if re.search(
+        r"\b(?:revolution|war|empire|dynasty|histor(?:y|ical)|coloniali[sz]m|"
+        r"independence|renaissance|reformation)\b",
+        normalized,
+    ):
+        rows = [
+            ("Entity type", "Historical causal inquiry"),
+            ("Broad field", "History"),
+            ("Subject", subject),
+            ("Research area", "Political, economic, and social history"),
+            (
+                "Related topics",
+                "Structural causes; immediate triggers; historical context; consequences; historiography",
+            ),
+            (
+                "Typical applications",
+                "Causal analysis; source evaluation; comparative history; chronological explanation",
+            ),
+            ("Difficulty", "Beginner"),
+        ]
+    elif re.match(r"^should\b", normalized) or re.search(
+        r"\b(?:ethical|ethics|privacy|bias|fairness|surveillance)\b",
+        normalized,
+    ):
+        rows = [
+            ("Entity type", "Ethical decision question"),
+            ("Broad field", "Applied ethics and public policy"),
+            ("Subject", subject),
+            ("Research area", "Technology, rights, risk, and institutional decision-making"),
+            (
+                "Related topics",
+                "Privacy; fairness; consent; effectiveness; governance; unintended consequences",
+            ),
+            (
+                "Typical applications",
+                "Policy evaluation; technology assessment; stakeholder analysis; risk-benefit decisions",
+            ),
+            ("Difficulty", "Beginner"),
+        ]
+    else:
+        rows = [
+            ("Entity type", "Learning question"),
+            ("Broad field", "Knowledge and inquiry"),
+            ("Subject", subject),
+            (
+                "Related topics",
+                "Definitions; foundations; mechanisms; applications; limitations",
+            ),
+            ("Difficulty", "Beginner"),
+        ]
+
+    return _correct_difficulty(rows, query)
+
+
 def _correct_difficulty(
     rows: list[tuple[str, str]],
     user_query: str = "",
@@ -178,7 +238,17 @@ def _correct_difficulty(
             query,
         )
     )
+    introductory_causal_or_comparison = bool(
+        re.match(r"^why\s+(?:do|does|did|is|are)\b", query)
+        or re.match(r"^how\s+(?:do|does)\b.*\b(?:differ|compare)\b", query)
+    )
     if introductory_definition and not intrinsically_intermediate:
+        return set_difficulty("Beginner")
+    if (
+        introductory_causal_or_comparison
+        and not intrinsically_intermediate
+        and not explicitly_advanced_request
+    ):
         return set_difficulty("Beginner")
     if is_bare_topic and not intrinsically_intermediate:
         return set_difficulty("Beginner")
@@ -243,7 +313,10 @@ def extract_topic_profile(
     source = (text or "").strip()
     match = _PROFILE_BLOCK.search(source)
     if not match:
-        return [], source
+        return (
+            build_fallback_topic_profile(user_query) if user_query.strip() else [],
+            source,
+        )
 
     body = _PROFILE_BLOCK.sub("", source, count=1).strip()
     raw_profile = match.group(1).strip()
@@ -253,10 +326,16 @@ def extract_topic_profile(
     try:
         parsed: Any = json.loads(raw_profile)
     except (TypeError, ValueError):
-        return [], body
+        return (
+            build_fallback_topic_profile(user_query) if user_query.strip() else [],
+            body,
+        )
 
     if not isinstance(parsed, dict):
-        return [], body
+        return (
+            build_fallback_topic_profile(user_query) if user_query.strip() else [],
+            body,
+        )
 
     rows: list[tuple[str, str]] = []
     for raw_label, raw_value in parsed.items():
