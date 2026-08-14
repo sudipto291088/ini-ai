@@ -248,3 +248,19 @@ def test_local_mcp_requests_get_a_clean_topic_title():
 
     for prompt in prompts:
         assert extract_topic(prompt) == "Setting up an MCP server locally"
+
+
+def test_normative_question_wording_routes_to_decision_learning():
+    prompts = (
+        "Should hospitals use AI to prioritize emergency patients?",
+        "Is nuclear power a responsible solution to climate change?",
+        "Are facial-recognition attendance systems ethical for schools?",
+        "Would employee monitoring be an appropriate policy for remote teams?",
+    )
+
+    for prompt in prompts:
+        result = detect_intent(prompt)
+        assert result["intent"] == "topic_explore"
+        assert result["response_intent"] == "decide"
+        assert result["should_interrogate"] is True
+        assert result["should_answer_direct"] is False

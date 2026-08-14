@@ -292,7 +292,20 @@ def _detect_mode(text: str) -> str:
 
 def _detect_response_intent(text: str) -> str:
     """Detect how the learner wants the topic handled, not only what it is."""
-    s = f" {_normalize_compact(text)} "
+    compact = _normalize_compact(text)
+    s = f" {compact} "
+
+    # Normative questions can request a decision without using the literal
+    # phrase "help me decide". Keep this structural so it covers unfamiliar
+    # subjects rather than relying on a list of topic names.
+    if re.match(r"^should\b", compact) or re.match(
+        r"^(?:is|are|would|can)\b.+\b(?:responsible|appropriate|ethical|"
+        r"acceptable|advisable|worthwhile|a good idea|the right choice|"
+        r"a better option)\b",
+        compact,
+    ):
+        return "decide"
+
     ordered_cues = (
         ("quiz", QUIZ_CUES),
         ("decide", DECIDE_CUES),

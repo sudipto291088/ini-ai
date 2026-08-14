@@ -61,6 +61,29 @@ class ContextAwareResponseModeTests(unittest.TestCase):
             "Should schools use facial recognition to record student attendance?",
         )
 
+    def test_responsible_solution_question_keeps_full_decision_route(self):
+        generated_categories = {
+            category: [
+                {"question": f"How does nuclear power relate to {category.lower()} {index}?"}
+                for index in range(count)
+            ]
+            for category, count in zip(CATEGORY_ORDER, (5, 4, 4, 4, 3, 3, 3))
+        }
+        with patch(
+            "api.interrogate._llm_generate_questions_only",
+            return_value=(
+                ["Nuclear power", "Climate responsibility", "Energy policy"],
+                generated_categories,
+            ),
+        ):
+            result = interrogate(
+                "Is nuclear power a responsible solution to climate change?"
+            )
+
+        self.assertTrue(result["categories"])
+        self.assertEqual(result.get("response_intent"), "decide")
+        self.assertNotEqual(result.get("response_mode"), "conversation")
+
     def test_ambiguous_local_mcp_request_asks_for_host(self):
         result = interrogate("My wife wants to add an MCP server in the local system")
         self.assertEqual(result["response_mode"], "carm")
