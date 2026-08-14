@@ -146,6 +146,8 @@ class WikibooksKnowledgeTests(unittest.TestCase):
                 llm, "retrieve_wikipedia_context", return_value=wp
             ), patch.object(
                 llm, "retrieve_wikibooks_context", return_value=wb_context
+            ), patch.object(
+                llm, "retrieve_crossref_context", return_value={}
             ), patch.object(llm.requests, "post", side_effect=fake_post):
                 result = llm.generate_dynamic_answer_result(
                     topic="linear regression",

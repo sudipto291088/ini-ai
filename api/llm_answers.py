@@ -18,6 +18,10 @@ from api.wikibooks_knowledge import (
     format_wikibooks_prompt_context,
     retrieve_wikibooks_context,
 )
+from api.crossref_knowledge import (
+    format_crossref_prompt_context,
+    retrieve_crossref_context,
+)
 
 
 # ============================================================
@@ -493,23 +497,33 @@ def generate_dynamic_answer_result(
     wikipedia_prompt_context = ""
     wikibooks_context: Dict[str, Any] = {}
     wikibooks_prompt_context = ""
+    crossref_context: Dict[str, Any] = {}
+    crossref_prompt_context = ""
     if not (isinstance(meta, dict) and str(meta.get("mode") or "").lower() == "warmup"):
-        # The two independent public lookups run together so adding a second
-        # source does not double the user's retrieval wait.
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        # Independent public lookups run together so additional sources do not
+        # multiply the user's retrieval wait.
+        with ThreadPoolExecutor(max_workers=4) as executor:
             wikidata_future = executor.submit(retrieve_wikidata_context, topic)
             wikipedia_future = executor.submit(retrieve_wikipedia_context, topic)
             wikibooks_future = executor.submit(retrieve_wikibooks_context, topic)
+            crossref_future = executor.submit(retrieve_crossref_context, topic)
             wikidata_context = wikidata_future.result()
             wikipedia_context = wikipedia_future.result()
             wikibooks_context = wikibooks_future.result()
+            crossref_context = crossref_future.result()
         wikidata_prompt_context = format_wikidata_prompt_context(wikidata_context)
         wikipedia_prompt_context = format_wikipedia_prompt_context(wikipedia_context)
         wikibooks_prompt_context = format_wikibooks_prompt_context(wikibooks_context)
+        crossref_prompt_context = format_crossref_prompt_context(crossref_context)
 
     knowledge_sources = [
         context
-        for context in (wikidata_context, wikipedia_context, wikibooks_context)
+        for context in (
+            wikidata_context,
+            wikipedia_context,
+            wikibooks_context,
+            crossref_context,
+        )
         if context
     ]
 
@@ -523,6 +537,7 @@ def generate_dynamic_answer_result(
         f"{wikidata_prompt_context}\n\n"
         f"{wikipedia_prompt_context}\n\n"
         f"{wikibooks_prompt_context}\n\n"
+        f"{crossref_prompt_context}\n\n"
         f"User question / instruction:\n{question}\n"
     )
 
