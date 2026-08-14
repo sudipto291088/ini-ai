@@ -10172,6 +10172,9 @@ def page_new_chat() -> None:
             }}
 
             .nc-landing-subtitle {{
+                position: relative;
+                width: min(calc(100% - 24px), 1120px);
+                height: 1.4em;
                 margin: 18px auto 30px;
                 color: #171717;
                 font-size: 23px;
@@ -10180,6 +10183,83 @@ def page_new_chat() -> None:
                 letter-spacing: 0.006em;
                 text-align: center;
                 white-space: nowrap;
+            }}
+
+            .nc-landing-subtitle__line {{
+                position: absolute;
+                top: 0;
+                left: 50%;
+                width: max-content;
+                max-width: none;
+                overflow: hidden;
+                opacity: 0;
+                transform: translateX(-50%);
+                clip-path: inset(0 100% 0 0);
+                white-space: nowrap;
+                animation-duration: 28s;
+                animation-timing-function: steps(var(--chars), end);
+                animation-iteration-count: infinite;
+            }}
+
+            .nc-landing-subtitle__line:nth-child(1) {{ animation-name: nc-subtitle-stream-1; }}
+            .nc-landing-subtitle__line:nth-child(2) {{ animation-name: nc-subtitle-stream-2; }}
+            .nc-landing-subtitle__line:nth-child(3) {{ animation-name: nc-subtitle-stream-3; }}
+            .nc-landing-subtitle__line:nth-child(4) {{ animation-name: nc-subtitle-stream-4; }}
+            .nc-landing-subtitle__line:nth-child(5) {{ animation-name: nc-subtitle-stream-5; }}
+            .nc-landing-subtitle__line:nth-child(6) {{ animation-name: nc-subtitle-stream-6; }}
+            .nc-landing-subtitle__line:nth-child(7) {{ animation-name: nc-subtitle-stream-7; }}
+
+            @keyframes nc-subtitle-stream-1 {{
+                0% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                5%, 14.27% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                14.28%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+            }}
+            @keyframes nc-subtitle-stream-2 {{
+                0%, 14.27% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                14.28% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                19.28%, 28.55% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                28.56%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+            }}
+            @keyframes nc-subtitle-stream-3 {{
+                0%, 28.55% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                28.56% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                33.56%, 42.84% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                42.85%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+            }}
+            @keyframes nc-subtitle-stream-4 {{
+                0%, 42.84% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                42.85% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                47.85%, 57.12% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                57.13%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+            }}
+            @keyframes nc-subtitle-stream-5 {{
+                0%, 57.12% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                57.13% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                62.13%, 71.41% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                71.42%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+            }}
+            @keyframes nc-subtitle-stream-6 {{
+                0%, 71.41% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                71.42% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                76.42%, 85.69% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+                85.70%, 100% {{ opacity: 0; clip-path: inset(0 0 0 0); }}
+            }}
+            @keyframes nc-subtitle-stream-7 {{
+                0%, 85.69% {{ opacity: 0; clip-path: inset(0 100% 0 0); }}
+                85.70% {{ opacity: 1; clip-path: inset(0 100% 0 0); }}
+                90.70%, 100% {{ opacity: 1; clip-path: inset(0 0 0 0); }}
+            }}
+
+            @media (prefers-reduced-motion: reduce) {{
+                .nc-landing-subtitle__line {{
+                    animation: none;
+                    opacity: 0;
+                    clip-path: none;
+                }}
+
+                .nc-landing-subtitle__line:first-child {{
+                    opacity: 1;
+                }}
             }}
 
             .st-key-nc_landing_composer {{
@@ -10680,13 +10760,13 @@ def page_new_chat() -> None:
                     white-space: nowrap !important;
                 }}
 
-                .nc-landing-subtitle,
                 .st-key-nc_landing_composer,
                 [data-testid="stElementContainer"]:has(.nc-explore-label) {{
                     width: min(calc(100% - 40px), 860px);
                 }}
 
                 .nc-landing-subtitle {{
+                    width: min(calc(100% - 20px), 1000px);
                     font-size: clamp(11px, 2.1cqw, 23px);
                     white-space: nowrap;
                 }}
@@ -10937,7 +11017,15 @@ def page_new_chat() -> None:
               <span class="nc-landing-wordmark nc-landing-wordmark-accent">ai</span>
             </div>
             <div class="nc-landing-heading">What would you like to understand?</div>
-            <div class="nc-landing-subtitle">Begin with a topic, question, or idea.</div>
+            <div class="nc-landing-subtitle" aria-label="InI guidance">
+              <span class="nc-landing-subtitle__line" style="--chars: 39">Begin with a topic, question, or idea.</span>
+              <span class="nc-landing-subtitle__line" style="--chars: 62">InI turns your first question into a structured learning path.</span>
+              <span class="nc-landing-subtitle__line" style="--chars: 69">You do not need to know the right terminology before you begin.</span>
+              <span class="nc-landing-subtitle__line" style="--chars: 94">Even an incomplete thought can become a clear path of questions, concepts, and connections.</span>
+              <span class="nc-landing-subtitle__line" style="--chars: 91">Use Interrogate to explore the topic through explanations, relationships, and questions.</span>
+              <span class="nc-landing-subtitle__line" style="--chars: 74">Use Illustrate to transform the idea into a clear visual explanation.</span>
+              <span class="nc-landing-subtitle__line" style="--chars: 44">Follow one question naturally into the next.</span>
+            </div>
             """,
             unsafe_allow_html=True,
         )
