@@ -1,9 +1,40 @@
 import unittest
 
-from api.context_resolution import find_contextual_topic_match
+from api.context_resolution import (
+    find_contextual_topic_match,
+    should_continue_practical_context,
+)
 
 
 class ContextResolutionTests(unittest.TestCase):
+    def test_new_short_learning_topics_break_old_mcp_context(self):
+        context = {
+            "original_request": "How do I configure a local MCP server for VS Code?",
+            "resolved_request": "Configure a local MCP server for VS Code",
+            "last_answer": "Choose STDIO or HTTP, then verify the MCP server.",
+        }
+        for query in (
+            "a/b testing",
+            "conversion rate optimization",
+            "controlled experimentation",
+        ):
+            with self.subTest(query=query):
+                self.assertFalse(
+                    should_continue_practical_context(query, **context)
+                )
+
+    def test_relevant_short_replies_keep_practical_context(self):
+        context = {
+            "original_request": "How do I configure a local MCP server for VS Code?",
+            "resolved_request": "Configure a local MCP server for VS Code",
+            "last_answer": "Is the provider STDIO or HTTP?",
+        }
+        for reply in ("VS Code", "STDIO", "I don't know", "go ahead"):
+            with self.subTest(reply=reply):
+                self.assertTrue(
+                    should_continue_practical_context(reply, **context)
+                )
+
     def test_strong_contextual_near_match_is_detected(self):
         result = find_contextual_topic_match(
             "multi score scaling",

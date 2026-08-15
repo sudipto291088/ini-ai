@@ -7,6 +7,55 @@ from difflib import SequenceMatcher
 from typing import Iterable, Optional
 
 
+_CONTEXT_STOPWORDS = {
+    "a", "an", "and", "as", "at", "be", "for", "from", "in", "is",
+    "it", "of", "on", "or", "the", "this", "to", "with", "you", "your",
+}
+
+
+def should_continue_practical_context(
+    query: str,
+    *,
+    original_request: str = "",
+    resolved_request: str = "",
+    last_answer: str = "",
+) -> bool:
+    """Return True only when a short turn is evidenced as a CARM follow-up."""
+    raw = (query or "").strip()
+    words = re.findall(r"[A-Za-z0-9+#.-]+", raw)
+    if not 0 < len(words) <= 14:
+        return False
+
+    if re.match(
+        r"^(what|who|why|when|where|how|explain|teach|compare|define|tell me|new topic)\b",
+        raw,
+        flags=re.IGNORECASE,
+    ) or "?" in raw:
+        return False
+
+    normalized = re.sub(r"[^a-z0-9 ]+", " ", raw.lower()).strip()
+    if re.match(
+        r"^(?:yes|yeah|yep|no|nope|okay|ok|sure|maybe|probably|"
+        r"i don t know|i do not know|not sure|go ahead|continue|do it)\b",
+        normalized,
+    ):
+        return True
+
+    context = " ".join(
+        part for part in (original_request, resolved_request, last_answer) if part
+    )
+    query_terms = {
+        token for token in _normalized_tokens(raw) if token not in _CONTEXT_STOPWORDS
+    }
+    context_terms = {
+        token for token in _normalized_tokens(context) if token not in _CONTEXT_STOPWORDS
+    }
+    if query_terms & context_terms:
+        return True
+
+    return len(words) == 1 and "?" in (last_answer or "")
+
+
 def _normalized_tokens(text: str) -> list[str]:
     normalized = re.sub(r"[^a-z0-9]+", " ", (text or "").lower())
     return [token for token in normalized.split() if token]

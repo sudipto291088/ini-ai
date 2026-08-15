@@ -60,7 +60,10 @@ except ModuleNotFoundError as exc:
         return None
 
 try:
-    from api.context_resolution import find_contextual_topic_match
+    from api.context_resolution import (
+        find_contextual_topic_match,
+        should_continue_practical_context,
+    )
 except ModuleNotFoundError as exc:
     if exc.name != "api.context_resolution":
         raise
@@ -70,6 +73,12 @@ except ModuleNotFoundError as exc:
         candidates: Iterable[str],
     ) -> Optional[Dict[str, object]]:
         return None
+
+    def should_continue_practical_context(
+        query: str,
+        **_: Any,
+    ) -> bool:
+        return False
 
 from api.interrogate import extract_topic as extract_learning_topic
 from api.capability_boundary import assess_capability
@@ -7787,7 +7796,7 @@ def page_new_chat() -> None:
         words = set(re.findall(r"[a-z0-9]+", s))
         markers = {
             "today", "current", "latest", "now", "gas", "petrol", "diesel",
-            "price", "rate", "cost", "weather", "temperature", "maryland",
+            "price", "weather", "temperature", "maryland",
             "dc", "usa", "local",
         }
         return bool(words & markers) or any(phrase in s for phrase in phrases)
@@ -8583,18 +8592,11 @@ def page_new_chat() -> None:
         # This is intentionally semantic/structural rather than a list of
         # expected values such as operating systems or transport names.
         elif isinstance(active_carm_context, dict):
-            reply_words = re.findall(r"[A-Za-z0-9+#.-]+", display_topic_text)
-            explicit_new_request = bool(
-                re.match(
-                    r"^(what|who|why|when|where|how|explain|teach|compare|define|tell me|new topic)\b",
-                    display_topic_text,
-                    flags=re.IGNORECASE,
-                )
-                or "?" in display_topic_text
-            )
-            contextual_short_reply = (
-                0 < len(reply_words) <= 14
-                and not explicit_new_request
+            contextual_short_reply = should_continue_practical_context(
+                display_topic_text,
+                original_request=str(active_carm_context.get("original_request") or ""),
+                resolved_request=str(active_carm_context.get("resolved_request") or ""),
+                last_answer=str(active_carm_context.get("last_answer") or ""),
             )
 
             if contextual_short_reply:

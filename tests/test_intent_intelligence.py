@@ -199,6 +199,14 @@ def test_quan_artificial_intelligence_requires_domain_clarification():
     ]
 
 
+def test_alphanumeric_bare_topics_generate_full_learning_responses():
+    for topic in ("web3", "oauth2", "ipv6", "5g"):
+        result = detect_intent(topic)
+        assert result["intent"] == "topic_explore", topic
+        assert result["should_interrogate"] is True, topic
+        assert result["should_answer_direct"] is False, topic
+
+
 def test_specialized_intents_extract_clean_topics():
     examples = {
         "Compare Python versus Java": "Python versus Java",
@@ -276,5 +284,16 @@ def test_ml_regression_sequence_never_routes_as_conversation():
     for prompt in prompts:
         result = detect_intent(prompt)
         assert result["intent"] == "topic_explore"
+        assert result["should_interrogate"] is True
+        assert result["should_answer_direct"] is False
+
+
+def test_rate_named_learning_topics_are_not_mistaken_for_live_rates():
+    for query in (
+        "conversion rate optimization",
+        "rate limiting",
+        "heart rate variability",
+    ):
+        result = detect_intent(query)
         assert result["should_interrogate"] is True
         assert result["should_answer_direct"] is False

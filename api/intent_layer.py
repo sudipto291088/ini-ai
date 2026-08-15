@@ -170,7 +170,7 @@ DIRECT_FACTUAL_PREFIXES = (
 )
 
 DIRECT_FACTUAL_KEYWORDS = {
-    "today", "current", "latest", "price", "rate", "weather", "temperature",
+    "today", "current", "latest", "price", "weather", "temperature",
     "stock", "gas", "diesel", "petrol", "time", "date", "news", "score",
     "president", "ceo", "population", "salary", "exchange rate", "bitcoin",
     "gold price", "silver price", "fuel price", "live", "now", "currently",
@@ -621,7 +621,6 @@ def _looks_like_direct_factual_query(text: str) -> bool:
 
     # things like: "gas rate today"
     factual_markers = {
-        "rate",
         "price",
         "cost",
         "weather",
@@ -671,6 +670,8 @@ def _looks_like_topic(text: str) -> bool:
     # rejected merely because it was one word. Conversation primitives are
     # handled before this function, so a substantial alphabetic term is a
     # valid learning topic unless it is clearly generic dialogue language.
+    # Technical subject names are not necessarily alphabetic: learners also
+    # enter compact names such as "web3", "oauth2", "ipv6", and "5g".
     words = s.split()
     generic_single_words = {
         "again", "anything", "buddy", "continue", "different", "else",
@@ -680,8 +681,9 @@ def _looks_like_topic(text: str) -> bool:
     }
     if (
         len(words) == 1
-        and len(words[0]) >= 5
-        and words[0].isalpha()
+        and len(words[0]) >= 2
+        and re.fullmatch(r"[a-z0-9][a-z0-9+#./-]*", words[0]) is not None
+        and any(char.isalpha() for char in words[0])
         and words[0] not in generic_single_words
     ):
         return True
