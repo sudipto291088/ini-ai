@@ -7174,17 +7174,27 @@ def page_new_chat() -> None:
         ]
         matched_stages = {match.section for match in matches}
         control_token = abs(hash(notice_key))
-        for stage_index, section in enumerate(question_map_stages):
-            if section not in matched_stages:
-                continue
-            st.button(
-                        "Direct answer ×",
-                    key=f"direct_answer_pointer_stage_{stage_index}_{control_token}",
-                    width="content",
-                    help="Dismiss this guide",
-                    on_click=_dismiss_direct_answer_notice,
-                    args=(dismissed_state_key,),
-            )
+        stage_index = next(
+            (
+                index
+                for index, section in enumerate(question_map_stages)
+                if section in matched_stages
+            ),
+            None,
+        )
+        if stage_index is None:
+            return
+        # One dismissible notification guides the learner to the first direct
+        # answer stage. Rendering one bubble per matched stage makes compound
+        # questions look like duplicated UI controls.
+        st.button(
+            "Direct answer ×",
+            key=f"direct_answer_pointer_stage_{stage_index}_{control_token}",
+            width="content",
+            help="Dismiss this guide",
+            on_click=_dismiss_direct_answer_notice,
+            args=(dismissed_state_key,),
+        )
 
     def _discussion_questions_for(topic: str, set_number: int = 1) -> List[str]:
         clean_topic = (topic or "this topic").strip()

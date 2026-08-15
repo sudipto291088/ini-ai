@@ -672,6 +672,20 @@ def _extract_json_object(text: str) -> Optional[dict]:
 
     candidate = text[start:].strip()
 
+    # Models occasionally emit JavaScript/Python-style escaped apostrophes
+    # inside otherwise valid JSON strings. JSON does not recognize \' as an
+    # escape, while a plain apostrophe is safe inside its double-quoted
+    # strings. Embedded markdown fence markers are likewise presentation
+    # noise rather than part of the Question Map. Salvage the topic-specific
+    # payload instead of discarding the complete response.
+    candidate = candidate.replace("\\'", "'")
+    candidate = re.sub(
+        r"```(?:json|python)?\s*|\s*```",
+        "",
+        candidate,
+        flags=re.IGNORECASE,
+    )
+
     # Prefer clean full object if available
     end = candidate.rfind("}")
     if end > 0:

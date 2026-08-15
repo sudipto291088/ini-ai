@@ -264,3 +264,17 @@ def test_normative_question_wording_routes_to_decision_learning():
         assert result["response_intent"] == "decide"
         assert result["should_interrogate"] is True
         assert result["should_answer_direct"] is False
+
+
+def test_ml_regression_sequence_never_routes_as_conversation():
+    prompts = (
+        "How does class imbalance affect a classification model, why can accuracy become misleading, and which evaluation metrics should be used instead?",
+        "Why do decision trees tend to overfit, how does pruning address this, and what trade-offs does pruning introduce?",
+        "How does gradient descent train a machine-learning model, what role does the learning rate play, and what happens when it is too high or too low?",
+    )
+
+    for prompt in prompts:
+        result = detect_intent(prompt)
+        assert result["intent"] == "topic_explore"
+        assert result["should_interrogate"] is True
+        assert result["should_answer_direct"] is False
