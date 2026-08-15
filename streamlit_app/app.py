@@ -64,8 +64,11 @@ try:
         find_contextual_topic_match,
         should_continue_practical_context,
     )
-except ModuleNotFoundError as exc:
-    if exc.name != "api.context_resolution":
+except (ModuleNotFoundError, ImportError) as exc:
+    # Streamlit Cloud can briefly run the new entry point while an older
+    # dependency module is still loaded during a rolling deployment. Missing
+    # optional context helpers must degrade safely instead of blanking the app.
+    if isinstance(exc, ModuleNotFoundError) and exc.name != "api.context_resolution":
         raise
 
     def find_contextual_topic_match(
