@@ -10363,6 +10363,13 @@ def page_new_chat() -> None:
                 caret-color: #087f7b;
             }}
 
+            /* The buttons already make submission explicit; Streamlit's
+               keyboard-form hint adds noise inside the polished UIB. */
+            .st-key-nc_landing_composer [data-testid="InputInstructions"],
+            .st-key-nc_landing_composer [data-testid="stInputInstructions"] {{
+                display: none !important;
+            }}
+
             .st-key-nc_landing_composer
             div[data-testid="stTextArea"]:has(textarea[aria-label="NC_TOP_TOPIC"])
             textarea::placeholder {{
@@ -11373,6 +11380,11 @@ def page_new_chat() -> None:
                     0 2px 8px rgba(15, 23, 42, 0.025),
                     inset 0 0 0 1px rgba(255, 255, 255, 0.82);
                 transform: translateX(-50%);
+            }
+
+            .st-key-nc_bottom_composer [data-testid="InputInstructions"],
+            .st-key-nc_bottom_composer [data-testid="stInputInstructions"] {
+                display: none !important;
             }
 
             [data-testid="stAppViewContainer"]:has(
