@@ -7196,29 +7196,36 @@ def page_new_chat() -> None:
             "Pitfalls",
             "Advanced / Future",
         ]
-        matched_stages = {match.section for match in matches}
         control_token = abs(hash(notice_key))
-        stage_index = next(
-            (
-                index
-                for index, section in enumerate(question_map_stages)
-                if section in matched_stages
-            ),
-            None,
-        )
-        if stage_index is None:
-            return
-        # One dismissible notification guides the learner to the first direct
-        # answer stage. Rendering one bubble per matched stage makes compound
-        # questions look like duplicated UI controls.
-        st.button(
-            "Direct answer ×",
-            key=f"direct_answer_pointer_stage_{stage_index}_{control_token}",
-            width="content",
-            help="Dismiss this guide",
-            on_click=_dismiss_direct_answer_notice,
-            args=(dismissed_state_key,),
-        )
+        matches_by_stage: Dict[str, List[Any]] = {}
+        for match in matches:
+            matches_by_stage.setdefault(match.section, []).append(match)
+
+        # Compound prompts can place their direct answers in different learning
+        # stages. Point to every relevant capsule and expose the same numbering
+        # used on the highlighted question cards, so answers 2 and 3 are never
+        # hidden behind an unexplained stage change.
+        for stage_index, section in enumerate(question_map_stages):
+            stage_matches = matches_by_stage.get(section) or []
+            if not stage_matches:
+                continue
+
+            part_numbers = sorted({match.part_index for match in stage_matches})
+            total_parts = max(match.total_parts for match in stage_matches)
+            if len(part_numbers) == 1:
+                notice_label = f"Direct answer {part_numbers[0]} of {total_parts} ×"
+            else:
+                joined_parts = " & ".join(str(number) for number in part_numbers)
+                notice_label = f"Direct answers {joined_parts} of {total_parts} ×"
+
+            st.button(
+                notice_label,
+                key=f"direct_answer_pointer_stage_{stage_index}_{control_token}",
+                width="content",
+                help="Dismiss these direct-answer guides",
+                on_click=_dismiss_direct_answer_notice,
+                args=(dismissed_state_key,),
+            )
 
     def _discussion_questions_for(topic: str, set_number: int = 1) -> List[str]:
         clean_topic = (topic or "this topic").strip()
