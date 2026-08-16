@@ -6,6 +6,9 @@ import re
 from typing import Any, Dict, Optional
 
 
+PRODUCT_KNOWLEDGE_VERSION = 2
+
+
 def _normalize(text: str) -> str:
     value = (text or "").lower().replace("’", "'")
     value = re.sub(r"[^a-z0-9.']+", " ", value)

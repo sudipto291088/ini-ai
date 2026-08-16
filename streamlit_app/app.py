@@ -48,7 +48,15 @@ from structured_validation import validate_structured_learning_answer
 # Keep startup resilient while a deployment rolls between revisions: an older
 # checkout must still render instead of failing before the first frame.
 try:
-    from api.product_knowledge import answer_ini_product_query
+    import api.product_knowledge as product_knowledge
+
+    # Streamlit can rerun the entry script without refreshing already-imported
+    # helper modules after a deployment sync. Force a reload when the running
+    # module predates the routing repair so hosted sessions cannot retain the
+    # old product-query detector.
+    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 2:
+        product_knowledge = importlib.reload(product_knowledge)
+    answer_ini_product_query = product_knowledge.answer_ini_product_query
 except ModuleNotFoundError as exc:
     if exc.name != "api.product_knowledge":
         raise
