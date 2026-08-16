@@ -22,6 +22,16 @@ class ProductKnowledgeTests(unittest.TestCase):
     def test_unrelated_topic_is_not_claimed(self):
         self.assertIsNone(answer_ini_product_query("Generate a Question Map for cognitive science"))
 
+    def test_second_person_inside_learning_question_is_not_claimed(self):
+        prompts = (
+            "What is transfer learning, how does it differ from training a model from scratch, and when should you fine-tune the entire network rather than only its final layers?**",
+            "What is PCA and when should you use it?",
+            "What future topic should you learn after linear regression?",
+        )
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                self.assertIsNone(answer_ini_product_query(prompt))
+
     def test_topic_coverage_answer_is_honest_and_scoped(self):
         for prompt in (
             "What all topics do you know?",

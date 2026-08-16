@@ -40,7 +40,27 @@ def answer_ini_product_query(
             f"{f', {full_name}' if full_name else ''}."
         )
 
-    refers_to_ini = bool(re.search(r"\b(ini|you|your|yourself)\b", s))
+    # A second-person pronoun inside an educational question does not make the
+    # question about InI.  Require either an explicit InI reference or a
+    # product-shaped form of address before any product answer can intercept
+    # the normal learning pipeline.
+    explicit_ini_reference = bool(re.search(r"\bini(?:\.ai)?\b", s))
+    second_person_product_reference = bool(
+        re.search(
+            r"^(?:what (?:exactly )?(?:are|can) you\b|who are you\b|"
+            r"how can you help\b|what should i call you\b|tell me about yourself\b|"
+            r"(?:what all|which) (?:topics?|subjects?|areas?) (?:do you know|can you cover)\b|"
+            r"who (?:created|built|made|designed) you\b|"
+            r"why do you create question maps?\b)",
+            s,
+        )
+        or re.search(
+            r"\b(?:your (?:current )?(?:version|release|features?|capabilities|"
+            r"roadmap|creator|founder|purpose)|(?:versions?|releases?) have you)\b",
+            s,
+        )
+    )
+    refers_to_ini = explicit_ini_reference or second_person_product_reference
     if not s or not refers_to_ini:
         return None
 
@@ -148,7 +168,11 @@ def answer_ini_product_query(
             "or every phrasing yet."
         )
 
-    if re.search(r"\b(what exactly|what is|who are|describe|define).*(ini|you)\b", s) or s in {
+    if re.search(
+        r"^(?:what (?:exactly )?(?:is ini(?:\.ai)?|are you)|who are you|"
+        r"describe (?:ini(?:\.ai)?|yourself)|define ini(?:\.ai)?)$",
+        s,
+    ) or s in {
         "what are you", "tell me about yourself", "tell me about ini",
     }:
         return (
