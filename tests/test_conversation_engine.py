@@ -47,6 +47,18 @@ class ConversationEngineTests(unittest.TestCase):
                 self.assertEqual(result["response_mode"], "conversation")
                 self.assertEqual(result["categories"], {})
 
+    def test_status_check_with_social_address_never_creates_question_map(self):
+        for message in (
+            "what's going on man",
+            "what's going on, buddy?",
+            "so what's up mate",
+        ):
+            with self.subTest(message=message):
+                result = interrogate(message)
+                self.assertEqual(result["response_mode"], "conversation")
+                self.assertIn(result["intent"], {"greeting", "smalltalk"})
+                self.assertEqual(result["categories"], {})
+
     def test_permission_to_use_ini_name_is_conversational(self):
         result = interrogate("Can I call you InI?")
         self.assertEqual(result["response_mode"], "conversation")

@@ -28,6 +28,13 @@ def _normalize_expressive(text: str) -> str:
     return re.sub(r"([a-z])\1{2,}", r"\1", s)
 
 
+def _strip_social_address(text: str) -> str:
+    """Remove a harmless trailing vocative from an already-normalized turn."""
+    return re.sub(
+        r"\s+(?:ini|cd|cg|man|buddy|bro|friend|mate)$", "", text
+    ).strip()
+
+
 def _contains_phrase(text: str, phrases: Iterable[str]) -> bool:
     s = _normalize_compact(text)
     return s in {_normalize_compact(p) for p in phrases}
@@ -61,6 +68,7 @@ GREETING_PHRASES = {
     "how are things going", "how is everything", "hows everything",
     "hows life", "how's life", "how is life", "whats going on", "what's going on",
     "so whats going on", "so what's going on", "so what is going on",
+    "so whats up", "so what's up", "so what is up",
     "anything new", "hey whats up", "hello whats up", "hey whats going on",
     "hello whats going on", "hey there cg", "hello there cg", "hi there cg",
     "hey there ini", "hello there ini", "hi there ini", "morning", "evening",
@@ -321,7 +329,7 @@ def _detect_response_intent(text: str) -> str:
 
 
 def _is_greeting(text: str) -> bool:
-    s = _normalize_expressive(text)
+    s = _strip_social_address(_normalize_expressive(text))
     if _contains_phrase(s, GREETING_PHRASES):
         return True
 
@@ -427,6 +435,10 @@ def _is_self_introduction(text: str) -> bool:
 
 def _is_smalltalk(text: str) -> bool:
     s = _normalize_expressive(text)
+    # A harmless form of address does not turn casual speech into a learning
+    # subject.  Keep the gate structural so natural variants such as
+    # "what's going on, man?" cannot fall through to Question Map generation.
+    s = _strip_social_address(s)
     if _contains_phrase(s, SMALLTALK_PHRASES):
         return True
 

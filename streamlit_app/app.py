@@ -8215,7 +8215,10 @@ def page_new_chat() -> None:
         }:
             return f"Glad to hear it{address}."
 
-        if normalized in {
+        casual_normalized = re.sub(
+            r"\s+(?:ini|cd|cg|man|buddy|bro|friend|mate)$", "", normalized
+        ).strip()
+        if casual_normalized in {
             "whats going on", "what is going on", "so whats going on",
             "so what is going on", "whats up", "what is up", "so whats up",
         }:

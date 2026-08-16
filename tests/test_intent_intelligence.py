@@ -112,7 +112,7 @@ def test_conversation_invitations_never_create_question_maps():
 
     for invitation in invitations:
         intent = detect_intent(invitation)
-        assert intent["intent"] == "smalltalk"
+        assert intent["intent"] in {"greeting", "smalltalk"}
         assert intent["should_interrogate"] is False
 
         result = interrogate(invitation)
@@ -120,6 +120,23 @@ def test_conversation_invitations_never_create_question_maps():
         assert result["suppress_profile"] is True
         assert result["categories"] == {}
         assert result["topic"] == ""
+
+
+def test_casual_question_with_social_address_never_creates_question_map():
+    messages = (
+        "what's going on man",
+        "what's going on, buddy?",
+        "so what's up mate",
+    )
+
+    for message in messages:
+        intent = detect_intent(message)
+        assert intent["intent"] == "smalltalk"
+        assert intent["should_interrogate"] is False
+
+        result = interrogate(message)
+        assert result["response_mode"] == "conversation"
+        assert result["categories"] == {}
 
 
 def test_conversational_lead_in_does_not_hide_named_learning_subject():
