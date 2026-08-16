@@ -243,6 +243,13 @@ def validate_structured_learning_answer(answer: str) -> dict[str, Any]:
     source, formula_repaired = _repair_update_rule(source)
     if formula_repaired:
         repairs.append("balanced update-rule delimiters")
+    source, leaked_rule_count = re.subn(
+        r"(?<!<)(?<!</)\bUPDATE_RULE\b(?!>)",
+        "governing relationship",
+        source,
+    )
+    if leaked_rule_count:
+        repairs.append("replaced leaked update-rule placeholder references")
 
     lowered = source.casefold()
     leaked = [item for item in PLACEHOLDER_TEXT if item in lowered]

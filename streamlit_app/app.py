@@ -62,6 +62,7 @@ except ModuleNotFoundError as exc:
 try:
     from api.context_resolution import (
         find_contextual_topic_match,
+        resolve_learning_followup,
         should_continue_practical_context,
     )
 except (ModuleNotFoundError, ImportError) as exc:
@@ -82,6 +83,9 @@ except (ModuleNotFoundError, ImportError) as exc:
         **_: Any,
     ) -> bool:
         return False
+
+    def resolve_learning_followup(query: str, active_topic: str) -> str:
+        return query
 
 from api.interrogate import extract_topic as extract_learning_topic
 from api.capability_boundary import assess_capability
@@ -8266,6 +8270,11 @@ def page_new_chat() -> None:
             if interpreted_turn.has_substantive_text
             else display_topic_text
         )
+        active_learning_topic = _latest_structured_chat_topic()
+        semantic_topic_text = resolve_learning_followup(
+            semantic_topic_text,
+            active_learning_topic,
+        )
         semantic_intent = detect_intent(semantic_topic_text)
         substantive_learning_turn = bool(
             semantic_intent.get("should_interrogate", False)
@@ -8390,7 +8399,10 @@ def page_new_chat() -> None:
             else ""
         )
         active_carm_context = st.session_state.get("chat_active_carm_context")
-        if not isinstance(active_carm_context, dict):
+        if (
+            not isinstance(active_carm_context, dict)
+            and _latest_response_mode() == "carm"
+        ):
             # Rebuild practical context from persisted response payloads. This
             # protects natural replies such as "I don't know" after a reload,
             # deployment restart, or reopening an older chat.

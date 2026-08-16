@@ -34,6 +34,13 @@ class ContextAwareResponseModeTests(unittest.TestCase):
         self.assertEqual(result["response_mode"], "question_map")
         self.assertEqual(result["context_intent"], "learning")
 
+    def test_why_is_clause_does_not_turn_mechanism_question_into_troubleshooting(self):
+        result = classify_context(
+            "How does OAuth2 authorization-code flow with PKCE work, and why is PKCE necessary?"
+        )
+        self.assertEqual(result["response_mode"], "question_map")
+        self.assertEqual(result["context_intent"], "learning")
+
     def test_should_question_is_routed_as_educational_not_conversation(self):
         generated_categories = {
             category: [

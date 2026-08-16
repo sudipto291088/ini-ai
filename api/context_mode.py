@@ -15,7 +15,7 @@ DEBUGGING_CUES = (
     "code failing", "script is failing", "build failed", "test failed",
 )
 TROUBLESHOOTING_CUES = (
-    "not working", "doesn't work", "does not work", "why is", "fix this",
+    "not working", "doesn't work", "does not work", "fix this",
     "how do i fix", "error", "failed", "failure", "crash", "broken",
 )
 MCP_HOSTS = (

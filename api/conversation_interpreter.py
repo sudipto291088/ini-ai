@@ -29,6 +29,10 @@ _CORRECTION_PREFIX = re.compile(
     r"^(?:i\s+mean|i\s+meant|what\s+i\s+mean\s+is|rather)\b[\s,;:!.\-]*",
     re.IGNORECASE,
 )
+_TOPIC_SWITCH_PREFIX = re.compile(
+    r"^(?:switch|change|move|moving)\s+(?:the\s+)?topics?\b[\s,;:!.\-]*",
+    re.IGNORECASE,
+)
 _TRAILING_REPAIR = re.compile(
     r"[\s,;:!.\-\u2013\u2014]+(?:sorry|my\s+bad|apologies|pardon\s+me|excuse\s+me)"
     r"[\s.!?]*$",
@@ -70,6 +74,7 @@ def interpret_turn(text: str) -> ConversationTurn:
     semantic = raw
     if not confirmation and not denial:
         semantic = _LEADING_DISCOURSE.sub("", semantic).strip()
+        semantic = _TOPIC_SWITCH_PREFIX.sub("", semantic).strip()
         semantic = _CORRECTION_PREFIX.sub("", semantic).strip()
         semantic = _TRAILING_REPAIR.sub("", semantic).strip()
         semantic = re.sub(r"\s+", " ", semantic)

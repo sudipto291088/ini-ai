@@ -16,6 +16,8 @@ class ConversationInterpreterTests(unittest.TestCase):
             "yea octa core, sorry": "octa core",
             "okay quantum computing — my bad": "quantum computing",
             "right, data science; apologies": "data science",
+            "Actually, switch topics: should governments regulate facial recognition?":
+                "should governments regulate facial recognition?",
         }
         for raw, expected in cases.items():
             with self.subTest(raw=raw):

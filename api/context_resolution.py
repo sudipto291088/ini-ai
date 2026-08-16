@@ -53,7 +53,56 @@ def should_continue_practical_context(
     if query_terms & context_terms:
         return True
 
-    return len(words) == 1 and "?" in (last_answer or "")
+    return False
+
+
+def resolve_learning_followup(query: str, active_topic: str) -> str:
+    """Resolve learning references while protecting deliberate new topics."""
+    raw = re.sub(r"\s+", " ", (query or "").strip())
+    topic = re.sub(r"\s+", " ", (active_topic or "").strip())
+    if not raw or not topic:
+        return raw
+
+    normalized = raw.lower()
+    words = re.findall(r"[A-Za-z0-9+#.-]+", raw)
+    if len(words) <= 3 and "?" not in raw:
+        return raw
+
+    anchor_match = re.search(r"\b[A-Za-z]+\d+[A-Za-z0-9.-]*\b", topic)
+    if anchor_match:
+        anchor = anchor_match.group(0)
+    else:
+        anchor = re.sub(
+            r"^(?:what|why|how|should|can|could|would|explain|compare)\b\s*",
+            "",
+            topic,
+            flags=re.IGNORECASE,
+        ).strip(" ?.!") or topic
+
+    if re.search(r"\b(?:it|its|this|that)\b", normalized):
+        if re.match(r"^what\s+about\s+its\s+health\s+risks\b", normalized):
+            return (
+                f"What are the health risks of {anchor}, and how strong is "
+                f"the evidence specifically about {anchor}?"
+            )
+        resolved = re.sub(r"\bits\b", f"{anchor}'s", raw, count=1, flags=re.IGNORECASE)
+        resolved = re.sub(r"\bit\b", anchor, resolved, count=1, flags=re.IGNORECASE)
+        resolved = re.sub(
+            r"\b(?:this|that)\s+(?:topic|subject)\b",
+            anchor,
+            resolved,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+        return resolved
+
+    if re.match(
+        r"^i\s+(?:do\s+not|don't|dont)\s+know\s+enough\s+to\s+judge\b",
+        normalized,
+    ):
+        return f"For the active topic '{topic}', what should a beginner learn first to judge it?"
+
+    return raw
 
 
 def _normalized_tokens(text: str) -> list[str]:

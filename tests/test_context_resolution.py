@@ -2,6 +2,7 @@ import unittest
 
 from api.context_resolution import (
     find_contextual_topic_match,
+    resolve_learning_followup,
     should_continue_practical_context,
 )
 
@@ -34,6 +35,39 @@ class ContextResolutionTests(unittest.TestCase):
                 self.assertTrue(
                     should_continue_practical_context(reply, **context)
                 )
+
+    def test_single_token_topic_does_not_revive_old_practical_context(self):
+        self.assertFalse(
+            should_continue_practical_context(
+                "5G",
+                original_request="How does OAuth2 work?",
+                last_answer="Which network are you using?",
+            )
+        )
+
+    def test_learning_references_resolve_against_latest_topic(self):
+        oauth = "How does OAuth2 authorization-code flow with PKCE work?"
+        self.assertEqual(
+            resolve_learning_followup(
+                "How is it different from OpenID Connect?", oauth
+            ),
+            "How is OAuth2 different from OpenID Connect?",
+        )
+        self.assertIn(
+            "Should governments ban facial recognition",
+            resolve_learning_followup(
+                "I don't know enough to judge—what should I learn first?",
+                "Should governments ban facial recognition in public spaces?",
+            ),
+        )
+        self.assertEqual(resolve_learning_followup("5G", oauth), "5G")
+        self.assertEqual(
+            resolve_learning_followup(
+                "What about its health risks, and how strong is the evidence?",
+                "5G",
+            ),
+            "What are the health risks of 5G, and how strong is the evidence specifically about 5G?",
+        )
 
     def test_strong_contextual_near_match_is_detected(self):
         result = find_contextual_topic_match(

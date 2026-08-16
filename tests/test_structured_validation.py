@@ -64,6 +64,19 @@ class StructuredValidationTests(unittest.TestCase):
         self.assertTrue(result["valid"])
         self.assertEqual(result["issues"], [])
 
+    def test_repairs_update_rule_name_leaked_into_journey_copy(self) -> None:
+        leaked = VALID_RESPONSE.replace(
+            "Calculate two updates by hand.",
+            "Calculate two updates using the UPDATE_RULE.",
+        )
+        result = validate_structured_learning_answer(leaked)
+        self.assertNotIn("UPDATE_RULE.", result["answer"])
+        self.assertIn("governing relationship", result["answer"])
+        self.assertIn(
+            "replaced leaked update-rule placeholder references",
+            result["repairs"],
+        )
+
     def test_complete_response_with_quality_warning_remains_displayable(self) -> None:
         warned = VALID_RESPONSE.replace(
             "w = w - eta * grad(L(w))",
