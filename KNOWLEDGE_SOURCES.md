@@ -29,6 +29,66 @@ permission to retrieve other websites linked by that source.
 - `INI_WIKIDATA_CACHE_SECONDS=86400` sets the in-memory cache lifetime (bounded to 60–604800).
 - `INI_WIKIDATA_USER_AGENT` may override the identifying User-Agent when a maintained contact URL is available.
 
+## Wikipedia introductory prose
+
+- Status: enabled
+- Access method: official English MediaWiki Action API
+- Retrieved scope: one bounded introductory extract plus title and canonical URL
+- Licence: Creative Commons Attribution-ShareAlike 4.0
+- Attribution: `Wikipedia contributors`, article URL, and licence metadata are retained
+- Excluded scope: full articles, media, references, discussions, and external links
+- Storage: bounded in-memory cache only; default TTL 24 hours
+- Failure and privacy behavior: fail open; reject personal, sensitive, credential-like, URL, email, and long inputs locally
+
+## Wikibooks educational prose
+
+- Status: enabled
+- Access method: official English MediaWiki Action API
+- Retrieved scope: one bounded introductory extract plus title and canonical URL
+- Licence: Creative Commons Attribution-ShareAlike 4.0
+- Attribution: `Wikibooks contributors`, page URL, and licence metadata are retained
+- Excluded scope: full books, media, discussions, and external links
+- Storage: bounded in-memory cache only; default TTL 24 hours
+- Failure and privacy behavior: fail open; reject personal, sensitive, credential-like, URL, email, and long inputs locally
+
+## Crossref bibliographic metadata
+
+- Status: enabled
+- Access method: official public REST API
+- Retrieved scope: at most three records containing DOI, title, creators, publication date, container, and work type
+- Licence boundary: bibliographic facts and Crossref-generated CC0 data only
+- Excluded scope: abstracts, full text, publisher files, and linked-page content
+- Source guidance: https://www.crossref.org/documentation/retrieve-metadata/
+- Storage: bounded in-memory cache only; default TTL 24 hours
+- Failure and privacy behavior: fail open; reject personal, sensitive, credential-like, URL, email, and long inputs locally
+
+## DataCite research-output metadata
+
+- Status: enabled
+- Purpose: discover datasets, software, reports, publications, and other DOI-identified research outputs
+- Access method: unauthenticated DataCite public REST API (`https://api.datacite.org/dois`)
+- Retrieved scope: at most three records containing title, creators, publication year, publisher, resource type, subjects, and DOI
+- Licence: Creative Commons CC0 1.0 waiver for deposited DataCite metadata
+- Licence record: https://support.datacite.org/docs/datacite-data-file-use-policy
+- API guidance: https://support.datacite.org/docs/api
+- Rate limits: https://support.datacite.org/docs/rate-limit
+- Attribution: `DataCite DOI metadata` and DOI links are retained as a community-norm attribution
+- Commercial use: permitted for the CC0 metadata used by this connector
+- Excluded scope: descriptions, abstracts, files, linked resources, linked webpages, logos, and DataCite marks
+- Rights boundary: a DataCite record does not grant permission to retrieve or reuse the resource identified by its DOI
+- Storage: bounded in-memory cache only; default TTL 24 hours
+- Failure behavior: fail open to InI's existing pipeline; never block a response; no automatic retry through rate limits
+- Traffic behavior: one identified User-Agent, one bounded query, at most three records, and no pagination or bulk harvesting
+- Privacy behavior: only short public-topic queries are sent; personal, sensitive, URL, email, credential-like, and long free-form inputs are rejected locally
+
+### DataCite configuration
+
+- `INI_DATACITE_ENABLED=1` enables the connector (default).
+- `INI_DATACITE_ENABLED=0` is the immediate kill switch.
+- `INI_DATACITE_TIMEOUT=4` sets the request timeout in seconds (bounded to 1–10).
+- `INI_DATACITE_CACHE_SECONDS=86400` sets the in-memory cache lifetime (bounded to 60–604800).
+- `INI_DATACITE_USER_AGENT` may override the identifying User-Agent.
+
 ## Admission rule for future sources
 
 No additional source should be connected until its copyright status, licence,
