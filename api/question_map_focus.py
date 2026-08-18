@@ -20,7 +20,9 @@ _SPECIFIC_SIGNALS = re.compile(
     r"\b(?:compare|difference|different|relate|relationship|cause|causes|"
     r"advantages?|limitations?|pitfalls?|applications?|uses?|used|"
     r"prevent|prevented|avoid|avoided|mitigate|mitigated|main types?|classifications?|"
-    r"when should|how should)\b",
+    r"when should|how should)\b|"
+    r"\b(?:subjects?|topics?|skills?|areas?)\b.*\b(?:study|learn|master|know)\b|"
+    r"\b(?:study|learn|master|know)\b.*\b(?:subjects?|topics?|skills?|areas?)\b",
     re.IGNORECASE,
 )
 
@@ -29,7 +31,7 @@ _SPECIALIZATION_TERMS = {
     "frameworks", "recurrent", "reverse mode", "truncating",
 }
 
-FOCUS_MATCHER_VERSION = 6
+FOCUS_MATCHER_VERSION = 7
 
 
 @dataclass(frozen=True)
@@ -73,6 +75,11 @@ def _intent_terms(text: str) -> set[str]:
     for intent, cues in families.items():
         if any((cue in words if " " not in cue else cue in normalized) for cue in cues):
             intents.add(intent)
+    if (
+        re.search(r"\b(?:subjects?|topics?|skills?|areas?)\b.*\b(?:study|learn|master|know)\b", normalized)
+        or re.search(r"\b(?:study|learn|master|know)\b.*\b(?:subjects?|topics?|skills?|areas?)\b", normalized)
+    ):
+        intents.add("curriculum")
     return intents
 
 
@@ -168,6 +175,8 @@ def _find_best_match(
         preferred_sections.add("applications")
     if "decision" in prompt_intents:
         preferred_sections.update({"applications", "pitfalls"})
+    if "curriculum" in prompt_intents:
+        preferred_sections.update({"orientation", "foundations"})
 
     best: Optional[DirectAnswerMatch] = None
     for section, items in categories.items():
@@ -213,6 +222,14 @@ def _find_best_match(
                 "applications", "pitfalls"
             }:
                 section_intent_bonus += 0.34
+            if "curriculum" in prompt_intents and section_name in {
+                "orientation", "foundations"
+            }:
+                section_intent_bonus += 0.34
+            if "curriculum" in prompt_intents and section_name in {
+                "applications", "pitfalls"
+            }:
+                section_intent_penalty += 0.20
             if prompt_intents & {"cause", "prevention", "application", "selection"}:
                 if section_name == "orientation":
                     section_intent_penalty += 0.32

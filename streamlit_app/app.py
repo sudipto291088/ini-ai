@@ -106,7 +106,7 @@ import api.question_map_focus as question_map_focus
 # normal app reruns and production startup do not reload the module.
 if (
     not hasattr(question_map_focus, "find_direct_answer_matches")
-    or getattr(question_map_focus, "FOCUS_MATCHER_VERSION", 0) < 6
+    or getattr(question_map_focus, "FOCUS_MATCHER_VERSION", 0) < 7
 ):
     question_map_focus = importlib.reload(question_map_focus)
 find_direct_answer_matches = question_map_focus.find_direct_answer_matches
@@ -6713,11 +6713,18 @@ def page_new_chat() -> None:
             return str(payload.get("response_mode") or "").strip().lower()
         return ""
 
-    def _append_interrogate_branch(topic_text: str, data: Dict[str, Any], intro: str) -> None:
+    def _append_interrogate_branch(
+        topic_text: str,
+        data: Dict[str, Any],
+        intro: str,
+        *,
+        hide_user_topic: bool = False,
+    ) -> None:
         st.session_state.chat_branch_answers.append(
             {
                 "kind": "interrogate",
                 "topic": topic_text,
+                "hide_user_topic": hide_user_topic,
                 "interrogate": data,
                 "intro": intro,
                 "answers": {},
@@ -8477,6 +8484,7 @@ def page_new_chat() -> None:
                 st.session_state.chat_study_mode_established = True
             st.session_state.chat_pending_qm_confirmation = None
 
+        internal_qm_action = False
         pending_discussion_action = st.session_state.get("chat_pending_discussion_action")
         if isinstance(pending_discussion_action, dict):
             action_reply = re.sub(r"[^a-z0-9 ]+", " ", display_topic_text.lower()).strip()
@@ -8485,6 +8493,7 @@ def page_new_chat() -> None:
                 topic_text = action_topic
                 semantic_topic_text = action_topic
                 qm_confirmation_accepted = True
+                internal_qm_action = True
                 st.session_state.chat_study_mode_established = True
             elif re.match(r"^(continue discussion|continue|discuss|discussion)\b", action_reply):
                 start_discussion_topic = action_topic
@@ -8669,7 +8678,8 @@ def page_new_chat() -> None:
             # Recording is independent of intent and response generation. A
             # greeting, typo, repeated message, or failed request remains part
             # of the user's permanent session record exactly as submitted.
-            _record_chat_query(display_topic_text, "interrogate")
+            if not internal_qm_action:
+                _record_chat_query(display_topic_text, "interrogate")
             current_sid = _persist_new_chat_session(current_sid)
 
             st.session_state.chat_popup_sid = None
@@ -9230,7 +9240,12 @@ def page_new_chat() -> None:
                         max_rounds=0,
                     )
                     intro = intro_resp.get("answer", "").strip()
-                    _append_interrogate_branch(display_topic_text, data, intro)
+                    _append_interrogate_branch(
+                        resolved_learning_topic,
+                        data,
+                        intro,
+                        hide_user_topic=internal_qm_action,
+                    )
                     _persist_new_chat_session(current_sid)
                     st.rerun()
                     return
@@ -9406,6 +9421,14 @@ def page_new_chat() -> None:
 
         pending_qm_choice = st.session_state.get("chat_pending_qm_confirmation")
         normalized_choice = re.sub(r"[^a-z0-9 ]+", " ", prompt.lower()).strip()
+        pending_discussion_choice = st.session_state.get("chat_pending_discussion_action")
+        hide_internal_qm_action = bool(
+            isinstance(pending_discussion_choice, dict)
+            and re.match(
+                r"^(generate|question map|create|build|make)\b",
+                normalized_choice,
+            )
+        )
         active_discussion_state = st.session_state.get("chat_active_discussion")
         discussion_interaction = bool(
             isinstance(active_discussion_state, dict)
@@ -9435,6 +9458,7 @@ def page_new_chat() -> None:
             # Every request begins in interpretation. The generation phase is
             # selected only after this first state has been visibly rendered.
             "status_mode": "thinking",
+            "hide_user_bubble": hide_internal_qm_action,
         }
         st.session_state._nc_bottom_composer_revision += 1
         st.session_state.chat_top_enter_submit = False
@@ -9675,12 +9699,13 @@ def page_new_chat() -> None:
             return
 
         st.markdown('<div class="nc-pending-inline-anchor"></div>', unsafe_allow_html=True)
-        _render_nc_user_bubble(
-            pending_prompt,
-            pending_ts,
-            extra_class="nc-pending-inline-query",
-            query_mode=(pending.get("action") or "").strip().lower(),
-        )
+        if not pending.get("hide_user_bubble"):
+            _render_nc_user_bubble(
+                pending_prompt,
+                pending_ts,
+                extra_class="nc-pending-inline-query",
+                query_mode=(pending.get("action") or "").strip().lower(),
+            )
 
         generation_slot = st.empty()
         with generation_slot.container():
@@ -11913,12 +11938,13 @@ def page_new_chat() -> None:
             '<div class="nc-pending-screen" aria-hidden="true"></div>',
             unsafe_allow_html=True,
         )
-        _render_nc_user_bubble(
-            pending_prompt,
-            pending_ts,
-            extra_class="nc-pending-query",
-            query_mode=(pending_new_chat_request.get("action") or "").strip().lower(),
-        )
+        if not pending_new_chat_request.get("hide_user_bubble"):
+            _render_nc_user_bubble(
+                pending_prompt,
+                pending_ts,
+                extra_class="nc-pending-query",
+                query_mode=(pending_new_chat_request.get("action") or "").strip().lower(),
+            )
 
         generation_slot = st.empty()
         with generation_slot.container():
@@ -11973,7 +11999,8 @@ def page_new_chat() -> None:
                 if idx == total_branches:
                     _render_nc_latest_scroll_target()
 
-                _render_nc_user_bubble(topic, ts, query_mode=kind)
+                if not item.get("hide_user_topic"):
+                    _render_nc_user_bubble(topic, ts, query_mode=kind)
 
                 if kind == "illustrate":
                     illustrate_payload = item.get("illustrate") or {}
@@ -12108,7 +12135,8 @@ def page_new_chat() -> None:
                 if idx == total_branches:
                     _render_nc_latest_scroll_target()
 
-                _render_nc_user_bubble(topic, ts, query_mode=kind)
+                if not item.get("hide_user_topic"):
+                    _render_nc_user_bubble(topic, ts, query_mode=kind)
 
                 if kind == "illustrate":
                     illustrate_payload = item.get("illustrate") or {}
@@ -12589,7 +12617,8 @@ def page_new_chat() -> None:
                 if idx == total_branches:
                     _render_nc_latest_scroll_target()
 
-                _render_nc_user_bubble(topic, ts, query_mode=kind)
+                if not item.get("hide_user_topic"):
+                    _render_nc_user_bubble(topic, ts, query_mode=kind)
 
                 if kind == "illustrate":
                     illustrate_payload = item.get("illustrate") or {}

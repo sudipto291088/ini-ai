@@ -185,6 +185,34 @@ class QuestionMapFocusTests(unittest.TestCase):
         self.assertIsNotNone(match)
         self.assertEqual(match.section, "Applications")
 
+    def test_subjects_to_study_query_selects_direct_classification(self):
+        prompt = "Tell me the subjects an AI engineer should study?"
+        categories = {
+            "Orientation": [
+                {
+                    "question": (
+                        "What are the main classifications of subjects for an AI "
+                        "engineer, including mathematical foundations, core machine "
+                        "learning, systems, data engineering, evaluation, and ethics?"
+                    )
+                },
+            ],
+            "Applications": [
+                {
+                    "question": (
+                        "Which engineering topics enable deploying scalable machine-"
+                        "learning services?"
+                    )
+                },
+            ],
+        }
+
+        self.assertTrue(is_specific_learning_question(prompt))
+        match = find_direct_answer_match(prompt, categories)
+        self.assertIsNotNone(match)
+        self.assertEqual(match.section, "Orientation")
+        self.assertIn("classifications of subjects", match.question)
+
     def test_normative_question_selects_exact_decision_item(self):
         prompt = "Should schools use facial recognition to record student attendance?"
         categories = {
