@@ -120,6 +120,8 @@ class DataCiteKnowledgeTests(unittest.TestCase):
             ), patch.object(
                 llm, "retrieve_datacite_context", return_value=datacite
             ), patch.object(
+                llm, "retrieve_wikiversity_context", return_value={}
+            ), patch.object(
                 llm, "format_datacite_prompt_context", return_value="DATACITE CONTEXT"
             ), patch.object(llm.requests, "post", side_effect=fake_post):
                 result = llm.generate_dynamic_answer_result(

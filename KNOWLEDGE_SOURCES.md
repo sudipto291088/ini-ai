@@ -62,6 +62,32 @@ permission to retrieve other websites linked by that source.
 - Storage: bounded in-memory cache only; default TTL 24 hours
 - Failure and privacy behavior: fail open; reject personal, sensitive, credential-like, URL, email, and long inputs locally
 
+## Wikiversity learning resources
+
+- Status: enabled
+- Purpose: supplement learning sequences, lesson structure, exercises, and educational relationships
+- Access method: official English MediaWiki Action API (`https://en.wikiversity.org/w/api.php`)
+- Retrieved scope: one bounded introductory extract from one title-matched main-namespace learning resource
+- Licence: Creative Commons Attribution-ShareAlike 4.0
+- Licence record: https://en.wikiversity.org/wiki/Wikiversity:Copyrights
+- Terms: https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use
+- Attribution: `Wikiversity contributors`, source-page URL, licence, and adaptation instruction are retained
+- Commercial use: permitted when attribution and share-alike obligations are followed
+- Authority boundary: community-created educational supplement; it must not override stronger factual or scholarly sources
+- Excluded scope: images, audio, video, files, attachments, discussions, histories, external links, and linked-page content
+- Storage: bounded in-memory cache only; default TTL 24 hours
+- Failure behavior: fail open to InI's existing pipeline; never block a response; no retry through rate limits
+- Traffic behavior: one identified User-Agent and one combined search/extract request with no pagination or bulk harvesting
+- Privacy behavior: only short public-topic queries are sent; personal, sensitive, URL, email, credential-like, and long free-form inputs are rejected locally
+
+### Wikiversity configuration
+
+- `INI_WIKIVERSITY_ENABLED=1` enables the connector (default).
+- `INI_WIKIVERSITY_ENABLED=0` is the immediate kill switch.
+- `INI_WIKIVERSITY_TIMEOUT=4` sets the request timeout in seconds (bounded to 1–10).
+- `INI_WIKIVERSITY_CACHE_SECONDS=86400` sets the in-memory cache lifetime (bounded to 60–604800).
+- `INI_WIKIVERSITY_USER_AGENT` may override the identifying User-Agent.
+
 ## DataCite research-output metadata
 
 - Status: enabled
