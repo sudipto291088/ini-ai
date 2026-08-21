@@ -43,6 +43,7 @@ from topic_profile import (
     split_prerequisites,
 )
 from response_profile import build_response_profile
+from streamlit_app.knowledge_map import compact_knowledge_map_projection
 from structured_validation import validate_structured_learning_answer
 # Product knowledge was introduced after the original Streamlit entry point.
 # Keep startup resilient while a deployment rolls between revisions: an older
@@ -4597,6 +4598,17 @@ def render_nc_knowledge_map(
     if not stages:
         return None
 
+    compact_projection = compact_knowledge_map_projection(question)
+    compact_topic = compact_projection.anchor
+    if compact_projection.directions:
+        compact_labels = list(compact_projection.directions)
+        compact_labels.extend(
+            label for label, _ in stages if label not in compact_labels
+        )
+        compact_labels = compact_labels[:6]
+    else:
+        compact_labels = [label for label, _ in stages]
+
     expanded_stages: list[tuple[str, list[Any]]] = stages
     normalized_question = re.sub(r"[^a-z0-9]+", " ", question.lower()).strip()
     if "linear regression" in normalized_question:
@@ -4708,7 +4720,7 @@ def render_nc_knowledge_map(
             f'<span>{escape(label)}</span>'
             '</div>'
         )
-        for index, (label, _) in enumerate(stages, start=1)
+        for index, label in enumerate(compact_labels, start=1)
     )
     compact_flow_markup = (
         '<div class="ini-nc-knowledge-map__compact">'
@@ -4717,7 +4729,7 @@ def render_nc_knowledge_map(
         '</div>'
         '<div class="ini-nc-knowledge-map__connector"></div>'
         '<div class="ini-nc-knowledge-map__node ini-nc-knowledge-map__node--question">'
-        f'<strong>{escape(question)}</strong>'
+        f'<strong>{escape(compact_topic)}</strong>'
         '</div>'
         '<div class="ini-nc-knowledge-map__connector"></div>'
         f'<div class="ini-nc-knowledge-map__compact-stages">{compact_stages_markup}</div>'
