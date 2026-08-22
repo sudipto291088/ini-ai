@@ -314,3 +314,16 @@ def test_rate_named_learning_topics_are_not_mistaken_for_live_rates():
         result = detect_intent(query)
         assert result["should_interrogate"] is True
         assert result["should_answer_direct"] is False
+
+
+def test_price_controls_in_compound_economics_query_are_not_live_price_lookup():
+    query = (
+        "What are supply and demand, how is market equilibrium formed, "
+        "and how do taxes and price controls change it?"
+    )
+
+    result = detect_intent(query)
+
+    assert result["intent"] == "topic_explore"
+    assert result["should_interrogate"] is True
+    assert result["should_answer_direct"] is False

@@ -21,7 +21,7 @@ SOURCE_NAME = "Wikidata"
 SOURCE_LICENSE = "CC0-1.0"
 SOURCE_LICENSE_URL = "https://creativecommons.org/publicdomain/zero/1.0/"
 DEFAULT_USER_AGENT = (
-    "InI.ai/0.1.5 (educational knowledge retrieval; "
+    "InI.ai/0.1.6 (educational knowledge retrieval; "
     "+https://github.com/sudipto291088/ini-ai)"
 )
 

@@ -21,7 +21,7 @@ SOURCE_NAME = "DataCite"
 SOURCE_LICENSE = "CC0-1.0 metadata waiver"
 SOURCE_TERMS_URL = "https://support.datacite.org/docs/datacite-data-file-use-policy"
 DEFAULT_USER_AGENT = (
-    "InI.ai/0.1.5 (educational metadata retrieval; "
+    "InI.ai/0.1.6 (educational metadata retrieval; "
     "+https://github.com/sudipto291088/ini-ai)"
 )
 

@@ -43,7 +43,10 @@ from topic_profile import (
     split_prerequisites,
 )
 from response_profile import build_response_profile
-from streamlit_app.knowledge_map import compact_knowledge_map_projection
+from streamlit_app.knowledge_map import (
+    compact_knowledge_map_projection,
+    expanded_knowledge_map_entry,
+)
 from structured_validation import validate_structured_learning_answer
 # Product knowledge was introduced after the original Streamlit entry point.
 # Keep startup resilient while a deployment rolls between revisions: an older
@@ -55,7 +58,7 @@ try:
     # helper modules after a deployment sync. Force a reload when the running
     # module predates the routing repair so hosted sessions cannot retain the
     # old product-query detector.
-    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 2:
+    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 3:
         product_knowledge = importlib.reload(product_knowledge)
     answer_ini_product_query = product_knowledge.answer_ini_product_query
 except ModuleNotFoundError as exc:
@@ -69,10 +72,14 @@ except ModuleNotFoundError as exc:
         return None
 
 try:
-    from api.context_resolution import (
-        find_contextual_topic_match,
-        resolve_learning_followup,
-        should_continue_practical_context,
+    import api.context_resolution as context_resolution
+
+    if getattr(context_resolution, "CONTEXT_RESOLUTION_VERSION", 0) < 2:
+        context_resolution = importlib.reload(context_resolution)
+    find_contextual_topic_match = context_resolution.find_contextual_topic_match
+    resolve_learning_followup = context_resolution.resolve_learning_followup
+    should_continue_practical_context = (
+        context_resolution.should_continue_practical_context
     )
 except (ModuleNotFoundError, ImportError) as exc:
     # Streamlit Cloud can briefly run the new entry point while an older
@@ -97,9 +104,17 @@ except (ModuleNotFoundError, ImportError) as exc:
         return query
 
 from api.interrogate import extract_topic as extract_learning_topic
-from api.capability_boundary import assess_capability
+import api.capability_boundary as capability_boundary
+
+if getattr(capability_boundary, "CAPABILITY_BOUNDARY_VERSION", 0) < 2:
+    capability_boundary = importlib.reload(capability_boundary)
+assess_capability = capability_boundary.assess_capability
 from api.conversation_interpreter import interpret_turn
-from api.intent_layer import detect_intent
+import api.intent_layer as intent_layer
+
+if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 2:
+    intent_layer = importlib.reload(intent_layer)
+detect_intent = intent_layer.detect_intent
 import api.question_map_focus as question_map_focus
 
 # Streamlit can retain an older imported helper during a development hot
@@ -4576,22 +4591,24 @@ def render_nc_knowledge_map(
         ("Apply and evaluate", ("Applications", "Pitfalls")),
         ("Advance further", ("Advanced / Future",)),
     )
-    stages: list[tuple[str, list[str]]] = []
+    stages: list[tuple[str, list[Any]]] = []
     for label, keys in stage_keys:
-        stage_questions: list[str] = []
+        stage_questions: list[Any] = []
         for key in keys:
+            per_key_limit = 2 if len(keys) > 1 else 3
+            key_count = 0
             for item in categories.get(key) or []:
                 if not isinstance(item, dict):
                     continue
                 candidate = re.sub(
                     r"\s+", " ", str(item.get("question") or "")
                 ).strip()
-                if candidate and candidate not in stage_questions:
-                    stage_questions.append(candidate)
-                if len(stage_questions) == 2:
+                map_entry = expanded_knowledge_map_entry(item, key)
+                if candidate and map_entry not in stage_questions:
+                    stage_questions.append(map_entry)
+                    key_count += 1
+                if key_count == per_key_limit:
                     break
-            if len(stage_questions) == 2:
-                break
         if stage_questions:
             stages.append((label, stage_questions))
 
@@ -4742,7 +4759,7 @@ def render_nc_knowledge_map(
         '</div>'
         '<div class="ini-nc-knowledge-map__connector"></div>'
         '<div class="ini-nc-knowledge-map__node ini-nc-knowledge-map__node--question">'
-        f'<strong>{escape(question)}</strong>'
+        f'<strong>{escape(compact_topic)}</strong>'
         '</div>'
         '<div class="ini-nc-knowledge-map__connector"></div>'
         f'<div class="ini-nc-knowledge-map__organic-tree">{branches_markup}</div>'
@@ -5495,7 +5512,7 @@ with st.sidebar:
                   <div class="clock_ampm">{cp["ampm"]}</div>
                 </div>
               </div>
-              <div class="badge">v0.1.5 &nbsp;&middot;&nbsp; Question Intelligence</div>
+              <div class="badge">v0.1.6 &nbsp;&middot;&nbsp; Question Intelligence</div>
             </div>
             ''',
             unsafe_allow_html=True,
@@ -6499,6 +6516,24 @@ def page_home():
         )
 
     intro_releases = {
+        "v0.1.6": {
+            "date": "August 21, 2026",
+            "items": (
+                ("Trusted knowledge retrieval", "Expanded InI's legitimate external knowledge layer with source-aware educational retrieval and safer capability boundaries."),
+                ("More meaningful Knowledge Maps", "Compact maps use clean subject labels, while expanded maps show progressive topics, concrete subtopics, mechanisms, methods, and applications."),
+                ("Direct-answer navigation", "Compound questions can identify multiple direct-answer locations with dismissible bubble notifications and clearer movement between matches."),
+                ("Stronger topic intelligence", "Improved Topic Profiles, difficulty assessment, compound-query handling, educational routing, and transitions between unrelated subjects."),
+                ("Safer conversational continuity", "Reduced false refusals, practical-mode leakage, stale-context contamination, and accidental Question Maps for ordinary conversation."),
+                ("A refined New Chat experience", "Polished the landing guidance, topic carousel, responsive typography, input behavior, and visual hierarchy across screen sizes."),
+                ("A more useful sidebar", "Redesigned navigation, chat and learning history, project space, profile access, scrolling, timestamps, and responsive sidebar behavior."),
+                ("Cross-device reliability", "Improved card icons, Question Map capsules, mobile wrapping, narrow-browser behavior, and layout stability when the sidebar is open."),
+            ),
+            "note": (
+                "v0.1.6 strengthens InI as a learning system rather than merely adding surface features: "
+                "knowledge is better grounded, questions are routed more reliably, maps reveal clearer "
+                "continuity, and the complete experience behaves more consistently across conversations and devices."
+            ),
+        },
         "v0.1.5": {
             "date": "July 31, 2026",
             "items": (
@@ -6581,11 +6616,11 @@ def page_home():
             ),
         },
     }
-    if st.session_state.get("intro_release_catalog_version") != "v0.1.5":
-        st.session_state.intro_release_catalog_version = "v0.1.5"
-        st.session_state.intro_selected_release = "v0.1.5"
+    if st.session_state.get("intro_release_catalog_version") != "v0.1.6":
+        st.session_state.intro_release_catalog_version = "v0.1.6"
+        st.session_state.intro_selected_release = "v0.1.6"
     elif st.session_state.get("intro_selected_release") not in intro_releases:
-        st.session_state.intro_selected_release = "v0.1.5"
+        st.session_state.intro_selected_release = "v0.1.6"
 
     selected_release = st.session_state.intro_selected_release
     release = intro_releases[selected_release]
@@ -6621,7 +6656,7 @@ def page_home():
             )
             for version in release_slots:
                 is_released = version in intro_releases
-                if version == "v0.1.5":
+                if version == "v0.1.6":
                     button_label = f"{version}  ·  Current"
                 elif not is_released:
                     button_label = f"{version}  ·  Unreleased"
@@ -8795,11 +8830,11 @@ def page_new_chat() -> None:
                         "needs_clarification": False,
                         "suppress_profile": False,
                         "reply": (
-                            "InI.ai v0.1.5 deepens structured learning responses, strengthens "
-                            "conversation repair and honest capability boundaries, completes the "
-                            "Illustrate experience with streamed examples and subject-aware profiles, "
-                            "redesigns the Introduction experience, and improves mobile reliability. "
-                            "It was released on July 31, 2026."
+                            "InI.ai v0.1.6 expands trusted knowledge retrieval, strengthens topic and "
+                            "conversation routing, makes compact and expanded Knowledge Maps more "
+                            "meaningful, improves direct-answer navigation, and refines the New Chat, "
+                            "sidebar, mobile, and narrow-browser experiences. It was released on "
+                            "August 21, 2026."
                         ),
                     }
                 elif start_discussion_topic:

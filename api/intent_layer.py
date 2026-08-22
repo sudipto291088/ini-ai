@@ -4,6 +4,9 @@ import re
 from typing import Any, Dict, Iterable
 
 
+INTENT_LAYER_VERSION = 2
+
+
 # ============================================================
 # Normalization
 # ============================================================
@@ -572,6 +575,16 @@ def _looks_like_direct_factual_query(text: str) -> bool:
         return False
 
     if _is_known_technical_topic(text):
+        return False
+
+    # "Price" often denotes an economics concept rather than a request for a
+    # current quotation. Do not let educational phrases such as "price
+    # controls" inherit the live-price lookup route.
+    if re.search(
+        r"\b(?:price\s+controls?|price\s+elasticity|price\s+mechanism|"
+        r"market\s+equilibrium|supply\s+and\s+demand)\b",
+        s,
+    ):
         return False
 
     # "Where is X used?" asks for the applications of a subject. It is a

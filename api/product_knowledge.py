@@ -6,7 +6,7 @@ import re
 from typing import Any, Dict, Optional
 
 
-PRODUCT_KNOWLEDGE_VERSION = 2
+PRODUCT_KNOWLEDGE_VERSION = 3
 
 
 def _normalize(text: str) -> str:
@@ -79,12 +79,17 @@ def answer_ini_product_query(
 
     if re.search(r"\b(how many|which|previous|earlier|history).*(versions?|releases?)\b", s):
         return (
-            "I am currently on v0.1.5. I have five documented releases, from v0.1.1 "
-            "through v0.1.5; work before v0.1.1 belonged to the experimental v0 phase "
+            "I am currently on v0.1.6. I have six documented releases, from v0.1.1 "
+            "through v0.1.6; work before v0.1.1 belonged to the experimental v0 phase "
             "rather than the formal release history."
         )
 
     earlier_releases = {
+        "v0.1.5": (
+            "v0.1.5 deepened structured responses, strengthened conversation repair and "
+            "capability boundaries, completed Illustrate, redesigned the Introduction, and "
+            "improved desktop and mobile reliability."
+        ),
         "v0.1.4": (
             "v0.1.4 strengthened conversational intelligence, context switching, guided "
             "discussion, persistent query history, generation states, the First Conversation "
@@ -107,14 +112,14 @@ def answer_ini_product_query(
         if version in s:
             return summary
 
-    if re.search(r"\b(current|latest|new|special|update|changed|improved).*(versions?|releases?|v0.1.5)\b", s) or re.search(
-        r"\b(versions?|releases?|v0.1.5).*(current|latest|new|special|update|changed|improved)\b", s
+    if re.search(r"\b(current|latest|new|special|update|changed|improved).*(versions?|releases?|v0.1.6)\b", s) or re.search(
+        r"\b(versions?|releases?|v0.1.6).*(current|latest|new|special|update|changed|improved)\b", s
     ):
         return (
-            "v0.1.5 is my current release. It deepens structured learning responses, strengthens "
-            "conversation repair and honest capability boundaries, completes Illustrate with "
-            "streamed examples and subject-aware Topic Profiles, redesigns the Introduction "
-            "experience, and improves reliability across desktop and mobile."
+            "v0.1.6 is my current release. It expands trusted knowledge retrieval, strengthens "
+            "topic and conversation routing, makes Knowledge Maps more meaningful, improves "
+            "direct-answer navigation, and refines the New Chat, sidebar, mobile, and "
+            "narrow-browser experiences."
         )
 
     if re.search(r"\b(plan|planned|planning|roadmap|future|coming|next)\b", s):

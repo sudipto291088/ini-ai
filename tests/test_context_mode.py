@@ -34,6 +34,17 @@ class ContextAwareResponseModeTests(unittest.TestCase):
         self.assertEqual(result["response_mode"], "question_map")
         self.assertEqual(result["context_intent"], "learning")
 
+    def test_dna_replication_errors_remain_a_biology_learning_query(self):
+        prompt = (
+            "What is DNA replication, what are its main stages and enzymes, "
+            "and how are copying errors detected and repaired?"
+        )
+
+        result = classify_context(prompt)
+
+        self.assertEqual(result["response_mode"], "question_map")
+        self.assertEqual(result["context_intent"], "learning")
+
     def test_why_is_clause_does_not_turn_mechanism_question_into_troubleshooting(self):
         result = classify_context(
             "How does OAuth2 authorization-code flow with PKCE work, and why is PKCE necessary?"

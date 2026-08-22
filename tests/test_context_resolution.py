@@ -69,6 +69,17 @@ class ContextResolutionTests(unittest.TestCase):
             "What are the health risks of 5G, and how strong is the evidence specifically about 5G?",
         )
 
+    def test_complete_new_topic_is_not_contaminated_by_previous_topic(self):
+        query = (
+            "What caused the Renaissance, what were its major intellectual "
+            "and artistic movements, and how did it influence modern science?"
+        )
+
+        self.assertEqual(
+            resolve_learning_followup(query, "DNA replication"),
+            query,
+        )
+
     def test_strong_contextual_near_match_is_detected(self):
         result = find_contextual_topic_match(
             "multi score scaling",

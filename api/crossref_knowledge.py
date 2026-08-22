@@ -21,7 +21,7 @@ SOURCE_NAME = "Crossref"
 SOURCE_LICENSE = "Bibliographic facts / Crossref-generated CC0 data"
 SOURCE_TERMS_URL = "https://www.crossref.org/documentation/retrieve-metadata/"
 DEFAULT_USER_AGENT = (
-    "InI.ai/0.1.5 (educational metadata retrieval; "
+    "InI.ai/0.1.6 (educational metadata retrieval; "
     "+https://github.com/sudipto291088/ini-ai)"
 )
 
@@ -233,4 +233,3 @@ def format_crossref_prompt_context(context: Dict[str, Any]) -> str:
 def clear_crossref_cache() -> None:
     with _CACHE_LOCK:
         _CACHE.clear()
-

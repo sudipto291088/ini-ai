@@ -19,3 +19,17 @@ def test_tax_acronyms_are_refused() -> None:
 def test_supported_learning_topic_is_not_blocked() -> None:
     assert assess_capability("Generate a Question Map for gradient descent") is None
     assert assess_capability("Explain Kubernetes deployments") is None
+
+
+def test_tax_in_an_economics_learning_question_is_not_refused() -> None:
+    query = (
+        "What are supply and demand, how is market equilibrium formed, "
+        "and how do taxes and price controls change it?"
+    )
+
+    assert assess_capability(query) is None
+
+
+def test_personal_and_jurisdiction_tax_guidance_remains_blocked() -> None:
+    assert assess_capability("How should I file my tax return?") is not None
+    assert assess_capability("Explain the income tax structure in India") is not None

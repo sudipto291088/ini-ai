@@ -57,7 +57,8 @@ def classify_context(text: str) -> Dict[str, Any]:
         re.match(r"^(?:what\s+(?:is|are)|explain|define|how\s+(?:does|do))\b", normalized)
         and re.search(
             r"\b(?:error\s+correction|error-correct(?:ing|ion)|error\s+detection|"
-            r"error\s+rate|failure\s+mode)\b",
+            r"error\s+rate|failure\s+mode|errors?\b.{0,80}\b(?:detect(?:ed|ion)?|"
+            r"repair(?:ed)?|correct(?:ed|ion)?))\b",
             normalized,
         )
         and not re.search(

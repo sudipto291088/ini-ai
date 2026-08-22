@@ -851,13 +851,13 @@ Return STRICT JSON only.
   ],
 
     "categories": {{
-    "Orientation": [{{"question": "..."}}],
-    "Foundations": [{{"question": "..."}}],
-    "Mechanisms": [{{"question": "..."}}],
-    "Methods & Tools": [{{"question": "..."}}],
-    "Applications": [{{"question": "..."}}],
-    "Pitfalls": [{{"question": "..."}}],
-    "Advanced / Future": [{{"question": "..."}}]
+    "Orientation": [{{"question": "...", "map_title": "2-6 word topic", "map_description": "concrete contents, types, components, or mechanisms"}}],
+    "Foundations": [{{"question": "...", "map_title": "...", "map_description": "..."}}],
+    "Mechanisms": [{{"question": "...", "map_title": "...", "map_description": "..."}}],
+    "Methods & Tools": [{{"question": "...", "map_title": "...", "map_description": "..."}}],
+    "Applications": [{{"question": "...", "map_title": "...", "map_description": "..."}}],
+    "Pitfalls": [{{"question": "...", "map_title": "...", "map_description": "..."}}],
+    "Advanced / Future": [{{"question": "...", "map_title": "...", "map_description": "..."}}]
   }}
 }}
 
@@ -882,6 +882,13 @@ IMPORTANT
 • First question in "Orientation" MUST clearly define the topic.
 • Questions must feel technically relevant without inserting stale calendar years.
 • Focus on learning progression.
+• For every question, map_title must name its underlying topic rather than repeat the question.
+• map_title must contain 2 to 6 words and must not be phrased as a question.
+• map_description must contain 8 to 24 words of concrete knowledge: name the actual types, components, mechanisms, methods, examples, or subtopics inside map_title.
+• Never write meta-descriptions such as "covers", "explores", "introduces", "establishes", "clarifies", "outlines", or "shows why".
+• Example: map_title "Regularization techniques" → map_description "Ridge, lasso, and elastic net control coefficient instability and model complexity."
+• Example: map_title "Inflation measures" → map_description "CPI, PCE Price Index, GDP deflator, and producer-price indices measure different parts of the price system."
+• For a compound TOPIC, every requested dimension must appear explicitly in at least one map_title or map_description.
 
 Generate the questions now.
 """.strip()
@@ -967,6 +974,8 @@ Generate the questions now.
                     "id": f"{cat.lower().replace(' ', '_')}_{idx}",
                     "archetype": archetype,
                     "question": q,
+                    "map_title": (it.get("map_title") or "").strip(),
+                    "map_description": (it.get("map_description") or "").strip(),
                     "answer": "",
                     "collapsed": True,
                     "visible": global_count <= 8,
@@ -1078,6 +1087,11 @@ Rules:
 - First question in "Orientation" must define the topic clearly
 - Do not leave any category empty
 - Do NOT generate more than 5 Orientation questions.
+- For every question, include a 2-to-6-word map_title that names the topic rather than repeating the question.
+- Include an 8-to-24-word map_description naming the concrete types, components, mechanisms, methods, examples, or subtopics inside map_title.
+- Never use meta-descriptions such as "covers", "explores", "introduces", "establishes", "clarifies", "outlines", or "shows why".
+- Example: "Regularization techniques" must name ridge, lasso, and elastic net rather than say that the branch covers regularization.
+- Every requested dimension of a compound topic must appear explicitly in at least one map_title or map_description.
 
 JSON shape:
 {{
@@ -1087,13 +1101,13 @@ JSON shape:
     "short sentence about how understanding will progress"
   ],
   "categories": {{
-    "Orientation": [{{"question": "..."}}],
-    "Foundations": [{{"question": "..."}}],
-    "Mechanisms": [{{"question": "..."}}],
-    "Methods & Tools": [{{"question": "..."}}],
-    "Applications": [{{"question": "..."}}],
-    "Pitfalls": [{{"question": "..."}}],
-    "Advanced / Future": [{{"question": "..."}}]
+    "Orientation": [{{"question": "...", "map_title": "2-6 word topic", "map_description": "concrete contents, types, components, or mechanisms"}}],
+    "Foundations": [{{"question": "...", "map_title": "...", "map_description": "..."}}],
+    "Mechanisms": [{{"question": "...", "map_title": "...", "map_description": "..."}}],
+    "Methods & Tools": [{{"question": "...", "map_title": "...", "map_description": "..."}}],
+    "Applications": [{{"question": "...", "map_title": "...", "map_description": "..."}}],
+    "Pitfalls": [{{"question": "...", "map_title": "...", "map_description": "..."}}],
+    "Advanced / Future": [{{"question": "...", "map_title": "...", "map_description": "..."}}]
   }}
 }}
 """.strip()
@@ -1143,6 +1157,8 @@ JSON shape:
                     "id": f"{cat.lower().replace(' ', '_')}_{idx}",
                     "archetype": archetype,
                     "question": q,
+                    "map_title": (it.get("map_title") or "").strip(),
+                    "map_description": (it.get("map_description") or "").strip(),
                     "answer": "",
                     "collapsed": True,
                     "visible": global_count <= 8,

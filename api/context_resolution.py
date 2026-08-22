@@ -7,6 +7,9 @@ from difflib import SequenceMatcher
 from typing import Iterable, Optional
 
 
+CONTEXT_RESOLUTION_VERSION = 2
+
+
 _CONTEXT_STOPWORDS = {
     "a", "an", "and", "as", "at", "be", "for", "from", "in", "is",
     "it", "of", "on", "or", "the", "this", "to", "with", "you", "your",
@@ -79,7 +82,23 @@ def resolve_learning_followup(query: str, active_topic: str) -> str:
             flags=re.IGNORECASE,
         ).strip(" ?.!") or topic
 
-    if re.search(r"\b(?:it|its|this|that)\b", normalized):
+    referential_opening = bool(
+        re.match(
+            r"^(?:what\s+about\s+(?:it|its|this|that)|"
+            r"what\s+(?:is|are)\s+(?:its|this|that)\b|"
+            r"how\s+(?:is|are|does|do|can|could|would)\s+(?:it|this|that)\b|"
+            r"why\s+(?:is|are|does|do|can|could|would)\s+(?:it|this|that)\b|"
+            r"where\s+(?:is|are|does|do|can)\s+(?:it|this|that)\b|"
+            r"(?:is|are|does|do|can|could|would)\s+(?:it|this|that)\b)",
+            normalized,
+        )
+    )
+
+    # Resolve only genuinely context-dependent openings. A complete new
+    # question may contain an ordinary pronoun later ("What caused the
+    # Renaissance ... how did it influence science?"); rewriting that pronoun
+    # with the previous topic contaminates the new subject.
+    if referential_opening:
         if re.match(r"^what\s+about\s+its\s+health\s+risks\b", normalized):
             return (
                 f"What are the health risks of {anchor}, and how strong is "

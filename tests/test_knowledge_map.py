@@ -1,4 +1,7 @@
-from streamlit_app.knowledge_map import compact_knowledge_map_projection
+from streamlit_app.knowledge_map import (
+    compact_knowledge_map_projection,
+    expanded_knowledge_map_entry,
+)
 
 
 def test_compound_linear_regression_query_uses_canonical_anchor():
@@ -35,3 +38,55 @@ def test_direct_topic_and_mechanism_queries_remain_compact():
     assert compact_knowledge_map_projection("How does backpropagation work?").anchor == (
         "backpropagation"
     )
+    assert compact_knowledge_map_projection(
+        "What caused the French Revolution, what were its major stages, and how did it influence democracy?"
+    ).anchor == "French Revolution"
+    assert compact_knowledge_map_projection("What is a neural network?").anchor == (
+        "neural network"
+    )
+
+
+def test_expanded_map_prefers_topic_metadata_over_question_text():
+    title, description = expanded_knowledge_map_entry(
+        {
+            "question": "How does ordinary least squares compute coefficient estimates?",
+            "map_title": "Ordinary least squares",
+            "map_description": "Connects the objective function to coefficient estimation.",
+        },
+        "Mechanisms",
+    )
+
+    assert title == "Ordinary least squares"
+    assert description == "Connects the objective function to coefficient estimation."
+
+
+def test_expanded_map_fallback_never_displays_a_long_question():
+    title, description = expanded_knowledge_map_entry(
+        {"question": "How does gradient descent work and why does its learning rate matter?"},
+        "Mechanisms",
+    )
+
+    assert title == "gradient descent"
+    assert "?" not in title
+    assert len(title.split()) <= 7
+    assert description == "Explains the process, relationships, and forces that make it work."
+
+
+def test_expanded_map_fallback_recognizes_common_curriculum_topics():
+    title, _ = expanded_knowledge_map_entry(
+        {"question": "Which delivery methods are appropriate for CRISPR editors?"},
+        "Methods & Tools",
+    )
+    assert title == "Delivery methods"
+
+    title, _ = expanded_knowledge_map_entry(
+        {"question": "What are the major open research problems for safe editing?"},
+        "Advanced / Future",
+    )
+    assert title == "Open research problems"
+
+    title, _ = expanded_knowledge_map_entry(
+        {"question": "Define and contrast the major CRISPR subtypes: DNA-cleaving nucleases and base editors."},
+        "Foundations",
+    )
+    assert title == "Major CRISPR subtypes"

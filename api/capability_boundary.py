@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from typing import Optional
 
 
+CAPABILITY_BOUNDARY_VERSION = 2
+
+
 @dataclass(frozen=True)
 class CapabilityBoundary:
     domain: str
@@ -21,6 +24,20 @@ _TAX_PATTERN = re.compile(
     flags=re.IGNORECASE,
 )
 
+_ACADEMIC_TAX_CONTEXT = re.compile(
+    r"\b(?:supply\s+and\s+demand|market\s+equilibrium|price\s+controls?|"
+    r"tax\s+incidence|deadweight\s+loss|microeconomics?|macroeconomics?|"
+    r"economic\s+(?:theory|policy|effects?|impact))\b",
+    flags=re.IGNORECASE,
+)
+
+_PERSONAL_OR_COMPLIANCE_TAX_CONTEXT = re.compile(
+    r"\b(?:my|mine|we|our|file|filing|return|deduction|claim|owe|liability|"
+    r"taxable\s+income|tax\s+bracket|accountant|irs|hmrc|income\s+tax|"
+    r"in\s+(?:india|the\s+u\.s\.|the\s+us|canada|australia|the\s+uk))\b",
+    flags=re.IGNORECASE,
+)
+
 
 def assess_capability(text: str) -> Optional[CapabilityBoundary]:
     """Return a refusal boundary when a query needs unverified expertise."""
@@ -28,7 +45,14 @@ def assess_capability(text: str) -> Optional[CapabilityBoundary]:
     if not normalized:
         return None
 
-    if _TAX_PATTERN.search(normalized):
+    tax_mentioned = bool(_TAX_PATTERN.search(normalized))
+    academic_context = bool(_ACADEMIC_TAX_CONTEXT.search(normalized))
+    personal_or_compliance = bool(_PERSONAL_OR_COMPLIANCE_TAX_CONTEXT.search(normalized))
+
+    # Tax policy is also a legitimate economics subject. Keep conceptual
+    # market questions in the learning pipeline while retaining the boundary
+    # for personal, jurisdiction-specific, filing, and compliance guidance.
+    if tax_mentioned and not (academic_context and not personal_or_compliance):
         return CapabilityBoundary(
             domain="tax",
             reply=(
