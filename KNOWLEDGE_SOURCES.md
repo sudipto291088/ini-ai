@@ -115,6 +115,31 @@ permission to retrieve other websites linked by that source.
 - `INI_DATACITE_CACHE_SECONDS=86400` sets the in-memory cache lifetime (bounded to 60–604800).
 - `INI_DATACITE_USER_AGENT` may override the identifying User-Agent.
 
+## OpenAlex scholarly-discovery metadata
+
+- Status: enabled
+- Purpose: improve scholarly discovery, topic orientation, and citation-network awareness
+- Access method: official OpenAlex Works API (`https://api.openalex.org/works`)
+- Retrieved scope: at most three records containing title, authors, publication year, work type, source name, topics, DOI, citation count, OpenAlex identifier, and open-access indicator
+- Terms: https://openalex.org/OpenAlex_termsofservice.pdf
+- Licence guidance: https://help.openalex.org/data/licenses/
+- Attribution: `OpenAlex scholarly metadata` and OpenAlex identifiers are retained
+- Excluded scope: abstracts, full text, files, landing-page content, referenced works, and linked external resources
+- Rights boundary: metadata, citation counts, and open-access indicators do not establish a work's findings, quality, or permission to reproduce it
+- Storage: bounded in-memory cache only; default TTL 24 hours
+- Failure behavior: fail open to InI's existing pipeline; never block a response; no automatic retry through rate limits
+- Traffic behavior: one identified User-Agent, one bounded query, at most three records, and no pagination or bulk harvesting
+- Privacy behavior: only short public-topic queries are sent; personal, URL, email, credential-like, and long free-form inputs are rejected locally
+
+### OpenAlex configuration
+
+- `INI_OPENALEX_ENABLED=1` enables the connector (default).
+- `INI_OPENALEX_ENABLED=0` is the immediate kill switch.
+- `INI_OPENALEX_TIMEOUT=4` sets the request timeout in seconds (bounded to 1–10).
+- `INI_OPENALEX_CACHE_SECONDS=86400` sets the in-memory cache lifetime (bounded to 60–604800).
+- `INI_OPENALEX_USER_AGENT` may override the identifying User-Agent.
+- `OPENALEX_API_KEY` may supply a free OpenAlex API key for dependable production capacity; it is never hard-coded or returned in model context.
+
 ## Admission rule for future sources
 
 No additional source should be connected until its copyright status, licence,
