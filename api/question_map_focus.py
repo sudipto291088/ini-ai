@@ -31,7 +31,7 @@ _SPECIALIZATION_TERMS = {
     "frameworks", "recurrent", "reverse mode", "truncating",
 }
 
-FOCUS_MATCHER_VERSION = 7
+FOCUS_MATCHER_VERSION = 8
 
 
 @dataclass(frozen=True)
@@ -117,7 +117,37 @@ def _query_parts(prompt: str) -> list[str]:
         flags=re.IGNORECASE,
     )
     parts = [part.strip(" ,;?") for part in marked.split("|||") if part.strip(" ,;?")]
-    return parts if len(parts) > 1 else [clean]
+    if len(parts) > 1:
+        return parts
+
+    # Some compound questions express several requested dimensions as a noun
+    # list rather than repeating an interrogative:
+    #   "evaluate for retrieval quality, faithfulness, and usefulness"
+    #   "effects on employment, poverty, and well-being"
+    # Treat only an explicit three-or-more-item tail as compound so ordinary
+    # commas in explanatory prose remain intact.
+    dimension_tail = re.match(
+        r"^(?P<prefix>.+?\b(?:for|on|across|regarding|including|covering|affects?|"
+        r"influences?|changes?|improves?|reduces?|increases?)\s+)"
+        r"(?P<first>[^,;?]+),\s*(?P<middle>[^,;?]+),\s*(?:and|or)\s+"
+        r"(?P<last>[^,;?]+)$",
+        clean,
+        flags=re.IGNORECASE,
+    )
+    if dimension_tail:
+        dimensions = [
+            dimension_tail.group("first"),
+            dimension_tail.group("middle"),
+            dimension_tail.group("last"),
+        ]
+        # Match each dimension on its distinguishing terms. Repeating the
+        # common question stem can otherwise make the first candidate consume
+        # the wrong item simply because both contain words such as "evaluate".
+        expanded = [item.strip(" ,;?") for item in dimensions]
+        if all(_tokens(part) for part in expanded):
+            return expanded
+
+    return [clean]
 
 
 def _find_best_match(

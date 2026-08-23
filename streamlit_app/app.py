@@ -122,7 +122,7 @@ import api.question_map_focus as question_map_focus
 # normal app reruns and production startup do not reload the module.
 if (
     not hasattr(question_map_focus, "find_direct_answer_matches")
-    or getattr(question_map_focus, "FOCUS_MATCHER_VERSION", 0) < 7
+    or getattr(question_map_focus, "FOCUS_MATCHER_VERSION", 0) < 8
 ):
     question_map_focus = importlib.reload(question_map_focus)
 find_direct_answer_matches = question_map_focus.find_direct_answer_matches

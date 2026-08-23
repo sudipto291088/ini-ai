@@ -173,6 +173,48 @@ class QuestionMapFocusTests(unittest.TestCase):
         )
         self.assertEqual([match.section for match in matches], ["Mechanisms", "Methods & Tools"])
 
+    def test_rag_evaluation_dimension_list_selects_three_direct_answers(self):
+        prompt = (
+            "How should a retrieval-augmented generation system be evaluated for "
+            "retrieval quality, answer faithfulness, and end-to-end usefulness?"
+        )
+        categories = {
+            "Methods & Tools": [
+                {"question": "Which metrics measure retrieval quality in a RAG system?"},
+                {"question": "How should answer faithfulness to retrieved evidence be evaluated?"},
+            ],
+            "Applications": [
+                {"question": "How is end-to-end usefulness measured with users and task outcomes?"},
+            ],
+        }
+
+        matches = find_direct_answer_matches(prompt, categories)
+
+        self.assertEqual(len(matches), 3)
+        self.assertEqual([match.part_index for match in matches], [1, 2, 3])
+        self.assertTrue(all(match.total_parts == 3 for match in matches))
+        self.assertEqual(len({match.question for match in matches}), 3)
+
+    def test_ubi_outcome_list_selects_three_direct_answers(self):
+        prompt = (
+            "What does the research show about how universal basic income affects "
+            "employment, poverty, and psychological well-being?"
+        )
+        categories = {
+            "Mechanisms": [
+                {"question": "How does universal basic income affect employment and labor supply?"},
+                {"question": "Through what mechanisms does universal basic income reduce poverty?"},
+            ],
+            "Applications": [
+                {"question": "What effects does universal basic income have on psychological well-being?"},
+            ],
+        }
+
+        matches = find_direct_answer_matches(prompt, categories)
+
+        self.assertEqual(len(matches), 3)
+        self.assertEqual(len({match.question for match in matches}), 3)
+
     def test_main_applications_selects_applications(self):
         categories = {
             "Orientation": [{"question": "What is principal component analysis?"}],
