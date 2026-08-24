@@ -1767,7 +1767,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: 20px 22px 22px;
+  padding: 17px 17px 15px;
   overflow: hidden;
 }
 .ini-nc-overview-grid {
@@ -1796,10 +1796,14 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   min-height: 0;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  padding-top: 8px;
+  box-sizing: border-box;
 }
 .ini-nc-knowledge-map__compact .ini-nc-knowledge-map__node {
-  padding: 8px 11px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 10px;
   border-radius: 12px;
 }
 .ini-nc-knowledge-map__compact .ini-nc-knowledge-map__node strong {
@@ -1809,28 +1813,32 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   font-size: 11px;
 }
 .ini-nc-knowledge-map__compact .ini-nc-knowledge-map__node--question {
+  width: fit-content;
+  max-width: 100%;
   padding: 8px 14px;
+  border-radius: 999px;
 }
 .ini-nc-knowledge-map__compact .ini-nc-knowledge-map__node--question strong {
   font-size: 14px;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
+  line-height: 1.25;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 .ini-nc-knowledge-map__compact .ini-nc-knowledge-map__connector {
-  height: 10px;
+  height: 7px;
 }
 .ini-nc-knowledge-map__compact-stages {
   position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   min-width: 0;
 }
 .ini-nc-knowledge-map__compact-stages::before {
   position: absolute;
-  top: -12px;
-  bottom: -12px;
+  top: -8px;
+  bottom: -8px;
   left: 50%;
   width: 1px;
   background: #d8dde5;
@@ -1841,22 +1849,24 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 7px;
-  min-height: 36px;
-  padding: 6px 8px;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 7px;
   border: 1px solid #e7eaf0;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 7px 18px rgba(15, 23, 42, 0.04);
   color: #4d586b;
-  font-size: 11.5px;
-  line-height: 1.3;
+  font-size: 11px;
+  line-height: 1.2;
   min-width: 0;
   box-sizing: border-box;
 }
 .ini-nc-knowledge-map__compact-stage > span:last-child {
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 .ini-nc-knowledge-map__compact-stage-number {
   flex: 0 0 auto;
@@ -2213,7 +2223,8 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker)
   z-index: 5;
   flex: 0 0 auto;
   align-self: flex-end;
-  margin-top: 11px;
+  margin-top: auto;
+  padding-top: 7px;
 }
 .ini-nc-knowledge-map__focus > summary {
   display: inline-flex;
@@ -4617,14 +4628,18 @@ def render_nc_knowledge_map(
 
     compact_projection = compact_knowledge_map_projection(question)
     compact_topic = compact_projection.anchor
-    if compact_projection.directions:
-        compact_labels = list(compact_projection.directions)
-        compact_labels.extend(
-            label for label, _ in stages if label not in compact_labels
-        )
-        compact_labels = compact_labels[:6]
-    else:
-        compact_labels = [label for label, _ in stages]
+    compact_stage_names = {
+        "Understand the problem": "Orientation",
+        "Build the foundations": "Foundations",
+        "See how it works": "Mechanisms",
+        "Learn the methods": "Methods",
+        "Apply and evaluate": "Applications",
+        "Advance further": "Advanced",
+    }
+    compact_labels = [
+        compact_stage_names.get(label, label)
+        for label, _ in stages
+    ][:6]
 
     expanded_stages: list[tuple[str, list[Any]]] = stages
     normalized_question = re.sub(r"[^a-z0-9]+", " ", question.lower()).strip()

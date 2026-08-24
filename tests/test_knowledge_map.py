@@ -46,6 +46,28 @@ def test_direct_topic_and_mechanism_queries_remain_compact():
     )
 
 
+def test_compound_outcome_queries_use_short_subject_anchors():
+    assert compact_knowledge_map_projection(
+        "What does the research show about how universal basic income affects "
+        "employment, poverty, and psychological well-being?"
+    ).anchor == "universal basic income"
+    assert compact_knowledge_map_projection(
+        "How should a retrieval-augmented generation system be evaluated for "
+        "retrieval quality, answer faithfulness, and end-to-end usefulness?"
+    ).anchor == "retrieval-augmented generation system"
+    assert compact_knowledge_map_projection(
+        "How do light intensity, carbon dioxide concentration, and temperature "
+        "affect the rate of photosynthesis?"
+    ).anchor == "photosynthesis"
+
+
+def test_trailing_mechanism_verbs_do_not_enter_compact_anchor():
+    assert compact_knowledge_map_projection(
+        "How do CRISPR-Cas9 off-target effects occur, and what methods are used "
+        "to detect and reduce them?"
+    ).anchor == "CRISPR-Cas9 off-target effects"
+
+
 def test_expanded_map_prefers_topic_metadata_over_question_text():
     title, description = expanded_knowledge_map_entry(
         {

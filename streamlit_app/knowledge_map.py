@@ -62,6 +62,21 @@ def compact_knowledge_map_projection(topic: str) -> CompactKnowledgeMapProjectio
     if not query:
         return CompactKnowledgeMapProjection("Topic", ())
 
+    # Prefer the actual subject over the grammatical first clause for common
+    # compound shapes. This keeps the narrow central capsule topic-led rather
+    # than filling it with a partial question.
+    subject_patterns = (
+        r"^what\s+does\s+(?:the\s+)?research\s+show\s+about\s+how\s+(.+?)\s+affects?\b",
+        r"^how\s+should\s+(.+?)\s+be\s+(?:evaluated|measured|assessed|tested)\b",
+        r"^how\s+(?:do|does)\s+.+?\s+affect\s+(?:the\s+)?(?:rate\s+of\s+)?(.+?)\??$",
+    )
+    extracted_subject = ""
+    for pattern in subject_patterns:
+        match = re.match(pattern, query, flags=re.IGNORECASE)
+        if match:
+            extracted_subject = _clean_anchor(match.group(1))
+            break
+
     # The first clause is the most reliable topic anchor after the response
     # pipeline has combined or rewritten a compound request.
     first_clause = re.split(
@@ -70,15 +85,21 @@ def compact_knowledge_map_projection(topic: str) -> CompactKnowledgeMapProjectio
         maxsplit=1,
         flags=re.IGNORECASE,
     )[0]
-    anchor = _clean_anchor(first_clause)
+    anchor = extracted_subject or _clean_anchor(first_clause)
+    anchor = re.sub(
+        r"\s+(?:occur|occurs|happen|happens|arise|arises)$",
+        "",
+        anchor,
+        flags=re.IGNORECASE,
+    ).strip()
 
     # Fall back conservatively if a conversational clause did not expose a
     # usable noun phrase. Never place the entire compound query in the capsule.
     words = anchor.split()
     if not anchor:
         anchor = "Topic"
-    elif len(words) > 7:
-        anchor = " ".join(words[:7]).rstrip(" ,.;:?!")
+    elif len(words) > 5:
+        anchor = " ".join(words[:5]).rstrip(" ,.;:?!")
 
     lowered = query.casefold()
     directions: list[str] = []
