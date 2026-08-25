@@ -58,15 +58,23 @@ _FCE_COMPONENT = st.components.v2.component(
       const { parentElement, data, setStateValue, setTriggerValue } = component;
       const root = parentElement.querySelector('#ini-fce-root');
       if (!root) return;
+      const host = root.getRootNode().host;
 
       const visitorScope = String(data.visitor_id || 'anonymous').replace(/[^A-Za-z0-9_-]/g, '');
       const seenStorageKey = `ini_fce_seen:${visitorScope}`;
       if (localStorage.getItem(seenStorageKey) === '1' && !data.force_open) {
         root.innerHTML = '';
+        Object.assign(host.style, {
+          position: 'fixed',
+          inset: 'auto',
+          width: '0',
+          height: '0',
+          zIndex: '-1',
+          pointerEvents: 'none',
+        });
         return;
       }
 
-      const host = root.getRootNode().host;
       const originalHostStyle = host.getAttribute('style');
       const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
       const physicalShortSide = Math.min(window.screen?.width || Infinity, window.screen?.height || Infinity);
@@ -145,6 +153,7 @@ _FCE_COMPONENT = st.components.v2.component(
         .reduce((elapsed, message) => elapsed + (message.text.length * 27) + 3000, 0);
 
       const finish = (action) => {
+        localStorage.setItem(seenStorageKey, '1');
         root.innerHTML = '';
         sessionStorage.removeItem(flowStorageKey);
         setStateValue('action', action);
@@ -169,7 +178,13 @@ _FCE_COMPONENT = st.components.v2.component(
           return;
         }
         const progress = state.view === 'intro' ? currentProgress() : null;
-        if (progress?.complete) { state.view = 'end'; saveFlow(); render(); return; }
+        if (progress?.complete) {
+          localStorage.setItem(seenStorageKey, '1');
+          state.view = 'end';
+          saveFlow();
+          render();
+          return;
+        }
         const all = state.view === 'all';
         const end = state.view === 'end';
         const content = end ? finalMarkup() : all
@@ -177,7 +192,6 @@ _FCE_COMPONENT = st.components.v2.component(
           : transcriptMarkup();
         const canGoBack = progress && progress.index > 0 && progress.index < data.messages.length - 1;
         const footer = end ? '' : `<footer class="ini-fce-footer">${all ? '<div></div>' : `<div class="ini-fce-controls">${canGoBack ? '<button class="ini-fce-button" type="button" data-action="back">Previous</button>' : ''}<button class="ini-fce-button" type="button" data-action="skip">Skip Introduction</button><button class="ini-fce-button" type="button" data-action="show-all">Show Everything</button></div>`}<button class="ini-fce-button" type="button" data-action="skip-end">Skip to End</button></footer>`;
-        if (Date.now() >= state.visibleAt) localStorage.setItem(seenStorageKey, '1');
         const mobileClass = isMobileViewport ? ' is-mobile' : '';
         if (!root.querySelector('.ini-fce-overlay')) {
           root.innerHTML = `<section class="ini-fce-overlay" role="dialog" aria-modal="true" aria-label="Welcome to InI.ai"><div class="ini-fce-panel"><button class="ini-fce-close" type="button" aria-label="Close First Conversation Experience" data-action="close">×</button><main class="ini-fce-body"><div class="ini-fce-transcript"><img class="ini-fce-speaker-icon" src="${escapeHtml(data.icon_data)}" alt="Mukut"><div class="ini-fce-content"></div></div></main><div class="ini-fce-footer-slot"></div></div></section>`;
