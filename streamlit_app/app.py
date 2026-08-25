@@ -13881,6 +13881,7 @@ if mount_fce_component:
         topics=FCE_TOPIC_EXAMPLES,
         quote=st.session_state.fce_quote,
         icon_data=fce_icon_data,
+        visitor_id=st.session_state.visitor_id,
         force_open=st.session_state.fce_force_open,
         on_action_change=_capture_fce_action,
     )

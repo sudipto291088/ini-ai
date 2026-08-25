@@ -59,7 +59,9 @@ _FCE_COMPONENT = st.components.v2.component(
       const root = parentElement.querySelector('#ini-fce-root');
       if (!root) return;
 
-      if (localStorage.getItem('ini_fce_seen') === '1' && !data.force_open) {
+      const visitorScope = String(data.visitor_id || 'anonymous').replace(/[^A-Za-z0-9_-]/g, '');
+      const seenStorageKey = `ini_fce_seen:${visitorScope}`;
+      if (localStorage.getItem(seenStorageKey) === '1' && !data.force_open) {
         root.innerHTML = '';
         return;
       }
@@ -110,7 +112,7 @@ _FCE_COMPONENT = st.components.v2.component(
       window.visualViewport?.addEventListener('scroll', syncHostToViewport);
 
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const flowStorageKey = 'ini_fce_active_flow';
+      const flowStorageKey = `ini_fce_active_flow:${visitorScope}`;
       let savedFlow = null;
       try { savedFlow = JSON.parse(sessionStorage.getItem(flowStorageKey) || 'null'); } catch (error) { savedFlow = null; }
       const state = savedFlow || { view: 'intro', startedAt: Date.now() + 2500, visibleAt: Date.now() + 2000, timer: null };
@@ -175,7 +177,7 @@ _FCE_COMPONENT = st.components.v2.component(
           : transcriptMarkup();
         const canGoBack = progress && progress.index > 0 && progress.index < data.messages.length - 1;
         const footer = end ? '' : `<footer class="ini-fce-footer">${all ? '<div></div>' : `<div class="ini-fce-controls">${canGoBack ? '<button class="ini-fce-button" type="button" data-action="back">Previous</button>' : ''}<button class="ini-fce-button" type="button" data-action="skip">Skip Introduction</button><button class="ini-fce-button" type="button" data-action="show-all">Show Everything</button></div>`}<button class="ini-fce-button" type="button" data-action="skip-end">Skip to End</button></footer>`;
-        if (Date.now() >= state.visibleAt) localStorage.setItem('ini_fce_seen', '1');
+        if (Date.now() >= state.visibleAt) localStorage.setItem(seenStorageKey, '1');
         const mobileClass = isMobileViewport ? ' is-mobile' : '';
         if (!root.querySelector('.ini-fce-overlay')) {
           root.innerHTML = `<section class="ini-fce-overlay" role="dialog" aria-modal="true" aria-label="Welcome to InI.ai"><div class="ini-fce-panel"><button class="ini-fce-close" type="button" aria-label="Close First Conversation Experience" data-action="close">×</button><main class="ini-fce-body"><div class="ini-fce-transcript"><img class="ini-fce-speaker-icon" src="${escapeHtml(data.icon_data)}" alt="Mukut"><div class="ini-fce-content"></div></div></main><div class="ini-fce-footer-slot"></div></div></section>`;
@@ -240,6 +242,7 @@ def render_fce(
     topics: List[str],
     quote: Dict[str, Optional[str]],
     icon_data: str,
+    visitor_id: str,
     force_open: bool = False,
     key: str = "ini_fce",
     on_action_change: Optional[Callable[[], None]] = None,
@@ -252,6 +255,7 @@ def render_fce(
             "topics": topics,
             "quote": quote,
             "icon_data": icon_data,
+            "visitor_id": visitor_id,
             "force_open": force_open,
         },
         on_action_change=on_action_change or (lambda: None),
