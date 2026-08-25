@@ -431,7 +431,8 @@ def _is_self_introduction(text: str) -> bool:
     non_name_words = {
         "only", "just", "checking", "testing", "trying", "ready", "fine",
         "okay", "ok", "here", "back", "done", "tired", "happy", "sad",
-        "going", "working", "learning", "asking", "wondering",
+        "going", "working", "learning", "asking", "wondering", "casually",
+        "chatting", "talking", "conversing",
     }
     return 1 <= len(candidate_words) <= 4 and not (set(candidate_words) & non_name_words)
 
@@ -512,6 +513,12 @@ def _is_conversation_only_turn(text: str) -> bool:
         rf"(?:just +)?{social_action}{social_tail}$",
         rf"^i +(?:want|would +like|need) +to +(?:just +)?"
         rf"{social_action}{social_tail}$",
+        # Explicitly stating a conversational mode is stronger evidence than
+        # any inferred topic shift.  This covers natural corrections such as
+        # "no, I am just casually chatting" while the subject-complement gate
+        # above preserves learning requests like "I am chatting about AI".
+        rf"^(?:no +)?(?:i +am|im) +(?:only +|just +)?(?:casually +)?"
+        rf"(?:chatting|talking|conversing){social_tail}$",
         rf"^(?:please +)?{social_action}{social_tail}$",
     )
     return any(re.fullmatch(pattern, s) is not None for pattern in invitation_patterns)

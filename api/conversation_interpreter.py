@@ -11,6 +11,9 @@ from dataclasses import dataclass
 import re
 
 
+CONVERSATION_INTERPRETER_VERSION = 5
+
+
 _ACK_ONLY = re.compile(
     r"^(?:yes|yeah|yea|yep|yup|ok|okay|sure|right|correct|exactly|"
     r"alright|all\s+right|go\s+ahead|do\s+it|please|continue|proceed)$",
@@ -92,4 +95,101 @@ def interpret_turn(text: str) -> ConversationTurn:
     )
 
 
-__all__ = ["ConversationTurn", "interpret_turn"]
+def should_preserve_conversation_context(
+    *,
+    user_text: str,
+    prior_response_mode: str,
+    study_mode_established: bool,
+    requests_learning_map: bool,
+    explicit_question_map_request: bool,
+) -> bool:
+    """Keep established casual conversation active across ordinary turns."""
+    normalized = _normalized(user_text)
+    explicit_learning_language = bool(
+        re.search(
+            r"\b(?:teach|explain|define|study|learn|understand|"
+            r"walk me through|question map|qmap)\b",
+            normalized,
+        )
+        or re.search(
+            r"^(?:switch|change|move|moving)\s+(?:the\s+)?topics?\b",
+            normalized,
+        )
+        or re.search(
+            r"^(?:what|why)\s+(?:is|are|was|were)\s+"
+            r"(?!(?:you|your|this|that|it|everything|anything|going)\b)",
+            normalized,
+        )
+        or re.search(
+            r"^how\s+(?:does|do|can)\s+"
+            r"(?!(?:you|we|i|this|that|it)\b)",
+            normalized,
+        )
+    )
+    conversational_reference = bool(
+        re.search(
+            r"\b(?:i|im|me|my|mine|you|your|yours|we|our|ours|"
+            r"this|that|it|something|anything|everything)\b",
+            normalized,
+        )
+    )
+    conversational_sentence = bool(
+        re.search(
+            r"\b(?:am|is|are|was|were|has|have|had|been|feel|feels|felt|"
+            r"seem|seems|seemed|forgot|lost|found|went|came|made|liked|"
+            r"loved|hated|enjoyed)\b",
+            normalized,
+        )
+        or re.search(
+            r"^(?:sometimes|often|usually|occasionally|recently|lately|"
+            r"today|tonight|yesterday|this morning|this afternoon|this evening)\b",
+            normalized,
+        )
+    )
+    clear_learning_transition = bool(
+        requests_learning_map
+        and (
+            explicit_learning_language
+            or (not conversational_reference and not conversational_sentence)
+        )
+    )
+    return bool(
+        str(prior_response_mode or "").casefold() == "conversation"
+        and not study_mode_established
+        and not clear_learning_transition
+        and not explicit_question_map_request
+    )
+
+
+def ensure_honest_ai_voice(user_text: str, reply: str) -> str:
+    """Label invented first-person anecdotes instead of presenting them as memories."""
+    text = (reply or "").strip()
+    if not text:
+        return text
+
+    asks_for_story = bool(
+        re.search(r"\b(?:story|anecdote|memory|something that happened)\b", user_text or "", re.I)
+    )
+    claims_personal_history = bool(
+        re.search(
+            r"\b(?:once|yesterday|last (?:night|week|month|year)|when I was)\s+I\b|"
+            r"\bI\s+(?:once|was|did|remember|recalled|grew up|went|visited|met|tried|used to|had)\b",
+            text,
+            re.I,
+        )
+    )
+    if asks_for_story and claims_personal_history:
+        return (
+            "I don't have personal experiences or memories, but here is a fictional story:\n\n"
+            + text
+        )
+    return text
+
+
+__all__ = [
+    "CONVERSATION_INTERPRETER_VERSION",
+    "ConversationTurn",
+    "interpret_turn",
+    "should_preserve_conversation_context",
+    "ensure_honest_ai_voice",
+]

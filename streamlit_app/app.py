@@ -109,7 +109,18 @@ import api.capability_boundary as capability_boundary
 if getattr(capability_boundary, "CAPABILITY_BOUNDARY_VERSION", 0) < 2:
     capability_boundary = importlib.reload(capability_boundary)
 assess_capability = capability_boundary.assess_capability
-from api.conversation_interpreter import interpret_turn
+import api.conversation_interpreter as conversation_interpreter
+
+if (
+    not hasattr(conversation_interpreter, "should_preserve_conversation_context")
+    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 5
+):
+    conversation_interpreter = importlib.reload(conversation_interpreter)
+interpret_turn = conversation_interpreter.interpret_turn
+should_preserve_conversation_context = (
+    conversation_interpreter.should_preserve_conversation_context
+)
+ensure_honest_ai_voice = conversation_interpreter.ensure_honest_ai_voice
 import api.intent_layer as intent_layer
 
 if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 2:
@@ -8459,6 +8470,18 @@ def page_new_chat() -> None:
                         "source_query": display_topic_text,
                     }
         prior_response_mode = _latest_response_mode()
+        explicit_question_map_request = _is_explicit_qm_prompt(
+            display_topic_text
+        )
+        sticky_conversation_turn = should_preserve_conversation_context(
+            user_text=display_topic_text,
+            prior_response_mode=prior_response_mode,
+            study_mode_established=bool(
+                st.session_state.chat_study_mode_established
+            ),
+            requests_learning_map=substantive_learning_turn,
+            explicit_question_map_request=explicit_question_map_request,
+        )
         qm_confirmation_accepted = False
         qm_discussion_topic = ""
         start_discussion_topic = ""
@@ -8682,6 +8705,9 @@ def page_new_chat() -> None:
             and prior_response_mode == "conversation"
             and not qm_confirmation_accepted
         ):
+            discussion_freeform_followup = True
+
+        if sticky_conversation_turn and not qm_confirmation_accepted:
             discussion_freeform_followup = True
 
         # A short reply such as "VSCode" answers InI's previous MCP-host
@@ -8967,6 +8993,38 @@ def page_new_chat() -> None:
                         or st.session_state.get("chat_root_topic")
                         or "the active conversation"
                     )
+                    if sticky_conversation_turn:
+                        conversation_instruction = (
+                            "Continue the established casual conversation. "
+                            + (
+                                f"InI's immediately preceding response was: {contextual_previous_reply}\n"
+                                if contextual_previous_reply
+                                else ""
+                            )
+                            + f"The user said: {display_topic_text}\n"
+                            "Respond naturally to the user's meaning in context. Do not reinterpret an "
+                            "ordinary social turn as a learning topic, diagnostic request, or Question Map. "
+                            "Keep the reply proportionate and conversational. If the user asks an ordinary "
+                            "factual question, answer it naturally without pretending a new conversation began. "
+                            "Speak honestly as InI: never claim a body, offline activities, personal experiences, "
+                            "human memories, or events that did not occur in this conversation."
+                        )
+                    else:
+                        conversation_instruction = (
+                            f"Continue the active conversation about {discussion_topic}. "
+                            + (
+                                f"InI's immediately preceding response was: {contextual_previous_reply}\n"
+                                if contextual_previous_reply
+                                else ""
+                            )
+                            + f"The user said: {display_topic_text}\n"
+                            "Respond naturally to what they mean in this conversation. Preserve context, "
+                            "use a warm concise tone, and briefly bridge the change from the previous topic "
+                            "when the user moves back into casual conversation. Do not sound as though a new "
+                            "conversation has started. Do not create an Introduction, Suggested Follow-ups, "
+                            "or Question Map. If the message is about you, answer as InI rather than defining "
+                            "the user's words."
+                        )
                     data = {
                         "categories": {},
                         "followups": [],
@@ -8976,22 +9034,7 @@ def page_new_chat() -> None:
                         "context_intent": "active_discussion",
                         "needs_clarification": False,
                         "suppress_profile": False,
-                        "direct_answer_prompt": (
-                            f"Continue the active conversation about {discussion_topic}. "
-                            + (
-                                f"InI's immediately preceding response was: {contextual_previous_reply}\n"
-                                if contextual_previous_reply
-                                else ""
-                            )
-                            +
-                            f"The user said: {display_topic_text}\n"
-                            "Respond naturally to what they mean in this conversation. Preserve context, "
-                            "use a warm concise tone, and briefly bridge the change from the previous topic "
-                            "when the user moves back into casual conversation. Do not sound as though a new "
-                            "conversation has started. Do not create an Introduction, Suggested Follow-ups, "
-                            "or Question Map. If the message is about you, answer as InI rather than defining "
-                            "the user's words."
-                        ),
+                        "direct_answer_prompt": conversation_instruction,
                     }
                 else:
                     data = fetch_interrogate(semantic_topic_text)
@@ -9067,6 +9110,8 @@ def page_new_chat() -> None:
                     # Repair a rare malformed contraction produced by compact
                     # conversational generations before it reaches the UI.
                     reply = re.sub(r"\bI[’']l\b", "I'll", reply)
+                    if response_mode == "conversation":
+                        reply = ensure_honest_ai_voice(display_topic_text, reply)
 
                     show_followups = (
                         (should_answer_direct or bool(data.get("needs_clarification")))
@@ -9229,13 +9274,7 @@ def page_new_chat() -> None:
                 resolved_learning_topic = str(
                     data.get("topic") or semantic_topic_text
                 ).strip()
-                explicit_qm_request = bool(
-                    re.search(
-                        r"\b(question\s*map|qmap|qm)\b|\b(generate|create|build|make)\b.*\bmap\b",
-                        display_topic_text,
-                        flags=re.IGNORECASE,
-                    )
-                )
+                explicit_qm_request = explicit_question_map_request
                 if (
                     has_existing_root
                     and prior_response_mode == "conversation"

@@ -100,6 +100,25 @@ class ConversationEngineTests(unittest.TestCase):
         self.assertEqual(result["response_mode"], "conversation")
         self.assertFalse(result.get("categories"))
 
+    def test_explicit_casual_chat_declaration_overrides_topic_shift(self):
+        for message in (
+            "no i am just casually chatting",
+            "I am only chatting",
+            "I'm casually talking",
+        ):
+            with self.subTest(message=message):
+                intent = detect_intent(message)
+                self.assertEqual(intent["intent"], "smalltalk")
+                self.assertFalse(intent["should_interrogate"])
+
+                result = interrogate(message)
+                self.assertEqual(result["response_mode"], "conversation")
+                self.assertEqual(result["categories"], {})
+
+    def test_casual_wording_with_named_subject_remains_learning(self):
+        result = detect_intent("I am casually chatting about linear regression")
+        self.assertTrue(result["should_interrogate"])
+
     def test_self_introductions_are_conversation_not_topics(self):
         for message in ("I am Sid", "My name is Maya", "You can call me Sam"):
             with self.subTest(message=message):

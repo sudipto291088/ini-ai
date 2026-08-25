@@ -1,6 +1,10 @@
 import unittest
 
-from api.conversation_interpreter import interpret_turn
+from api.conversation_interpreter import (
+    ensure_honest_ai_voice,
+    interpret_turn,
+    should_preserve_conversation_context,
+)
 
 
 class ConversationInterpreterTests(unittest.TestCase):
@@ -45,6 +49,92 @@ class ConversationInterpreterTests(unittest.TestCase):
         turn = interpret_turn(raw)
         self.assertEqual(turn.raw_text, "Yeah, machine learning!")
         self.assertEqual(turn.semantic_text, "machine learning!")
+
+    def test_established_conversation_is_sticky_for_random_ordinary_turns(self):
+        for message in (
+            "so everything all right?",
+            "what have you been up to?",
+            "that was a strange day",
+            "tell me something funny",
+            "do you ever get bored?",
+            "anyway what were we saying?",
+            "the morning has been oddly slow",
+            "sometimes old memories appear randomly",
+            "often the smallest things bring back memories",
+        ):
+            with self.subTest(message=message):
+                self.assertTrue(
+                    should_preserve_conversation_context(
+                        user_text=message,
+                        prior_response_mode="conversation",
+                        study_mode_established=False,
+                        requests_learning_map=True,
+                        explicit_question_map_request=False,
+                    )
+                )
+
+    def test_clear_learning_request_can_leave_casual_conversation(self):
+        self.assertFalse(
+            should_preserve_conversation_context(
+                user_text="explain gradient descent",
+                prior_response_mode="conversation",
+                study_mode_established=False,
+                requests_learning_map=True,
+                explicit_question_map_request=False,
+            )
+        )
+        self.assertFalse(
+            should_preserve_conversation_context(
+                user_text="anything",
+                prior_response_mode="conversation",
+                study_mode_established=False,
+                requests_learning_map=False,
+                explicit_question_map_request=True,
+            )
+        )
+
+    def test_bare_subject_can_leave_casual_conversation(self):
+        self.assertFalse(
+            should_preserve_conversation_context(
+                user_text="linear regression",
+                prior_response_mode="conversation",
+                study_mode_established=False,
+                requests_learning_map=True,
+                explicit_question_map_request=False,
+            )
+        )
+
+    def test_definition_question_can_leave_casual_conversation(self):
+        self.assertFalse(
+            should_preserve_conversation_context(
+                user_text="what is linear regression?",
+                prior_response_mode="conversation",
+                study_mode_established=False,
+                requests_learning_map=True,
+                explicit_question_map_request=False,
+            )
+        )
+
+    def test_personal_anecdote_is_explicitly_labeled_fictional(self):
+        for generated in (
+            "Once I tried to help and forgot what I had suggested.",
+            "Once at a coffee shop I was trying to impress a friend.",
+            "I once waved at someone I thought I knew.",
+        ):
+            with self.subTest(generated=generated):
+                reply = ensure_honest_ai_voice(
+                    "tell me a harmless embarrassing story",
+                    generated,
+                )
+                self.assertTrue(reply.startswith("I don't have personal experiences or memories"))
+                self.assertIn("fictional story", reply)
+
+    def test_non_anecdotal_conversation_is_unchanged(self):
+        reply = "I don't have personal likes, but rainy afternoons appeal to many people."
+        self.assertEqual(
+            ensure_honest_ai_voice("do you like rainy afternoons?", reply),
+            reply,
+        )
 
 if __name__ == "__main__":
     unittest.main()
