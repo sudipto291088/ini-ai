@@ -59,19 +59,20 @@ _FCE_COMPONENT = st.components.v2.component(
       const root = parentElement.querySelector('#ini-fce-root');
       if (!root) return;
       const host = root.getRootNode().host;
+      const collapseHost = () => Object.assign(host.style, {
+        position: 'fixed',
+        inset: 'auto',
+        width: '0',
+        height: '0',
+        zIndex: '-1',
+        pointerEvents: 'none',
+      });
 
       const visitorScope = String(data.visitor_id || 'anonymous').replace(/[^A-Za-z0-9_-]/g, '');
       const seenStorageKey = `ini_fce_seen:${visitorScope}`;
       if (localStorage.getItem(seenStorageKey) === '1' && !data.force_open) {
         root.innerHTML = '';
-        Object.assign(host.style, {
-          position: 'fixed',
-          inset: 'auto',
-          width: '0',
-          height: '0',
-          zIndex: '-1',
-          pointerEvents: 'none',
-        });
+        collapseHost();
         return;
       }
 
@@ -155,6 +156,7 @@ _FCE_COMPONENT = st.components.v2.component(
       const finish = (action) => {
         localStorage.setItem(seenStorageKey, '1');
         root.innerHTML = '';
+        collapseHost();
         sessionStorage.removeItem(flowStorageKey);
         setStateValue('action', action);
         setTriggerValue('action', action);
