@@ -51,7 +51,10 @@ def _clean_anchor(text: str) -> str:
     return anchor
 
 
-def compact_knowledge_map_projection(topic: str) -> CompactKnowledgeMapProjection:
+def compact_knowledge_map_projection(
+    topic: str,
+    context: object = "",
+) -> CompactKnowledgeMapProjection:
     """Turn a user query into a compact-map subject and learning directions.
 
     The full query remains available elsewhere in the response. The compact
@@ -62,6 +65,33 @@ def compact_knowledge_map_projection(topic: str) -> CompactKnowledgeMapProjectio
     if not query:
         return CompactKnowledgeMapProjection("Topic", ())
 
+    # Canonicalize common technical question shapes whose grammatical subject
+    # is not a useful map title. These rules deliberately name the concept,
+    # rather than retaining fragments such as "How should ... be".
+    lowered_query = query.casefold()
+    lowered_context = re.sub(r"\s+", " ", str(context or "")).casefold()
+    canonical_subject = ""
+    if re.search(r"\btime[- ]series\s+features?\s+be\s+engineered\b", lowered_query):
+        canonical_subject = "Time-series feature engineering"
+    elif re.search(r"\bcausal\s+effects?\s+be\s+estimated\b", lowered_query):
+        canonical_subject = "Causal-effect estimation"
+    elif all(
+        marker in lowered_query
+        for marker in ("batch", "stochastic", "mini-batch", "gradient descent")
+    ):
+        canonical_subject = "Gradient-descent optimization"
+    elif re.search(
+        r"\bself-attention\s+work\s+in\s+(?:a\s+)?transformer\b",
+        lowered_query,
+    ):
+        canonical_subject = "Transformer self-attention"
+    elif (
+        lowered_query in {"convergence", "optimizer convergence"}
+        and "gradient descent" in lowered_context
+        and re.search(r"\b(?:optimizer|batch|stochastic|momentum)\b", lowered_context)
+    ):
+        canonical_subject = "Gradient-descent optimization"
+
     # Prefer the actual subject over the grammatical first clause for common
     # compound shapes. This keeps the narrow central capsule topic-led rather
     # than filling it with a partial question.
@@ -70,12 +100,13 @@ def compact_knowledge_map_projection(topic: str) -> CompactKnowledgeMapProjectio
         r"^how\s+should\s+(.+?)\s+be\s+(?:evaluated|measured|assessed|tested)\b",
         r"^how\s+(?:do|does)\s+.+?\s+affect\s+(?:the\s+)?(?:rate\s+of\s+)?(.+?)\??$",
     )
-    extracted_subject = ""
-    for pattern in subject_patterns:
-        match = re.match(pattern, query, flags=re.IGNORECASE)
-        if match:
-            extracted_subject = _clean_anchor(match.group(1))
-            break
+    extracted_subject = canonical_subject
+    if not extracted_subject:
+        for pattern in subject_patterns:
+            match = re.match(pattern, query, flags=re.IGNORECASE)
+            if match:
+                extracted_subject = _clean_anchor(match.group(1))
+                break
 
     # The first clause is the most reliable topic anchor after the response
     # pipeline has combined or rewritten a compound request.

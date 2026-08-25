@@ -1,3 +1,5 @@
+import unittest
+
 from streamlit_app.knowledge_map import (
     compact_knowledge_map_projection,
     expanded_knowledge_map_entry,
@@ -66,6 +68,48 @@ def test_trailing_mechanism_verbs_do_not_enter_compact_anchor():
         "How do CRISPR-Cas9 off-target effects occur, and what methods are used "
         "to detect and reduce them?"
     ).anchor == "CRISPR-Cas9 off-target effects"
+
+
+class CompactKnowledgeMapTitleTests(unittest.TestCase):
+    def test_technical_process_queries_use_concept_led_titles(self):
+        cases = {
+            (
+                "How should time-series features be engineered without data leakage, "
+                "and how do lag features, rolling statistics, seasonality, and validation "
+                "strategy fit together?"
+            ): "Time-series feature engineering",
+            (
+                "How can causal effects be estimated from observational data, and how do "
+                "confounding, propensity scores, instrumental variables, and sensitivity "
+                "analysis fit together?"
+            ): "Causal-effect estimation",
+            (
+                "How do batch, stochastic, and mini-batch gradient descent differ, and how "
+                "do learning rate, momentum, and adaptive optimizers affect convergence?"
+            ): "Gradient-descent optimization",
+            (
+                "How does self-attention work in a Transformer, what roles do queries, "
+                "keys, values, positional encoding, and multi-head attention play?"
+            ): "Transformer self-attention",
+        }
+
+        for query, expected in cases.items():
+            with self.subTest(query=query):
+                self.assertEqual(
+                    compact_knowledge_map_projection(query).anchor,
+                    expected,
+                )
+
+    def test_generic_convergence_topic_uses_question_map_context(self):
+        projection = compact_knowledge_map_projection(
+            "convergence",
+            {
+                "Orientation": [{"question": "What optimizer families include gradient descent?"}],
+                "Mechanisms": [{"question": "How do batch size, stochastic noise, and momentum affect convergence?"}],
+            },
+        )
+
+        self.assertEqual(projection.anchor, "Gradient-descent optimization")
 
 
 def test_expanded_map_prefers_topic_metadata_over_question_text():

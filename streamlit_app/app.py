@@ -4626,7 +4626,7 @@ def render_nc_knowledge_map(
     if not stages:
         return None
 
-    compact_projection = compact_knowledge_map_projection(question)
+    compact_projection = compact_knowledge_map_projection(question, categories)
     compact_topic = compact_projection.anchor
     compact_stage_names = {
         "Understand the problem": "Orientation",
@@ -6781,11 +6781,13 @@ def page_new_chat() -> None:
         intro: str,
         *,
         hide_user_topic: bool = False,
+        prompt_text: str = "",
     ) -> None:
         st.session_state.chat_branch_answers.append(
             {
                 "kind": "interrogate",
                 "topic": topic_text,
+                "prompt": (prompt_text or topic_text).strip(),
                 "hide_user_topic": hide_user_topic,
                 "interrogate": data,
                 "intro": intro,
@@ -7443,6 +7445,9 @@ def page_new_chat() -> None:
             branch_ts = branch.get("ts") or now_label()
             continue_journey: dict[str, Any] = {}
             cats = data.get("categories") or {}
+            branch_map_topic = str(
+                branch.get("prompt") or branch.get("topic") or ""
+            )
 
             intro = (branch.get("intro") or "").strip()
             if intro:
@@ -7464,7 +7469,7 @@ def page_new_chat() -> None:
                 )
                 profile_rows, intro_body = extract_topic_profile(
                     clean_intro or intro,
-                    str(branch.get("topic") or branch.get("prompt") or ""),
+                    branch_map_topic,
                 )
                 profile_rows, prerequisites = split_prerequisites(profile_rows)
 
@@ -7472,14 +7477,14 @@ def page_new_chat() -> None:
                 render_nc_prerequisites(prerequisites)
                 if intro_body:
                     render_nc_overview_pair(
-                        str(branch.get("topic") or branch.get("prompt") or ""),
+                        branch_map_topic,
                         cats,
                         intro_body,
                         core_explanation,
                     )
                 else:
                     render_nc_knowledge_map(
-                        str(branch.get("topic") or branch.get("prompt") or ""),
+                        branch_map_topic,
                         cats,
                     )
                 render_nc_your_question(your_question)
@@ -9307,6 +9312,7 @@ def page_new_chat() -> None:
                         data,
                         intro,
                         hide_user_topic=internal_qm_action,
+                        prompt_text=display_topic_text,
                     )
                     _persist_new_chat_session(current_sid)
                     st.rerun()
