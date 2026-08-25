@@ -65,9 +65,28 @@ class ConversationEngineTests(unittest.TestCase):
         self.assertEqual(result["categories"], {})
 
     def test_capability_question_does_not_create_question_map(self):
-        result = interrogate("What can you help me with?")
-        self.assertEqual(result["response_mode"], "conversation")
-        self.assertEqual(result["categories"], {})
+        for message in (
+            "What can you help me with?",
+            "What kind of humor do you understand?",
+            "Which types of jokes do you recognize?",
+            "Do you understand sarcasm?",
+        ):
+            with self.subTest(message=message):
+                result = interrogate(message)
+                self.assertEqual(result["response_mode"], "conversation")
+                self.assertEqual(result["categories"], {})
+
+    def test_personal_preference_statement_is_conversation(self):
+        for message in (
+            "I prefer quiet evenings",
+            "I like rainy afternoons",
+            "We enjoy slow weekends",
+            "I don't like crowded rooms",
+        ):
+            with self.subTest(message=message):
+                result = interrogate(message)
+                self.assertEqual(result["response_mode"], "conversation")
+                self.assertEqual(result["categories"], {})
 
     def test_casual_meta_conversation_does_not_create_question_map(self):
         for message in (

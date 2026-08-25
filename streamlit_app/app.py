@@ -123,7 +123,7 @@ should_preserve_conversation_context = (
 ensure_honest_ai_voice = conversation_interpreter.ensure_honest_ai_voice
 import api.intent_layer as intent_layer
 
-if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 2:
+if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 3:
     intent_layer = importlib.reload(intent_layer)
 detect_intent = intent_layer.detect_intent
 import api.question_map_focus as question_map_focus
@@ -13867,7 +13867,11 @@ if fce_action:
         _reset_query_to_page("chat")
     st.rerun()
 
-if st.session_state.fce_static_open:
+# Keep the component mounted even after dismissal. Browser storage is the
+# authority for first-visit visibility, so clearing site data can replay the
+# welcome without requiring a brand-new Streamlit server session.
+mount_fce_component = True
+if mount_fce_component:
     fce_icon_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
     fce_icon_data = "data:image/png;base64," + base64.b64encode(
         fce_icon_path.read_bytes()

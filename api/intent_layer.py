@@ -4,7 +4,7 @@ import re
 from typing import Any, Dict, Iterable
 
 
-INTENT_LAYER_VERSION = 2
+INTENT_LAYER_VERSION = 3
 
 
 # ============================================================
@@ -476,6 +476,15 @@ def _is_smalltalk(text: str) -> bool:
         r"^(nothing|nothin|nothing much|nothin much)\b",
         r"^why are you (going to|trying to|offering to|asking to)\b",
         r"^(are you|you are) (ok|okay|alright|fine|still not perfect)\b",
+        # Questions about InI's own conversational comprehension are social
+        # capability turns, not requests to study the named form of speech.
+        r"^(?:what|which)\s+(?:kind|kinds|type|types)\s+of\s+.+\s+do\s+you\s+"
+        r"(?:understand|recognize|like|prefer|know|handle)\b",
+        r"^do\s+you\s+(?:understand|recognize|like|prefer|know|handle)\b",
+        # Ordinary first-person preference statements belong to dialogue even
+        # when the preferred object could also be studied as a topic.
+        r"^(?:i|we)\s+(?:really\s+)?(?:prefer|like|love|hate|enjoy|dislike)\b",
+        r"^(?:i|we)\s+(?:do not|dont)\s+like\b",
     )
     return any(re.match(pattern, s) for pattern in relational_patterns)
 

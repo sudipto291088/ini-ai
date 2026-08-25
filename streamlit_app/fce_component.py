@@ -61,22 +61,15 @@ _FCE_COMPONENT = st.components.v2.component(
 
       if (localStorage.getItem('ini_fce_seen') === '1' && !data.force_open) {
         root.innerHTML = '';
-        setTriggerValue('action', 'seen');
         return;
       }
 
       const host = root.getRootNode().host;
       const originalHostStyle = host.getAttribute('style');
-      // Streamlit places this component inside the main-content region.
-      // The overlay itself expands left by the visible sidebar width below.
-      const sidebar = document.querySelector('[data-testid="stSidebar"]');
       const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
       const physicalShortSide = Math.min(window.screen?.width || Infinity, window.screen?.height || Infinity);
       const isMobileViewport = window.matchMedia('(max-width: 720px)').matches
         || (hasCoarsePointer && physicalShortSide <= 720);
-      const sidebarWidth = !isMobileViewport && sidebar && sidebar.offsetParent !== null
-        ? sidebar.getBoundingClientRect().width
-        : 0;
       const syncHostToViewport = () => {
         const viewport = window.visualViewport;
         if (isMobileViewport && viewport) {
@@ -100,6 +93,17 @@ _FCE_COMPONENT = st.components.v2.component(
           zIndex: '2147483000',
           pointerEvents: 'auto',
         });
+        // A transformed Streamlit ancestor can make `position: fixed`
+        // relative to the main-content lane. Measure that real offset and
+        // expand the host back to the physical viewport, including sidebar.
+        const leftGap = Math.max(0, host.getBoundingClientRect().left);
+        if (leftGap > 0) {
+          Object.assign(host.style, {
+            left: `${-leftGap}px`,
+            right: 'auto',
+            width: `calc(100% + ${leftGap}px)`,
+          });
+        }
       };
       syncHostToViewport();
       window.visualViewport?.addEventListener('resize', syncHostToViewport);
@@ -172,14 +176,13 @@ _FCE_COMPONENT = st.components.v2.component(
         const canGoBack = progress && progress.index > 0 && progress.index < data.messages.length - 1;
         const footer = end ? '' : `<footer class="ini-fce-footer">${all ? '<div></div>' : `<div class="ini-fce-controls">${canGoBack ? '<button class="ini-fce-button" type="button" data-action="back">Previous</button>' : ''}<button class="ini-fce-button" type="button" data-action="skip">Skip Introduction</button><button class="ini-fce-button" type="button" data-action="show-all">Show Everything</button></div>`}<button class="ini-fce-button" type="button" data-action="skip-end">Skip to End</button></footer>`;
         if (Date.now() >= state.visibleAt) localStorage.setItem('ini_fce_seen', '1');
-        const desktopExpansion = isMobileViewport ? '' : `left:-${sidebarWidth}px;width:calc(100% + ${sidebarWidth}px)`;
         const mobileClass = isMobileViewport ? ' is-mobile' : '';
         if (!root.querySelector('.ini-fce-overlay')) {
           root.innerHTML = `<section class="ini-fce-overlay" role="dialog" aria-modal="true" aria-label="Welcome to InI.ai"><div class="ini-fce-panel"><button class="ini-fce-close" type="button" aria-label="Close First Conversation Experience" data-action="close">×</button><main class="ini-fce-body"><div class="ini-fce-transcript"><img class="ini-fce-speaker-icon" src="${escapeHtml(data.icon_data)}" alt="Mukut"><div class="ini-fce-content"></div></div></main><div class="ini-fce-footer-slot"></div></div></section>`;
         }
         const overlay = root.querySelector('.ini-fce-overlay');
         overlay.className = `ini-fce-overlay${mobileClass}${Date.now() >= state.visibleAt ? ' is-visible' : ''}`;
-        overlay.setAttribute('style', desktopExpansion);
+        overlay.removeAttribute('style');
         root.querySelector('.ini-fce-content').innerHTML = content;
         root.querySelector('.ini-fce-footer-slot').innerHTML = footer;
         const body = root.querySelector('.ini-fce-body');
