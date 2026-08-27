@@ -70,6 +70,37 @@ def test_trailing_mechanism_verbs_do_not_enter_compact_anchor():
     ).anchor == "CRISPR-Cas9 off-target effects"
 
 
+def test_negative_performance_questions_use_general_concept_led_anchors():
+    cases = {
+        "Why does linear regression perform badly when there are outliers?": (
+            "linear regression performance with outliers"
+        ),
+        "Why do neural networks perform poorly when the data is imbalanced?": (
+            "neural networks performance with imbalanced"
+        ),
+        "Why does GPS work unreliably in dense urban areas?": (
+            "GPS performance with dense urban areas"
+        ),
+        "Why do lithium-ion batteries behave worse under extreme cold?": (
+            "lithium-ion batteries performance with extreme cold"
+        ),
+    }
+
+    for query, expected in cases.items():
+        assert compact_knowledge_map_projection(query).anchor == expected
+
+
+def test_conversational_learning_prefixes_leave_only_the_subject():
+    cases = {
+        "What can you tell me about quant?": "quant",
+        "Could you tell me about DNA replication?": "DNA replication",
+        "Tell me about plate tectonics.": "plate tectonics",
+    }
+
+    for query, expected in cases.items():
+        assert compact_knowledge_map_projection(query).anchor == expected
+
+
 class CompactKnowledgeMapTitleTests(unittest.TestCase):
     def test_technical_process_queries_use_concept_led_titles(self):
         cases = {

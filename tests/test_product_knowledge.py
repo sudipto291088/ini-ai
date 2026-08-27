@@ -24,6 +24,8 @@ class ProductKnowledgeTests(unittest.TestCase):
 
     def test_second_person_inside_learning_question_is_not_claimed(self):
         prompts = (
+            "What can you tell me about quant?",
+            "What could you tell me about DNA replication?",
             "What is transfer learning, how does it differ from training a model from scratch, and when should you fine-tune the entire network rather than only its final layers?**",
             "What is PCA and when should you use it?",
             "What future topic should you learn after linear regression?",

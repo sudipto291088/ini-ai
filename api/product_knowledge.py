@@ -6,7 +6,7 @@ import re
 from typing import Any, Dict, Optional
 
 
-PRODUCT_KNOWLEDGE_VERSION = 3
+PRODUCT_KNOWLEDGE_VERSION = 4
 
 
 def _normalize(text: str) -> str:
@@ -167,7 +167,13 @@ def answer_ini_product_query(
             "Question Map."
         )
 
-    if re.search(r"\b(what can|how can|capabilities|features|help me|use you|do for me)\b", s):
+    if re.search(
+        r"^(?:what (?:can|could) you (?:do|help me with)|"
+        r"how (?:can|could) you help(?: me)?|"
+        r"what are your (?:capabilities|features)|"
+        r"how (?:do|should) i use you|what can you do for me)\??$",
+        s,
+    ):
         return (
             "I can hold a conversation, clarify ambiguous requests, explain topics directly, build "
             "Topic Profiles and structured Question Maps, suggest useful follow-ups, guide focused "

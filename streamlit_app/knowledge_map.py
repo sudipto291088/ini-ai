@@ -20,6 +20,9 @@ _STAGE_DESCRIPTIONS = {
 
 
 _QUESTION_PREFIXES = (
+    r"what\s+(?:can|could)\s+you\s+tell\s+me\s+about\s+",
+    r"(?:can|could)\s+you\s+tell\s+me\s+about\s+",
+    r"tell\s+me\s+about\s+",
     r"what\s+(?:is|are)\s+",
     r"how\s+(?:does|do|is|are)\s+",
     r"why\s+(?:does|do|is|are)\s+",
@@ -85,6 +88,24 @@ def compact_knowledge_map_projection(
         lowered_query,
     ):
         canonical_subject = "Transformer self-attention"
+    elif performance_match := re.match(
+        r"^why\s+(?:does|do)\s+(.+?)\s+"
+        r"(?:perform|performs|behave|behaves|work|works|function|functions)\s+"
+        r"(?:badly|poorly|worse|incorrectly|unreliably)\s+"
+        r"(?:when|with|under|on|during|in)\s+(.+?)\??$",
+        query,
+        flags=re.IGNORECASE,
+    ):
+        subject = _clean_anchor(performance_match.group(1))
+        condition = _clean_anchor(performance_match.group(2))
+        condition = re.sub(
+            r"^(?:there\s+(?:is|are|was|were)|(?:the\s+)?data\s+(?:is|are))\s+",
+            "",
+            condition,
+            flags=re.IGNORECASE,
+        ).strip()
+        if subject and condition:
+            canonical_subject = f"{subject} performance with {condition}"
     elif (
         lowered_query in {"convergence", "optimizer convergence"}
         and "gradient descent" in lowered_context
@@ -129,7 +150,7 @@ def compact_knowledge_map_projection(
     words = anchor.split()
     if not anchor:
         anchor = "Topic"
-    elif len(words) > 5:
+    elif len(words) > 5 and not canonical_subject:
         anchor = " ".join(words[:5]).rstrip(" ,.;:?!")
 
     lowered = query.casefold()

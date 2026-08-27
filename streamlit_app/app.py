@@ -58,7 +58,7 @@ try:
     # helper modules after a deployment sync. Force a reload when the running
     # module predates the routing repair so hosted sessions cannot retain the
     # old product-query detector.
-    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 3:
+    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 4:
         product_knowledge = importlib.reload(product_knowledge)
     answer_ini_product_query = product_knowledge.answer_ini_product_query
 except ModuleNotFoundError as exc:
@@ -7457,7 +7457,11 @@ def page_new_chat() -> None:
             continue_journey: dict[str, Any] = {}
             cats = data.get("categories") or {}
             branch_map_topic = str(
-                branch.get("prompt") or branch.get("topic") or ""
+                # A confirmation CTA is stored as the branch prompt, while
+                # the resolved learning subject is stored as the topic. The
+                # map must follow that resolved subject instead of displaying
+                # action text such as "Generate Question Map".
+                branch.get("topic") or branch.get("prompt") or ""
             )
 
             intro = (branch.get("intro") or "").strip()
