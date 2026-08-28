@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import re
 
 
-CONVERSATION_INTERPRETER_VERSION = 5
+CONVERSATION_INTERPRETER_VERSION = 9
 
 
 _ACK_ONLY = re.compile(
@@ -105,25 +105,49 @@ def should_preserve_conversation_context(
 ) -> bool:
     """Keep established casual conversation active across ordinary turns."""
     normalized = _normalized(user_text)
-    explicit_learning_language = bool(
+    rejects_question_map = bool(
         re.search(
-            r"\b(?:teach|explain|define|study|learn|understand|"
-            r"walk me through|question map|qmap)\b",
+            r"\b(?:not|no|don['\u2019]?t|do not|without)\b"
+            r".{0,64}\b(?:question map|qmap)\b",
             normalized,
         )
-        or re.search(
-            r"^(?:switch|change|move|moving)\s+(?:the\s+)?topics?\b",
+    )
+    rejects_learning_mode = rejects_question_map or bool(
+        re.search(
+            r"\b(?:not|don['\u2019]?t|do not|isn['\u2019]?t|is not|"
+            r"aren['\u2019]?t|are not)\b"
+            r".{0,64}\b(?:study|studying|learn|learning|teach|teaching|"
+            r"explain|explaining|lesson|question map|qmap)\b",
             normalized,
         )
-        or re.search(
-            r"^(?:what|why)\s+(?:is|are|was|were)\s+"
-            r"(?!(?:you|your|this|that|it|everything|anything|going)\b)",
+        and re.search(
+            r"\b(?:chat|chatting|talk|talking|conversation|conversing|"
+            r"company|companionship|hang out|hanging out)\b",
             normalized,
         )
-        or re.search(
-            r"^how\s+(?:does|do|can)\s+"
-            r"(?!(?:you|we|i|this|that|it)\b)",
-            normalized,
+    )
+    explicit_learning_language = bool(
+        not rejects_learning_mode
+        and (
+            re.search(
+                r"\b(?:teach|explain|define|study|learn|understand|"
+                r"walk me through|question map|qmap)\b",
+                normalized,
+            )
+            or re.search(
+                r"^(?:switch|change|move|moving)\s+(?:the\s+)?topics?\b",
+                normalized,
+            )
+            or re.search(
+                r"^(?:what|why)\s+(?:is|are|was|were)\s+"
+                r"(?!(?:you|your|this|that|it|everything|anything|going)\b)",
+                normalized,
+            )
+            or re.search(
+                r"^how\s+(?:does|do|can)\s+"
+                r"(?!(?:you|we|i|this|that|it)\b)",
+                normalized,
+            )
         )
     )
     conversational_reference = bool(
@@ -138,6 +162,16 @@ def should_preserve_conversation_context(
             r"\b(?:am|is|are|was|were|has|have|had|been|feel|feels|felt|"
             r"seem|seems|seemed|forgot|lost|found|went|came|made|liked|"
             r"loved|hated|enjoyed)\b",
+            normalized,
+        )
+        or re.search(
+            r"\b(?:teas(?:e|ed|ing)|jok(?:e|ed|ing)|kidding|banter(?:ing)?|"
+            r"play(?:ing)? around|mess(?:ing)? around)\b",
+            normalized,
+        )
+        or re.search(
+            r"^(?:what|which)\s+(?:kind|type)\s+of\s+.+\s+"
+            r"(?:suits?|fits?|works?(?:\s+for)?|goes?\s+with)\b",
             normalized,
         )
         or re.search(

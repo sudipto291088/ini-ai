@@ -132,6 +132,52 @@ class ConversationEngineTests(unittest.TestCase):
 
                 result = interrogate(message)
                 self.assertEqual(result["response_mode"], "conversation")
+
+    def test_negated_learning_language_remains_conversational(self):
+        for message in (
+            "I'm just chatting, not trying to study anything.",
+            "We are only talking, not asking you to teach us.",
+            "Let's chat; I do not want a Question Map.",
+            "Let’s keep chatting—I don’t want to learn a topic.",
+            "Don’t explain anything—I just want company.",
+            "I don’t need a Question Map; tell me how you’re doing.",
+        ):
+            with self.subTest(message=message):
+                intent = detect_intent(message)
+                self.assertEqual(intent["intent"], "smalltalk")
+                self.assertFalse(intent["should_interrogate"])
+
+                result = interrogate(message)
+                self.assertEqual(result["response_mode"], "conversation")
+
+    def test_varied_casual_sequence_never_creates_question_maps(self):
+        messages = (
+            "You seem unusually serious tonight.",
+            "Relax, I’m only teasing you.",
+            "No analysis please; just play along.",
+            "I don’t want an explanation—I want a casual answer.",
+            "Let’s not turn every thought into a lesson.",
+            "Could we simply hang out for a minute?",
+            "What snack goes best with late-night tea?",
+            "I’m leaning toward biscuits.",
+            "That is probably the safest choice.",
+            "Do you have a terrible biscuit joke?",
+            "I regret asking already.",
+            "My window is making strange noises in the wind.",
+            "It sounds more dramatic than it is.",
+            "Would you investigate or ignore it?",
+            "I’d probably hide under the blanket.",
+            "That was obviously a heroic plan.",
+            "Anyway, are you still enjoying this chat?",
+            "Don’t teach me about bravery; I’m joking.",
+            "We can leave the serious topics for tomorrow.",
+            "Thanks for keeping me company.",
+            "Okay, now I really am saying good night.",
+        )
+        for message in messages:
+            with self.subTest(message=message):
+                result = interrogate(message)
+                self.assertEqual(result["response_mode"], "conversation")
                 self.assertEqual(result["categories"], {})
 
     def test_casual_wording_with_named_subject_remains_learning(self):

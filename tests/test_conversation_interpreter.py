@@ -61,6 +61,29 @@ class ConversationInterpreterTests(unittest.TestCase):
             "the morning has been oddly slow",
             "sometimes old memories appear randomly",
             "often the smallest things bring back memories",
+            "Relax, I’m only teasing you.",
+            "I was joking with you.",
+            "We are just bantering.",
+        ):
+            with self.subTest(message=message):
+                self.assertTrue(
+                    should_preserve_conversation_context(
+                        user_text=message,
+                        prior_response_mode="conversation",
+                        study_mode_established=False,
+                        requests_learning_map=True,
+                        explicit_question_map_request=False,
+                    )
+                )
+
+    def test_explicit_rejection_of_learning_mode_preserves_conversation(self):
+        for message in (
+            "I'm just chatting, not trying to study anything.",
+            "We are only talking, not asking you to teach us.",
+            "Let's chat; I do not want a Question Map.",
+            "Let’s keep chatting—I don’t want to learn a topic.",
+            "Don’t explain anything—I just want company.",
+            "I don’t need a Question Map; tell me how you’re doing.",
         ):
             with self.subTest(message=message):
                 self.assertTrue(
@@ -90,6 +113,17 @@ class ConversationInterpreterTests(unittest.TestCase):
                 study_mode_established=False,
                 requests_learning_map=False,
                 explicit_question_map_request=True,
+            )
+        )
+
+    def test_ordinary_preference_question_preserves_conversation(self):
+        self.assertTrue(
+            should_preserve_conversation_context(
+                user_text="What kind of music suits a quiet evening?",
+                prior_response_mode="conversation",
+                study_mode_established=False,
+                requests_learning_map=True,
+                explicit_question_map_request=False,
             )
         )
 

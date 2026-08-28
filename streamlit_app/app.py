@@ -113,7 +113,7 @@ import api.conversation_interpreter as conversation_interpreter
 
 if (
     not hasattr(conversation_interpreter, "should_preserve_conversation_context")
-    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 5
+    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 9
 ):
     conversation_interpreter = importlib.reload(conversation_interpreter)
 interpret_turn = conversation_interpreter.interpret_turn
@@ -123,7 +123,7 @@ should_preserve_conversation_context = (
 ensure_honest_ai_voice = conversation_interpreter.ensure_honest_ai_voice
 import api.intent_layer as intent_layer
 
-if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 3:
+if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 6:
     intent_layer = importlib.reload(intent_layer)
 detect_intent = intent_layer.detect_intent
 import api.question_map_focus as question_map_focus
@@ -9493,10 +9493,18 @@ def page_new_chat() -> None:
         return any(re.match(pattern, normalized) for pattern in casual_patterns)
 
     def _is_explicit_qm_prompt(prompt: str) -> bool:
+        normalized = (prompt or "").strip()
+        if re.search(
+            r"\b(?:not|no|don['\u2019]?t|do not|without)\b"
+            r".{0,64}\b(?:question\s*map|qmap|qm)\b",
+            normalized,
+            flags=re.IGNORECASE,
+        ):
+            return False
         return bool(
             re.search(
                 r"\b(question\s*map|qmap|qm)\b|\b(generate|create|build|make)\b.*\bmap\b",
-                prompt or "",
+                normalized,
                 flags=re.IGNORECASE,
             )
         )

@@ -4,7 +4,7 @@ import re
 from typing import Any, Dict, Iterable
 
 
-INTENT_LAYER_VERSION = 3
+INTENT_LAYER_VERSION = 6
 
 
 # ============================================================
@@ -501,6 +501,51 @@ def _is_conversation_only_turn(text: str) -> bool:
     s = _normalize_expressive(text)
     if not s or len(s.split()) > 18:
         return False
+
+    # A user can mention learning vocabulary while explicitly rejecting the
+    # learning mode. The negation governs the intent: "just chatting, not
+    # trying to study" is conversation, not a request to study the phrase.
+    intent_text = _normalize(text)
+    rejects_question_map = bool(
+        re.search(
+            r"\b(?:not|no|don['\u2019]?t|do not|without)\b"
+            r".{0,64}\b(?:question map|qmap)\b",
+            intent_text,
+        )
+    )
+    rejects_learning_mode = rejects_question_map or bool(
+        re.search(
+            r"\b(?:not|don['\u2019]?t|do not|isn['\u2019]?t|is not|"
+            r"aren['\u2019]?t|are not)\b"
+            r".{0,64}\b(?:study|studying|learn|learning|teach|teaching|"
+            r"explain|explaining|lesson|question map|qmap)\b",
+            intent_text,
+        )
+        and re.search(
+            r"\b(?:chat|chatting|talk|talking|conversation|conversing|"
+            r"company|companionship|hang out|hanging out|casual|casually|"
+            r"play along|joke|joking|tease|teasing)\b",
+            intent_text,
+        )
+    )
+    if rejects_learning_mode:
+        return True
+
+    # Short interpersonal remarks, playful corrections, and ordinary lifestyle
+    # preferences are complete social turns even when no earlier conversational
+    # mode is available (for example, immediately after a misrouted map).
+    social_turn_patterns = (
+        r"^you +(seem|sound|look|appear|are)\b",
+        r"^(relax|easy|come on)\b.*\b(teasing|joking|kidding|playing)\b",
+        r"^(?:no +)?(?:analysis|explanation|lesson)\b.*\b(?:play along|casual|chat)\b",
+        r"^(?:lets|let +us) +(?:just +|simply +)?hang +out\b",
+        r"^what +.+ +goes +best +with +.+$",
+        r"^(?:do|can|could|would) +you\b.*\b(?:joke|chat|company|enjoy)\b",
+        r"^(?:thanks|thank +you) +for\b.*\b(?:chat|company|talking)\b",
+        r"^(?:okay +)?(?:now +)?i +(?:really +)?am +saying +good +night$",
+    )
+    if any(re.search(pattern, s) for pattern in social_turn_patterns):
+        return True
 
     # A named complement makes this substantive rather than a pure social
     # invitation: "talk about machine learning" must remain a learning query.
