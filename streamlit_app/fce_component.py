@@ -69,7 +69,11 @@ _FCE_COMPONENT = st.components.v2.component(
       });
 
       const visitorScope = String(data.visitor_id || 'anonymous').replace(/[^A-Za-z0-9_-]/g, '');
-      const seenStorageKey = `ini_fce_seen:${visitorScope}`;
+      const legacySeenStorageKey = `ini_fce_seen:${visitorScope}`;
+      const seenStorageKey = 'ini_fce_seen';
+      if (localStorage.getItem(legacySeenStorageKey) === '1') {
+        localStorage.setItem(seenStorageKey, '1');
+      }
       if (localStorage.getItem(seenStorageKey) === '1' && !data.force_open) {
         root.innerHTML = '';
         collapseHost();
