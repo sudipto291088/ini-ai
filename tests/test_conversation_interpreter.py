@@ -149,6 +149,22 @@ class ConversationInterpreterTests(unittest.TestCase):
             )
         )
 
+    def test_compound_why_and_how_questions_leave_casual_conversation(self):
+        for question in (
+            "Why does inflation occur, and how do interest-rate increases attempt to control it?",
+            "Why do transformers use attention, and how does it preserve context?",
+        ):
+            with self.subTest(question=question):
+                self.assertFalse(
+                    should_preserve_conversation_context(
+                        user_text=question,
+                        prior_response_mode="conversation",
+                        study_mode_established=False,
+                        requests_learning_map=True,
+                        explicit_question_map_request=False,
+                    )
+                )
+
     def test_personal_anecdote_is_explicitly_labeled_fictional(self):
         for generated in (
             "Once I tried to help and forgot what I had suggested.",

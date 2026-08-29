@@ -113,7 +113,7 @@ import api.conversation_interpreter as conversation_interpreter
 
 if (
     not hasattr(conversation_interpreter, "should_preserve_conversation_context")
-    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 9
+    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 10
 ):
     conversation_interpreter = importlib.reload(conversation_interpreter)
 interpret_turn = conversation_interpreter.interpret_turn
@@ -126,14 +126,19 @@ import api.intent_layer as intent_layer
 if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 6:
     intent_layer = importlib.reload(intent_layer)
 detect_intent = intent_layer.detect_intent
-from api.response_strategy import (
-    KS_EXPLICIT,
-    KS_RECOMMENDED,
-    assess_ks_suitability,
-    extract_knowledge_structure_topic,
-    is_explicit_knowledge_structure_request,
-    select_lightweight_questions,
+import api.response_strategy as response_strategy
+
+if getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 2:
+    response_strategy = importlib.reload(response_strategy)
+KS_EXPLICIT = response_strategy.KS_EXPLICIT
+KS_RECOMMENDED = response_strategy.KS_RECOMMENDED
+assess_ks_suitability = response_strategy.assess_ks_suitability
+extract_knowledge_structure_topic = response_strategy.extract_knowledge_structure_topic
+fallback_learning_questions = response_strategy.fallback_learning_questions
+is_explicit_knowledge_structure_request = (
+    response_strategy.is_explicit_knowledge_structure_request
 )
+select_lightweight_questions = response_strategy.select_lightweight_questions
 import api.question_map_focus as question_map_focus
 
 # Streamlit can retain an older imported helper during a development hot
@@ -9099,6 +9104,74 @@ def page_new_chat() -> None:
                     should_answer_direct = bool(data.get("should_answer_direct", False))
                     response_mode = (data.get("response_mode") or "standard").strip().lower()
                     context_intent = (data.get("context_intent") or "").strip().lower()
+
+                    # A failed Question Map generation must not collapse a
+                    # legitimate educational query into casual chat. The
+                    # learner still gets a direct answer, three useful next
+                    # directions, and an on-demand opportunity to retry the
+                    # complete structure.
+                    if intent_name == "unsupported_learning_topic":
+                        direct_resp = fetch_study_full(
+                            display_topic_text,
+                            mode="focused",
+                            max_rounds=1,
+                        )
+                        reply = (direct_resp.get("answer") or "").strip() or (
+                            data.get("reply") or "No answer generated."
+                        ).strip()
+                        followups = fallback_learning_questions(display_topic_text)
+                        direct_payload = {
+                            "prompt": display_topic_text,
+                            "text": reply,
+                            "incomplete": bool(direct_resp.get("incomplete")),
+                            "stop_reason": direct_resp.get("stop_reason") or None,
+                            "mode": "focused",
+                            "followups": followups,
+                            "intent": "topic_explore",
+                            "should_answer_direct": True,
+                            "response_mode": "conversation",
+                            "context_intent": "learning",
+                            "show_followups": True,
+                            "needs_clarification": False,
+                            "suppress_profile": False,
+                            "knowledge_structure_available": True,
+                            "knowledge_structure_topic": (
+                                data.get("topic") or display_topic_text
+                            ),
+                            "ks_suitability": assess_ks_suitability(
+                                display_topic_text,
+                                {"categories": {"fallback": followups}},
+                            ),
+                            "ts": now_label(),
+                        }
+                        if has_existing_root:
+                            _append_nc_message(display_topic_text, direct_payload, "direct")
+                            _persist_new_chat_session(current_sid)
+                            st.rerun()
+                            return
+
+                        st.session_state.chat["topic"] = display_topic_text
+                        st.session_state.chat_root_topic = display_topic_text
+                        st.session_state.chat["interrogate"] = None
+                        st.session_state.chat["illustrate"] = None
+                        st.session_state.chat_intro = ""
+                        st.session_state.chat_direct_answer = direct_payload
+                        st.session_state.chat_answers = {}
+                        st.session_state.chat_followups = {}
+                        st.session_state.chat_open_questions = set()
+                        st.session_state.chat_visited_questions = set()
+                        st.session_state.chat_root_interrogate = None
+                        st.session_state.chat_root_illustrate = None
+                        st.session_state.chat_root_intro = ""
+                        st.session_state.chat_root_direct_answer = direct_payload
+                        st.session_state.chat_root_answers = {}
+                        st.session_state.chat_root_followups = {}
+                        st.session_state.chat_root_open_questions = set()
+                        st.session_state.chat_root_visited_questions = set()
+                        _persist_new_chat_session(current_sid)
+                        st.rerun()
+                        return
+
                     is_live_local_query = (
                         response_mode not in {"carm", "conversation"}
                         and _looks_like_live_local_query(topic_text)
@@ -9350,7 +9423,9 @@ def page_new_chat() -> None:
                         "context_intent": data.get("response_intent") or "learning",
                         "show_followups": bool(lightweight_questions),
                         "needs_clarification": False,
-                        "suppress_profile": True,
+                        # Educational answers keep their Topic Profile even
+                        # when the full Knowledge Structure is deferred.
+                        "suppress_profile": False,
                         "knowledge_structure_available": True,
                         "knowledge_structure_topic": resolved_learning_topic,
                         "ks_suitability": ks_suitability,

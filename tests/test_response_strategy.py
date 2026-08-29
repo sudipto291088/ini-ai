@@ -7,6 +7,7 @@ from api.response_strategy import (
     NO_KS,
     assess_ks_suitability,
     extract_knowledge_structure_topic,
+    fallback_learning_questions,
     select_lightweight_questions,
 )
 
@@ -68,6 +69,33 @@ class ResponseStrategyTests(unittest.TestCase):
                 "Where does Kubernetes enter the picture?",
             ],
         )
+
+    def test_compound_ethics_query_preserves_named_dimensions(self):
+        categories = {
+            "Mechanisms": [{"question": "How does Cas9 cut a DNA target?"}],
+            "Methods & Tools": [{"question": "How are guide RNAs designed?"}],
+            "Pitfalls": [
+                {"question": "Which off-target and delivery risks limit CRISPR?"},
+                {"question": "What ethical and consent concerns affect germline editing?"},
+            ],
+            "Applications": [{"question": "Which diseases could CRISPR treat?"}],
+        }
+        selected = select_lightweight_questions(
+            "How does CRISPR edit DNA, and what scientific and ethical limitations affect its use?",
+            categories,
+        )
+        joined = " ".join(selected).lower()
+        self.assertEqual(len(selected), 3)
+        self.assertIn("ethical", joined)
+        self.assertTrue("risk" in joined or "off-target" in joined)
+        self.assertTrue("cas9" in joined or "mechanism" in joined)
+
+    def test_learning_fallback_still_supplies_three_directions(self):
+        questions = fallback_learning_questions(
+            "Why does inflation occur, and how do interest-rate increases attempt to control it?"
+        )
+        self.assertEqual(len(questions), 3)
+        self.assertIn("mechanisms", questions[0])
 
 
 if __name__ == "__main__":

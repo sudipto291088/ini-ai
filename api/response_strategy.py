@@ -15,6 +15,7 @@ NO_KS = "NO_KS"
 CONDITIONAL_KS = "CONDITIONAL_KS"
 KS_RECOMMENDED = "KS_RECOMMENDED"
 KS_EXPLICIT = "KS_EXPLICIT"
+RESPONSE_STRATEGY_VERSION = 2
 
 
 _EXPLICIT_KS = re.compile(
@@ -125,7 +126,47 @@ def select_lightweight_questions(
 
     selected: list[str] = []
     seen: set[str] = set()
+
+    # Compound questions often name dimensions that should not disappear from
+    # the visible suggestions. Pull one strong candidate for each named
+    # dimension before filling from the normal category order.
+    dimension_terms: list[tuple[str, ...]] = []
+    if re.search(r"\b(?:ethical|ethics|moral|consent|equity|fairness)\b", normalized):
+        dimension_terms.append(
+            ("ethical", "ethics", "moral", "consent", "equity", "fairness", "governance")
+        )
+    if re.search(r"\b(?:limitation|limitations|risk|risks|safety|scientific)\b", normalized):
+        dimension_terms.append(
+            ("limitation", "risk", "safety", "off-target", "delivery", "immune", "uncertainty")
+        )
+
+    all_candidates: list[tuple[str, str]] = []
+    for category, items in categories.items():
+        for item in items or []:
+            question = question_text(item)
+            if question:
+                all_candidates.append((str(category), question))
+
+    used_categories: set[str] = set()
+    for terms in dimension_terms:
+        match = next(
+            (
+                (category, question)
+                for category, question in all_candidates
+                if any(term in question.casefold() for term in terms)
+                and re.sub(r"[^a-z0-9]+", " ", question.casefold()).strip() not in seen
+            ),
+            None,
+        )
+        if match:
+            category, question = match
+            selected.append(question)
+            seen.add(re.sub(r"[^a-z0-9]+", " ", question.casefold()).strip())
+            used_categories.add(category)
+
     for category in preferred:
+        if category in used_categories:
+            continue
         for item in categories.get(category) or []:
             question = question_text(item)
             key = re.sub(r"[^a-z0-9]+", " ", question.casefold()).strip()
@@ -140,13 +181,48 @@ def select_lightweight_questions(
     return selected
 
 
+def fallback_learning_questions(query: str, limit: int = 3) -> list[str]:
+    """Provide stable, diverse next directions when map generation is unavailable."""
+
+    normalized = (query or "").casefold()
+    questions: list[str] = []
+    if re.search(r"\b(?:ethical|ethics|moral)\b", normalized):
+        questions.append(
+            "What ethical boundaries, consent concerns, and questions of fairness shape this topic?"
+        )
+    if re.search(r"\b(?:limitation|limitations|risk|risks|safety|scientific)\b", normalized):
+        questions.append(
+            "What scientific limitations, safety risks, and unresolved uncertainties matter most?"
+        )
+    if re.match(r"\s*why\b", normalized):
+        questions.insert(0, "What underlying mechanisms and competing causes explain this?")
+    elif re.match(r"\s*how\b", normalized):
+        questions.insert(0, "How does the central mechanism work step by step?")
+    else:
+        questions.insert(0, "What are the foundational ideas needed to understand this clearly?")
+
+    general = (
+        "How does this appear in a concrete real-world example?",
+        "What trade-offs, exceptions, or common misconceptions should be considered?",
+        "How do researchers or practitioners evaluate whether it works as intended?",
+    )
+    for question in general:
+        if len(questions) >= limit:
+            break
+        if question not in questions:
+            questions.append(question)
+    return questions[:limit]
+
+
 __all__ = [
     "NO_KS",
     "CONDITIONAL_KS",
     "KS_RECOMMENDED",
     "KS_EXPLICIT",
+    "RESPONSE_STRATEGY_VERSION",
     "assess_ks_suitability",
     "extract_knowledge_structure_topic",
+    "fallback_learning_questions",
     "is_explicit_knowledge_structure_request",
     "select_lightweight_questions",
 ]
