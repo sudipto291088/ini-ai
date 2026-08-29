@@ -43,6 +43,12 @@ def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", (text or "").strip().lower())
 
 
+def _contains_cue(text: str, cue: str) -> bool:
+    """Match intent cues as phrases, not as fragments inside other words."""
+    pattern = r"(?<![a-z0-9])" + re.escape(cue) + r"(?![a-z0-9])"
+    return bool(re.search(pattern, text))
+
+
 def classify_context(text: str) -> Dict[str, Any]:
     """Choose CARM only when an immediate practical goal is evident."""
     normalized = _normalize(text)
@@ -73,12 +79,37 @@ def classify_context(text: str) -> Dict[str, Any]:
 
     integration_target = _mcp_integration_target(normalized)
 
+    # Error-related vocabulary is common in legitimate learning questions
+    # (prediction errors, error correction, measurement error, failure modes).
+    # A bare concept word must not switch the response into repair mode.  Use
+    # troubleshooting only when the wording also describes an observed or
+    # explicitly repairable problem.
+    explicit_repair_request = bool(
+        re.search(
+            r"\b(?:fix|repair|resolve|debug|diagnose|troubleshoot)\b|"
+            r"\b(?:not working|doesn['’]?t work|does not work|went wrong|"
+            r"keeps? (?:failing|crashing)|won['’]?t (?:run|start|work))\b",
+            normalized,
+        )
+    )
+    owned_or_observed_symptom = bool(
+        re.search(
+            r"\b(?:my|our|this|the)\b.{0,45}"
+            r"\b(?:error|failure|failed|crash(?:ed|ing)?|broken)\b",
+            normalized,
+        )
+    )
+
     context_intent = "learning"
-    if any(cue in normalized for cue in DEBUGGING_CUES):
+    if any(_contains_cue(normalized, cue) for cue in DEBUGGING_CUES):
         context_intent = "debugging"
     elif any(cue in normalized for cue in INSTALLATION_CUES):
         context_intent = "installation"
-    elif any(cue in normalized for cue in TROUBLESHOOTING_CUES):
+    elif explicit_repair_request or owned_or_observed_symptom or any(
+        _contains_cue(normalized, cue)
+        for cue in TROUBLESHOOTING_CUES
+        if cue not in {"error", "failure"}
+    ):
         context_intent = "troubleshooting"
 
     is_local_mcp = (

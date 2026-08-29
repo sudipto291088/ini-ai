@@ -126,6 +126,14 @@ import api.intent_layer as intent_layer
 if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 6:
     intent_layer = importlib.reload(intent_layer)
 detect_intent = intent_layer.detect_intent
+from api.response_strategy import (
+    KS_EXPLICIT,
+    KS_RECOMMENDED,
+    assess_ks_suitability,
+    extract_knowledge_structure_topic,
+    is_explicit_knowledge_structure_request,
+    select_lightweight_questions,
+)
 import api.question_map_focus as question_map_focus
 
 # Streamlit can retain an older imported helper during a development hot
@@ -7238,6 +7246,28 @@ def page_new_chat() -> None:
                             st.session_state.chat_active_id,
                         )
 
+                if (
+                    isinstance(response_payload, dict)
+                    and response_payload.get("knowledge_structure_available")
+                ):
+                    if response_payload.get("ks_suitability") == KS_RECOMMENDED:
+                        st.caption(
+                            "This topic would benefit from the complete learning landscape."
+                        )
+                    if st.button(
+                        "Open the Knowledge Structure",
+                        key=f"{response_card_key}_open_knowledge_structure",
+                        width="content",
+                    ):
+                        ks_topic = str(
+                            response_payload.get("knowledge_structure_topic") or ""
+                        ).strip()
+                        if ks_topic:
+                            _queue_new_chat_request(
+                                f"Open the complete Knowledge Structure for {ks_topic}",
+                                "interrogate",
+                            )
+
                 st.markdown(
                     f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{ts or now_label()}</div>",
                     unsafe_allow_html=True,
@@ -8377,6 +8407,9 @@ def page_new_chat() -> None:
             if interpreted_turn.has_substantive_text
             else display_topic_text
         )
+        explicit_ks_topic = extract_knowledge_structure_topic(display_topic_text)
+        if explicit_ks_topic:
+            semantic_topic_text = explicit_ks_topic
         active_learning_topic = _latest_structured_chat_topic()
         semantic_topic_text = resolve_learning_followup(
             semantic_topic_text,
@@ -9278,7 +9311,85 @@ def page_new_chat() -> None:
                 resolved_learning_topic = str(
                     data.get("topic") or semantic_topic_text
                 ).strip()
+                ks_suitability = assess_ks_suitability(
+                    display_topic_text,
+                    data,
+                )
                 explicit_qm_request = explicit_question_map_request
+                if (
+                    ks_suitability != KS_EXPLICIT
+                    and not explicit_qm_request
+                    and not qm_confirmation_accepted
+                ):
+                    # The existing Question Map remains the source landscape;
+                    # expose only a few diverse questions during ordinary
+                    # conversation and reveal the full KS only on request.
+                    direct_resp = fetch_study_full(
+                        display_topic_text,
+                        mode="focused",
+                        max_rounds=1,
+                    )
+                    direct_text = (
+                        direct_resp.get("answer") or ""
+                    ).strip() or "No answer generated."
+                    lightweight_questions = select_lightweight_questions(
+                        display_topic_text,
+                        data.get("categories") or {},
+                        limit=3,
+                    )
+                    direct_payload = {
+                        "prompt": display_topic_text,
+                        "text": direct_text,
+                        "incomplete": bool(direct_resp.get("incomplete")),
+                        "stop_reason": direct_resp.get("stop_reason") or None,
+                        "mode": "focused",
+                        "followups": lightweight_questions,
+                        "intent": data.get("intent") or "topic_explore",
+                        "should_answer_direct": True,
+                        "response_mode": "conversation",
+                        "context_intent": data.get("response_intent") or "learning",
+                        "show_followups": bool(lightweight_questions),
+                        "needs_clarification": False,
+                        "suppress_profile": True,
+                        "knowledge_structure_available": True,
+                        "knowledge_structure_topic": resolved_learning_topic,
+                        "ks_suitability": ks_suitability,
+                        "ts": now_label(),
+                    }
+                    st.session_state.chat_study_mode_established = False
+
+                    if has_existing_root:
+                        _append_nc_message(
+                            display_topic_text,
+                            direct_payload,
+                            "direct",
+                        )
+                        _persist_new_chat_session(current_sid)
+                        st.rerun()
+                        return
+
+                    st.session_state.chat["topic"] = display_topic_text
+                    st.session_state.chat_root_topic = display_topic_text
+                    st.session_state.chat["interrogate"] = None
+                    st.session_state.chat["illustrate"] = None
+                    st.session_state.chat_intro = ""
+                    st.session_state.chat_direct_answer = direct_payload
+                    st.session_state.chat_answers = {}
+                    st.session_state.chat_followups = {}
+                    st.session_state.chat_open_questions = set()
+                    st.session_state.chat_visited_questions = set()
+                    st.session_state.chat_root_interrogate = None
+                    st.session_state.chat_root_illustrate = None
+                    st.session_state.chat_root_intro = ""
+                    st.session_state.chat_root_direct_answer = direct_payload
+                    st.session_state.chat_root_answers = {}
+                    st.session_state.chat_root_followups = {}
+                    st.session_state.chat_root_open_questions = set()
+                    st.session_state.chat_root_visited_questions = set()
+                    _persist_new_chat_session(current_sid)
+                    st.rerun()
+                    return
+
                 if (
                     has_existing_root
                     and prior_response_mode == "conversation"
@@ -9502,6 +9613,8 @@ def page_new_chat() -> None:
         ):
             return False
         return bool(
+            is_explicit_knowledge_structure_request(normalized)
+            or
             re.search(
                 r"\b(question\s*map|qmap|qm)\b|\b(generate|create|build|make)\b.*\bmap\b",
                 normalized,

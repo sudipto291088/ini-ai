@@ -45,6 +45,24 @@ class ContextAwareResponseModeTests(unittest.TestCase):
         self.assertEqual(result["response_mode"], "question_map")
         self.assertEqual(result["context_intent"], "learning")
 
+    def test_error_vocabulary_in_compound_learning_queries_is_not_troubleshooting(self):
+        prompts = (
+            "How do neural networks learn from errors, and what roles do backpropagation and gradient descent play?",
+            "How does measurement error affect a confidence interval, and how should uncertainty be reported?",
+            "What are common failure modes in bridge design, and how do engineers account for them?",
+            "How do error-correcting codes detect corrupted bits, and what limits their correction capacity?",
+        )
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                result = classify_context(prompt)
+                self.assertEqual(result["response_mode"], "question_map")
+                self.assertEqual(result["context_intent"], "learning")
+
+    def test_observed_error_still_selects_troubleshooting(self):
+        result = classify_context("My training job has an error and keeps failing.")
+        self.assertEqual(result["response_mode"], "carm")
+        self.assertEqual(result["context_intent"], "troubleshooting")
+
     def test_why_is_clause_does_not_turn_mechanism_question_into_troubleshooting(self):
         result = classify_context(
             "How does OAuth2 authorization-code flow with PKCE work, and why is PKCE necessary?"
