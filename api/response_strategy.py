@@ -15,7 +15,7 @@ NO_KS = "NO_KS"
 CONDITIONAL_KS = "CONDITIONAL_KS"
 KS_RECOMMENDED = "KS_RECOMMENDED"
 KS_EXPLICIT = "KS_EXPLICIT"
-RESPONSE_STRATEGY_VERSION = 2
+RESPONSE_STRATEGY_VERSION = 3
 
 
 _EXPLICIT_KS = re.compile(
@@ -95,6 +95,35 @@ def assess_ks_suitability(
     return NO_KS
 
 
+def question_intelligence_limit(query: str) -> int:
+    """Choose a useful 3, 6, or 9-question budget for a substantive query."""
+
+    normalized = re.sub(r"\s+", " ", (query or "").casefold()).strip()
+    words = re.findall(r"[a-z0-9]+", normalized)
+    deep_cue = bool(
+        re.search(
+            r"\b(?:from scratch|in depth|deep dive|comprehensive|research|"
+            r"advanced|end-to-end|step by step|scientific and ethical|"
+            r"compare and contrast)\b",
+            normalized,
+        )
+    )
+    clause_count = len(
+        re.findall(r"(?:[,;:]|\b(?:and|also|as well as|while|whereas)\b)", normalized)
+    )
+    if deep_cue or normalized.count("?") >= 2 or (len(words) >= 16 and clause_count >= 2):
+        return 9
+
+    simple_definition = bool(
+        len(words) <= 7
+        and re.match(r"^(?:what is|what are|define|explain)\b", normalized)
+        and clause_count == 0
+    )
+    if simple_definition:
+        return 3
+    return 6
+
+
 def select_lightweight_questions(
     query: str,
     categories: Mapping[str, Any] | None,
@@ -111,13 +140,25 @@ def select_lightweight_questions(
 
     normalized = (query or "").casefold()
     if re.match(r"\s*how\b", normalized):
-        preferred = ["Mechanisms", "Methods & Tools", "Foundations", "Applications", "Pitfalls"]
+        preferred = [
+            "Mechanisms", "Methods & Tools", "Foundations", "Applications",
+            "Pitfalls", "Orientation", "Advanced / Future",
+        ]
     elif re.match(r"\s*why\b", normalized):
-        preferred = ["Foundations", "Mechanisms", "Pitfalls", "Applications", "Advanced / Future"]
+        preferred = [
+            "Foundations", "Mechanisms", "Pitfalls", "Applications",
+            "Methods & Tools", "Orientation", "Advanced / Future",
+        ]
     elif re.search(r"\b(?:compare|difference|versus|vs\.?|better)\b", normalized):
-        preferred = ["Foundations", "Applications", "Pitfalls", "Mechanisms", "Advanced / Future"]
+        preferred = [
+            "Foundations", "Applications", "Pitfalls", "Mechanisms",
+            "Methods & Tools", "Orientation", "Advanced / Future",
+        ]
     else:
-        preferred = ["Foundations", "Mechanisms", "Applications", "Pitfalls", "Advanced / Future", "Orientation"]
+        preferred = [
+            "Foundations", "Mechanisms", "Applications", "Pitfalls",
+            "Methods & Tools", "Advanced / Future", "Orientation",
+        ]
 
     def question_text(item: Any) -> str:
         if isinstance(item, Mapping):
@@ -178,10 +219,23 @@ def select_lightweight_questions(
         if len(selected) >= limit:
             return selected
 
+    # Six categories provide the broad first tier. A genuinely deep topic may
+    # earn questions 7–9 from the strongest remaining category candidates.
+    for category in preferred:
+        for item in categories.get(category) or []:
+            question = question_text(item)
+            key = re.sub(r"[^a-z0-9]+", " ", question.casefold()).strip()
+            if not question or not key or key in seen:
+                continue
+            selected.append(question)
+            seen.add(key)
+            if len(selected) >= limit:
+                return selected
+
     return selected
 
 
-def fallback_learning_questions(query: str, limit: int = 3) -> list[str]:
+def fallback_learning_questions(query: str, limit: int = 6) -> list[str]:
     """Provide stable, diverse next directions when map generation is unavailable."""
 
     normalized = (query or "").casefold()
@@ -205,6 +259,11 @@ def fallback_learning_questions(query: str, limit: int = 3) -> list[str]:
         "How does this appear in a concrete real-world example?",
         "What trade-offs, exceptions, or common misconceptions should be considered?",
         "How do researchers or practitioners evaluate whether it works as intended?",
+        "Which assumptions does this explanation depend on?",
+        "How does this relate to neighboring ideas or competing approaches?",
+        "What evidence would strengthen or weaken the main claims?",
+        "What consequences follow when this mechanism succeeds or fails?",
+        "Which advanced or unresolved questions offer the most valuable next step?",
     )
     for question in general:
         if len(questions) >= limit:
@@ -224,5 +283,6 @@ __all__ = [
     "extract_knowledge_structure_topic",
     "fallback_learning_questions",
     "is_explicit_knowledge_structure_request",
+    "question_intelligence_limit",
     "select_lightweight_questions",
 ]

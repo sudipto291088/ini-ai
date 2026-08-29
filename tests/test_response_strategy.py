@@ -8,6 +8,7 @@ from api.response_strategy import (
     assess_ks_suitability,
     extract_knowledge_structure_topic,
     fallback_learning_questions,
+    question_intelligence_limit,
     select_lightweight_questions,
 )
 
@@ -92,10 +93,43 @@ class ResponseStrategyTests(unittest.TestCase):
 
     def test_learning_fallback_still_supplies_three_directions(self):
         questions = fallback_learning_questions(
-            "Why does inflation occur, and how do interest-rate increases attempt to control it?"
+            "Why does inflation occur, and how do interest-rate increases attempt to control it?",
+            limit=6,
         )
-        self.assertEqual(len(questions), 3)
+        self.assertEqual(len(questions), 6)
         self.assertIn("mechanisms", questions[0])
+
+    def test_question_intelligence_uses_three_six_nine_model(self):
+        self.assertEqual(question_intelligence_limit("What is Docker?"), 3)
+        self.assertEqual(
+            question_intelligence_limit(
+                "Why does inflation occur, and how do interest rates control it?"
+            ),
+            6,
+        )
+        self.assertEqual(
+            question_intelligence_limit(
+                "How does CRISPR edit DNA, and what scientific and ethical limitations affect its use?"
+            ),
+            9,
+        )
+
+    def test_deep_map_can_supply_nine_diverse_questions(self):
+        categories = {
+            category: [
+                {"question": f"{category} question {index}?"}
+                for index in range(1, 4)
+            ]
+            for category in (
+                "Orientation", "Foundations", "Mechanisms", "Methods & Tools",
+                "Applications", "Pitfalls", "Advanced / Future",
+            )
+        }
+        selected = select_lightweight_questions(
+            "Teach me this topic in depth, step by step.", categories, limit=9
+        )
+        self.assertEqual(len(selected), 9)
+        self.assertEqual(len(set(selected)), 9)
 
 
 if __name__ == "__main__":

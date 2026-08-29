@@ -128,7 +128,7 @@ if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 6:
 detect_intent = intent_layer.detect_intent
 import api.response_strategy as response_strategy
 
-if getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 2:
+if getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 3:
     response_strategy = importlib.reload(response_strategy)
 KS_EXPLICIT = response_strategy.KS_EXPLICIT
 KS_RECOMMENDED = response_strategy.KS_RECOMMENDED
@@ -138,6 +138,7 @@ fallback_learning_questions = response_strategy.fallback_learning_questions
 is_explicit_knowledge_structure_request = (
     response_strategy.is_explicit_knowledge_structure_request
 )
+question_intelligence_limit = response_strategy.question_intelligence_limit
 select_lightweight_questions = response_strategy.select_lightweight_questions
 import api.question_map_focus as question_map_focus
 
@@ -2849,6 +2850,58 @@ a.ini_nc_followup_link:hover {
   border-color: #ffc8d3 !important;
   background: #fff1f4 !important;
   color: #f51b3f !important;
+}
+div[class*="st-key-ini_qi_card_"] {
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin: 5px 0 !important;
+  padding: 3px 7px 5px !important;
+  border: 1px solid rgba(15, 23, 42, 0.065) !important;
+  border-radius: 12px !important;
+  background: rgba(248, 250, 252, 0.48) !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.018) !important;
+}
+div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] {
+  width: fit-content !important;
+  max-width: 100% !important;
+}
+div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button {
+  width: fit-content !important;
+  max-width: 100% !important;
+  min-height: 0 !important;
+  justify-content: flex-start !important;
+  padding: 5px 7px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #172033 !important;
+}
+div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button p {
+  text-align: left !important;
+  white-space: normal !important;
+  line-height: 1.35 !important;
+}
+div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button:hover {
+  color: #f51b3f !important;
+}
+div[class*="st-key-ini_qi_card_"] .ini-qi-answer-separator {
+  height: 1px;
+  margin: 7px 3px 10px;
+  background: rgba(15, 23, 42, 0.055);
+}
+div[class*="st-key-ini_qi_more_"] div[data-testid="stButton"] > button {
+  min-height: 0 !important;
+  justify-content: flex-start !important;
+  padding: 4px 2px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #667085 !important;
+  font-weight: 600 !important;
+}
+div[class*="st-key-ini_qi_more_"] div[data-testid="stButton"] > button:hover {
+  color: #f51b3f !important;
+  text-decoration: underline;
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has([data-testid="stRadio"]) {
   background: linear-gradient(145deg, #ffffff 0%, #fbfcff 70%, #faf8ff 100%) !important;
@@ -7244,12 +7297,98 @@ def page_new_chat() -> None:
                                 ):
                                     _queue_new_chat_request(followup, "interrogate")
                     else:
-                        render_nc_section_title("Suggested Follow-ups")
-                        render_followup_links(
-                            "chat",
-                            followups,
-                            st.session_state.chat_active_id,
+                        progressive_questions = bool(
+                            isinstance(response_payload, dict)
+                            and response_payload.get("question_intelligence")
                         )
+                        if progressive_questions:
+                            cleaned_questions = []
+                            seen_questions = set()
+                            for question in followups:
+                                cleaned = clean_followup_text(question)
+                                dedupe_key = re.sub(
+                                    r"\s+", " ", cleaned.casefold()
+                                ).strip()
+                                if cleaned and dedupe_key not in seen_questions:
+                                    seen_questions.add(dedupe_key)
+                                    cleaned_questions.append(cleaned)
+
+                            visible_key = (
+                                f"{response_card_key}_question_intelligence_visible"
+                            )
+                            visible_count = int(
+                                st.session_state.get(visible_key, 3)
+                            )
+                            visible_count = min(
+                                max(3, visible_count), len(cleaned_questions)
+                            )
+                            render_nc_section_title("Questions worth exploring")
+                            inline_answers_key = (
+                                f"{response_card_key}_question_intelligence_answers"
+                            )
+                            inline_answers = st.session_state.setdefault(
+                                inline_answers_key, {}
+                            )
+                            for question_index, question in enumerate(
+                                cleaned_questions[:visible_count], start=1
+                            ):
+                                with st.container(
+                                    key=(
+                                        f"ini_qi_card_{response_card_key}_"
+                                        f"{question_index}"
+                                    ),
+                                    border=True,
+                                    width="content",
+                                    gap="xsmall",
+                                ):
+                                    if st.button(
+                                        f"{question_index}. {question}",
+                                        key=(
+                                            f"ini_qi_question_{response_card_key}_"
+                                            f"{question_index}"
+                                        ),
+                                        type="tertiary",
+                                        width="content",
+                                    ) and question not in inline_answers:
+                                        with st.spinner("Answering..."):
+                                            inline_response = fetch_study_full(
+                                                question,
+                                                mode="focused",
+                                                max_rounds=0,
+                                            )
+                                        inline_answer = str(
+                                            inline_response.get("answer") or ""
+                                        ).strip()
+                                        inline_answers[question] = (
+                                            inline_answer
+                                            or "I could not complete this answer. Please try again."
+                                        )
+
+                                    if question in inline_answers:
+                                        st.markdown(
+                                            '<div class="ini-qi-answer-separator"></div>',
+                                            unsafe_allow_html=True,
+                                        )
+                                        st.markdown(inline_answers[question])
+                            if visible_count < len(cleaned_questions):
+                                if st.button(
+                                    "See more",
+                                    key=f"ini_qi_more_{response_card_key}",
+                                    type="tertiary",
+                                    width="content",
+                                ):
+                                    st.session_state[visible_key] = min(
+                                        6 if visible_count < 6 else 9,
+                                        len(cleaned_questions),
+                                    )
+                                    st.rerun()
+                        else:
+                            render_nc_section_title("Suggested Follow-ups")
+                            render_followup_links(
+                                "chat",
+                                followups,
+                                st.session_state.chat_active_id,
+                            )
 
                 if (
                     isinstance(response_payload, dict)
@@ -9111,6 +9250,9 @@ def page_new_chat() -> None:
                     # directions, and an on-demand opportunity to retry the
                     # complete structure.
                     if intent_name == "unsupported_learning_topic":
+                        question_limit = question_intelligence_limit(
+                            display_topic_text
+                        )
                         direct_resp = fetch_study_full(
                             display_topic_text,
                             mode="focused",
@@ -9119,7 +9261,10 @@ def page_new_chat() -> None:
                         reply = (direct_resp.get("answer") or "").strip() or (
                             data.get("reply") or "No answer generated."
                         ).strip()
-                        followups = fallback_learning_questions(display_topic_text)
+                        followups = fallback_learning_questions(
+                            display_topic_text,
+                            limit=question_limit,
+                        )
                         direct_payload = {
                             "prompt": display_topic_text,
                             "text": reply,
@@ -9132,6 +9277,8 @@ def page_new_chat() -> None:
                             "response_mode": "conversation",
                             "context_intent": "learning",
                             "show_followups": True,
+                            "question_intelligence": True,
+                            "question_intelligence_count": len(followups),
                             "needs_clarification": False,
                             "suppress_profile": False,
                             "knowledge_structure_available": True,
@@ -9405,10 +9552,13 @@ def page_new_chat() -> None:
                     direct_text = (
                         direct_resp.get("answer") or ""
                     ).strip() or "No answer generated."
+                    question_limit = question_intelligence_limit(
+                        display_topic_text
+                    )
                     lightweight_questions = select_lightweight_questions(
                         display_topic_text,
                         data.get("categories") or {},
-                        limit=3,
+                        limit=question_limit,
                     )
                     direct_payload = {
                         "prompt": display_topic_text,
@@ -9422,6 +9572,10 @@ def page_new_chat() -> None:
                         "response_mode": "conversation",
                         "context_intent": data.get("response_intent") or "learning",
                         "show_followups": bool(lightweight_questions),
+                        "question_intelligence": True,
+                        "question_intelligence_count": len(
+                            lightweight_questions
+                        ),
                         "needs_clarification": False,
                         # Educational answers keep their Topic Profile even
                         # when the full Knowledge Structure is deferred.
