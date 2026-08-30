@@ -2852,42 +2852,99 @@ a.ini_nc_followup_link:hover {
   color: #f51b3f !important;
 }
 div[class*="st-key-ini_qi_card_"] {
-  width: fit-content !important;
+  width: max-content !important;
   max-width: 100% !important;
-  margin: 5px 0 !important;
-  padding: 3px 7px 5px !important;
-  border: 1px solid rgba(15, 23, 42, 0.065) !important;
-  border-radius: 12px !important;
-  background: rgba(248, 250, 252, 0.48) !important;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.018) !important;
+  margin: 4px 0 !important;
+  padding: 0 !important;
+  border: 1px solid rgba(15, 23, 42, 0.055) !important;
+  border-radius: 11px !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.055), 0 2px 7px rgba(15, 23, 42, 0.025) !important;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease !important;
+}
+div[class*="st-key-ini_qi_card_"]:has(div[data-testid="stButton"] > button:hover) {
+  border-color: rgba(226, 232, 240, 0.38) !important;
+  background: #fafbfc !important;
+  box-shadow: 0 15px 38px rgba(15, 23, 42, 0.10), 0 3px 10px rgba(15, 23, 42, 0.035) !important;
 }
 div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] {
-  width: fit-content !important;
+  width: max-content !important;
   max-width: 100% !important;
 }
 div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button {
-  width: fit-content !important;
+  display: flex !important;
+  width: max-content !important;
   max-width: 100% !important;
   min-height: 0 !important;
+  align-items: flex-start !important;
   justify-content: flex-start !important;
-  padding: 5px 7px !important;
+  text-align: left !important;
+  padding: 8px 11px !important;
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
   color: #172033 !important;
 }
 div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button p {
+  display: block !important;
+  width: max-content !important;
+  max-width: 100% !important;
+  margin: 0 !important;
   text-align: left !important;
-  white-space: normal !important;
-  line-height: 1.35 !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  word-spacing: normal !important;
+  letter-spacing: normal !important;
+  line-height: 1.4 !important;
 }
 div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button:hover {
-  color: #f51b3f !important;
+  color: #172033 !important;
+  background: transparent !important;
 }
-div[class*="st-key-ini_qi_card_"] .ini-qi-answer-separator {
-  height: 1px;
-  margin: 7px 3px 10px;
-  background: rgba(15, 23, 42, 0.055);
+div[class*="st-key-ini_qi_answer_card_"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 4px 0 9px !important;
+  padding: 0 !important;
+  min-width: 0 !important;
+  border: 1px solid rgba(226, 232, 240, 0.28) !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  box-shadow: 0 15px 38px rgba(15, 23, 42, 0.10), 0 3px 10px rgba(15, 23, 42, 0.035) !important;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease !important;
+}
+div[class*="st-key-ini_qi_answer_card_"]:hover {
+  border-color: rgba(226, 232, 240, 0.38) !important;
+  background: #fafbfc !important;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.04) !important;
+}
+div[class*="st-key-ini_qi_answer_card_"] > div {
+  background: transparent !important;
+}
+div[class*="st-key-ini_qi_answer_card_"] [data-testid="stMarkdownContainer"] {
+  min-width: 0 !important;
+  padding: 14px 16px !important;
+  color: #3f4858 !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+}
+div[class*="st-key-ini_qi_answer_card_"] [data-testid="stMarkdownContainer"] p {
+  margin: 0 0 10px !important;
+  max-width: 100% !important;
+  overflow-wrap: break-word !important;
+}
+@media (max-width: 760px) {
+  div[class*="st-key-ini_qi_card_"],
+  div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"],
+  div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button {
+    width: 100% !important;
+  }
+  div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button p {
+    width: auto !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+  }
 }
 div[class*="st-key-ini_qi_more_"] div[data-testid="stButton"] > button {
   min-height: 0 !important;
@@ -7332,6 +7389,7 @@ def page_new_chat() -> None:
                             for question_index, question in enumerate(
                                 cleaned_questions[:visible_count], start=1
                             ):
+                                question_clicked = False
                                 with st.container(
                                     key=(
                                         f"ini_qi_card_{response_card_key}_"
@@ -7341,7 +7399,7 @@ def page_new_chat() -> None:
                                     width="content",
                                     gap="xsmall",
                                 ):
-                                    if st.button(
+                                    question_clicked = st.button(
                                         f"{question_index}. {question}",
                                         key=(
                                             f"ini_qi_question_{response_card_key}_"
@@ -7349,26 +7407,32 @@ def page_new_chat() -> None:
                                         ),
                                         type="tertiary",
                                         width="content",
-                                    ) and question not in inline_answers:
-                                        with st.spinner("Answering..."):
-                                            inline_response = fetch_study_full(
-                                                question,
-                                                mode="focused",
-                                                max_rounds=0,
-                                            )
-                                        inline_answer = str(
-                                            inline_response.get("answer") or ""
-                                        ).strip()
-                                        inline_answers[question] = (
-                                            inline_answer
-                                            or "I could not complete this answer. Please try again."
+                                    )
+                                if question_clicked and question not in inline_answers:
+                                    with st.spinner("Answering..."):
+                                        inline_response = fetch_study_full(
+                                            question,
+                                            mode="focused",
+                                            max_rounds=0,
                                         )
+                                    inline_answer = str(
+                                        inline_response.get("answer") or ""
+                                    ).strip()
+                                    inline_answers[question] = (
+                                        inline_answer
+                                        or "I could not complete this answer. Please try again."
+                                    )
 
-                                    if question in inline_answers:
-                                        st.markdown(
-                                            '<div class="ini-qi-answer-separator"></div>',
-                                            unsafe_allow_html=True,
-                                        )
+                                if question in inline_answers:
+                                    with st.container(
+                                        key=(
+                                            f"ini_qi_answer_card_{response_card_key}_"
+                                            f"{question_index}"
+                                        ),
+                                        border=True,
+                                        width="stretch",
+                                        gap=None,
+                                    ):
                                         st.markdown(inline_answers[question])
                             if visible_count < len(cleaned_questions):
                                 if st.button(
