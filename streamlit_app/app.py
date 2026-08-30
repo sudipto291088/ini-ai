@@ -2912,6 +2912,36 @@ div[class*="_answer_tabs"] [data-testid="stMarkdownContainer"] li > ol {
   margin: 0.3em 0 0.55em !important;
   padding-left: 1.35rem !important;
 }
+div[class*="_open_knowledge_structure"] {
+  margin-top: 10px !important;
+}
+div[class*="_open_knowledge_structure"] button {
+  min-height: 32px !important;
+  padding: 5px 8px !important;
+  border: 1px solid transparent !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+  color: #374151 !important;
+  box-shadow: none !important;
+  transition: background 140ms ease, color 140ms ease !important;
+}
+div[class*="_open_knowledge_structure"] button p {
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+div[class*="_open_knowledge_structure"] button [data-testid="stIconMaterial"] {
+  color: #4b5563 !important;
+  font-size: 16px !important;
+}
+div[class*="_open_knowledge_structure"] button:hover {
+  border-color: transparent !important;
+  background: rgba(15, 23, 42, 0.055) !important;
+  color: #111827 !important;
+}
+div[class*="_open_knowledge_structure"] button:active {
+  background: rgba(15, 23, 42, 0.085) !important;
+}
 div[class*="st-key-ini_qi_card_"]:has(div[data-testid="stButton"] > button:hover) {
   border-color: rgba(226, 232, 240, 0.38) !important;
   background: #fafbfc !important;
@@ -7663,6 +7693,7 @@ def page_new_chat() -> None:
                     if st.button(
                         "Open the Knowledge Structure",
                         key=f"{response_card_key}_open_knowledge_structure",
+                        icon=":material/account_tree:",
                         width="content",
                     ):
                         ks_topic = str(
