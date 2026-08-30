@@ -2883,6 +2883,35 @@ div[class*="st-key-ini_qi_panel_"] div[data-testid="stToggle"] p {
   color: #4b5563 !important;
   font-size: 13px !important;
 }
+div[class*="_answer_tabs"] [data-testid="stTabContent"] {
+  padding: 14px 5px 4px !important;
+}
+div[class*="_answer_tabs"] [data-testid="stMarkdownContainer"] {
+  color: #30394a !important;
+  font-size: 16px !important;
+  line-height: 1.72 !important;
+  text-align: left !important;
+}
+div[class*="_answer_tabs"] [data-testid="stMarkdownContainer"] p {
+  margin: 0 0 1em !important;
+}
+div[class*="_answer_tabs"] [data-testid="stMarkdownContainer"] p:last-child {
+  margin-bottom: 0 !important;
+}
+div[class*="_answer_tabs"] [data-testid="stMarkdownContainer"] ul,
+div[class*="_answer_tabs"] [data-testid="stMarkdownContainer"] ol {
+  margin: 0.45em 0 1em !important;
+  padding-left: 1.55rem !important;
+}
+div[class*="_answer_tabs"] [data-testid="stMarkdownContainer"] li {
+  margin: 0.32em 0 !important;
+  padding-left: 0.22rem !important;
+}
+div[class*="_answer_tabs"] [data-testid="stMarkdownContainer"] li > ul,
+div[class*="_answer_tabs"] [data-testid="stMarkdownContainer"] li > ol {
+  margin: 0.3em 0 0.55em !important;
+  padding-left: 1.35rem !important;
+}
 div[class*="st-key-ini_qi_card_"]:has(div[data-testid="stButton"] > button:hover) {
   border-color: rgba(226, 232, 240, 0.38) !important;
   background: #fafbfc !important;
@@ -7113,7 +7142,132 @@ def page_new_chat() -> None:
                     st.markdown('<span class="ini-carm-response-surface"></span>', unsafe_allow_html=True)
 
                 def _render_response_copy() -> None:
-                    if clarification_ctas:
+                    layered_answer = bool(
+                        isinstance(response_payload, dict)
+                        and response_payload.get("question_intelligence")
+                    )
+                    if layered_answer:
+                        answer_views_key = f"{response_card_key}_answer_views"
+                        answer_views = st.session_state.setdefault(
+                            answer_views_key,
+                            {},
+                        )
+                        persisted_views = response_payload.get("answer_views")
+                        if isinstance(persisted_views, dict):
+                            for view_name, view_text in persisted_views.items():
+                                if str(view_text or "").strip():
+                                    answer_views.setdefault(
+                                        str(view_name),
+                                        str(view_text).strip(),
+                                    )
+                        original_mode = str(
+                            response_payload.get("mode") or "focused"
+                        ).strip().lower()
+                        if original_mode == "clear":
+                            answer_views.setdefault("clear", text)
+                        else:
+                            answer_views.setdefault("technical", text)
+
+                        def _render_layered_answer(
+                            view_name: str,
+                            answer_text: str,
+                        ) -> None:
+                            lettered_points = re.findall(
+                                r"(?<!\w)\(([a-z])\)\s+",
+                                answer_text,
+                                flags=re.IGNORECASE,
+                            )
+                            if len(lettered_points) >= 2:
+                                answer_text = re.sub(
+                                    r"\s*(?<!\w)\(([a-z])\)\s+",
+                                    r"\n\n&nbsp;&nbsp;&nbsp;**\1.** ",
+                                    answer_text,
+                                    flags=re.IGNORECASE,
+                                )
+                                answer_text = re.sub(
+                                    r"(?<=\.)\s+(Also|Finally),",
+                                    r"\n\n\1,",
+                                    answer_text,
+                                )
+                            streamed_views = st.session_state.setdefault(
+                                "_ini_layered_answer_streamed",
+                                set(),
+                            )
+                            stream_key = (
+                                f"{response_card_key}:{view_name}:"
+                                f"{len(answer_text)}"
+                            )
+                            if stream_key in streamed_views:
+                                st.markdown(answer_text)
+                                return
+
+                            def _answer_text_stream():
+                                for offset in range(0, len(answer_text), 3):
+                                    yield answer_text[offset : offset + 3]
+                                    time.sleep(0.006)
+
+                            st.write_stream(_answer_text_stream())
+                            streamed_views.add(stream_key)
+
+                        answer_tabs_key = f"{response_card_key}_answer_tabs"
+                        if st.session_state.get(answer_tabs_key) == "Understand":
+                            st.session_state[answer_tabs_key] = "Insight"
+                        clear_tab, technical_tab = st.tabs(
+                            ["Insight", "Technical"],
+                            key=answer_tabs_key,
+                            on_change="rerun",
+                        )
+                        if clear_tab.open:
+                            with clear_tab:
+                                if not answer_views.get("clear"):
+                                    with st.spinner("Shaping a clear explanation..."):
+                                        clear_response = fetch_study_full(
+                                            str(response_payload.get("prompt") or ""),
+                                            mode="clear",
+                                            max_rounds=1,
+                                        )
+                                    answer_views["clear"] = str(
+                                        clear_response.get("answer") or ""
+                                    ).strip() or text
+                                    response_payload["answer_views"] = dict(
+                                        answer_views
+                                    )
+                                    active_sid = (
+                                        st.session_state.chat_active_id
+                                        or st.session_state.chat_loaded_sid
+                                    )
+                                    if active_sid:
+                                        _persist_new_chat_session(active_sid)
+                                _render_layered_answer(
+                                    "clear",
+                                    answer_views["clear"],
+                                )
+                        if technical_tab.open:
+                            with technical_tab:
+                                if not answer_views.get("technical"):
+                                    with st.spinner("Building the technical explanation..."):
+                                        technical_response = fetch_study_full(
+                                            str(response_payload.get("prompt") or ""),
+                                            mode="technical",
+                                            max_rounds=1,
+                                        )
+                                    answer_views["technical"] = str(
+                                        technical_response.get("answer") or ""
+                                    ).strip() or text
+                                    response_payload["answer_views"] = dict(
+                                        answer_views
+                                    )
+                                    active_sid = (
+                                        st.session_state.chat_active_id
+                                        or st.session_state.chat_loaded_sid
+                                    )
+                                    if active_sid:
+                                        _persist_new_chat_session(active_sid)
+                                _render_layered_answer(
+                                    "technical",
+                                    answer_views["technical"],
+                                )
+                    elif clarification_ctas:
                         st.markdown(text)
                     elif stream_response:
                         stream_text = re.sub(
@@ -9363,7 +9517,7 @@ def page_new_chat() -> None:
                         )
                         direct_resp = fetch_study_full(
                             display_topic_text,
-                            mode="focused",
+                            mode="clear",
                             max_rounds=1,
                         )
                         reply = (direct_resp.get("answer") or "").strip() or (
@@ -9378,7 +9532,7 @@ def page_new_chat() -> None:
                             "text": reply,
                             "incomplete": bool(direct_resp.get("incomplete")),
                             "stop_reason": direct_resp.get("stop_reason") or None,
-                            "mode": "focused",
+                            "mode": "clear",
                             "followups": followups,
                             "intent": "topic_explore",
                             "should_answer_direct": True,
@@ -9654,7 +9808,7 @@ def page_new_chat() -> None:
                     # conversation and reveal the full KS only on request.
                     direct_resp = fetch_study_full(
                         display_topic_text,
-                        mode="focused",
+                        mode="clear",
                         max_rounds=1,
                     )
                     direct_text = (
@@ -9673,7 +9827,7 @@ def page_new_chat() -> None:
                         "text": direct_text,
                         "incomplete": bool(direct_resp.get("incomplete")),
                         "stop_reason": direct_resp.get("stop_reason") or None,
-                        "mode": "focused",
+                        "mode": "clear",
                         "followups": lightweight_questions,
                         "intent": data.get("intent") or "topic_explore",
                         "should_answer_direct": True,

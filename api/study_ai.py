@@ -42,6 +42,8 @@ def _normalize_mode(raw: Optional[str]) -> str:
       - high (overview)
       - quiz
       - focused (FUQ-style direct deep bullets)
+      - clear (human-readable conceptual answer)
+      - technical (mechanism-focused answer)
       - carm (context-aware immediate practical answer)
       - conversation (short natural conversational turn)
     Accept common aliases.
@@ -75,6 +77,10 @@ def _normalize_mode(raw: Optional[str]) -> str:
         "fuq": "focused",
         "bullet": "focused",
         "bullets": "focused",
+        "clear": "clear",
+        "understand": "clear",
+        "technical": "technical",
+        "mechanism": "technical",
         "carm": "carm",
         "context": "carm",
         "conversation": "conversation",
@@ -249,6 +255,40 @@ def _build_instruction(mode: str) -> str:
             "- Use examples only when they genuinely improve clarity.\n"
             "- Avoid numbered sections unless steps are necessary.\n"
             "- End naturally and cleanly.\n"
+        )
+
+    if mode == "clear":
+        return (
+            "You are InI, a perceptive and exceptionally clear AI tutor.\n"
+            "Answer the user's exact question as a coherent explanation that genuinely helps them understand.\n"
+            "- Begin with the central distinction or insight, not terminology or a generic definition.\n"
+            "- Build one connected line of reasoning in which each paragraph naturally motivates the next.\n"
+            "- Separate each complete thought into a short paragraph with a blank line between paragraphs.\n"
+            "- Prefer plain language, but preserve every distinction needed for factual accuracy.\n"
+            "- Introduce technical terms only when their purpose is already clear from the explanation.\n"
+            "- Use a brief analogy or intuitive question only when it materially improves understanding.\n"
+            "- Explain why the answer matters or what tension, consequence, or limitation follows from it.\n"
+            "- Target roughly 220 to 360 words in short readable paragraphs.\n"
+            "- Do not use headings or equations. When distinct factors would otherwise appear inline as (a), (b), and (c), place them on separate, properly indented Markdown list lines.\n"
+            "- Do not add a Question Map, suggested follow-ups, or invitations to continue.\n"
+            "- End with a conclusive insight rather than repeating the opening.\n"
+            "- Never trade accuracy for warmth, confidence, or elegance.\n"
+        )
+
+    if mode == "technical":
+        return (
+            "You are InI, a precise technical AI tutor.\n"
+            "Answer the user's exact question through its concrete mechanisms.\n"
+            "- State the technical claim directly, then explain how the mechanism works.\n"
+            "- Use accepted terminology, named components, variables, equations, or operational stages when relevant.\n"
+            "- Distinguish mechanism, evidence, assumptions, limitations, and failure modes where the question requires them.\n"
+            "- Use short bold Markdown subheadings only when they help a technical reader scan distinct mechanisms.\n"
+            "- Separate paragraphs with blank lines and indent Markdown lists conventionally, including any nested items.\n"
+            "- Prefer compact paragraphs; use a short list only when the information is genuinely sequential.\n"
+            "- Target roughly 220 to 420 words, proportional to the question.\n"
+            "- Do not add a Question Map, suggested follow-ups, or a second simplified explanation.\n"
+            "- End after the technical answer is complete; do not repeat it in a conclusion.\n"
+            "- Never invent precision, sources, current facts, or implementation details.\n"
         )
 
     # deep (default)
@@ -720,6 +760,7 @@ def _adapt_compare_journey(answer: str, user_topic: str) -> str:
             "the first metric",
             "the second metric",
         )
+
         replacement = f"""<CONTINUE_JOURNEY>
 <DIRECTIONS>
 1. Strengthen metric interpretation :: Recalculate both metrics from several confusion matrices and explain every change.
@@ -1088,11 +1129,10 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
 
     llm_topic = _resolve_topic_context(user_topic)
 
-    # Focused mode = clicked Question Map / FUQ answer.
-    # These are already educational questions and should bypass
+    # Direct educational answer modes are already scoped by the caller and should bypass
     # conversational intent filtering.
-    if mode == "focused":
-        intent_name = "focused_question"
+    if mode in {"focused", "clear", "technical"}:
+        intent_name = f"{mode}_question"
         should_interrogate = True
         should_answer_direct = False
     else:
@@ -1128,10 +1168,10 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
 
     # Normal conversational behavior: greeting / thanks / help / etc.
     if (
-    mode != "focused"
-    and not should_interrogate
-    and not should_answer_direct
-        ):
+        mode not in {"focused", "clear", "technical"}
+        and not should_interrogate
+        and not should_answer_direct
+    ):
         reply = (intent.get("reply") or "").strip() or "Send a topic to explore."
         return {
             "mode": mode,

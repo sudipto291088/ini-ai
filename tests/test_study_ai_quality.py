@@ -426,6 +426,18 @@ Purpose: A partial response."""
         self.assertIn("no more than 80 words", instruction)
         self.assertIn("Do not add a generic guide", instruction)
 
+    def test_layered_answer_modes_are_distinct(self) -> None:
+        clear = study_module._build_instruction("clear")
+        technical = study_module._build_instruction("technical")
+
+        self.assertEqual(study_module._normalize_mode("understand"), "clear")
+        self.assertEqual(study_module._normalize_mode("mechanism"), "technical")
+        self.assertIn("connected line of reasoning", clear)
+        self.assertIn("conclusive insight", clear)
+        self.assertIn("concrete mechanisms", technical)
+        self.assertIn("accepted terminology", technical)
+        self.assertNotEqual(clear, technical)
+
     def test_continuation_context_preserves_opening_and_ending(self) -> None:
         previous = "OPENING-MARKER\n" + ("middle " * 1200) + "\nENDING-MARKER"
 
