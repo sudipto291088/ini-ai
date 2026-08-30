@@ -2862,6 +2862,27 @@ div[class*="st-key-ini_qi_card_"] {
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.055), 0 2px 7px rgba(15, 23, 42, 0.025) !important;
   transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease !important;
 }
+div[class*="st-key-ini_qi_panel_"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 14px 0 8px !important;
+  padding: 12px 14px 14px !important;
+  border: 1px solid rgba(226, 232, 240, 0.34) !important;
+  border-radius: 16px !important;
+  background: rgba(248, 250, 252, 0.42) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.045) !important;
+}
+div[class*="st-key-ini_qi_panel_"] > div {
+  background: transparent !important;
+}
+div[class*="st-key-ini_qi_panel_"] div[data-testid="stToggle"] {
+  margin: 0 0 2px auto !important;
+  width: max-content !important;
+}
+div[class*="st-key-ini_qi_panel_"] div[data-testid="stToggle"] p {
+  color: #4b5563 !important;
+  font-size: 13px !important;
+}
 div[class*="st-key-ini_qi_card_"]:has(div[data-testid="stButton"] > button:hover) {
   border-color: rgba(226, 232, 240, 0.38) !important;
   background: #fafbfc !important;
@@ -7379,73 +7400,96 @@ def page_new_chat() -> None:
                             visible_count = min(
                                 max(3, visible_count), len(cleaned_questions)
                             )
-                            render_nc_section_title("Questions worth exploring")
                             inline_answers_key = (
                                 f"{response_card_key}_question_intelligence_answers"
                             )
                             inline_answers = st.session_state.setdefault(
                                 inline_answers_key, {}
                             )
-                            for question_index, question in enumerate(
-                                cleaned_questions[:visible_count], start=1
+                            with st.container(
+                                key=f"ini_qi_panel_{response_card_key}",
+                                border=True,
+                                width="stretch",
+                                gap="small",
                             ):
-                                question_clicked = False
                                 with st.container(
-                                    key=(
-                                        f"ini_qi_card_{response_card_key}_"
-                                        f"{question_index}"
-                                    ),
-                                    border=True,
-                                    width="content",
-                                    gap="xsmall",
+                                    horizontal=True,
+                                    horizontal_alignment="right",
                                 ):
-                                    question_clicked = st.button(
-                                        f"{question_index}. {question}",
+                                    hide_inline_answers = st.toggle(
+                                        "Hide answers",
                                         key=(
-                                            f"ini_qi_question_{response_card_key}_"
-                                            f"{question_index}"
+                                            f"{response_card_key}_"
+                                            "question_intelligence_hide_answers"
                                         ),
-                                        type="tertiary",
-                                        width="content",
+                                        value=False,
                                     )
-                                if question_clicked and question not in inline_answers:
-                                    with st.spinner("Answering..."):
-                                        inline_response = fetch_study_full(
-                                            question,
-                                            mode="focused",
-                                            max_rounds=0,
-                                        )
-                                    inline_answer = str(
-                                        inline_response.get("answer") or ""
-                                    ).strip()
-                                    inline_answers[question] = (
-                                        inline_answer
-                                        or "I could not complete this answer. Please try again."
-                                    )
-
-                                if question in inline_answers:
+                                for question_index, question in enumerate(
+                                    cleaned_questions[:visible_count], start=1
+                                ):
+                                    question_clicked = False
                                     with st.container(
                                         key=(
-                                            f"ini_qi_answer_card_{response_card_key}_"
+                                            f"ini_qi_card_{response_card_key}_"
                                             f"{question_index}"
                                         ),
                                         border=True,
-                                        width="stretch",
-                                        gap=None,
+                                        width="content",
+                                        gap="xsmall",
                                     ):
-                                        st.markdown(inline_answers[question])
-                            if visible_count < len(cleaned_questions):
-                                if st.button(
-                                    "See more",
-                                    key=f"ini_qi_more_{response_card_key}",
-                                    type="tertiary",
-                                    width="content",
-                                ):
-                                    st.session_state[visible_key] = min(
-                                        6 if visible_count < 6 else 9,
-                                        len(cleaned_questions),
-                                    )
-                                    st.rerun()
+                                        question_clicked = st.button(
+                                            f"{question_index}. {question}",
+                                            key=(
+                                                f"ini_qi_question_{response_card_key}_"
+                                                f"{question_index}"
+                                            ),
+                                            type="tertiary",
+                                            width="content",
+                                        )
+                                    if (
+                                        question_clicked
+                                        and question not in inline_answers
+                                    ):
+                                        with st.spinner("Answering..."):
+                                            inline_response = fetch_study_full(
+                                                question,
+                                                mode="focused",
+                                                max_rounds=0,
+                                            )
+                                        inline_answer = str(
+                                            inline_response.get("answer") or ""
+                                        ).strip()
+                                        inline_answers[question] = (
+                                            inline_answer
+                                            or "I could not complete this answer. Please try again."
+                                        )
+
+                                    if (
+                                        question in inline_answers
+                                        and not hide_inline_answers
+                                    ):
+                                        with st.container(
+                                            key=(
+                                                "ini_qi_answer_card_"
+                                                f"{response_card_key}_{question_index}"
+                                            ),
+                                            border=True,
+                                            width="stretch",
+                                            gap=None,
+                                        ):
+                                            st.markdown(inline_answers[question])
+                                if visible_count < len(cleaned_questions):
+                                    if st.button(
+                                        "See more",
+                                        key=f"ini_qi_more_{response_card_key}",
+                                        type="tertiary",
+                                        width="content",
+                                    ):
+                                        st.session_state[visible_key] = min(
+                                            6 if visible_count < 6 else 9,
+                                            len(cleaned_questions),
+                                        )
+                                        st.rerun()
                         else:
                             render_nc_section_title("Suggested Follow-ups")
                             render_followup_links(
