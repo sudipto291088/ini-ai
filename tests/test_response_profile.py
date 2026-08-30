@@ -37,6 +37,33 @@ class ResponseProfileTests(unittest.TestCase):
         self.assertEqual(rows["Entity type"], "Technical integration and configuration")
         self.assertEqual(rows["Broad field"], "Systems integration")
 
+    def test_learning_conversation_uses_subject_profile_with_prerequisites(self):
+        rows = dict(
+            build_response_profile(
+                "How do transformer-based AI models understand context and hallucinate?",
+                intent="topic_explore",
+                response_mode="conversation",
+                context_intent="explore",
+            )
+        )
+        self.assertEqual(rows["Name type"], "Learning question")
+        self.assertEqual(
+            rows["Broad field"],
+            "Artificial intelligence / Natural language processing",
+        )
+        self.assertIn("probability", rows["Prerequisites"])
+
+    def test_unknown_learning_subject_still_exposes_safe_foundations(self):
+        rows = dict(
+            build_response_profile(
+                "How do coral reefs recover after bleaching?",
+                response_mode="conversation",
+                context_intent="learning",
+            )
+        )
+        self.assertEqual(rows["Entity type"], "Concept, process, or subject")
+        self.assertIn("introductory concepts", rows["Prerequisites"])
+
 
 if __name__ == "__main__":
     unittest.main()

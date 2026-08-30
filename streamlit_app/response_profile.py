@@ -97,6 +97,101 @@ def _illustration_topic_profile(text: str, normalized: str) -> ProfileRows:
     ]
 
 
+def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
+    """Describe a learning subject and expose its foundations immediately."""
+    profiles = [
+        (
+            ("transformer", "large language model", "llm", "language model"),
+            "Machine learning model architecture",
+            "Artificial intelligence / Natural language processing",
+            "Attention, tokenization, embeddings, generation, hallucination",
+            "Basic neural networks, vectors and matrices, probability, and tokenization",
+        ),
+        (
+            ("machine learning", "neural network", "deep learning"),
+            "Machine learning concept",
+            "Artificial intelligence",
+            "Training data, optimization, evaluation, model behaviour",
+            "Basic algebra, probability, statistics, and programming concepts",
+        ),
+        (
+            ("data science", "data analysis"),
+            "Data-analysis discipline",
+            "Data science",
+            "Statistics, data preparation, visualization, machine learning",
+            "Basic statistics, spreadsheets or tabular data, and introductory programming",
+        ),
+        (
+            ("crispr", "gene editing", "genome editing"),
+            "Genome-editing technique",
+            "Molecular biology / Genetic engineering",
+            "DNA repair, guide RNA, nucleases, delivery, bioethics",
+            "DNA structure, genes and proteins, cell biology, and basic inheritance",
+        ),
+        (
+            ("dna replication", "genetics", "genome"),
+            "Biological process or concept",
+            "Molecular biology / Genetics",
+            "DNA structure, enzymes, inheritance, mutation, repair",
+            "Cells, DNA base pairing, genes, proteins, and basic chemistry",
+        ),
+        (
+            ("a/b testing", "controlled experiment", "randomized experiment"),
+            "Controlled experimentation method",
+            "Statistics / Product experimentation",
+            "Randomization, hypotheses, metrics, significance, decision-making",
+            "Percentages, probability, descriptive statistics, and basic hypothesis testing",
+        ),
+        (
+            ("linear regression", "logistic regression", "regression"),
+            "Statistical learning method",
+            "Statistics / Machine learning",
+            "Model assumptions, coefficients, estimation, regularization, evaluation",
+            "Algebra, functions, descriptive statistics, probability, and coordinate graphs",
+        ),
+        (
+            ("quantum computing", "quantum computer"),
+            "Computing paradigm",
+            "Quantum information science",
+            "Qubits, superposition, measurement, entanglement, algorithms",
+            "Vectors and matrices, probability, complex numbers, and basic computing concepts",
+        ),
+        (
+            ("kubernetes",),
+            "Container orchestration platform",
+            "Cloud computing",
+            "Containers, clusters, deployments, networking, scaling",
+            "Containers, Linux command-line basics, networking, and YAML configuration",
+        ),
+        (
+            ("mcp server", "model context protocol"),
+            "Technical integration standard",
+            "AI systems integration",
+            "Clients, servers, tools, transports, permissions, verification",
+            "Client–server basics, JSON, command-line use, and local process or HTTP concepts",
+        ),
+    ]
+    for keywords, entity_type, broad_field, related, prerequisites in profiles:
+        if any(keyword in normalized for keyword in keywords):
+            return [
+                ("Name type", "Learning question"),
+                ("Entity type", entity_type),
+                ("Broad field", broad_field),
+                ("Subject", _subject(text)),
+                ("Related topics", related),
+                ("Prerequisites", prerequisites),
+            ]
+
+    return [
+        ("Name type", "Learning question"),
+        ("Entity type", "Concept, process, or subject"),
+        ("Broad field", "Knowledge domain"),
+        ("Subject", _subject(text)),
+        ("Related topics", "Foundations, mechanisms, applications, limitations"),
+        ("Prerequisites", "Basic terminology and introductory concepts in the subject area"),
+    ]
+
+
 def build_response_profile(
     prompt: str,
     intent: str = "",
@@ -142,6 +237,11 @@ def build_response_profile(
             ("Subject", _subject(text)),
             ("Related topics", "Calculus, loss functions, model training, learning rates"),
         ]
+
+    if intent == "topic_explore" or context_intent in {
+        "learning", "explore", "explain", "teach", "compare", "decide", "quiz", "example",
+    }:
+        return _educational_topic_profile(text, normalized)
 
     if response_mode == "conversation":
         if re.search(r"\b(call you|your name|who are you|what should i call)\b", normalized):
