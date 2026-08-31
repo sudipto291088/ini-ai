@@ -10479,13 +10479,15 @@ def page_new_chat() -> None:
             generation_icon_path.read_bytes()
         ).decode("ascii")
         status_copy = "Creating illustration..." if action == "illustrate" else (
-            "Forming your answer..."
+            "Thinking..."
             if status_mode == "thinking"
+            else "Forming your answer..."
+            if status_mode == "forming"
             else "Generating Question Map..."
             if status_mode == "question_map"
             else "Generating response... may take some time."
         )
-        forming_lines = "" if action == "illustrate" else """
+        forming_lines = "" if status_mode != "forming" else """
               <div class="nc-answer-forming-lines" aria-label="Answer is forming">
                 <span class="nc-answer-forming-line"></span>
                 <span class="nc-answer-forming-line"></span>
@@ -10618,7 +10620,11 @@ def page_new_chat() -> None:
             # Give the interpretation state enough time to be perceived, then
             # reveal the operation InI has selected. Clarification stays in the
             # Thinking state because no answer/map generation has begun.
-            time.sleep(0.65)
+            # Let the interpretation phase register as a deliberate act of
+            # judgment before revealing the operation InI selected.
+            # Keep the decision phase visible long enough to feel intentional,
+            # even after Streamlit's rerun/render latency is accounted for.
+            time.sleep(8.0)
             if action == "illustrate":
                 resolved_status = "generating"
             elif (
@@ -10642,11 +10648,10 @@ def page_new_chat() -> None:
             ):
                 resolved_status = "question_map"
             else:
-                # Conversation, clarification, short follow-ups, and unknown
-                # requests remain in interpretation mode. "Generating
-                # response" is reserved for a generation operation that InI
-                # has positively identified, not every ordinary question.
-                resolved_status = "thinking"
+                # Interpretation is complete: ordinary conversational and
+                # learning responses now visibly enter their answer-forming
+                # phase before the generated text begins streaming.
+                resolved_status = "forming"
 
             if resolved_status != "thinking":
                 generation_slot.empty()
