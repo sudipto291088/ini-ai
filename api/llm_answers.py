@@ -30,6 +30,10 @@ from api.datacite_knowledge import (
     format_datacite_prompt_context,
     retrieve_datacite_context,
 )
+from api.doaj_knowledge import (
+    format_doaj_prompt_context,
+    retrieve_doaj_context,
+)
 from api.openalex_knowledge import (
     format_openalex_prompt_context,
     retrieve_openalex_context,
@@ -517,10 +521,12 @@ def generate_dynamic_answer_result(
     datacite_prompt_context = ""
     openalex_context: Dict[str, Any] = {}
     openalex_prompt_context = ""
+    doaj_context: Dict[str, Any] = {}
+    doaj_prompt_context = ""
     if not (isinstance(meta, dict) and str(meta.get("mode") or "").lower() == "warmup"):
         # Independent public lookups run together so additional sources do not
         # multiply the user's retrieval wait.
-        with ThreadPoolExecutor(max_workers=7) as executor:
+        with ThreadPoolExecutor(max_workers=8) as executor:
             wikidata_future = executor.submit(retrieve_wikidata_context, topic)
             wikipedia_future = executor.submit(retrieve_wikipedia_context, topic)
             wikibooks_future = executor.submit(retrieve_wikibooks_context, topic)
@@ -528,6 +534,7 @@ def generate_dynamic_answer_result(
             crossref_future = executor.submit(retrieve_crossref_context, topic)
             datacite_future = executor.submit(retrieve_datacite_context, topic)
             openalex_future = executor.submit(retrieve_openalex_context, topic)
+            doaj_future = executor.submit(retrieve_doaj_context, topic)
             wikidata_context = wikidata_future.result()
             wikipedia_context = wikipedia_future.result()
             wikibooks_context = wikibooks_future.result()
@@ -535,6 +542,7 @@ def generate_dynamic_answer_result(
             crossref_context = crossref_future.result()
             datacite_context = datacite_future.result()
             openalex_context = openalex_future.result()
+            doaj_context = doaj_future.result()
         wikidata_prompt_context = format_wikidata_prompt_context(wikidata_context)
         wikipedia_prompt_context = format_wikipedia_prompt_context(wikipedia_context)
         wikibooks_prompt_context = format_wikibooks_prompt_context(wikibooks_context)
@@ -542,6 +550,7 @@ def generate_dynamic_answer_result(
         crossref_prompt_context = format_crossref_prompt_context(crossref_context)
         datacite_prompt_context = format_datacite_prompt_context(datacite_context)
         openalex_prompt_context = format_openalex_prompt_context(openalex_context)
+        doaj_prompt_context = format_doaj_prompt_context(doaj_context)
 
     knowledge_sources = [
         context
@@ -553,6 +562,7 @@ def generate_dynamic_answer_result(
             crossref_context,
             datacite_context,
             openalex_context,
+            doaj_context,
         )
         if context
     ]
@@ -571,6 +581,7 @@ def generate_dynamic_answer_result(
         f"{crossref_prompt_context}\n\n"
         f"{datacite_prompt_context}\n\n"
         f"{openalex_prompt_context}\n\n"
+        f"{doaj_prompt_context}\n\n"
         f"User question / instruction:\n{question}\n"
     )
 
