@@ -128,7 +128,7 @@ if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 6:
 detect_intent = intent_layer.detect_intent
 import api.response_strategy as response_strategy
 
-if getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 3:
+if getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 5:
     response_strategy = importlib.reload(response_strategy)
 KS_EXPLICIT = response_strategy.KS_EXPLICIT
 KS_RECOMMENDED = response_strategy.KS_RECOMMENDED
@@ -140,6 +140,10 @@ is_explicit_knowledge_structure_request = (
 )
 question_intelligence_limit = response_strategy.question_intelligence_limit
 select_lightweight_questions = response_strategy.select_lightweight_questions
+initial_answer_opening = response_strategy.initial_answer_opening
+related_questions_bridge = response_strategy.related_questions_bridge
+knowledge_structure_bridge = response_strategy.knowledge_structure_bridge
+no_knowledge_structure_notice = response_strategy.no_knowledge_structure_notice
 import api.question_map_focus as question_map_focus
 
 # Streamlit can retain an older imported helper during a development hot
@@ -7209,6 +7213,28 @@ def page_new_chat() -> None:
             response_icon_path.read_bytes()
         ).decode("ascii")
 
+        # Topic Profile is a permanent companion to every ordinary InI
+        # response.  Resolve it here—not in individual routes—so a casual,
+        # direct, practical, illustrated, or later response cannot silently
+        # suppress it.  Full Knowledge Structures use their own composition.
+        payload_info = response_payload if isinstance(response_payload, dict) else {}
+        is_knowledge_structure = bool(
+            payload_info.get("knowledge_structure_rendered")
+            or payload_info.get("response_mode") == "knowledge_structure"
+        )
+        if not is_knowledge_structure:
+            profile_source = str(
+                payload_info.get("profile_prompt")
+                or payload_info.get("prompt")
+                or ""
+            ).strip()
+            if not topic_profile and profile_source:
+                topic_profile = _profile_for_response(
+                    profile_source,
+                    payload_info,
+                )
+            compact_profile = bool(topic_profile)
+
         with st.container(
             horizontal=True,
             vertical_alignment="top",
@@ -7555,6 +7581,16 @@ def page_new_chat() -> None:
                     else:
                         st.markdown(text)
 
+                human_guided_ia = bool(
+                    isinstance(response_payload, dict)
+                    and response_payload.get("question_intelligence")
+                )
+                response_prompt = str(
+                    (response_payload or {}).get("prompt") or ""
+                ).strip()
+                if human_guided_ia:
+                    st.markdown(initial_answer_opening(response_prompt))
+
                 if topic_profile and compact_profile:
                     reply_col, profile_col = st.columns(
                         [1.55, 1],
@@ -7623,6 +7659,7 @@ def page_new_chat() -> None:
                             and response_payload.get("question_intelligence")
                         )
                         if progressive_questions:
+                            st.markdown(related_questions_bridge(response_prompt))
                             cleaned_questions = []
                             seen_questions = set()
                             for question in followups:
@@ -7745,10 +7782,12 @@ def page_new_chat() -> None:
                     isinstance(response_payload, dict)
                     and response_payload.get("knowledge_structure_available")
                 ):
-                    if response_payload.get("ks_suitability") == KS_RECOMMENDED:
-                        st.caption(
-                            "This topic would benefit from the complete learning landscape."
+                    st.markdown(
+                        knowledge_structure_bridge(
+                            response_prompt,
+                            str(response_payload.get("ks_suitability") or ""),
                         )
+                    )
                     if st.button(
                         "Open the Knowledge Structure",
                         key=f"{response_card_key}_open_knowledge_structure",
@@ -7762,6 +7801,11 @@ def page_new_chat() -> None:
                                 f"Open the complete Knowledge Structure for {ks_topic}",
                                 "interrogate",
                             )
+                elif (
+                    isinstance(response_payload, dict)
+                    and response_payload.get("explain_ks_decision")
+                ):
+                    st.markdown(no_knowledge_structure_notice(response_prompt))
 
                 st.markdown(
                     f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{ts or now_label()}</div>",
@@ -7950,10 +7994,28 @@ def page_new_chat() -> None:
         stream_follow: bool = False,
     ) -> None:
         if isinstance(response_payload, dict) and response_payload.get("discussion_answer"):
-            _render_discussion_answer_card(
-                f"branch_{branch_idx}",
+            discussion_prompt = str(
+                response_payload.get("profile_prompt")
+                or (response_payload.get("discussion_answer") or {}).get("topic")
+                or response_payload.get("prompt")
+                or ""
+            ).strip()
+            discussion_profile = _profile_for_response(
+                discussion_prompt,
                 response_payload,
             )
+            answer_col, profile_col = st.columns(
+                [1.55, 1],
+                gap="medium",
+                vertical_alignment="top",
+            )
+            with answer_col:
+                _render_discussion_answer_card(
+                    f"branch_{branch_idx}",
+                    response_payload,
+                )
+            with profile_col:
+                render_topic_profile(discussion_profile, compact=True)
             return
         _render_simple_response(
             f"branch_response_card_{branch_idx}",
@@ -9815,6 +9877,10 @@ def page_new_chat() -> None:
                         ),
                         "hide_clarification_title": bool(
                             data.get("hide_clarification_title", False)
+                        ),
+                        "knowledge_structure_available": False,
+                        "explain_ks_decision": bool(
+                            _looks_like_live_local_query(display_topic_text)
                         ),
                         "discussion_answer": (
                             {

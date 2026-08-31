@@ -7,6 +7,7 @@ much of the already-available learning structure should be surfaced.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Any, Mapping
 
@@ -15,7 +16,77 @@ NO_KS = "NO_KS"
 CONDITIONAL_KS = "CONDITIONAL_KS"
 KS_RECOMMENDED = "KS_RECOMMENDED"
 KS_EXPLICIT = "KS_EXPLICIT"
-RESPONSE_STRATEGY_VERSION = 3
+RESPONSE_STRATEGY_VERSION = 5
+
+
+def _stable_variant(seed: str, options: tuple[str, ...]) -> str:
+    """Choose varied copy deterministically so reruns do not change the voice."""
+
+    digest = hashlib.sha256((seed or "ini").encode("utf-8")).digest()
+    return options[int.from_bytes(digest[:2], "big") % len(options)]
+
+
+def initial_answer_opening(query: str) -> str:
+    """Return a brief human acknowledgement before an Initial Answer."""
+
+    return _stable_variant(
+        query,
+        (
+            "Certainly — let’s begin with the central idea.",
+            "Of course — here’s a clear place to start.",
+            "Sure — let’s make the idea clear first.",
+            "Absolutely — here’s the essential picture.",
+        ),
+    )
+
+
+def related_questions_bridge(query: str) -> str:
+    """Introduce IA question cards as a natural continuation of the answer."""
+
+    return _stable_variant(
+        f"questions:{query}",
+        (
+            "Here are a few related questions you may want to explore:",
+            "If you’d like to take the idea further, these questions are useful next steps:",
+            "These related questions can help you explore the topic from different angles:",
+            "You may also find these questions helpful as you continue:",
+        ),
+    )
+
+
+def knowledge_structure_bridge(query: str, suitability: str) -> str:
+    """Explain why the complete Knowledge Structure is available."""
+
+    if suitability == KS_RECOMMENDED:
+        return _stable_variant(
+            f"ks-recommended:{query}",
+            (
+                "This topic has several connected layers, so the complete Knowledge Structure may help you see how they fit together.",
+                "There is a broader learning path behind this answer. Open the Knowledge Structure when you want to follow those connections in order.",
+            ),
+        )
+    return _stable_variant(
+        f"ks-available:{query}",
+        (
+            "A complete Knowledge Structure is available if you want to explore the topic beyond this first answer.",
+            "If you want the wider landscape of concepts and connections, you can open the Knowledge Structure below.",
+            "This answer is only the starting point; the Knowledge Structure is available when you want the full learning path.",
+        ),
+    )
+
+
+def no_knowledge_structure_notice(query: str) -> str:
+    """Explain a deliberate direct-answer decision without sounding mechanical."""
+
+    return _stable_variant(
+        f"no-ks:{query}",
+        (
+            "This is a direct, current-information question, so I haven’t created a Knowledge Structure for it.",
+            "A Knowledge Structure would not add much value here, so I’ve kept the response direct.",
+            "This query only needs a current factual answer, so no Knowledge Structure is necessary.",
+            "I’ve answered this directly rather than turning it into a Knowledge Structure.",
+        ),
+    )
 
 
 _EXPLICIT_KS = re.compile(
@@ -282,7 +353,11 @@ __all__ = [
     "assess_ks_suitability",
     "extract_knowledge_structure_topic",
     "fallback_learning_questions",
+    "initial_answer_opening",
     "is_explicit_knowledge_structure_request",
+    "knowledge_structure_bridge",
+    "no_knowledge_structure_notice",
     "question_intelligence_limit",
+    "related_questions_bridge",
     "select_lightweight_questions",
 ]

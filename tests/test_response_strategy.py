@@ -8,12 +8,33 @@ from api.response_strategy import (
     assess_ks_suitability,
     extract_knowledge_structure_topic,
     fallback_learning_questions,
+    initial_answer_opening,
+    knowledge_structure_bridge,
+    no_knowledge_structure_notice,
     question_intelligence_limit,
+    related_questions_bridge,
     select_lightweight_questions,
 )
 
 
 class ResponseStrategyTests(unittest.TestCase):
+    def test_human_guidance_copy_is_stable_and_contextual(self):
+        query = "What is data science?"
+        self.assertEqual(initial_answer_opening(query), initial_answer_opening(query))
+        self.assertTrue(initial_answer_opening(query).strip())
+        self.assertIn("questions", related_questions_bridge(query).casefold())
+        self.assertIn(
+            "knowledge structure",
+            knowledge_structure_bridge(query, CONDITIONAL_KS).casefold(),
+        )
+
+    def test_direct_current_query_explains_why_no_ks_was_created(self):
+        notice = no_knowledge_structure_notice("What is today's gas price?")
+        self.assertIn("knowledge structure", notice.casefold())
+        self.assertTrue(
+            any(term in notice.casefold() for term in ("direct", "current", "factual"))
+        )
+
     def test_explicit_knowledge_structure_request(self):
         query = "Show me the complete Knowledge Structure for linear regression."
         self.assertEqual(assess_ks_suitability(query, {}), KS_EXPLICIT)
