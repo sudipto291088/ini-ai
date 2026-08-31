@@ -58,7 +58,7 @@ try:
     # helper modules after a deployment sync. Force a reload when the running
     # module predates the routing repair so hosted sessions cannot retain the
     # old product-query detector.
-    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 4:
+    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 5:
         product_knowledge = importlib.reload(product_knowledge)
     answer_ini_product_query = product_knowledge.answer_ini_product_query
 except ModuleNotFoundError as exc:
@@ -1536,7 +1536,7 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-nc-qmap-marker) {
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.055) !important;
 }
 .st-key-root_response_card,
-div[class*="st-key-branch_response_card_"]:not([class*="_row"]):not([class*="_clarification_cta_"]) {
+div[class*="st-key-branch_response_card_"]:not([class*="_row"]):not([class*="_clarification_cta_"]):not([class*="_answer_tabs"]):not([class*="_open_knowledge_structure"]):not([class*="_question_intelligence_hide_answers"]) {
   width: min(1180px, 100%) !important;
   margin: 0 !important;
   padding: 18px !important;
@@ -1546,7 +1546,7 @@ div[class*="st-key-branch_response_card_"]:not([class*="_row"]):not([class*="_cl
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.045) !important;
 }
 .st-key-root_response_card > div,
-div[class*="st-key-branch_response_card_"]:not([class*="_row"]):not([class*="_clarification_cta_"]) > div {
+div[class*="st-key-branch_response_card_"]:not([class*="_row"]):not([class*="_clarification_cta_"]):not([class*="_answer_tabs"]):not([class*="_open_knowledge_structure"]):not([class*="_question_intelligence_hide_answers"]) > div {
   background: transparent !important;
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.ini-carm-response-surface) {
@@ -1604,7 +1604,7 @@ div[class*="st-key-branch_response_card_"][class*="_row"] {
     left: 2px;
   }
   .st-key-root_response_card,
-  div[class*="st-key-branch_response_card_"]:not([class*="_row"]):not([class*="_clarification_cta_"]) {
+  div[class*="st-key-branch_response_card_"]:not([class*="_row"]):not([class*="_clarification_cta_"]):not([class*="_answer_tabs"]):not([class*="_open_knowledge_structure"]):not([class*="_question_intelligence_hide_answers"]) {
     width: calc(100% - 28px) !important;
     margin-left: 28px !important;
   }
@@ -2875,6 +2875,7 @@ div[class*="st-key-ini_qi_panel_"] {
 div[class*="st-key-ini_qi_panel_"] > div {
   background: transparent !important;
 }
+/* Later IA responses use the same secondary question surface as the first IA. */
 div[class*="st-key-ini_qi_panel_"] div[data-testid="stToggle"] {
   margin: 0 0 2px auto !important;
   width: max-content !important;
@@ -2912,16 +2913,66 @@ div[class*="_answer_tabs"] [data-testid="stMarkdownContainer"] li > ol {
   margin: 0.3em 0 0.55em !important;
   padding-left: 1.35rem !important;
 }
+.st-key-root_response_card:has(.ini-layered-answer-surface) {
+  width: min(1180px, 100%) !important;
+  margin: 0 !important;
+  padding: 18px !important;
+  border: 0 !important;
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.045) !important;
+}
+div[class*="st-key-branch_response_card_"]:not([class*="_row"]):not([class*="_clarification_cta_"]):not([class*="_answer_tabs"]):not([class*="_open_knowledge_structure"]):not([class*="_question_intelligence_hide_answers"]):has(.ini-layered-answer-surface) {
+  width: min(1180px, 100%) !important;
+  margin: 0 !important;
+  padding: 18px !important;
+  border: 0 !important;
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.045) !important;
+}
+/* Nested branch controls contain the response-card key in their generated class
+   names. Keep them from inheriting the outer primary-card treatment. */
+div[class*="st-key-branch_response_card_"][class*="_answer_tabs"] {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+div[class*="st-key-branch_response_card_"][class*="_open_knowledge_structure"] {
+  width: max-content !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+div[class*="st-key-branch_response_card_"][class*="_question_intelligence_hide_answers"] {
+  width: max-content !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.ini-layered-answer-surface {
+  display: none;
+}
 div[class*="_open_knowledge_structure"] {
-  margin-top: 10px !important;
+  margin-top: 6px !important;
 }
 div[class*="_open_knowledge_structure"] button {
-  min-height: 32px !important;
-  padding: 5px 8px !important;
+  min-height: 28px !important;
+  padding: 2px 0 !important;
   border: 1px solid transparent !important;
-  border-radius: 7px !important;
+  border-radius: 0 !important;
   background: transparent !important;
-  color: #374151 !important;
+  color: #475569 !important;
   box-shadow: none !important;
   transition: background 140ms ease, color 140ms ease !important;
 }
@@ -2929,18 +2980,22 @@ div[class*="_open_knowledge_structure"] button p {
   font-size: 12.5px !important;
   font-weight: 500 !important;
   letter-spacing: 0 !important;
-}
-div[class*="_open_knowledge_structure"] button [data-testid="stIconMaterial"] {
-  color: #4b5563 !important;
-  font-size: 16px !important;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition: text-decoration-color 140ms ease;
 }
 div[class*="_open_knowledge_structure"] button:hover {
   border-color: transparent !important;
-  background: rgba(15, 23, 42, 0.055) !important;
+  background: transparent !important;
   color: #111827 !important;
 }
+div[class*="_open_knowledge_structure"] button:hover p {
+  text-decoration-color: #cbd5e1;
+}
 div[class*="_open_knowledge_structure"] button:active {
-  background: rgba(15, 23, 42, 0.085) !important;
+  background: transparent !important;
+  color: #0f172a !important;
 }
 div[class*="st-key-ini_qi_card_"]:has(div[data-testid="stButton"] > button:hover) {
   border-color: rgba(226, 232, 240, 0.38) !important;
@@ -7177,6 +7232,10 @@ def page_new_chat() -> None:
                         and response_payload.get("question_intelligence")
                     )
                     if layered_answer:
+                        st.markdown(
+                            '<span class="ini-layered-answer-surface"></span>',
+                            unsafe_allow_html=True,
+                        )
                         answer_views_key = f"{response_card_key}_answer_views"
                         answer_views = st.session_state.setdefault(
                             answer_views_key,
@@ -7592,7 +7651,7 @@ def page_new_chat() -> None:
                             )
                             with st.container(
                                 key=f"ini_qi_panel_{response_card_key}",
-                                border=True,
+                                border=False,
                                 width="stretch",
                                 gap="small",
                             ):
@@ -7693,7 +7752,6 @@ def page_new_chat() -> None:
                     if st.button(
                         "Open the Knowledge Structure",
                         key=f"{response_card_key}_open_knowledge_structure",
-                        icon=":material/account_tree:",
                         width="content",
                     ):
                         ks_topic = str(
@@ -8400,6 +8458,34 @@ def page_new_chat() -> None:
                 "go on", "continue",
             }
             or re.match(r"^(more|what|how) (about|on) (it|this|that|the topic)$", s)
+            or re.search(
+                r"\b(?:give|get|show|tell)\s+(?:me\s+)?(?:the\s+)?"
+                r"(?:details|full details|complete answer|complete explanation)\b",
+                s,
+            )
+            or re.search(
+                r"\b(?:expand|elaborate)(?:\s+(?:on|upon))?\s+"
+                r"(?:it|this|that|the answer|your answer)\b",
+                s,
+            )
+        )
+
+    def _is_initial_answer_format_request(text: str) -> bool:
+        """Recognize IA as InI's response format, not a new learning subject."""
+        s = re.sub(r"[^a-z0-9 ]+", " ", (text or "").lower()).strip()
+        return bool(
+            re.fullmatch(
+                r"(?:please )?(?:give|show|answer|present|write|format|put)?\s*"
+                r"(?:it|this|that|the answer)?\s*(?:in|as|using)?\s*"
+                r"(?:the )?(?:form|format)?\s*(?:of )?(?:an )?"
+                r"(?:initial answer|ia)",
+                s,
+            )
+            or re.search(
+                r"\b(?:in the form of|in|as|using)\s+(?:an\s+)?"
+                r"(?:initial answer|ia)\b",
+                s,
+            )
         )
 
     def _latest_meaningful_chat_topic() -> str:
@@ -8606,12 +8692,15 @@ def page_new_chat() -> None:
 
         raw_norm = re.sub(r"\s+", " ", raw.lower()).strip()
 
-        # Partial/full text match
-        if len(raw_norm) >= 4:
-            for cand in candidates:
-                cand_norm = re.sub(r"\s+", " ", cand.lower()).strip()
-                if raw_norm == cand_norm or raw_norm in cand_norm or cand_norm in raw_norm:
-                    return cand
+        # A typed learning topic can legitimately occur inside an older IA
+        # question (for example, "Machine Learning"). Expanding by substring
+        # silently replaces that new topic with stale conversation text.
+        # Keep only explicit, exact question selection here; abbreviated
+        # selection remains available through the numbered choices above.
+        for cand in candidates:
+            cand_norm = re.sub(r"\s+", " ", cand.lower()).strip()
+            if raw_norm == cand_norm:
+                return cand
 
         return raw
 
@@ -8844,6 +8933,16 @@ def page_new_chat() -> None:
             if interpreted_turn.has_substantive_text
             else display_topic_text
         )
+        initial_answer_format_requested = _is_initial_answer_format_request(
+            display_topic_text
+        )
+        if initial_answer_format_requested:
+            active_ia_topic = _latest_meaningful_chat_topic()
+            if active_ia_topic:
+                semantic_topic_text = (
+                    extract_learning_topic(active_ia_topic) or active_ia_topic
+                ).strip()
+                topic_text = semantic_topic_text
         explicit_ks_topic = extract_knowledge_structure_topic(display_topic_text)
         if explicit_ks_topic:
             semantic_topic_text = explicit_ks_topic
@@ -9481,7 +9580,10 @@ def page_new_chat() -> None:
                             "Keep the reply proportionate and conversational. If the user asks an ordinary "
                             "factual question, answer it naturally without pretending a new conversation began. "
                             "Speak honestly as InI: never claim a body, offline activities, personal experiences, "
-                            "human memories, or events that did not occur in this conversation."
+                            "human memories, or events that did not occur in this conversation. "
+                            "If the user asks for more detail, an example, or an expansion, provide it "
+                            "immediately from the active context; do not answer with another menu of choices, "
+                            "do not invent fixed counts or features, and do not end by asking another question."
                         )
                     else:
                         conversation_instruction = (
@@ -9497,7 +9599,9 @@ def page_new_chat() -> None:
                             "when the user moves back into casual conversation. Do not sound as though a new "
                             "conversation has started. Do not create an Introduction, Suggested Follow-ups, "
                             "or Question Map. If the message is about you, answer as InI rather than defining "
-                            "the user's words."
+                            "the user's words. If the user asks for more detail, an example, or an expansion, "
+                            "provide it immediately from the active context; do not answer with another menu of choices, "
+                            "do not invent fixed counts or features, and do not end by asking another question."
                         )
                     data = {
                         "categories": {},
@@ -9507,7 +9611,7 @@ def page_new_chat() -> None:
                         "response_mode": "conversation",
                         "context_intent": "active_discussion",
                         "needs_clarification": False,
-                        "suppress_profile": False,
+                        "suppress_profile": True,
                         "direct_answer_prompt": conversation_instruction,
                     }
                 else:
@@ -9688,7 +9792,12 @@ def page_new_chat() -> None:
                         "profile_prompt": (
                             recommended_topic
                             if recommended_topic
-                            else qm_discussion_topic or display_topic_text
+                            else qm_discussion_topic
+                            or (
+                                semantic_topic_text
+                                if initial_answer_format_requested
+                                else display_topic_text
+                            )
                         ),
                         # A contextual CARM reply belongs to the existing
                         # implementation guide; repeating a new Topic Profile
@@ -9837,8 +9946,13 @@ def page_new_chat() -> None:
                     # The existing Question Map remains the source landscape;
                     # expose only a few diverse questions during ordinary
                     # conversation and reveal the full KS only on request.
+                    response_learning_prompt = (
+                        resolved_learning_topic
+                        if initial_answer_format_requested
+                        else display_topic_text
+                    )
                     direct_resp = fetch_study_full(
-                        display_topic_text,
+                        response_learning_prompt,
                         mode="clear",
                         max_rounds=1,
                     )
@@ -9846,10 +9960,10 @@ def page_new_chat() -> None:
                         direct_resp.get("answer") or ""
                     ).strip() or "No answer generated."
                     question_limit = question_intelligence_limit(
-                        display_topic_text
+                        response_learning_prompt
                     )
                     lightweight_questions = select_lightweight_questions(
-                        display_topic_text,
+                        response_learning_prompt,
                         data.get("categories") or {},
                         limit=question_limit,
                     )
@@ -9873,6 +9987,7 @@ def page_new_chat() -> None:
                         # Educational answers keep their Topic Profile even
                         # when the full Knowledge Structure is deferred.
                         "suppress_profile": False,
+                        "profile_prompt": resolved_learning_topic,
                         "knowledge_structure_available": True,
                         "knowledge_structure_topic": resolved_learning_topic,
                         "ks_suitability": ks_suitability,
@@ -12032,7 +12147,7 @@ def page_new_chat() -> None:
 
         with st.form("nc_top_action_form", border=False):
             with st.container(key="nc_landing_composer"):
-                st.text_area(
+                top_prompt = st.text_area(
                     "NC_TOP_TOPIC",
                     placeholder="Ask InI anything...",
                     key="chat_top_topic_input",
@@ -12135,7 +12250,7 @@ def page_new_chat() -> None:
 
         if illustrate_run:
             _queue_new_chat_request(
-                st.session_state.chat_top_topic_input,
+                top_prompt,
                 "illustrate",
             )
 
@@ -12144,7 +12259,7 @@ def page_new_chat() -> None:
 
         if run:
             _queue_new_chat_request(
-                st.session_state.chat_top_topic_input,
+                top_prompt,
                 "interrogate",
             )
 
@@ -12533,7 +12648,7 @@ def page_new_chat() -> None:
                 )
 
                 with input_col:
-                    st.text_input(
+                    bottom_prompt = st.text_input(
                         "NC_BOTTOM_TOPIC",
                         key=composer_key,
                         label_visibility="collapsed",
@@ -12556,39 +12671,15 @@ def page_new_chat() -> None:
 
         if illustrate_run:
             _queue_new_chat_request(
-                st.session_state.get(composer_key, ""),
+                bottom_prompt,
                 "illustrate",
             )
 
         if run:
             _queue_new_chat_request(
-                st.session_state.get(composer_key, ""),
+                bottom_prompt,
                 "interrogate",
             )
-
-        # A request rerun can leave a previous fixed composer mounted beside
-        # this current one. Keep the current (last-rendered) owned composer
-        # and remove only those stale complete composer nodes.
-        st.iframe(
-            """
-            <script>
-            (() => {
-              const clean = () => {
-                const doc = window.parent.document;
-                const composers = Array.from(
-                  doc.querySelectorAll('.st-key-nc_bottom_composer')
-                );
-                composers.slice(0, -1).forEach((composer) => composer.remove());
-              };
-              clean();
-              requestAnimationFrame(clean);
-              setTimeout(clean, 80);
-            })();
-            </script>
-            """,
-            height=1,
-            tab_index=-1,
-        )
 
     # Auto-run FUQ opened in a new tab for New Chat
     if chat_q and st.session_state.chat_seed_done != chat_q:

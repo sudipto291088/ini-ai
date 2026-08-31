@@ -6,7 +6,7 @@ import re
 from typing import Any, Dict, Optional
 
 
-PRODUCT_KNOWLEDGE_VERSION = 4
+PRODUCT_KNOWLEDGE_VERSION = 5
 
 
 def _normalize(text: str) -> str:
@@ -48,6 +48,20 @@ def answer_ini_product_query(
     # product-shaped form of address before any product answer can intercept
     # the normal learning pipeline.
     explicit_ini_reference = bool(re.search(r"\bini(?:\.ai)?\b", s))
+    ini_response_term_reference = bool(
+        re.search(
+            r"\b(?:your|ini(?:\.ai)?(?:'s)?)\s+(?:initial answer|knowledge structure|ia|ks)\b",
+            s,
+        )
+        or re.search(
+            r"\b(?:initial answer|knowledge structure)\b.*\b(?:ini|your response|your answer)\b",
+            s,
+        )
+        or re.fullmatch(
+            r"(?:what (?:is|are)|explain|define|compare)\s+(?:the\s+)?(?:ia|ks|ia and ks|ia vs ks)",
+            s,
+        )
+    )
     second_person_product_reference = bool(
         re.search(
             r"^(?:what (?:exactly )?(?:are|can) you\b|who are you\b|"
@@ -63,9 +77,34 @@ def answer_ini_product_query(
             s,
         )
     )
-    refers_to_ini = explicit_ini_reference or second_person_product_reference
+    refers_to_ini = explicit_ini_reference or second_person_product_reference or ini_response_term_reference
     if not s or not refers_to_ini:
         return None
+
+    mentions_ia = bool(re.search(r"\b(?:initial answer|ia)\b", s))
+    mentions_ks = bool(re.search(r"\b(?:knowledge structure|ks)\b", s))
+    if mentions_ia and mentions_ks:
+        return (
+            "My Initial Answer (IA) is the concise, conversational first layer: it gives the "
+            "direct answer, Topic Profile and prerequisites, a focused question set, and a route "
+            "to continue. My Knowledge Structure (KS) is the complete learning layer: it expands "
+            "the subject into connected concepts, mechanisms, subtopics, questions, maps, and a "
+            "progressive path. IA helps you orient quickly; KS helps you study the full landscape."
+        )
+    if mentions_ia:
+        return (
+            "My Initial Answer (IA) is the first, conversational layer of a learning response. "
+            "It combines a direct explanation with the Topic Profile and prerequisites, a small "
+            "set of useful next questions, and an invitation to open the Knowledge Structure. "
+            "It answers first without forcing the complete learning landscape on you."
+        )
+    if mentions_ks:
+        return (
+            "My Knowledge Structure (KS) is the complete structured learning layer for the active "
+            "topic. It develops the subject progressively through its concepts, mechanisms, "
+            "subtopics, relationships, questions, maps, applications, and limitations. You can "
+            "open it from an Initial Answer when you want the full learning landscape."
+        )
 
     if re.search(r"\b(who|what).*(created|creator|founder|built|made|designed)\b", s) or re.search(
         r"\b(created|creator|founder|built|made|designed).*(you|ini)\b", s

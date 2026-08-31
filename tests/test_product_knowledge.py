@@ -69,6 +69,31 @@ class ProductKnowledgeTests(unittest.TestCase):
         self.assertIn("Sudipto", answer)
         self.assertIn("Sid", answer)
 
+    def test_ini_knows_its_initial_answer_and_knowledge_structure(self):
+        ia = answer_ini_product_query("What is your Initial Answer?")
+        self.assertIn("Initial Answer (IA)", ia)
+        self.assertIn("Topic Profile", ia)
+
+        ks = answer_ini_product_query("Explain your Knowledge Structure")
+        self.assertIn("Knowledge Structure (KS)", ks)
+        self.assertIn("complete structured learning layer", ks)
+
+        comparison = answer_ini_product_query(
+            "What is the difference between your IA and KS?"
+        )
+        self.assertIn("IA helps you orient quickly", comparison)
+        self.assertIn("KS helps you study the full landscape", comparison)
+
+    def test_generic_knowledge_structure_topic_remains_a_learning_request(self):
+        self.assertIsNone(
+            answer_ini_product_query(
+                "Build a knowledge structure for neural networks"
+            )
+        )
+
+    def test_ia_format_instruction_is_not_intercepted_as_product_information(self):
+        self.assertIsNone(answer_ini_product_query("in the form of IA"))
+
 
 if __name__ == "__main__":
     unittest.main()
