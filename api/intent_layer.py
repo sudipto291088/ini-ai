@@ -405,7 +405,10 @@ def _is_affirmation(text: str) -> bool:
     return bool(
         re.match(
             r"^(?:(?:it is|its|that is|thats|this is|thiss)\s+)?"
-            r"(?:ok|okay|fine|alright|all good|no problem|not a problem)"
+            r"(?:(?:so|very|really|quite|pretty|extremely)\s+)?"
+            r"(?:ok|okay|fine|alright|all good|no problem|not a problem|"
+            r"awesome|amazing|great|excellent|fantastic|nice|wonderful|"
+            r"brilliant|perfect|helpful|beautiful)"
             r"(?:\s+(?:thanks|thank you))?$",
             s,
         )

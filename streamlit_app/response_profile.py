@@ -353,6 +353,14 @@ def build_response_profile(
                 ("Subject", "Acknowledgment and appreciation"),
                 ("Related topics", "Politeness, rapport, conversational closure"),
             ]
+        if intent == "affirmation":
+            return [
+                ("Name type", "Positive acknowledgement"),
+                ("Entity type", "Social utterance"),
+                ("Broad field", "Interpersonal communication"),
+                ("Subject", "Approval or positive conversational feedback"),
+                ("Related topics", "Encouragement, rapport, acknowledgement, conversational continuity"),
+            ]
         if intent == "farewell":
             return [
                 ("Name type", "Conversational closing"),

@@ -9039,6 +9039,23 @@ def page_new_chat() -> None:
                 return sequence[(index + 1) % len(sequence)]
         return sequence[0]
 
+    def _is_positive_acknowledgement(text: str) -> bool:
+        normalized = re.sub(r"[^a-z0-9 ]+", " ", (text or "").lower()).strip()
+        if normalized in {
+            "cool", "nice", "awesome", "wonderful", "perfect", "great",
+            "all good", "sounds good", "that works",
+        }:
+            return True
+        return bool(
+            re.fullmatch(
+                r"(?:it is|its|that is|thats|this is)\s+"
+                r"(?:(?:so|very|really|quite|pretty|extremely)\s+)?"
+                r"(?:awesome|amazing|great|excellent|fantastic|nice|wonderful|"
+                r"brilliant|perfect|helpful|beautiful)",
+                normalized,
+            )
+        )
+
     def _local_conversation_answer(
         text: str,
         profile: Optional[Dict[str, Any]] = None,
@@ -9068,10 +9085,7 @@ def page_new_chat() -> None:
             name = " ".join(part.capitalize() for part in introduced_words)
             return f"Nice to meet you, {name}. I’ll remember that in this conversation."
 
-        if normalized in {
-            "cool", "nice", "awesome", "wonderful", "perfect", "great",
-            "all good", "sounds good", "that works",
-        }:
+        if _is_positive_acknowledgement(normalized):
             return f"Glad to hear it{address}."
 
         casual_normalized = re.sub(
@@ -9616,7 +9630,11 @@ def page_new_chat() -> None:
                             if topic_recommendation_request
                             else []
                         ),
-                        "intent": "local_conversation",
+                        "intent": (
+                            "affirmation"
+                            if _is_positive_acknowledgement(display_topic_text)
+                            else "local_conversation"
+                        ),
                         "should_answer_direct": False,
                         "response_mode": "conversation",
                         "context_intent": "conversation",
@@ -10425,6 +10443,8 @@ def page_new_chat() -> None:
             st.error(f"Error calling /illustrate: {e}")
 
     def _looks_like_casual_generation(prompt: str) -> bool:
+        if _is_positive_acknowledgement(prompt):
+            return True
         raw_prompt = (prompt or "").lower().replace("’", "'").replace("'", "")
         normalized = re.sub(r"[^a-z0-9 ]+", " ", raw_prompt)
         normalized = re.sub(r"\s+", " ", normalized).strip()

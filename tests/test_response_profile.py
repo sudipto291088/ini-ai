@@ -14,6 +14,18 @@ class ResponseProfileTests(unittest.TestCase):
         self.assertEqual(rows["Subject"], "Casual testing of InI")
         self.assertIn("Intent detection", rows["Related topics"])
 
+    def test_positive_acknowledgement_has_conversational_profile(self):
+        rows = dict(
+            build_response_profile(
+                "That's awesome",
+                intent="affirmation",
+                response_mode="conversation",
+            )
+        )
+        self.assertEqual(rows["Name type"], "Positive acknowledgement")
+        self.assertEqual(rows["Entity type"], "Social utterance")
+        self.assertEqual(rows["Broad field"], "Interpersonal communication")
+
     def test_practical_query_has_full_task_profile(self):
         rows = dict(
             build_response_profile(

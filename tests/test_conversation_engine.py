@@ -206,7 +206,15 @@ class ConversationEngineTests(unittest.TestCase):
                 self.assertFalse(result.get("categories"))
 
     def test_praise_for_ini_is_conversation_not_a_learning_topic(self):
-        for message in ("Good job InI", "Amazing job ini", "Well done InI"):
+        for message in (
+            "Good job InI",
+            "Amazing job ini",
+            "Well done InI",
+            "That's awesome",
+            "thats awesome",
+            "This is brilliant",
+            "That is really helpful",
+        ):
             with self.subTest(message=message):
                 result = interrogate(message)
                 self.assertEqual(result["response_mode"], "conversation")
