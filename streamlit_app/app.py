@@ -7317,10 +7317,70 @@ def page_new_chat() -> None:
                                 return
 
                             def _answer_text_stream():
-                                for offset in range(0, len(answer_text), 3):
-                                    yield answer_text[offset : offset + 3]
-                                    time.sleep(0.006)
+                                # Keep the prose visibly forming instead of
+                                # flashing onto the card in large, fast chunks.
+                                for offset in range(0, len(answer_text), 2):
+                                    yield answer_text[offset : offset + 2]
+                                    time.sleep(0.012)
 
+                            st.iframe(
+                                f"""
+                                <script>
+                                (() => {{
+                                  try {{
+                                    const doc = window.parent.document;
+                                    const win = doc.defaultView || window.parent;
+                                    const response = doc.querySelector(
+                                      '.st-key-{response_card_key}'
+                                    );
+                                    if (!response) return;
+
+                                    const previous = win.__iniAnswerStreamFollow;
+                                    if (previous?.observer) previous.observer.disconnect();
+                                    if (previous?.frame) cancelAnimationFrame(previous.frame);
+
+                                    const state = {{ observer: null, frame: 0 }};
+                                    const follow = () => {{
+                                      state.frame = 0;
+                                      const scrollers = [
+                                        doc.scrollingElement,
+                                        doc.documentElement,
+                                        doc.body,
+                                        doc.querySelector('[data-testid="stAppViewContainer"]'),
+                                        doc.querySelector('[data-testid="stMain"]'),
+                                        doc.querySelector('.main')
+                                      ].filter(Boolean);
+                                      for (const scroller of [...new Set(scrollers)]) {{
+                                        if (scroller.scrollHeight <= scroller.clientHeight + 20) continue;
+                                        const bottom = response.getBoundingClientRect().bottom
+                                          - scroller.getBoundingClientRect().top
+                                          + scroller.scrollTop
+                                          - scroller.clientHeight
+                                          + 110;
+                                        scroller.scrollTo({{
+                                          top: Math.max(0, bottom),
+                                          behavior: 'auto'
+                                        }});
+                                      }}
+                                    }};
+                                    const schedule = () => {{
+                                      if (!state.frame) state.frame = requestAnimationFrame(follow);
+                                    }};
+                                    state.observer = new MutationObserver(schedule);
+                                    state.observer.observe(response, {{
+                                      childList: true,
+                                      subtree: true,
+                                      characterData: true
+                                    }});
+                                    win.__iniAnswerStreamFollow = state;
+                                    schedule();
+                                  }} catch (err) {{}}
+                                }})();
+                                </script>
+                                """,
+                                height=1,
+                                tab_index=-1,
+                            )
                             st.write_stream(_answer_text_stream())
                             streamed_views.add(stream_key)
                             st.iframe(
@@ -7330,6 +7390,11 @@ def page_new_chat() -> None:
                                   const returnToAnswerStart = () => {{
                                     try {{
                                       const doc = window.parent.document;
+                                      const win = doc.defaultView || window.parent;
+                                      const follower = win.__iniAnswerStreamFollow;
+                                      if (follower?.observer) follower.observer.disconnect();
+                                      if (follower?.frame) cancelAnimationFrame(follower.frame);
+                                      delete win.__iniAnswerStreamFollow;
                                       const response = doc.querySelector('.st-key-{response_card_key}');
                                       if (!response) return;
                                       response.style.scrollMarginTop = '82px';
@@ -7345,6 +7410,8 @@ def page_new_chat() -> None:
                                   setTimeout(returnToAnswerStart, 1400);
                                   setTimeout(returnToAnswerStart, 3200);
                                   setTimeout(returnToAnswerStart, 5200);
+                                  setTimeout(returnToAnswerStart, 8000);
+                                  setTimeout(returnToAnswerStart, 12000);
                                 }})();
                                 </script>
                                 """,
@@ -7517,9 +7584,9 @@ def page_new_chat() -> None:
                                 )
 
                             def _carm_text_stream():
-                                for offset in range(0, len(stream_text), 3):
-                                    yield stream_text[offset:offset + 3]
-                                    time.sleep(0.004)
+                                for offset in range(0, len(stream_text), 2):
+                                    yield stream_text[offset:offset + 2]
+                                    time.sleep(0.012)
 
                             st.write_stream(_carm_text_stream())
                             streamed_keys.add(stream_key)
@@ -7545,6 +7612,8 @@ def page_new_chat() -> None:
                                   setTimeout(returnToAnswerStart, 1400);
                                   setTimeout(returnToAnswerStart, 3200);
                                   setTimeout(returnToAnswerStart, 5200);
+                                  setTimeout(returnToAnswerStart, 8000);
+                                  setTimeout(returnToAnswerStart, 12000);
                                 }})();
                                 </script>
                                 """,
