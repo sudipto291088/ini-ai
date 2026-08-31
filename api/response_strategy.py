@@ -16,7 +16,7 @@ NO_KS = "NO_KS"
 CONDITIONAL_KS = "CONDITIONAL_KS"
 KS_RECOMMENDED = "KS_RECOMMENDED"
 KS_EXPLICIT = "KS_EXPLICIT"
-RESPONSE_STRATEGY_VERSION = 5
+RESPONSE_STRATEGY_VERSION = 6
 
 
 def _stable_variant(seed: str, options: tuple[str, ...]) -> str:
@@ -40,17 +40,43 @@ def initial_answer_opening(query: str) -> str:
     )
 
 
-def related_questions_bridge(query: str) -> str:
+def related_questions_bridge(query: str, question_count: int = 0) -> str:
     """Introduce IA question cards as a natural continuation of the answer."""
 
+    count = max(0, int(question_count or 0))
+    number_words = {
+        1: "one",
+        2: "two",
+        3: "three",
+        4: "four",
+        5: "five",
+        6: "six",
+        7: "seven",
+        8: "eight",
+        9: "nine",
+    }
+    count_label = number_words.get(count, str(count))
+    counted_options = (
+        f"I’ve prepared {count_label} related questions that should help you examine this topic more closely.",
+        f"There are several useful directions here, so I’ve selected {count_label} questions for you.",
+        f"To help you continue naturally, I’ve prepared {count_label} questions that approach the topic from different angles.",
+        f"I found {count_label} questions worth exploring for this query—I hope you find them useful.",
+    )
+    options = (
+        *counted_options,
+        "Here are a few related questions you may want to explore:",
+        "If you’d like to take the idea further, these questions are useful next steps:",
+        "These related questions can help you explore the topic from different angles:",
+        "You may also find these questions helpful as you continue:",
+    ) if count else (
+        "Here are a few related questions you may want to explore:",
+        "If you’d like to take the idea further, these questions are useful next steps:",
+        "These related questions can help you explore the topic from different angles:",
+        "You may also find these questions helpful as you continue:",
+    )
     return _stable_variant(
-        f"questions:{query}",
-        (
-            "Here are a few related questions you may want to explore:",
-            "If you’d like to take the idea further, these questions are useful next steps:",
-            "These related questions can help you explore the topic from different angles:",
-            "You may also find these questions helpful as you continue:",
-        ),
+        f"questions:{query}:{count}",
+        options,
     )
 
 

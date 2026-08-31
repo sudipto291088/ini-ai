@@ -128,7 +128,7 @@ if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 6:
 detect_intent = intent_layer.detect_intent
 import api.response_strategy as response_strategy
 
-if getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 5:
+if getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 6:
     response_strategy = importlib.reload(response_strategy)
 KS_EXPLICIT = response_strategy.KS_EXPLICIT
 KS_RECOMMENDED = response_strategy.KS_RECOMMENDED
@@ -7323,6 +7323,34 @@ def page_new_chat() -> None:
 
                             st.write_stream(_answer_text_stream())
                             streamed_views.add(stream_key)
+                            st.iframe(
+                                f"""
+                                <script>
+                                (() => {{
+                                  const returnToAnswerStart = () => {{
+                                    try {{
+                                      const doc = window.parent.document;
+                                      const response = doc.querySelector('.st-key-{response_card_key}');
+                                      if (!response) return;
+                                      response.style.scrollMarginTop = '82px';
+                                      response.scrollIntoView({{
+                                        block: 'start',
+                                        inline: 'nearest',
+                                        behavior: 'auto'
+                                      }});
+                                    }} catch (err) {{}}
+                                  }};
+                                  requestAnimationFrame(returnToAnswerStart);
+                                  setTimeout(returnToAnswerStart, 250);
+                                  setTimeout(returnToAnswerStart, 1400);
+                                  setTimeout(returnToAnswerStart, 3200);
+                                  setTimeout(returnToAnswerStart, 5200);
+                                }})();
+                                </script>
+                                """,
+                                height=1,
+                                tab_index=-1,
+                            )
 
                         answer_tabs_key = f"{response_card_key}_answer_tabs"
                         if st.session_state.get(answer_tabs_key) == "Understand":
@@ -7495,6 +7523,34 @@ def page_new_chat() -> None:
 
                             st.write_stream(_carm_text_stream())
                             streamed_keys.add(stream_key)
+                            st.iframe(
+                                f"""
+                                <script>
+                                (() => {{
+                                  const returnToAnswerStart = () => {{
+                                    try {{
+                                      const doc = window.parent.document;
+                                      const response = doc.querySelector('.st-key-{response_card_key}');
+                                      if (!response) return;
+                                      response.style.scrollMarginTop = '82px';
+                                      response.scrollIntoView({{
+                                        block: 'start',
+                                        inline: 'nearest',
+                                        behavior: 'auto'
+                                      }});
+                                    }} catch (err) {{}}
+                                  }};
+                                  requestAnimationFrame(returnToAnswerStart);
+                                  setTimeout(returnToAnswerStart, 250);
+                                  setTimeout(returnToAnswerStart, 1400);
+                                  setTimeout(returnToAnswerStart, 3200);
+                                  setTimeout(returnToAnswerStart, 5200);
+                                }})();
+                                </script>
+                                """,
+                                height=1,
+                                tab_index=-1,
+                            )
                             if stream_follow:
                                 st.iframe(
                                     """
@@ -7588,8 +7644,11 @@ def page_new_chat() -> None:
                 response_prompt = str(
                     (response_payload or {}).get("prompt") or ""
                 ).strip()
+                guidance_seed = (
+                    f"{response_prompt}|{response_card_key}|{ts or 'response'}"
+                )
                 if human_guided_ia:
-                    st.markdown(initial_answer_opening(response_prompt))
+                    st.markdown(initial_answer_opening(guidance_seed))
 
                 if topic_profile and compact_profile:
                     reply_col, profile_col = st.columns(
@@ -7659,7 +7718,6 @@ def page_new_chat() -> None:
                             and response_payload.get("question_intelligence")
                         )
                         if progressive_questions:
-                            st.markdown(related_questions_bridge(response_prompt))
                             cleaned_questions = []
                             seen_questions = set()
                             for question in followups:
@@ -7694,16 +7752,26 @@ def page_new_chat() -> None:
                             ):
                                 with st.container(
                                     horizontal=True,
-                                    horizontal_alignment="right",
+                                    horizontal_alignment="distribute",
+                                    vertical_alignment="top",
+                                    gap="medium",
                                 ):
-                                    hide_inline_answers = st.toggle(
-                                        "Hide answers",
-                                        key=(
-                                            f"{response_card_key}_"
-                                            "question_intelligence_hide_answers"
-                                        ),
-                                        value=False,
-                                    )
+                                    with st.container(width="stretch"):
+                                        st.markdown(
+                                            related_questions_bridge(
+                                                guidance_seed,
+                                                len(cleaned_questions),
+                                            )
+                                        )
+                                    with st.container(width="content"):
+                                        hide_inline_answers = st.toggle(
+                                            "Hide answers",
+                                            key=(
+                                                f"{response_card_key}_"
+                                                "question_intelligence_hide_answers"
+                                            ),
+                                            value=False,
+                                        )
                                 for question_index, question in enumerate(
                                     cleaned_questions[:visible_count], start=1
                                 ):
@@ -7784,7 +7852,7 @@ def page_new_chat() -> None:
                 ):
                     st.markdown(
                         knowledge_structure_bridge(
-                            response_prompt,
+                            guidance_seed,
                             str(response_payload.get("ks_suitability") or ""),
                         )
                     )
@@ -7805,7 +7873,7 @@ def page_new_chat() -> None:
                     isinstance(response_payload, dict)
                     and response_payload.get("explain_ks_decision")
                 ):
-                    st.markdown(no_knowledge_structure_notice(response_prompt))
+                    st.markdown(no_knowledge_structure_notice(guidance_seed))
 
                 st.markdown(
                     f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{ts or now_label()}</div>",
@@ -10411,12 +10479,19 @@ def page_new_chat() -> None:
             generation_icon_path.read_bytes()
         ).decode("ascii")
         status_copy = "Creating illustration..." if action == "illustrate" else (
-            "Thinking..."
+            "Forming your answer..."
             if status_mode == "thinking"
             else "Generating Question Map..."
             if status_mode == "question_map"
             else "Generating response... may take some time."
         )
+        forming_lines = "" if action == "illustrate" else """
+              <div class="nc-answer-forming-lines" aria-label="Answer is forming">
+                <span class="nc-answer-forming-line"></span>
+                <span class="nc-answer-forming-line"></span>
+                <span class="nc-answer-forming-line"></span>
+              </div>
+        """
         st.markdown(
             f"""
             <style>
@@ -10448,10 +10523,54 @@ def page_new_chat() -> None:
                 animation: nc-generation-icon-think 1.18s ease-in-out infinite;
             }}
 
+            .nc-generation-placeholder .nc-answer-forming-lines {{
+                width: min(620px, calc(100vw - 390px));
+                min-width: 260px;
+                margin: 13px 0 0 24px;
+                display: grid;
+                gap: 8px;
+            }}
+
+            .nc-generation-placeholder .nc-answer-forming-line {{
+                height: 7px;
+                border-radius: 999px;
+                background: linear-gradient(
+                    90deg,
+                    rgba(203, 210, 221, 0.30) 0%,
+                    rgba(244, 63, 94, 0.16) 42%,
+                    rgba(203, 210, 221, 0.30) 74%
+                );
+                background-size: 220% 100%;
+                animation: nc-answer-forming 1.45s ease-in-out infinite;
+            }}
+
+            .nc-generation-placeholder .nc-answer-forming-line:nth-child(2) {{
+                width: 88%;
+                animation-delay: 0.16s;
+            }}
+
+            .nc-generation-placeholder .nc-answer-forming-line:nth-child(3) {{
+                width: 67%;
+                animation-delay: 0.32s;
+            }}
+
+            @keyframes nc-answer-forming {{
+                0% {{ background-position: 100% 0; opacity: 0.48; }}
+                50% {{ opacity: 1; }}
+                100% {{ background-position: -120% 0; opacity: 0.48; }}
+            }}
+
             @keyframes nc-generation-icon-think {{
                 0%, 100% {{ opacity: 0.30; transform: scale(0.94); }}
                 46% {{ opacity: 1; transform: scale(1.025); }}
                 62% {{ opacity: 0.72; transform: scale(1); }}
+            }}
+
+            @media (max-width: 760px) {{
+                .nc-generation-placeholder .nc-answer-forming-lines {{
+                    width: calc(100vw - 76px);
+                    min-width: 0;
+                }}
             }}
             </style>
             <div class="nc-generation-placeholder">
@@ -10459,6 +10578,7 @@ def page_new_chat() -> None:
                 <img class="nc-generation-icon" src="data:image/png;base64,{generation_icon_data}" alt="">
                 <span>{status_copy}</span>
               </div>
+              {forming_lines}
             </div>
             """,
             unsafe_allow_html=True,

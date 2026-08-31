@@ -22,11 +22,21 @@ class ResponseStrategyTests(unittest.TestCase):
         query = "What is data science?"
         self.assertEqual(initial_answer_opening(query), initial_answer_opening(query))
         self.assertTrue(initial_answer_opening(query).strip())
-        self.assertIn("questions", related_questions_bridge(query).casefold())
+        self.assertIn("questions", related_questions_bridge(query, 6).casefold())
         self.assertIn(
             "knowledge structure",
             knowledge_structure_bridge(query, CONDITIONAL_KS).casefold(),
         )
+
+    def test_question_bridge_uses_the_real_available_count(self):
+        seed_with_counted_variant = next(
+            seed
+            for seed in (f"topic-{index}" for index in range(100))
+            if "six" in related_questions_bridge(seed, 6).casefold()
+        )
+        bridge = related_questions_bridge(seed_with_counted_variant, 6)
+        self.assertIn("six", bridge.casefold())
+        self.assertNotIn("three", bridge.casefold())
 
     def test_direct_current_query_explains_why_no_ks_was_created(self):
         notice = no_knowledge_structure_notice("What is today's gas price?")
