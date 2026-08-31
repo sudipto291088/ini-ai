@@ -84,6 +84,17 @@ class ProductKnowledgeTests(unittest.TestCase):
         self.assertIn("IA helps you orient quickly", comparison)
         self.assertIn("KS helps you study the full landscape", comparison)
 
+    def test_ini_identifies_its_two_answer_layers_in_natural_language(self):
+        for prompt in (
+            "So basically, how do you answer a question?",
+            "Tell me what are the two ways you answer a question?",
+        ):
+            with self.subTest(prompt=prompt):
+                answer = answer_ini_product_query(prompt)
+                self.assertIn("two connected layers", answer)
+                self.assertIn("Initial Answer (IA)", answer)
+                self.assertIn("Knowledge Structure (KS)", answer)
+
     def test_generic_knowledge_structure_topic_remains_a_learning_request(self):
         self.assertIsNone(
             answer_ini_product_query(

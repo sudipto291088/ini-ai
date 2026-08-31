@@ -6,7 +6,7 @@ import re
 from typing import Any, Dict, Optional
 
 
-PRODUCT_KNOWLEDGE_VERSION = 5
+PRODUCT_KNOWLEDGE_VERSION = 6
 
 
 def _normalize(text: str) -> str:
@@ -62,6 +62,13 @@ def answer_ini_product_query(
             s,
         )
     )
+    response_architecture_reference = bool(
+        re.search(
+            r"\b(?:how do you answer|ways? you answer|ways? (?:that )?you (?:can )?answer|"
+            r"answer layers?|response layers?)\b",
+            s,
+        )
+    )
     second_person_product_reference = bool(
         re.search(
             r"^(?:what (?:exactly )?(?:are|can) you\b|who are you\b|"
@@ -77,12 +84,27 @@ def answer_ini_product_query(
             s,
         )
     )
-    refers_to_ini = explicit_ini_reference or second_person_product_reference or ini_response_term_reference
+    refers_to_ini = (
+        explicit_ini_reference
+        or second_person_product_reference
+        or ini_response_term_reference
+        or response_architecture_reference
+    )
     if not s or not refers_to_ini:
         return None
 
     mentions_ia = bool(re.search(r"\b(?:initial answer|ia)\b", s))
     mentions_ks = bool(re.search(r"\b(?:knowledge structure|ks)\b", s))
+    if response_architecture_reference:
+        return (
+            "I answer through two connected layers. The Initial Answer (IA) gives you the "
+            "immediate, conversational explanation, its Topic Profile and prerequisites, and "
+            "a focused set of related questions. The Knowledge Structure (KS) is the optional "
+            "complete learning layer: it expands the topic into connected concepts, mechanisms, "
+            "subtopics, maps, applications, limitations, and a progressive route through them. "
+            "The IA helps you understand now; the KS helps you explore the full landscape when "
+            "that additional depth is useful."
+        )
     if mentions_ia and mentions_ks:
         return (
             "My Initial Answer (IA) is the concise, conversational first layer: it gives the "

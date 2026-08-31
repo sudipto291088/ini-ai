@@ -116,6 +116,13 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
     """Describe a learning subject and expose its foundations immediately."""
     profiles = [
         (
+            ("algorithm", "data structure", "computational complexity"),
+            "Computational procedure or method",
+            "Computer science / Algorithms",
+            "Correctness, termination, time complexity, space complexity, data structures, algorithm design",
+            "Logical reasoning, basic programming, functions, discrete mathematics, and problem decomposition",
+        ),
+        (
             ("computer vision", "image recognition", "object detection"),
             "Artificial-intelligence discipline",
             "Artificial intelligence / Computer science",

@@ -96,6 +96,21 @@ class ResponseProfileTests(unittest.TestCase):
         self.assertEqual(rows["Broad field"], "Computer science")
         self.assertIn("knowledge representation", rows["Related topics"])
 
+    def test_algorithm_is_classified_under_computer_science(self):
+        rows = dict(
+            build_response_profile(
+                "algorithm",
+                intent="topic_explore",
+                response_mode="conversation",
+                context_intent="explore",
+            )
+        )
+        self.assertEqual(rows["Name type"], "Learning topic")
+        self.assertEqual(rows["Entity type"], "Computational procedure or method")
+        self.assertEqual(rows["Broad field"], "Computer science / Algorithms")
+        self.assertIn("time complexity", rows["Related topics"])
+        self.assertIn("programming", rows["Prerequisites"])
+
     def test_unknown_learning_subject_never_returns_placeholder_labels(self):
         rows = dict(
             build_response_profile(
