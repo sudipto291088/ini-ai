@@ -53,7 +53,7 @@ class ResponseProfileTests(unittest.TestCase):
         )
         self.assertIn("probability", rows["Prerequisites"])
 
-    def test_unknown_learning_subject_still_exposes_safe_foundations(self):
+    def test_marine_biology_question_has_specific_profile(self):
         rows = dict(
             build_response_profile(
                 "How do coral reefs recover after bleaching?",
@@ -61,8 +61,55 @@ class ResponseProfileTests(unittest.TestCase):
                 context_intent="learning",
             )
         )
-        self.assertEqual(rows["Entity type"], "Concept, process, or subject")
-        self.assertIn("introductory concepts", rows["Prerequisites"])
+        self.assertEqual(rows["Broad field"], "Marine biology / Ecology")
+        self.assertIn("Coral symbiosis", rows["Related topics"])
+        self.assertIn("Ecosystems", rows["Prerequisites"])
+
+    def test_bare_computer_vision_topic_is_not_a_learning_question(self):
+        rows = dict(
+            build_response_profile(
+                "Computer vision",
+                intent="topic_explore",
+                response_mode="conversation",
+                context_intent="explore",
+            )
+        )
+        self.assertEqual(rows["Name type"], "Learning topic")
+        self.assertEqual(rows["Entity type"], "Artificial-intelligence discipline")
+        self.assertEqual(
+            rows["Broad field"],
+            "Artificial intelligence / Computer science",
+        )
+        self.assertIn("convolutional networks", rows["Related topics"])
+
+    def test_bare_artificial_intelligence_topic_has_real_classification(self):
+        rows = dict(
+            build_response_profile(
+                "Artificial intelligence",
+                intent="topic_explore",
+                response_mode="conversation",
+                context_intent="explore",
+            )
+        )
+        self.assertEqual(rows["Name type"], "Learning topic")
+        self.assertEqual(rows["Entity type"], "Computing discipline")
+        self.assertEqual(rows["Broad field"], "Computer science")
+        self.assertIn("knowledge representation", rows["Related topics"])
+
+    def test_unknown_learning_subject_never_returns_placeholder_labels(self):
+        rows = dict(
+            build_response_profile(
+                "How are medieval manuscripts preserved?",
+                response_mode="conversation",
+                context_intent="learning",
+            )
+        )
+        self.assertNotEqual(rows["Entity type"], "Concept, process, or subject")
+        self.assertNotEqual(rows["Broad field"], "Knowledge domain")
+        self.assertNotEqual(
+            rows["Related topics"],
+            "Foundations, mechanisms, applications, limitations",
+        )
 
 
 if __name__ == "__main__":

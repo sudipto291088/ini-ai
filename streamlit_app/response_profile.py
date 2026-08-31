@@ -14,6 +14,21 @@ def _subject(text: str, limit: int = 92) -> str:
     return clean[:limit].rstrip() or "User message"
 
 
+def _learning_name_type(text: str) -> str:
+    """Distinguish a named topic from a question about that topic."""
+    normalized = re.sub(r"\s+", " ", (text or "").strip().lower())
+    question_openers = (
+        "what ", "why ", "how ", "when ", "where ", "who ", "which ",
+        "should ", "can ", "could ", "does ", "do ", "is ", "are ",
+        "explain ", "compare ", "describe ", "show ",
+    )
+    return (
+        "Learning question"
+        if normalized.endswith("?") or normalized.startswith(question_openers)
+        else "Learning topic"
+    )
+
+
 def _illustration_topic_profile(text: str, normalized: str) -> ProfileRows:
     """Describe the illustrated subject, rather than the user's UI action."""
     profiles = [
@@ -101,6 +116,41 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
     """Describe a learning subject and expose its foundations immediately."""
     profiles = [
         (
+            ("computer vision", "image recognition", "object detection"),
+            "Artificial-intelligence discipline",
+            "Artificial intelligence / Computer science",
+            "Image processing, convolutional networks, pattern recognition, object detection, visual perception",
+            "Linear algebra, probability, Python, image representation, and basic machine learning",
+        ),
+        (
+            ("reinforcement learning", "q-learning", "policy gradient"),
+            "Machine-learning paradigm",
+            "Artificial intelligence / Machine learning",
+            "Agents, environments, rewards, policies, value functions, exploration, sequential decisions",
+            "Probability, expected value, optimization, Python, and basic machine learning",
+        ),
+        (
+            ("feature scaling", "standardization", "normalization"),
+            "Data-preprocessing technique",
+            "Machine learning / Data preparation",
+            "Standardization, min–max scaling, robust scaling, distance-based models, optimization",
+            "Basic algebra, descriptive statistics, tabular data, and introductory machine learning",
+        ),
+        (
+            ("gradient descent", "stochastic gradient descent", "sgd"),
+            "Optimization algorithm",
+            "Mathematical optimization / Machine learning",
+            "Loss functions, gradients, learning rates, convergence, momentum, model training",
+            "Functions, derivatives, vectors, basic linear algebra, and introductory model training",
+        ),
+        (
+            ("statistics", "statistical inference", "descriptive statistics"),
+            "Mathematical discipline",
+            "Statistics and data analysis",
+            "Distributions, sampling, estimation, uncertainty, hypothesis testing, regression",
+            "Arithmetic, algebra, percentages, graphs, and basic probability",
+        ),
+        (
             ("transformer", "large language model", "llm", "language model"),
             "Machine learning model architecture",
             "Artificial intelligence / Natural language processing",
@@ -108,11 +158,25 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
             "Basic neural networks, vectors and matrices, probability, and tokenization",
         ),
         (
-            ("machine learning", "neural network", "deep learning"),
-            "Machine learning concept",
-            "Artificial intelligence",
-            "Training data, optimization, evaluation, model behaviour",
-            "Basic algebra, probability, statistics, and programming concepts",
+            ("neural network", "deep learning"),
+            "Machine-learning model family",
+            "Artificial intelligence / Machine learning",
+            "Artificial neurons, layers, activation functions, backpropagation, optimization, architectures",
+            "Algebra, functions, vectors and matrices, probability, Python, and basic machine learning",
+        ),
+        (
+            ("machine learning",),
+            "Computational learning field",
+            "Artificial intelligence / Computer science",
+            "Supervised learning, unsupervised learning, model evaluation, optimization, generalization",
+            "Algebra, probability, statistics, programming, and working with tabular data",
+        ),
+        (
+            ("artificial intelligence",),
+            "Computing discipline",
+            "Computer science",
+            "Machine learning, reasoning, knowledge representation, perception, language, autonomous systems",
+            "Programming concepts, algorithms, basic probability, linear algebra, and data representation",
         ),
         (
             ("data science", "data analysis"),
@@ -170,11 +234,18 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
             "Clients, servers, tools, transports, permissions, verification",
             "Client–server basics, JSON, command-line use, and local process or HTTP concepts",
         ),
+        (
+            ("coral reef", "coral bleaching", "marine ecosystem"),
+            "Ecological process or system",
+            "Marine biology / Ecology",
+            "Coral symbiosis, thermal stress, bleaching, recruitment, reef resilience, climate change",
+            "Ecosystems, food webs, cells, photosynthesis, ocean temperature, and basic climate science",
+        ),
     ]
     for keywords, entity_type, broad_field, related, prerequisites in profiles:
         if any(keyword in normalized for keyword in keywords):
             return [
-                ("Name type", "Learning question"),
+                ("Name type", _learning_name_type(text)),
                 ("Entity type", entity_type),
                 ("Broad field", broad_field),
                 ("Subject", _subject(text)),
@@ -182,13 +253,20 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
                 ("Prerequisites", prerequisites),
             ]
 
+    subject = _subject(text)
     return [
-        ("Name type", "Learning question"),
-        ("Entity type", "Concept, process, or subject"),
-        ("Broad field", "Knowledge domain"),
-        ("Subject", _subject(text)),
-        ("Related topics", "Foundations, mechanisms, applications, limitations"),
-        ("Prerequisites", "Basic terminology and introductory concepts in the subject area"),
+        ("Name type", _learning_name_type(text)),
+        ("Entity type", "Interdisciplinary learning inquiry"),
+        ("Broad field", "Interdisciplinary study"),
+        ("Subject", subject),
+        (
+            "Related topics",
+            f"Definitions of {subject}; underlying mechanisms; evidence; applications; limitations",
+        ),
+        (
+            "Prerequisites",
+            f"Core terminology and introductory principles directly related to {subject}",
+        ),
     ]
 
 
