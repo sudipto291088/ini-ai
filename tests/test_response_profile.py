@@ -165,6 +165,41 @@ class ResponseProfileTests(unittest.TestCase):
                 self.assertEqual(rows["Broad field"], expected_field)
                 self.assertIn(expected_related, rows["Related topics"])
 
+    def test_federated_learning_privacy_profile_is_specific(self):
+        rows = dict(
+            build_response_profile(
+                "How does federated learning protect privacy, what information can still leak, and which techniques reduce those risks?",
+                intent="topic_explore",
+                response_mode="standard",
+                context_intent="learning",
+            )
+        )
+        self.assertEqual(rows["Subject"], "Privacy in federated learning")
+        self.assertEqual(
+            rows["Broad field"],
+            "Machine learning / Privacy-preserving AI / Distributed systems",
+        )
+        self.assertIn("gradient leakage", rows["Related topics"])
+        self.assertIn("secure aggregation", rows["Related topics"])
+        self.assertIn("distributed optimization", rows["Prerequisites"])
+        self.assertNotIn("directly related", rows["Prerequisites"])
+
+    def test_rag_profile_uses_concept_subject_instead_of_truncated_question(self):
+        rows = dict(
+            build_response_profile(
+                "How does retrieval-augmented generation (RAG) work, why can it still "
+                "produce incorrect answers, and which retrieval and evaluation techniques "
+                "improve its reliability?",
+                intent="topic_explore",
+                response_mode="standard",
+                context_intent="learning",
+            )
+        )
+
+        self.assertEqual(rows["Subject"], "Retrieval-Augmented Generation (RAG)")
+        self.assertIn("reranking", rows["Related topics"])
+        self.assertNotIn("incorrect answe", rows["Subject"])
+
 
 if __name__ == "__main__":
     unittest.main()

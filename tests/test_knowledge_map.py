@@ -70,19 +70,76 @@ def test_trailing_mechanism_verbs_do_not_enter_compact_anchor():
     ).anchor == "CRISPR-Cas9 off-target effects"
 
 
+def test_privacy_questions_use_grammatical_concept_led_anchors():
+    projection = compact_knowledge_map_projection(
+        "How does federated learning protect privacy, what information can still "
+        "leak, and which techniques reduce those risks?"
+    )
+
+    assert projection.anchor == "Privacy in federated learning"
+
+    assert compact_knowledge_map_projection(
+        "How does secure messaging protect privacy, and what can still leak?"
+    ).anchor == "Privacy in secure messaging"
+    assert compact_knowledge_map_projection(
+        "How does sensor fusion improve accuracy, and what are its limits?"
+    ).anchor == "Accuracy of sensor fusion"
+
+
+def test_generated_map_descriptions_qualify_absolute_claims():
+    title, description = expanded_knowledge_map_entry(
+        {
+            "question": "What problems does retrieval-augmented generation address?",
+            "map_title": "RAG problem scope",
+            "map_description": "Solves knowledge staleness and reduces hallucinations.",
+        },
+        "Orientation",
+    )
+
+    assert title == "RAG problem scope"
+    assert description == "Helps address knowledge staleness and reduces hallucinations."
+
+
+def test_saved_map_mechanism_repairs_are_scoped_to_misleading_claims():
+    cases = (
+        ("Clients create pairwise masks; masks cancel so the aggregate remains decryptable.", "pairwise masks cancel during summation"),
+        ("Edge devices favor local DP; enterprises prefer central DP.", "trust assumptions"),
+        ("Prompts and weak verification chains reduce hallucinations.", "claim-to-source entailment checks"),
+        ("Retrieve-then-generate, retrieve-and-read, and fusion-in-decoder merge evidence.", "overlapping design choices"),
+    )
+    for description, expected in cases:
+        _, actual = expanded_knowledge_map_entry(
+            {"map_title": "Mechanism choices", "map_description": description},
+            "Mechanisms",
+        )
+        assert expected in actual
+
+    _, unchanged = expanded_knowledge_map_entry(
+        {"map_title": "Gaussian elimination", "map_description": "Solves a nonsingular linear system by elimination and back substitution."},
+        "Methods & Tools",
+    )
+    assert unchanged.startswith("Solves a nonsingular linear system")
+
+
 def test_negative_performance_questions_use_general_concept_led_anchors():
     cases = {
         "Why does linear regression perform badly when there are outliers?": (
-            "linear regression performance with outliers"
+            "Performance of linear regression with outliers"
         ),
         "Why do neural networks perform poorly when the data is imbalanced?": (
-            "neural networks performance with imbalanced"
+            "Performance of neural networks with imbalanced data"
         ),
         "Why does GPS work unreliably in dense urban areas?": (
-            "GPS performance with dense urban areas"
+            "Performance of GPS in dense urban areas"
         ),
         "Why do lithium-ion batteries behave worse under extreme cold?": (
-            "lithium-ion batteries performance with extreme cold"
+            "Performance of lithium-ion batteries under extreme cold"
+        ),
+        "Linear regression perform badly when there are outliers": (
+            "Performance of Linear regression with outliers"
+        ),
+        "Neural networks perform poorly when data is imbalanced": (
+            "Performance of Neural networks with imbalanced data"
         ),
     }
 

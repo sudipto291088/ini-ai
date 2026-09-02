@@ -9,6 +9,9 @@ from typing import List, Tuple
 ProfileRows = List[Tuple[str, str]]
 
 
+RESPONSE_PROFILE_VERSION = 2
+
+
 def _subject(text: str, limit: int = 92) -> str:
     clean = re.sub(r"\s+", " ", (text or "").strip())
     return clean[:limit].rstrip() or "User message"
@@ -114,6 +117,36 @@ def _illustration_topic_profile(text: str, normalized: str) -> ProfileRows:
 
 def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
     """Describe a learning subject and expose its foundations immediately."""
+    if "federated learning" in normalized:
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Privacy-preserving distributed-learning architecture"),
+            ("Broad field", "Machine learning / Privacy-preserving AI / Distributed systems"),
+            ("Subject", "Privacy in federated learning"),
+            (
+                "Related topics",
+                "Federated averaging (FedAvg), gradient leakage, model inversion, membership inference, secure aggregation, differential privacy, homomorphic encryption, multiparty computation",
+            ),
+            (
+                "Prerequisites",
+                "Supervised learning, neural-network training, gradients, distributed optimization, basic cryptography, probability, and introductory privacy concepts",
+            ),
+        ]
+    if re.search(r"\b(?:retrieval[- ]augmented generation|rag)\b", normalized):
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Knowledge-grounded generation architecture"),
+            ("Broad field", "Artificial intelligence / Information retrieval"),
+            ("Subject", "Retrieval-Augmented Generation (RAG)"),
+            (
+                "Related topics",
+                "Sparse and dense retrieval, embeddings, vector search, reranking, grounding, citations, hallucination, and evaluation",
+            ),
+            (
+                "Prerequisites",
+                "Language models, embeddings, information retrieval, prompts, and basic evaluation",
+            ),
+        ]
     profiles = [
         (
             ("algorithm", "data structure", "computational complexity"),

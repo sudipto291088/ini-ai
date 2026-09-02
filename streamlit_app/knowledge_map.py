@@ -2,6 +2,9 @@ import re
 from dataclasses import dataclass
 
 
+KNOWLEDGE_MAP_VERSION = 7
+
+
 @dataclass(frozen=True)
 class CompactKnowledgeMapProjection:
     anchor: str
@@ -54,6 +57,64 @@ def _clean_anchor(text: str) -> str:
     return anchor
 
 
+def _concept_led_anchor(query: str) -> str:
+    """Return a grammatical subject label for common relationship questions."""
+    privacy_match = re.match(
+        r"^how\s+(?:does|do)\s+(.+?)\s+protect\s+privacy\b",
+        query,
+        flags=re.IGNORECASE,
+    )
+    if privacy_match:
+        subject = _clean_anchor(privacy_match.group(1))
+        if subject:
+            return f"Privacy in {subject}"
+
+    reliability_match = re.match(
+        r"^how\s+(?:does|do)\s+(.+?)\s+(?:improve|increase|support)\s+"
+        r"(?:the\s+)?(accuracy|reliability|safety)\b",
+        query,
+        flags=re.IGNORECASE,
+    )
+    if reliability_match:
+        subject = _clean_anchor(reliability_match.group(1))
+        if subject:
+            return f"{reliability_match.group(2).capitalize()} of {subject}"
+    return ""
+
+
+def _qualify_map_description(description: str) -> str:
+    """Correct known misleading claim patterns, including in saved maps.
+
+    These guards supplement the generation contract; they are not a general
+    factuality checker and deliberately leave formal mathematical claims alone.
+    """
+    value = re.sub(r"\s+", " ", str(description or "")).strip()
+    if re.search(r"\b(?:staleness|hallucinations|privacy|reliability|bias)\b", value, re.I):
+        value = re.sub(r"^Solves\b", "Helps address", value)
+    value = re.sub(
+        r"\bweak verification chains\b",
+        "claim-to-source entailment checks",
+        value,
+        flags=re.I,
+    )
+    if "masks" in value.lower() and "decryptable" in value.lower():
+        value = (
+            "Clients send masked updates; pairwise masks cancel during summation, "
+            "revealing only the aggregate under the protocol's trust assumptions."
+        )
+    if re.search(r"\bedge devices favor local DP\b", value, re.I):
+        value = (
+            "Local, central, or distributed DP choices depend on trust assumptions, "
+            "privacy requirements, and utility—not deployment location alone."
+        )
+    if all(term in value.lower() for term in ("retrieve-then-generate,", "retrieve-and-read", "fusion-in-decoder")):
+        value = (
+            "Retrieve-and-generate pipelines may use reranking or Fusion-in-Decoder; "
+            "these are overlapping design choices rather than mutually exclusive architecture classes."
+        )
+    return value
+
+
 def compact_knowledge_map_projection(
     topic: str,
     context: object = "",
@@ -73,8 +134,8 @@ def compact_knowledge_map_projection(
     # rather than retaining fragments such as "How should ... be".
     lowered_query = query.casefold()
     lowered_context = re.sub(r"\s+", " ", str(context or "")).casefold()
-    canonical_subject = ""
-    if re.search(r"\btime[- ]series\s+features?\s+be\s+engineered\b", lowered_query):
+    canonical_subject = _concept_led_anchor(query)
+    if not canonical_subject and re.search(r"\btime[- ]series\s+features?\s+be\s+engineered\b", lowered_query):
         canonical_subject = "Time-series feature engineering"
     elif re.search(r"\bcausal\s+effects?\s+be\s+estimated\b", lowered_query):
         canonical_subject = "Causal-effect estimation"
@@ -89,23 +150,33 @@ def compact_knowledge_map_projection(
     ):
         canonical_subject = "Transformer self-attention"
     elif performance_match := re.match(
-        r"^why\s+(?:does|do)\s+(.+?)\s+"
+        r"^(?:why\s+(?:does|do)\s+)?(.+?)\s+"
         r"(?:perform|performs|behave|behaves|work|works|function|functions)\s+"
         r"(?:badly|poorly|worse|incorrectly|unreliably)\s+"
-        r"(?:when|with|under|on|during|in)\s+(.+?)\??$",
+        r"(when|with|under|on|during|in)\s+(.+?)\??$",
         query,
         flags=re.IGNORECASE,
     ):
         subject = _clean_anchor(performance_match.group(1))
-        condition = _clean_anchor(performance_match.group(2))
-        condition = re.sub(
-            r"^(?:there\s+(?:is|are|was|were)|(?:the\s+)?data\s+(?:is|are))\s+",
-            "",
+        relationship = performance_match.group(2).casefold()
+        condition = _clean_anchor(performance_match.group(3))
+        data_state = re.match(
+            r"^(?:the\s+)?data\s+(?:is|are)\s+(.+)$",
             condition,
             flags=re.IGNORECASE,
-        ).strip()
+        )
+        if data_state:
+            condition = f"{data_state.group(1).strip()} data"
+        else:
+            condition = re.sub(
+                r"^there\s+(?:is|are|was|were)\s+",
+                "",
+                condition,
+                flags=re.IGNORECASE,
+            ).strip()
         if subject and condition:
-            canonical_subject = f"{subject} performance with {condition}"
+            connector = "with" if relationship == "when" else relationship
+            canonical_subject = f"Performance of {subject} {connector} {condition}"
     elif (
         lowered_query in {"convergence", "optimizer convergence"}
         and "gradient descent" in lowered_context
@@ -262,7 +333,7 @@ def expanded_knowledge_map_entry(
     if len(title.split()) > 7:
         title = " ".join(title.split()[:7]).rstrip(" ,.;:?!")
 
-    description = supplied_description or _STAGE_DESCRIPTIONS.get(
+    description = _qualify_map_description(supplied_description) or _STAGE_DESCRIPTIONS.get(
         category,
         "Shows how this idea continues the learning path.",
     )

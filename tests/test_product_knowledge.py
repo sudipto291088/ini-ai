@@ -88,12 +88,25 @@ class ProductKnowledgeTests(unittest.TestCase):
         for prompt in (
             "So basically, how do you answer a question?",
             "Tell me what are the two ways you answer a question?",
+            "What are your modes of answering?",
+            "What are the modes of answering by you?",
         ):
             with self.subTest(prompt=prompt):
                 answer = answer_ini_product_query(prompt)
                 self.assertIn("two connected layers", answer)
                 self.assertIn("Initial Answer (IA)", answer)
                 self.assertIn("Knowledge Structure (KS)", answer)
+
+    def test_founder_beliefs_are_not_invented(self):
+        answer = answer_ini_product_query("Which religion does your founder follow?")
+        self.assertIn("Sid", answer)
+        self.assertIn("do not have reliable information", answer)
+        self.assertNotIn("OpenAI", answer)
+
+    def test_openai_identity_error_is_admitted_directly(self):
+        answer = answer_ini_product_query("Why did you talk about OpenAI?")
+        self.assertIn("That was incorrect", answer)
+        self.assertIn("I am InI.ai", answer)
 
     def test_generic_knowledge_structure_topic_remains_a_learning_request(self):
         self.assertIsNone(

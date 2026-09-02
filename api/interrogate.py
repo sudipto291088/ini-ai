@@ -900,6 +900,13 @@ IMPORTANT
 • map_title must contain 2 to 6 words and must not be phrased as a question.
 • map_description must contain 8 to 24 words of concrete knowledge: name the actual types, components, mechanisms, methods, examples, or subtopics inside map_title.
 • Never write meta-descriptions such as "covers", "explores", "introduces", "establishes", "clarifies", "outlines", or "shows why".
+• Treat all categories as one continuous map: every branch must add a distinct concept and prepare the learner for the next stage.
+• Use grammatical, concept-led map_title labels; never leave auxiliary verbs or broken question fragments in a title.
+• Match the scope of every factual claim to its evidence. Prefer "helps reduce" or "can improve" over "solves", "prevents", "eliminates", or "guarantees" unless a formal guarantee is explicitly part of the topic.
+• Describe mechanisms precisely enough to distinguish what each method reveals, hides, reduces, or leaves unresolved. Do not merge overlapping architectures into falsely exclusive categories.
+• For protection or reliability claims, state relevant trust assumptions and limitations. For example, secure-aggregation masks cancel in a sum; do not call that sum "decryptable" unless describing an encryption-based protocol. Deployment type alone does not determine local versus central differential privacy.
+• Name the verification mechanism (such as claim-to-source entailment checking), not vague phrases such as "weak verification chains". Separate a general pipeline from variants within it, such as Fusion-in-Decoder within retrieve-and-generate systems.
+• Before returning, audit every map leaf for concrete contents, correct terminology, qualified claims, non-duplicate objectives, and a coherent foundation-to-application sequence. Repair any failed leaf before emitting the JSON.
 • Example: map_title "Regularization techniques" → map_description "Ridge, lasso, and elastic net control coefficient instability and model complexity."
 • Example: map_title "Inflation measures" → map_description "CPI, PCE Price Index, GDP deflator, and producer-price indices measure different parts of the price system."
 • For a compound TOPIC, every requested dimension must appear explicitly in at least one map_title or map_description.
@@ -1104,6 +1111,13 @@ Rules:
 - For every question, include a 2-to-6-word map_title that names the topic rather than repeating the question.
 - Include an 8-to-24-word map_description naming the concrete types, components, mechanisms, methods, examples, or subtopics inside map_title.
 - Never use meta-descriptions such as "covers", "explores", "introduces", "establishes", "clarifies", "outlines", or "shows why".
+- Treat the seven categories as one continuous map: every branch must add a distinct concept and prepare the learner for the next stage.
+- Use grammatical, concept-led map_title labels; never leave auxiliary verbs or broken question fragments in a title.
+- Match the scope of every factual claim to its evidence. Prefer "helps reduce" or "can improve" over "solves", "prevents", "eliminates", or "guarantees" unless a formal guarantee is explicitly part of the topic.
+- Describe mechanisms precisely enough to distinguish what each method reveals, hides, reduces, or leaves unresolved. Do not merge overlapping architectures into falsely exclusive categories.
+- For protection or reliability claims, state relevant trust assumptions and limitations. For example, secure-aggregation masks cancel in a sum; do not call that sum "decryptable" unless describing an encryption-based protocol. Deployment type alone does not determine local versus central differential privacy.
+- Name the verification mechanism (such as claim-to-source entailment checking), not vague phrases such as "weak verification chains". Separate a general pipeline from variants within it, such as Fusion-in-Decoder within retrieve-and-generate systems.
+- Before returning, audit every map leaf for concrete contents, correct terminology, qualified claims, non-duplicate objectives, and a coherent foundation-to-application sequence. Repair any failed leaf before emitting the JSON.
 - Example: "Regularization techniques" must name ridge, lasso, and elastic net rather than say that the branch covers regularization.
 - Every requested dimension of a compound topic must appear explicitly in at least one map_title or map_description.
 

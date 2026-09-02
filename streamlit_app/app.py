@@ -42,11 +42,17 @@ from topic_profile import (
     split_prerequisite_items,
     split_prerequisites,
 )
-from response_profile import build_response_profile
-from streamlit_app.knowledge_map import (
-    compact_knowledge_map_projection,
-    expanded_knowledge_map_entry,
-)
+import response_profile
+
+if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 2:
+    response_profile = importlib.reload(response_profile)
+build_response_profile = response_profile.build_response_profile
+import streamlit_app.knowledge_map as knowledge_map
+
+if getattr(knowledge_map, "KNOWLEDGE_MAP_VERSION", 0) < 7:
+    knowledge_map = importlib.reload(knowledge_map)
+compact_knowledge_map_projection = knowledge_map.compact_knowledge_map_projection
+expanded_knowledge_map_entry = knowledge_map.expanded_knowledge_map_entry
 from structured_validation import validate_structured_learning_answer
 # Product knowledge was introduced after the original Streamlit entry point.
 # Keep startup resilient while a deployment rolls between revisions: an older
@@ -58,7 +64,7 @@ try:
     # helper modules after a deployment sync. Force a reload when the running
     # module predates the routing repair so hosted sessions cannot retain the
     # old product-query detector.
-    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 6:
+    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 7:
         product_knowledge = importlib.reload(product_knowledge)
     answer_ini_product_query = product_knowledge.answer_ini_product_query
 except ModuleNotFoundError as exc:
@@ -9667,7 +9673,12 @@ def page_new_chat() -> None:
                     # active practical request. Route the reconstructed request
                     # through CARM before any standalone conversation shortcut.
                     data = fetch_interrogate(topic_text)
-                elif local_conversation_answer and not substantive_learning_turn:
+                elif (
+                    local_conversation_answer
+                    and not substantive_learning_turn
+                    and not ini_product_answer
+                    and not ini_version_query
+                ):
                     # Local conversational copy is subordinate to the central
                     # turn decision.  It must never intercept a positively
                     # identified learning transition simply because it can

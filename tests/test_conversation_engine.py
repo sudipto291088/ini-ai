@@ -2,6 +2,7 @@ import unittest
 
 from api.interrogate import interrogate
 from api.intent_layer import detect_intent
+from api.conversation_engine import build_conversation_prompt
 
 
 class ConversationEngineTests(unittest.TestCase):
@@ -11,6 +12,13 @@ class ConversationEngineTests(unittest.TestCase):
         self.assertTrue(result["should_answer_direct"])
         self.assertEqual(result["categories"], {})
         self.assertIn("natural conversation", result["direct_answer_prompt"])
+
+    def test_conversation_prompt_does_not_force_engagement_questions(self):
+        prompt = build_conversation_prompt(
+            "I had a long day, but I am okay now", "smalltalk"
+        )
+        self.assertIn("Default to a complete, conclusive statement", prompt)
+        self.assertIn("Never append a menu", prompt)
 
     def test_unclear_message_gets_cross_question_policy(self):
         result = interrogate("It is doing that thing again")

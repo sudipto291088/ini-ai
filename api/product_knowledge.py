@@ -6,7 +6,7 @@ import re
 from typing import Any, Dict, Optional
 
 
-PRODUCT_KNOWLEDGE_VERSION = 6
+PRODUCT_KNOWLEDGE_VERSION = 7
 
 
 def _normalize(text: str) -> str:
@@ -65,7 +65,8 @@ def answer_ini_product_query(
     response_architecture_reference = bool(
         re.search(
             r"\b(?:how do you answer|ways? you answer|ways? (?:that )?you (?:can )?answer|"
-            r"answer layers?|response layers?)\b",
+            r"answer layers?|response layers?|modes? (?:of )?(?:answering|response)|"
+            r"answering modes?)\b",
             s,
         )
     )
@@ -91,6 +92,15 @@ def answer_ini_product_query(
         or response_architecture_reference
     )
     if not s or not refers_to_ini:
+        if re.search(
+            r"\b(?:why|how come)\b.{0,60}\b(?:mention|mentioned|talk|talked)\b"
+            r".{0,40}\bopenai\b",
+            s,
+        ):
+            return (
+                "That was incorrect. I am InI.ai, not OpenAI, and I should not have "
+                "replaced my own identity with another organization."
+            )
         return None
 
     mentions_ia = bool(re.search(r"\b(?:initial answer|ia)\b", s))
@@ -126,6 +136,15 @@ def answer_ini_product_query(
             "topic. It develops the subject progressively through its concepts, mechanisms, "
             "subtopics, relationships, questions, maps, applications, and limitations. You can "
             "open it from an Initial Answer when you want the full learning landscape."
+        )
+
+    if re.search(r"\b(?:religion|religious|faith|beliefs?)\b", s) and re.search(
+        r"\b(?:founder|creator|sid|sudipto)\b", s
+    ):
+        return (
+            "Sid (Sudipto) is the founder and creator of InI.ai. I do not have "
+            "reliable information about his religious beliefs, and I should not infer or "
+            "invent a private belief."
         )
 
     if re.search(r"\b(who|what).*(created|creator|founder|built|made|designed)\b", s) or re.search(
