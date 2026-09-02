@@ -269,6 +269,30 @@ class ConversationEngineTests(unittest.TestCase):
         self.assertTrue(result["should_interrogate"])
         self.assertFalse(result["should_answer_direct"])
 
+    def test_compound_scientific_learning_queries_do_not_become_conversation(self):
+        queries = (
+            "How does retrieval-augmented generation reduce hallucinations, and where can it still fail?",
+            "What causes antibiotic resistance, and how can healthcare systems limit it?",
+            "Explain CRISPR gene editing, its current applications, limitations, and ethical concerns.",
+        )
+        for query in queries:
+            with self.subTest(query=query):
+                detected = detect_intent(query)
+                self.assertEqual(detected["intent"], "topic_explore")
+                self.assertTrue(detected["should_interrogate"])
+                self.assertFalse(detected["should_answer_direct"])
+
+    def test_failed_learning_map_preserves_learning_presentation(self):
+        from unittest.mock import patch
+
+        with patch("api.interrogate._llm_is_enabled", return_value=False):
+            result = interrogate("How does retrieval-augmented generation reduce hallucinations?")
+
+        self.assertEqual(result["intent"], "unsupported_learning_topic")
+        self.assertEqual(result["response_mode"], "standard")
+        self.assertEqual(result["context_intent"], "learning")
+        self.assertFalse(result["suppress_profile"])
+
     def test_compound_learning_question_routes_to_full_interrogate(self):
         result = detect_intent(
             "What is linear regression, what are its main types, and how does "

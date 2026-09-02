@@ -113,7 +113,7 @@ import api.conversation_interpreter as conversation_interpreter
 
 if (
     not hasattr(conversation_interpreter, "should_preserve_conversation_context")
-    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 10
+    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 12
 ):
     conversation_interpreter = importlib.reload(conversation_interpreter)
 interpret_turn = conversation_interpreter.interpret_turn
@@ -7158,6 +7158,55 @@ def page_new_chat() -> None:
 
         with st.spinner("Generating question map... may take some time."):
             data = fetch_interrogate(topic_text.strip())
+            if str(data.get("intent") or "").strip().lower() == "unsupported_learning_topic":
+                explicit_learning_fallback = bool(
+                    re.match(
+                        r"^(?:what|why|how|when|where|which)\s+|"
+                        r"^(?:explain|compare|describe|define|teach)\b",
+                        re.sub(r"\s+", " ", topic_text.casefold()).strip(),
+                    )
+                )
+                if explicit_learning_fallback:
+                    question_limit = question_intelligence_limit(topic_text)
+                    direct_resp = fetch_study_full(
+                        topic_text.strip(), mode="clear", max_rounds=1
+                    )
+                    followups = fallback_learning_questions(
+                        topic_text.strip(), limit=question_limit
+                    )
+                    _append_direct_branch(
+                        topic_text.strip(),
+                        {
+                            "prompt": topic_text.strip(),
+                            "text": (direct_resp.get("answer") or "").strip()
+                            or (data.get("reply") or "No answer generated.").strip(),
+                            "incomplete": bool(direct_resp.get("incomplete")),
+                            "stop_reason": direct_resp.get("stop_reason") or None,
+                            "mode": "clear",
+                            "followups": followups,
+                            "intent": "topic_explore",
+                            "should_answer_direct": True,
+                            "response_mode": "standard",
+                            "context_intent": "learning",
+                            "show_followups": True,
+                            "question_intelligence": True,
+                            "question_intelligence_count": len(followups),
+                            "needs_clarification": False,
+                            "suppress_profile": False,
+                            "knowledge_structure_available": True,
+                            "knowledge_structure_topic": (
+                                data.get("topic") or topic_text.strip()
+                            ),
+                            "ks_suitability": assess_ks_suitability(
+                                topic_text.strip(),
+                                {"categories": {"fallback": followups}},
+                            ),
+                            "ts": now_label(),
+                        },
+                        "direct",
+                    )
+                    _persist_new_chat_session(current_sid)
+                    return
             intro_resp = fetch_study_full(topic_text.strip(), mode="intro", max_rounds=0)
             intro = intro_resp.get("answer", "").strip()
             _append_interrogate_branch(topic_text.strip(), data, intro)
@@ -9618,7 +9667,11 @@ def page_new_chat() -> None:
                     # active practical request. Route the reconstructed request
                     # through CARM before any standalone conversation shortcut.
                     data = fetch_interrogate(topic_text)
-                elif local_conversation_answer:
+                elif local_conversation_answer and not substantive_learning_turn:
+                    # Local conversational copy is subordinate to the central
+                    # turn decision.  It must never intercept a positively
+                    # identified learning transition simply because it can
+                    # produce a plausible short reply.
                     if topic_recommendation_request:
                         st.session_state.chat_pending_qm_confirmation = {
                             "topic": "gradient descent",
@@ -9864,6 +9917,17 @@ def page_new_chat() -> None:
                     # directions, and an on-demand opportunity to retry the
                     # complete structure.
                     if intent_name == "unsupported_learning_topic":
+                        explicit_learning_fallback = bool(
+                            re.match(
+                                r"^(?:what|why|how|when|where|which)\s+|"
+                                r"^(?:explain|compare|describe|define|teach)\b",
+                                re.sub(
+                                    r"\s+",
+                                    " ",
+                                    display_topic_text.casefold(),
+                                ).strip(),
+                            )
+                        )
                         question_limit = question_intelligence_limit(
                             display_topic_text
                         )
@@ -9888,7 +9952,15 @@ def page_new_chat() -> None:
                             "followups": followups,
                             "intent": "topic_explore",
                             "should_answer_direct": True,
-                            "response_mode": "conversation",
+                            # Explicit learning questions retain the complete
+                            # IA presentation when map generation fails;
+                            # uncertain conversational fragments keep their
+                            # original conversation fallback.
+                            "response_mode": (
+                                "standard"
+                                if explicit_learning_fallback
+                                else response_mode
+                            ),
                             "context_intent": "learning",
                             "show_followups": True,
                             "question_intelligence": True,
@@ -10035,7 +10107,8 @@ def page_new_chat() -> None:
                         ),
                         "knowledge_structure_available": False,
                         "explain_ks_decision": bool(
-                            _looks_like_live_local_query(display_topic_text)
+                            response_mode not in {"conversation", "discussion_answer"}
+                            and _looks_like_live_local_query(display_topic_text)
                         ),
                         "discussion_answer": (
                             {

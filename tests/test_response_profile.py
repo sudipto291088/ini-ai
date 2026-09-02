@@ -138,6 +138,33 @@ class ResponseProfileTests(unittest.TestCase):
             "Foundations, mechanisms, applications, limitations",
         )
 
+    def test_rag_and_antibiotic_resistance_have_subject_profiles(self):
+        cases = (
+            (
+                "How does retrieval-augmented generation reduce hallucinations?",
+                "Artificial intelligence / Information retrieval",
+                "vector search",
+            ),
+            (
+                "What causes antibiotic resistance?",
+                "Microbiology / Public health",
+                "stewardship",
+            ),
+        )
+        for query, expected_field, expected_related in cases:
+            with self.subTest(query=query):
+                rows = dict(
+                    build_response_profile(
+                        query,
+                        intent="topic_explore",
+                        response_mode="standard",
+                        context_intent="learning",
+                    )
+                )
+                self.assertEqual(rows["Name type"], "Learning question")
+                self.assertEqual(rows["Broad field"], expected_field)
+                self.assertIn(expected_related, rows["Related topics"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import re
 
 
-CONVERSATION_INTERPRETER_VERSION = 10
+CONVERSATION_INTERPRETER_VERSION = 12
 
 
 _ACK_ONLY = re.compile(
@@ -103,7 +103,13 @@ def should_preserve_conversation_context(
     requests_learning_map: bool,
     explicit_question_map_request: bool,
 ) -> bool:
-    """Keep established casual conversation active across ordinary turns."""
+    """Keep established conversation active until learning intent is explicit.
+
+    ``requests_learning_map`` is deliberately *not* sufficient evidence.  It is
+    produced by a broad topic detector and therefore may fire for perfectly
+    ordinary utterances.  Once dialogue is established, only positive learning
+    evidence may hand control to IA/Question Map/Knowledge Structure routing.
+    """
     normalized = _normalized(user_text)
     rejects_question_map = bool(
         re.search(
@@ -128,6 +134,10 @@ def should_preserve_conversation_context(
     )
     explicit_learning_language = bool(
         not rejects_learning_mode
+        and not re.search(
+            r"\b(?:you|we|i)\s+(?:understand|learn|study)\b",
+            normalized,
+        )
         and (
             re.search(
                 r"\b(?:teach|explain|define|study|learn|understand|"
@@ -148,6 +158,40 @@ def should_preserve_conversation_context(
                 r"(?!(?:you|we|i|this|that|it)\b)",
                 normalized,
             )
+            or re.search(
+                r"^what\s+(?:causes?|caused|makes?|drives?|determines?|"
+                r"influences?|affects?|limits?|prevents?|explains?)\b",
+                normalized,
+            )
+        )
+    )
+    words = re.findall(r"[a-z0-9+#.-]+", normalized)
+    standalone_blockers = {
+        "a", "an", "the", "and", "but", "or", "so", "no", "not",
+        "nothing", "something", "anything", "everything", "kind", "type",
+        "of", "for", "from", "to", "with", "without", "about", "under",
+        "over", "into", "on", "in", "at", "by", "as", "than", "then",
+        "has", "have", "had", "can", "could", "would", "should", "will",
+        "may", "might", "must", "do", "does", "did", "carry", "go",
+        "often", "sometimes", "usually", "maybe", "perhaps", "just",
+        "only", "really", "very", "rather", "enough", "now", "here",
+        "there", "right", "mate", "man", "aloud", "serious",
+    }
+    standalone_topic = bool(
+        1 <= len(words) <= 8
+        and not (set(words) & standalone_blockers)
+        and not re.search(r"[?!]", user_text or "")
+        and not re.search(
+            r"\b(?:i|i['\u2019]?m|me|my|mine|you|your|yours|we|our|ours|"
+            r"it|it['\u2019]?s|its|this|that|these|those|he|she|they|"
+            r"am|is|are|was|were|feel|felt|think|thought|hope|want|"
+            r"okay|ok|fine|good|bad|busy|tired|sorry|thanks?)\b",
+            normalized,
+        )
+        and not re.search(
+            r"\b(?:chat|chatting|talk|talking|conversation|day|night|"
+            r"today|yesterday|tomorrow|mind|mood)\b",
+            normalized,
         )
     )
     conversational_reference = bool(
@@ -182,10 +226,7 @@ def should_preserve_conversation_context(
     )
     clear_learning_transition = bool(
         requests_learning_map
-        and (
-            explicit_learning_language
-            or (not conversational_reference and not conversational_sentence)
-        )
+        and (explicit_learning_language or standalone_topic)
     )
     return bool(
         str(prior_response_mode or "").casefold() == "conversation"

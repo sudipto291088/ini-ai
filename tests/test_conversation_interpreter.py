@@ -165,6 +165,56 @@ class ConversationInterpreterTests(unittest.TestCase):
                     )
                 )
 
+    def test_causal_learning_question_can_leave_casual_conversation(self):
+        self.assertFalse(
+            should_preserve_conversation_context(
+                user_text=(
+                    "What causes antibiotic resistance, and how can healthcare "
+                    "systems limit it?"
+                ),
+                prior_response_mode="conversation",
+                study_mode_established=False,
+                requests_learning_map=True,
+                explicit_question_map_request=False,
+            )
+        )
+
+    def test_broad_topic_guess_cannot_override_established_conversation(self):
+        casual_turns = (
+            "na na its ok...",
+            "it was a pretty busy day for me",
+            "I was only thinking aloud",
+            "let's not turn every thought into a lesson",
+            "that is not what I meant",
+            "you know what I mean right",
+            "maybe we can just talk for a while",
+            "I am feeling a little lost today",
+            "well that was awkward",
+            "no worries, carry on",
+            "I liked your earlier answer",
+            "that made me laugh",
+            "what kind of humor do you understand",
+            "I don't need a lesson right now",
+            "sometimes I just want company",
+            "it has been a long day",
+            "you seem more natural now",
+            "I was teasing you",
+            "nothing serious, mate",
+            "we are simply chatting",
+            "okay, that is enough for tonight",
+        )
+        for turn in casual_turns:
+            with self.subTest(turn=turn):
+                self.assertTrue(
+                    should_preserve_conversation_context(
+                        user_text=turn,
+                        prior_response_mode="conversation",
+                        study_mode_established=False,
+                        requests_learning_map=True,
+                        explicit_question_map_request=False,
+                    )
+                )
+
     def test_personal_anecdote_is_explicitly_labeled_fictional(self):
         for generated in (
             "Once I tried to help and forgot what I had suggested.",

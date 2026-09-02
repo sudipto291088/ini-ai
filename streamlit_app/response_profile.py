@@ -165,6 +165,13 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
             "Basic neural networks, vectors and matrices, probability, and tokenization",
         ),
         (
+            ("retrieval-augmented generation", "retrieval augmented generation", "rag"),
+            "Knowledge-grounded generation architecture",
+            "Artificial intelligence / Information retrieval",
+            "Retrieval, embeddings, vector search, grounding, citations, hallucination, evaluation",
+            "Language models, embeddings, information retrieval, prompts, and basic evaluation",
+        ),
+        (
             ("neural network", "deep learning"),
             "Machine-learning model family",
             "Artificial intelligence / Machine learning",
@@ -198,6 +205,13 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
             "Molecular biology / Genetic engineering",
             "DNA repair, guide RNA, nucleases, delivery, bioethics",
             "DNA structure, genes and proteins, cell biology, and basic inheritance",
+        ),
+        (
+            ("antibiotic resistance", "antimicrobial resistance"),
+            "Evolutionary and public-health phenomenon",
+            "Microbiology / Public health",
+            "Selection pressure, resistance genes, stewardship, diagnostics, infection control, surveillance",
+            "Bacteria, evolution, genetics, antibiotics, infection transmission, and healthcare systems",
         ),
         (
             ("dna replication", "genetics", "genome"),

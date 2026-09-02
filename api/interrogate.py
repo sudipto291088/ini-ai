@@ -423,7 +423,19 @@ def _unsupported_topic_result(
     intent: Dict[str, Any],
     response_intent: str,
 ) -> Dict[str, Any]:
-    """Stop cleanly when no topic-specific Question Map can be produced."""
+    """Preserve learning intent when a topic-specific map cannot be produced.
+
+    The UI can still provide an Initial Answer and lightweight question set.
+    A generator failure must never relabel a genuine learning question as
+    casual conversation.
+    """
+    explicit_learning_question = bool(
+        re.match(
+            r"^(?:what|why|how|when|where|which)\s+|"
+            r"^(?:explain|compare|describe|define|teach)\b",
+            re.sub(r"\s+", " ", (topic or "").casefold()).strip(),
+        )
+    )
     return {
         "topic": topic,
         "topic_type": topic_type,
@@ -437,12 +449,14 @@ def _unsupported_topic_result(
         "needs_clarification": False,
         "intent": "unsupported_learning_topic",
         "response_intent": response_intent,
-        "response_mode": "conversation",
-        "context_intent": "unsupported_learning_topic",
+        "response_mode": "standard" if explicit_learning_question else "conversation",
+        "context_intent": (
+            "learning" if explicit_learning_question else "unsupported_learning_topic"
+        ),
         "mode_hint": intent.get("mode_hint", "focused"),
         "followups": [],
         "should_answer_direct": False,
-        "suppress_profile": True,
+        "suppress_profile": not explicit_learning_question,
         "reply": (
             f"I cannot yet build a reliable, topic-specific Question Map for {topic}. "
             "I am stopping here instead of filling the response with generic questions."

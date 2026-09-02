@@ -604,6 +604,16 @@ def _looks_like_contextual_utterance(text: str) -> bool:
     ):
         return True
 
+    # Pronouns inside a complete educational question refer to the subject in
+    # that same sentence; they are not evidence of a context-only follow-up.
+    # Example: "How does RAG reduce hallucinations, and where can it fail?"
+    if re.match(
+        r"^(?:what|why|how|when|where|which)\s+|"
+        r"^(?:explain|compare|describe|define|teach)\b",
+        s,
+    ):
+        return False
+
     deictic_words = {"it", "this", "that", "those", "there", "thing"}
     continuation_words = {
         "again", "still", "already", "doing", "happening", "working",
@@ -640,6 +650,25 @@ def _looks_like_direct_factual_query(text: str) -> bool:
 
     if _is_known_technical_topic(text):
         return False
+
+    # An educational request can legitimately discuss a subject's "current
+    # applications" or present limitations.  The adjective "current" does
+    # not turn that whole learning question into a live lookup.  Require the
+    # live-data cue to govern the request, rather than merely occur inside a
+    # compound explanation prompt.
+    if re.match(r"^(?:explain|describe|compare|teach|why\s+(?:does|do)|how\s+(?:does|do))\b", s):
+        embedded_learning_dimensions = re.search(
+            r"\b(?:applications?|mechanisms?|limitations?|ethical concerns?|"
+            r"benefits?|risks?|stages?|methods?|causes?|effects?)\b",
+            s,
+        )
+        explicit_live_lookup = re.search(
+            r"\b(?:today|right now|latest (?:price|rate|news|score)|"
+            r"current (?:price|rate|weather|temperature|office holder))\b",
+            s,
+        )
+        if embedded_learning_dimensions and not explicit_live_lookup:
+            return False
 
     # "Price" often denotes an economics concept rather than a request for a
     # current quotation. Do not let educational phrases such as "price
