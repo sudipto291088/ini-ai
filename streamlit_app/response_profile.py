@@ -9,7 +9,7 @@ from typing import List, Tuple
 ProfileRows = List[Tuple[str, str]]
 
 
-RESPONSE_PROFILE_VERSION = 4
+RESPONSE_PROFILE_VERSION = 5
 
 
 def _subject(text: str, limit: int = 92) -> str:
@@ -117,6 +117,37 @@ def _illustration_topic_profile(text: str, normalized: str) -> ProfileRows:
 
 def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
     """Describe a learning subject and expose its foundations immediately."""
+    if re.search(
+        r"\b(?:cpu|processor)\b.*\b(?:execute|execution|instruction|program)\b|"
+        r"\bfetch[-– ]decode[-– ]execute\b",
+        normalized,
+    ):
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Computer-architecture execution process"),
+            ("Broad field", "Computer architecture / Operating systems"),
+            ("Subject", "CPU execution of program instructions"),
+            ("Related topics", "Instruction sets, registers, program counters, fetch–decode–execute cycles, pipelines, caches, virtual memory, and operating-system scheduling"),
+            ("Prerequisites", "Binary representation, Boolean logic, memory and registers, basic operating-system processes, and introductory instruction-set concepts"),
+        ]
+    if re.search(r"\bearthquakes?\b|\bseismic\b", normalized):
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Geophysical fault-rupture phenomenon"),
+            ("Broad field", "Geoscience / Seismology"),
+            ("Subject", "Earthquake causes and fault rupture"),
+            ("Related topics", "Plate tectonics, faults, stress and strain, elastic rebound, seismic waves, magnitude, aftershocks, and seismic hazards"),
+            ("Prerequisites", "Earth's layered structure, plate tectonics, rock deformation, basic force and energy concepts, and introductory wave behavior"),
+        ]
+    if re.search(r"\b(?:oauth|authorization code|access token|refresh token)\b", normalized):
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Delegated-authorization protocol"),
+            ("Broad field", "Identity and access management / Web security"),
+            ("Subject", "OAuth delegated authorization"),
+            ("Related topics", "Authorization servers, clients, resource servers, scopes, authorization codes, access and refresh tokens, PKCE, OpenID Connect, and token security"),
+            ("Prerequisites", "HTTP requests and redirects, client–server architecture, authentication versus authorization, web sessions, APIs, and basic cryptographic trust concepts"),
+        ]
     if re.search(r"\b(?:database|dbms)\b.*\bindex(?:es|ing)?\b|\bindex(?:es|ing)?\b.*\b(?:database|query)\b", normalized):
         return [
             ("Name type", _learning_name_type(text)),
@@ -404,6 +435,19 @@ def build_response_profile(
     intent = (intent or "").strip().lower()
     response_mode = (response_mode or "").strip().lower()
     context_intent = (context_intent or "").strip().lower()
+
+    # A factual IA may be produced through the direct/CARM route even though its
+    # subject is plainly educational.  Subject metadata must not depend on the
+    # answer route: otherwise the same query receives real prerequisites in KS
+    # but generic filler in IA.
+    if re.search(
+        r"\b(?:cpu|processor)\b.*\b(?:execute|execution|instruction|program)\b|"
+        r"\bfetch[-– ]decode[-– ]execute\b|"
+        r"\bearthquakes?\b|\bseismic\b|"
+        r"\b(?:oauth|authorization code|access token|refresh token)\b",
+        normalized,
+    ):
+        return _educational_topic_profile(text, normalized)
 
     if intent == "topic_recommendation":
         if "kubernetes" in normalized:

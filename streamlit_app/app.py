@@ -44,7 +44,7 @@ from topic_profile import (
 )
 import response_profile
 
-if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 4:
+if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 5:
     response_profile = importlib.reload(response_profile)
 build_response_profile = response_profile.build_response_profile
 import streamlit_app.knowledge_map as knowledge_map

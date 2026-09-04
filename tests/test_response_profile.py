@@ -239,6 +239,49 @@ class ResponseProfileTests(unittest.TestCase):
             self.assertEqual(rows["Subject"], subject)
             self.assertNotEqual(rows["Broad field"], "Interdisciplinary study")
 
+    def test_ia_prerequisites_are_specific_for_reviewed_topics(self):
+        cases = {
+            "How does a CPU execute a program?": (
+                "CPU execution of program instructions",
+                "Binary representation",
+            ),
+            "Why do earthquakes occur?": (
+                "Earthquake causes and fault rupture",
+                "plate tectonics",
+            ),
+            "How does OAuth authentication work?": (
+                "OAuth delegated authorization",
+                "HTTP requests and redirects",
+            ),
+        }
+        for query, (subject, prerequisite) in cases.items():
+            with self.subTest(query=query):
+                rows = dict(build_response_profile(
+                    query,
+                    intent="topic_explore",
+                    response_mode="standard",
+                    context_intent="learning",
+                ))
+                self.assertEqual(rows["Subject"], subject)
+                self.assertIn(prerequisite.lower(), rows["Prerequisites"].lower())
+                self.assertNotIn("directly related", rows["Prerequisites"].lower())
+
+    def test_subject_prerequisites_do_not_depend_on_ia_answer_route(self):
+        for query in (
+            "How does a CPU execute a program?",
+            "Why do earthquakes occur?",
+            "How does OAuth authentication work?",
+        ):
+            with self.subTest(query=query):
+                rows = dict(build_response_profile(
+                    query,
+                    intent="direct_answer",
+                    response_mode="carm",
+                    context_intent="factual",
+                ))
+                self.assertNotEqual(rows["Broad field"], "Interdisciplinary study")
+                self.assertNotIn("directly related", rows["Prerequisites"].lower())
+
 
 if __name__ == "__main__":
     unittest.main()
