@@ -9,7 +9,7 @@ from typing import List, Tuple
 ProfileRows = List[Tuple[str, str]]
 
 
-RESPONSE_PROFILE_VERSION = 2
+RESPONSE_PROFILE_VERSION = 3
 
 
 def _subject(text: str, limit: int = 92) -> str:
@@ -147,6 +147,54 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
                 "Language models, embeddings, information retrieval, prompts, and basic evaluation",
             ),
         ]
+    if re.search(r"\b(?:quantum error correction|qec|fault[- ]tolerant quantum)\b", normalized):
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Quantum-information protection method"),
+            ("Broad field", "Quantum computing / Quantum information science"),
+            ("Subject", "Quantum error correction and fault tolerance"),
+            (
+                "Related topics",
+                "Logical and physical qubits, stabilizer codes, syndrome extraction, decoders, code distance, thresholds, leakage, and correlated noise",
+            ),
+            (
+                "Prerequisites",
+                "Qubits, quantum gates, measurement, superposition, entanglement, probability, and basic linear algebra",
+            ),
+        ]
+    if re.search(r"\b(?:mrna|messenger rna)\s+vaccines?\b", normalized):
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Vaccine platform and immune process"),
+            ("Broad field", "Immunology / Vaccinology / Molecular biology"),
+            ("Subject", "mRNA vaccines and immune protection"),
+            (
+                "Related topics",
+                "Lipid nanoparticles, translation, antigen presentation, innate sensing, antibodies, B and T cells, immune memory, boosters, and antigenic change",
+            ),
+            (
+                "Prerequisites",
+                "Cells, mRNA translation, antigens, innate and adaptive immunity, and the basic roles of B and T cells",
+            ),
+        ]
+    if re.search(
+        r"\b(?:carbon\s+(?:tax(?:es)?|pricing)|cap[- ]and[- ]trade|emissions?\s+trading)\b",
+        normalized,
+    ):
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Market-based climate-policy instruments"),
+            ("Broad field", "Environmental economics / Climate policy"),
+            ("Subject", "Carbon pricing and emissions trading"),
+            (
+                "Related topics",
+                "Carbon taxes, emissions caps, tradable allowances, marginal abatement costs, price and quantity certainty, coverage, enforcement, and emissions leakage",
+            ),
+            (
+                "Prerequisites",
+                "Supply and demand, externalities, basic public policy, emissions measurement, and introductory climate science",
+            ),
+        ]
     profiles = [
         (
             ("algorithm", "data structure", "computational complexity"),
@@ -196,13 +244,6 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
             "Artificial intelligence / Natural language processing",
             "Attention, tokenization, embeddings, generation, hallucination",
             "Basic neural networks, vectors and matrices, probability, and tokenization",
-        ),
-        (
-            ("retrieval-augmented generation", "retrieval augmented generation", "rag"),
-            "Knowledge-grounded generation architecture",
-            "Artificial intelligence / Information retrieval",
-            "Retrieval, embeddings, vector search, grounding, citations, hallucination, evaluation",
-            "Language models, embeddings, information retrieval, prompts, and basic evaluation",
         ),
         (
             ("neural network", "deep learning"),

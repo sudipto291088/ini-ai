@@ -30,6 +30,14 @@ def test_tax_in_an_economics_learning_question_is_not_refused() -> None:
     assert assess_capability(query) is None
 
 
+def test_carbon_tax_and_cap_and_trade_is_environmental_economics() -> None:
+    query = (
+        "How do carbon taxes and cap-and-trade systems differ, and what determines "
+        "whether either policy reduces emissions effectively?"
+    )
+    assert assess_capability(query) is None
+
+
 def test_personal_and_jurisdiction_tax_guidance_remains_blocked() -> None:
     assert assess_capability("How should I file my tax return?") is not None
     assert assess_capability("Explain the income tax structure in India") is not None

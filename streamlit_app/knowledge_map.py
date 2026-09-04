@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 
 
-KNOWLEDGE_MAP_VERSION = 7
+KNOWLEDGE_MAP_VERSION = 8
 
 
 @dataclass(frozen=True)
@@ -59,6 +59,16 @@ def _clean_anchor(text: str) -> str:
 
 def _concept_led_anchor(query: str) -> str:
     """Return a grammatical subject label for common relationship questions."""
+    normalized = query.casefold()
+    if re.search(r"\b(?:quantum error correction|qec)\b", normalized):
+        return "Quantum error correction"
+    if re.search(r"\b(?:mrna|messenger rna)\s+vaccines?\b", normalized):
+        return "mRNA vaccines"
+    if re.search(r"\bcarbon\s+(?:tax(?:es)?|pricing)\b", normalized) and re.search(
+        r"\b(?:cap[- ]and[- ]trade|emissions?\s+trading)\b", normalized
+    ):
+        return "Carbon-pricing policies"
+
     privacy_match = re.match(
         r"^how\s+(?:does|do)\s+(.+?)\s+protect\s+privacy\b",
         query,
@@ -111,6 +121,27 @@ def _qualify_map_description(description: str) -> str:
         value = (
             "Retrieve-and-generate pipelines may use reranking or Fusion-in-Decoder; "
             "these are overlapping design choices rather than mutually exclusive architecture classes."
+        )
+    value = re.sub(
+        r"Cross-presentation on MHC I for CD8 priming; MHC I presentation to CD4 T cells",
+        "MHC I presentation and cross-presentation for CD8 priming; MHC II presentation to CD4 T cells",
+        value,
+        flags=re.I,
+    )
+    if re.search(r"\bdetects and corrects bit/phase errors and leakage\b", value, re.I):
+        value = (
+            "Corrects encoded bit- and phase-type errors; leakage requires dedicated detection, "
+            "reset, or leakage-reduction mechanisms, and correlated noise can lower thresholds."
+        )
+    if "guarantee logical operations below threshold rates" in value.casefold():
+        value = (
+            "Fault-tolerant designs limit error propagation; under explicit noise assumptions, "
+            "logical error can be suppressed when physical error rates remain below a threshold."
+        )
+    if re.search(r"\brepetition codes reduce errors for VQE\b", value, re.I):
+        value = (
+            "Error mitigation and small logical demonstrations can support short-depth experiments; "
+            "repetition codes protect only restricted error channels and are not general QEC for VQE."
         )
     return value
 

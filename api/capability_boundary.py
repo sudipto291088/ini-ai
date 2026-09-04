@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 
-CAPABILITY_BOUNDARY_VERSION = 2
+CAPABILITY_BOUNDARY_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -27,7 +27,9 @@ _TAX_PATTERN = re.compile(
 _ACADEMIC_TAX_CONTEXT = re.compile(
     r"\b(?:supply\s+and\s+demand|market\s+equilibrium|price\s+controls?|"
     r"tax\s+incidence|deadweight\s+loss|microeconomics?|macroeconomics?|"
-    r"economic\s+(?:theory|policy|effects?|impact))\b",
+    r"economic\s+(?:theory|policy|effects?|impact)|environmental\s+economics?|"
+    r"climate\s+policy|carbon\s+(?:tax(?:es)?|pricing)|cap[- ]and[- ]trade|"
+    r"emissions?\s+trading|emissions?\s+(?:policy|reduction))\b",
     flags=re.IGNORECASE,
 )
 

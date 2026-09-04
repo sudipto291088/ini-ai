@@ -200,6 +200,32 @@ class ResponseProfileTests(unittest.TestCase):
         self.assertIn("reranking", rows["Related topics"])
         self.assertNotIn("incorrect answe", rows["Subject"])
 
+    def test_qec_does_not_leak_rag_profile_from_fragile(self):
+        rows = dict(build_response_profile(
+            "How does quantum error correction protect fragile qubits, and why is fault-tolerant quantum computing so difficult?",
+            intent="topic_explore", response_mode="standard", context_intent="learning",
+        ))
+        self.assertEqual(rows["Subject"], "Quantum error correction and fault tolerance")
+        self.assertIn("Quantum computing", rows["Broad field"])
+        self.assertNotIn("retrieval", rows["Related topics"].lower())
+
+    def test_mrna_profile_is_specific_and_not_truncated(self):
+        rows = dict(build_response_profile(
+            "How do mRNA vaccines work, how does the immune system respond, and why can protection weaken over time?",
+            intent="topic_explore", response_mode="standard", context_intent="learning",
+        ))
+        self.assertEqual(rows["Subject"], "mRNA vaccines and immune protection")
+        self.assertIn("Immunology", rows["Broad field"])
+        self.assertIn("antigen presentation", rows["Related topics"])
+
+    def test_carbon_policy_profile_is_environmental_economics(self):
+        rows = dict(build_response_profile(
+            "How do carbon taxes and cap-and-trade systems differ, and what determines whether either policy reduces emissions effectively?",
+            intent="topic_explore", response_mode="standard", context_intent="learning",
+        ))
+        self.assertEqual(rows["Subject"], "Carbon pricing and emissions trading")
+        self.assertEqual(rows["Broad field"], "Environmental economics / Climate policy")
+
 
 if __name__ == "__main__":
     unittest.main()

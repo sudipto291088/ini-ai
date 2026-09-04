@@ -904,6 +904,7 @@ IMPORTANT
 • Use grammatical, concept-led map_title labels; never leave auxiliary verbs or broken question fragments in a title.
 • Match the scope of every factual claim to its evidence. Prefer "helps reduce" or "can improve" over "solves", "prevents", "eliminates", or "guarantees" unless a formal guarantee is explicitly part of the topic.
 • Describe mechanisms precisely enough to distinguish what each method reveals, hides, reduces, or leaves unresolved. Do not merge overlapping architectures into falsely exclusive categories.
+• Preserve technical distinctions exactly: do not swap adjacent classes, pathways, audiences, or error types. Do not imply that one mechanism handles every failure mode.
 • For protection or reliability claims, state relevant trust assumptions and limitations. For example, secure-aggregation masks cancel in a sum; do not call that sum "decryptable" unless describing an encryption-based protocol. Deployment type alone does not determine local versus central differential privacy.
 • Name the verification mechanism (such as claim-to-source entailment checking), not vague phrases such as "weak verification chains". Separate a general pipeline from variants within it, such as Fusion-in-Decoder within retrieve-and-generate systems.
 • Before returning, audit every map leaf for concrete contents, correct terminology, qualified claims, non-duplicate objectives, and a coherent foundation-to-application sequence. Repair any failed leaf before emitting the JSON.
@@ -1115,6 +1116,7 @@ Rules:
 - Use grammatical, concept-led map_title labels; never leave auxiliary verbs or broken question fragments in a title.
 - Match the scope of every factual claim to its evidence. Prefer "helps reduce" or "can improve" over "solves", "prevents", "eliminates", or "guarantees" unless a formal guarantee is explicitly part of the topic.
 - Describe mechanisms precisely enough to distinguish what each method reveals, hides, reduces, or leaves unresolved. Do not merge overlapping architectures into falsely exclusive categories.
+- Preserve technical distinctions exactly: do not swap adjacent classes, pathways, audiences, or error types. Do not imply that one mechanism handles every failure mode.
 - For protection or reliability claims, state relevant trust assumptions and limitations. For example, secure-aggregation masks cancel in a sum; do not call that sum "decryptable" unless describing an encryption-based protocol. Deployment type alone does not determine local versus central differential privacy.
 - Name the verification mechanism (such as claim-to-source entailment checking), not vague phrases such as "weak verification chains". Separate a general pipeline from variants within it, such as Fusion-in-Decoder within retrieve-and-generate systems.
 - Before returning, audit every map leaf for concrete contents, correct terminology, qualified claims, non-duplicate objectives, and a coherent foundation-to-application sequence. Repair any failed leaf before emitting the JSON.

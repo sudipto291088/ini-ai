@@ -44,12 +44,12 @@ from topic_profile import (
 )
 import response_profile
 
-if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 2:
+if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 3:
     response_profile = importlib.reload(response_profile)
 build_response_profile = response_profile.build_response_profile
 import streamlit_app.knowledge_map as knowledge_map
 
-if getattr(knowledge_map, "KNOWLEDGE_MAP_VERSION", 0) < 7:
+if getattr(knowledge_map, "KNOWLEDGE_MAP_VERSION", 0) < 8:
     knowledge_map = importlib.reload(knowledge_map)
 compact_knowledge_map_projection = knowledge_map.compact_knowledge_map_projection
 expanded_knowledge_map_entry = knowledge_map.expanded_knowledge_map_entry
@@ -112,7 +112,7 @@ except (ModuleNotFoundError, ImportError) as exc:
 from api.interrogate import extract_topic as extract_learning_topic
 import api.capability_boundary as capability_boundary
 
-if getattr(capability_boundary, "CAPABILITY_BOUNDARY_VERSION", 0) < 2:
+if getattr(capability_boundary, "CAPABILITY_BOUNDARY_VERSION", 0) < 3:
     capability_boundary = importlib.reload(capability_boundary)
 assess_capability = capability_boundary.assess_capability
 import api.conversation_interpreter as conversation_interpreter

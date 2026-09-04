@@ -57,6 +57,32 @@ def test_compound_outcome_queries_use_short_subject_anchors():
         "How should a retrieval-augmented generation system be evaluated for "
         "retrieval quality, answer faithfulness, and end-to-end usefulness?"
     ).anchor == "retrieval-augmented generation system"
+
+
+def test_reviewed_topics_use_grammatical_compact_titles():
+    cases = {
+        "How does quantum error correction protect fragile qubits, and why is fault-tolerant quantum computing so difficult?": "Quantum error correction",
+        "How do mRNA vaccines work, how does the immune system respond, and why can protection weaken over time?": "mRNA vaccines",
+        "How do carbon taxes and cap-and-trade systems differ, and what determines whether either policy reduces emissions effectively?": "Carbon-pricing policies",
+    }
+    for query, expected in cases.items():
+        assert compact_knowledge_map_projection(query).anchor == expected
+
+
+def test_saved_map_scientific_wording_is_repaired():
+    title, description = expanded_knowledge_map_entry({
+        "map_title": "APC processing",
+        "map_description": "Cross-presentation on MHC I for CD8 priming; MHC I presentation to CD4 T cells after processing.",
+    }, "Mechanisms")
+    assert title == "APC processing"
+    assert "MHC II presentation to CD4 T cells" in description
+
+    _, leakage = expanded_knowledge_map_entry({
+        "map_title": "QEC scope",
+        "map_description": "Detects and corrects bit/phase errors and leakage; cannot remove correlated failures.",
+    }, "Orientation")
+    assert "leakage requires dedicated" in leakage
+    assert "correlated noise can lower thresholds" in leakage
     assert compact_knowledge_map_projection(
         "How do light intensity, carbon dioxide concentration, and temperature "
         "affect the rate of photosynthesis?"
