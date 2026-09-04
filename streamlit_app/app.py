@@ -44,12 +44,12 @@ from topic_profile import (
 )
 import response_profile
 
-if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 3:
+if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 4:
     response_profile = importlib.reload(response_profile)
 build_response_profile = response_profile.build_response_profile
 import streamlit_app.knowledge_map as knowledge_map
 
-if getattr(knowledge_map, "KNOWLEDGE_MAP_VERSION", 0) < 8:
+if getattr(knowledge_map, "KNOWLEDGE_MAP_VERSION", 0) < 9:
     knowledge_map = importlib.reload(knowledge_map)
 compact_knowledge_map_projection = knowledge_map.compact_knowledge_map_projection
 expanded_knowledge_map_entry = knowledge_map.expanded_knowledge_map_entry
@@ -134,7 +134,7 @@ if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 6:
 detect_intent = intent_layer.detect_intent
 import api.response_strategy as response_strategy
 
-if getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 6:
+if getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 7:
     response_strategy = importlib.reload(response_strategy)
 KS_EXPLICIT = response_strategy.KS_EXPLICIT
 KS_RECOMMENDED = response_strategy.KS_RECOMMENDED
@@ -149,6 +149,7 @@ select_lightweight_questions = response_strategy.select_lightweight_questions
 initial_answer_opening = response_strategy.initial_answer_opening
 related_questions_bridge = response_strategy.related_questions_bridge
 knowledge_structure_bridge = response_strategy.knowledge_structure_bridge
+knowledge_structure_action = response_strategy.knowledge_structure_action
 no_knowledge_structure_notice = response_strategy.no_knowledge_structure_notice
 import api.question_map_focus as question_map_focus
 
@@ -7989,9 +7990,24 @@ def page_new_chat() -> None:
                             response_payload.get("knowledge_structure_topic") or ""
                         ).strip()
                         if ks_topic:
+                            # The original KS hint may contain a mechanically extracted
+                            # fragment (especially in older saved IA responses).  Reuse
+                            # the Topic Profile's canonical Subject so both the visible
+                            # action and the generated structure stay on the real topic.
+                            profile_rows = _profile_for_response(
+                                guidance_seed,
+                                response_payload,
+                                mode_override="standard",
+                            )
+                            canonical_subject = str(
+                                dict(profile_rows).get("Subject") or ks_topic
+                            ).strip()
+                            ks_action = knowledge_structure_action(canonical_subject)
                             _queue_new_chat_request(
-                                f"Open the complete Knowledge Structure for {ks_topic}",
+                                ks_action.get("prompt") or ks_topic,
                                 "interrogate",
+                                request_kind=ks_action.get("request_kind") or "",
+                                semantic_topic=ks_action.get("semantic_topic") or ks_topic,
                             )
                 elif (
                     isinstance(response_payload, dict)
@@ -9185,6 +9201,7 @@ def page_new_chat() -> None:
     def _run_new_chat_interrogate(
         topic_text: str,
         show_spinner: bool = True,
+        forced_knowledge_structure_topic: str = "",
     ) -> None:
         # Context-dependent phrases must remain verbatim. Otherwise the fuzzy
         # follow-up resolver can expand "what else" into an older suggested
@@ -9195,6 +9212,9 @@ def page_new_chat() -> None:
         ):
             topic_text = _resolve_typed_followup(topic_text)
         display_topic_text = topic_text.strip()
+        forced_ks_topic = re.sub(
+            r"\s+", " ", (forced_knowledge_structure_topic or "").strip()
+        ).strip(" .?!:;-")
         interpreted_turn = interpret_turn(display_topic_text)
         semantic_topic_text = (
             interpreted_turn.semantic_text
@@ -9212,8 +9232,8 @@ def page_new_chat() -> None:
                 ).strip()
                 topic_text = semantic_topic_text
         explicit_ks_topic = extract_knowledge_structure_topic(display_topic_text)
-        if explicit_ks_topic:
-            semantic_topic_text = explicit_ks_topic
+        if forced_ks_topic or explicit_ks_topic:
+            semantic_topic_text = forced_ks_topic or explicit_ks_topic
         active_learning_topic = _latest_structured_chat_topic()
         semantic_topic_text = resolve_learning_followup(
             semantic_topic_text,
@@ -9593,6 +9613,17 @@ def page_new_chat() -> None:
             else:
                 st.session_state.chat_active_carm_context = None
 
+        # A Knowledge Structure button is a typed application action, not a
+        # sentence for the conversation router to interpret. Restore its
+        # immutable source topic after all conversational-context processing.
+        if forced_ks_topic:
+            topic_text = forced_ks_topic
+            semantic_topic_text = forced_ks_topic
+            discussion_freeform_followup = False
+            contextual_followup_topic = ""
+            local_conversation_answer = None
+            ini_product_answer = None
+
         if not topic_text.strip():
             return
         capability_boundary = assess_capability(topic_text)
@@ -9637,6 +9668,11 @@ def page_new_chat() -> None:
                         "suppress_profile": True,
                         "reply": capability_boundary.reply,
                     }
+                elif forced_ks_topic:
+                    data = fetch_interrogate(forced_ks_topic)
+                    data["knowledge_structure_rendered"] = True
+                    data["response_mode"] = "knowledge_structure"
+                    data["profile_prompt"] = forced_ks_topic
                 elif context_correction_question:
                     data = {
                         "categories": {},
@@ -10566,7 +10602,13 @@ def page_new_chat() -> None:
             )
         )
 
-    def _queue_new_chat_request(topic_text: str, action: str) -> bool:
+    def _queue_new_chat_request(
+        topic_text: str,
+        action: str,
+        *,
+        request_kind: str = "",
+        semantic_topic: str = "",
+    ) -> bool:
         prompt = (topic_text or "").strip()
         action = (action or "interrogate").strip().lower()
         if action not in {"interrogate", "illustrate"}:
@@ -10584,7 +10626,7 @@ def page_new_chat() -> None:
         # avoidable latency and can leave a stale Thinking placeholder if a
         # hosted rerun interrupts the transition.
         quick_profile = _refresh_chat_user_profile(prompt)
-        if action == "interrogate" and (
+        if not request_kind and action == "interrogate" and (
             _local_conversation_answer(prompt, quick_profile)
             or answer_ini_product_query(prompt)
         ):
@@ -10635,6 +10677,8 @@ def page_new_chat() -> None:
             # selected only after this first state has been visibly rendered.
             "status_mode": "thinking",
             "hide_user_bubble": hide_internal_qm_action,
+            "request_kind": request_kind,
+            "semantic_topic": semantic_topic,
         }
         st.session_state._nc_bottom_composer_revision += 1
         st.session_state.chat_top_enter_submit = False
@@ -10779,6 +10823,8 @@ def page_new_chat() -> None:
 
         prompt = (pending.get("prompt") or "").strip()
         action = (pending.get("action") or "interrogate").strip().lower()
+        request_kind = (pending.get("request_kind") or "").strip().lower()
+        semantic_topic = (pending.get("semantic_topic") or "").strip()
         status_mode = (pending.get("status_mode") or "generating").strip().lower()
         if not prompt:
             st.session_state._nc_pending_request = None
@@ -10800,7 +10846,7 @@ def page_new_chat() -> None:
             time.sleep(8.0)
             if action == "illustrate":
                 resolved_status = "generating"
-            elif (
+            elif request_kind == "knowledge_structure" or (
                 isinstance(
                     st.session_state.get("chat_pending_qm_confirmation"),
                     dict,
@@ -10917,7 +10963,15 @@ def page_new_chat() -> None:
                 if action == "illustrate":
                     _run_new_chat_illustrate(prompt, show_spinner=False)
                 else:
-                    _run_new_chat_interrogate(prompt, show_spinner=False)
+                    _run_new_chat_interrogate(
+                        prompt,
+                        show_spinner=False,
+                        forced_knowledge_structure_topic=(
+                            semantic_topic
+                            if request_kind == "knowledge_structure"
+                            else ""
+                        ),
+                    )
         finally:
             st.session_state._nc_pending_request = None
             st.session_state._nc_generating = False

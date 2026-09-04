@@ -69,6 +69,30 @@ def test_reviewed_topics_use_grammatical_compact_titles():
         assert compact_knowledge_map_projection(query).anchor == expected
 
 
+def test_database_inflation_and_backprop_use_canonical_titles():
+    cases = {
+        "How does a database index make queries faster?": "Database indexing and query performance",
+        "Why does inflation occur, and what effects does it have on an economy?": "Inflation causes and effects",
+        "How does a neural network learn through backpropagation?": "Neural-network backpropagation",
+    }
+    for query, expected in cases.items():
+        assert compact_knowledge_map_projection(query).anchor == expected
+
+
+def test_database_map_claims_are_qualified():
+    cases = {
+        "Place most selective and left-most columns matching query predicates; prefixing supports left-based equality and range patterns.": "equality and range predicates",
+        "Secondary B-tree or hash indexes on join keys speed nested-loop/hash-join probes and support merge joins with ordered keys.": "hash joins commonly build their own hash table",
+        "Bitmap encodes matches compactly for many-to-many filters; columnar indexes support vectorized scans and compression-aware reads.": "low-cardinality predicates",
+    }
+    for original, expected in cases.items():
+        _, repaired = expanded_knowledge_map_entry(
+            {"map_title": "Database indexing", "map_description": original},
+            "Methods & Tools",
+        )
+        assert expected in repaired
+
+
 def test_saved_map_scientific_wording_is_repaired():
     title, description = expanded_knowledge_map_entry({
         "map_title": "APC processing",

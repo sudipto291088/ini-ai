@@ -10,6 +10,7 @@ from api.response_strategy import (
     fallback_learning_questions,
     initial_answer_opening,
     knowledge_structure_bridge,
+    knowledge_structure_action,
     no_knowledge_structure_notice,
     question_intelligence_limit,
     related_questions_bridge,
@@ -49,6 +50,12 @@ class ResponseStrategyTests(unittest.TestCase):
         query = "Show me the complete Knowledge Structure for linear regression."
         self.assertEqual(assess_ks_suitability(query, {}), KS_EXPLICIT)
         self.assertEqual(extract_knowledge_structure_topic(query), "linear regression")
+
+    def test_knowledge_structure_button_builds_typed_action(self):
+        action = knowledge_structure_action("  Inflation: causes and effects  ")
+        self.assertEqual(action["request_kind"], "knowledge_structure")
+        self.assertEqual(action["semantic_topic"], "Inflation: causes and effects")
+        self.assertIn("Knowledge Structure", action["prompt"])
 
     def test_conversation_never_surfaces_knowledge_structure(self):
         self.assertEqual(

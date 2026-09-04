@@ -226,6 +226,19 @@ class ResponseProfileTests(unittest.TestCase):
         self.assertEqual(rows["Subject"], "Carbon pricing and emissions trading")
         self.assertEqual(rows["Broad field"], "Environmental economics / Climate policy")
 
+    def test_reviewed_database_inflation_and_backprop_profiles_are_specific(self):
+        cases = {
+            "How does a database index make queries faster?": "Database indexing and query performance",
+            "Why does inflation occur, and what effects does it have on an economy?": "Inflation: causes and economic effects",
+            "How does a neural network learn through backpropagation?": "Neural-network learning through backpropagation",
+        }
+        for query, subject in cases.items():
+            rows = dict(build_response_profile(
+                query, intent="topic_explore", response_mode="standard", context_intent="learning"
+            ))
+            self.assertEqual(rows["Subject"], subject)
+            self.assertNotEqual(rows["Broad field"], "Interdisciplinary study")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,7 +9,7 @@ from typing import List, Tuple
 ProfileRows = List[Tuple[str, str]]
 
 
-RESPONSE_PROFILE_VERSION = 3
+RESPONSE_PROFILE_VERSION = 4
 
 
 def _subject(text: str, limit: int = 92) -> str:
@@ -117,6 +117,33 @@ def _illustration_topic_profile(text: str, normalized: str) -> ProfileRows:
 
 def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
     """Describe a learning subject and expose its foundations immediately."""
+    if re.search(r"\b(?:database|dbms)\b.*\bindex(?:es|ing)?\b|\bindex(?:es|ing)?\b.*\b(?:database|query)\b", normalized):
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Database access and optimization technique"),
+            ("Broad field", "Databases / Data management"),
+            ("Subject", "Database indexing and query performance"),
+            ("Related topics", "B-trees, hash indexes, clustered and secondary indexes, selectivity, covering indexes, query plans, and maintenance costs"),
+            ("Prerequisites", "Tables, rows, keys, basic SQL queries, storage pages, algorithmic complexity, and introductory query planning"),
+        ]
+    if re.search(r"\binflation\b", normalized):
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Macroeconomic price-level phenomenon"),
+            ("Broad field", "Macroeconomics / Monetary economics"),
+            ("Subject", "Inflation: causes and economic effects"),
+            ("Related topics", "Price indices, aggregate demand and supply, expectations, monetary and fiscal policy, wages, purchasing power, and distributional effects"),
+            ("Prerequisites", "Prices and purchasing power, supply and demand, interest rates, employment, economic output, and basic percentage change"),
+        ]
+    if re.search(r"\bbackpropagation\b|\bneural network\b.*\blearn", normalized):
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Neural-network training algorithm"),
+            ("Broad field", "Artificial intelligence / Machine learning"),
+            ("Subject", "Neural-network learning through backpropagation"),
+            ("Related topics", "Forward passes, loss functions, computational graphs, chain rule, gradients, optimizers, learning rates, and gradient stability"),
+            ("Prerequisites", "Functions, derivatives, vectors and matrices, neural-network layers, activation functions, and loss functions"),
+        ]
     if "federated learning" in normalized:
         return [
             ("Name type", _learning_name_type(text)),

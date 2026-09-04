@@ -16,7 +16,7 @@ NO_KS = "NO_KS"
 CONDITIONAL_KS = "CONDITIONAL_KS"
 KS_RECOMMENDED = "KS_RECOMMENDED"
 KS_EXPLICIT = "KS_EXPLICIT"
-RESPONSE_STRATEGY_VERSION = 6
+RESPONSE_STRATEGY_VERSION = 7
 
 
 def _stable_variant(seed: str, options: tuple[str, ...]) -> str:
@@ -151,6 +151,18 @@ def extract_knowledge_structure_topic(query: str) -> str:
         if candidate != text.strip(" .?!:;-"):
             return candidate
     return ""
+
+
+def knowledge_structure_action(topic: str) -> dict[str, str]:
+    """Build a typed UI action that never needs conversational reclassification."""
+    canonical_topic = re.sub(r"\s+", " ", (topic or "").strip()).strip(" .?!:;-")
+    if not canonical_topic:
+        return {}
+    return {
+        "request_kind": "knowledge_structure",
+        "semantic_topic": canonical_topic,
+        "prompt": f"Open the complete Knowledge Structure for {canonical_topic}",
+    }
 
 
 def assess_ks_suitability(
@@ -382,6 +394,7 @@ __all__ = [
     "initial_answer_opening",
     "is_explicit_knowledge_structure_request",
     "knowledge_structure_bridge",
+    "knowledge_structure_action",
     "no_knowledge_structure_notice",
     "question_intelligence_limit",
     "related_questions_bridge",

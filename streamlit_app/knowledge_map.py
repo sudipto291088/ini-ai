@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 
 
-KNOWLEDGE_MAP_VERSION = 8
+KNOWLEDGE_MAP_VERSION = 9
 
 
 @dataclass(frozen=True)
@@ -64,6 +64,12 @@ def _concept_led_anchor(query: str) -> str:
         return "Quantum error correction"
     if re.search(r"\b(?:mrna|messenger rna)\s+vaccines?\b", normalized):
         return "mRNA vaccines"
+    if re.search(r"\b(?:database|dbms)\b.*\bindex(?:es|ing)?\b|\bindex(?:es|ing)?\b.*\b(?:database|query)\b", normalized):
+        return "Database indexing and query performance"
+    if re.search(r"\binflation\b", normalized):
+        return "Inflation causes and effects"
+    if re.search(r"\bbackpropagation\b", normalized):
+        return "Neural-network backpropagation"
     if re.search(r"\bcarbon\s+(?:tax(?:es)?|pricing)\b", normalized) and re.search(
         r"\b(?:cap[- ]and[- ]trade|emissions?\s+trading)\b", normalized
     ):
@@ -99,6 +105,24 @@ def _qualify_map_description(description: str) -> str:
     factuality checker and deliberately leave formal mathematical claims alone.
     """
     value = re.sub(r"\s+", " ", str(description or "")).strip()
+    value = re.sub(
+        r"Place most selective and left-most columns matching query predicates; prefixing supports left-based equality and range patterns\.?",
+        "Choose composite-index order from equality and range predicates, ordering needs, and the workload; usable prefixes begin with the leftmost indexed columns.",
+        value,
+        flags=re.I,
+    )
+    value = re.sub(
+        r"Secondary B-tree or hash indexes on join keys speed nested-loop/hash-join probes and support merge joins with ordered keys\.?",
+        "Indexes on join keys can accelerate indexed nested-loop probes; ordered indexes may support merge joins, while hash joins commonly build their own hash table.",
+        value,
+        flags=re.I,
+    )
+    value = re.sub(
+        r"Bitmap encodes matches compactly for many-to-many filters; columnar indexes support vectorized scans and compression-aware reads\.?",
+        "Bitmap indexes compactly represent low-cardinality predicates; column-oriented storage supports compressed, vectorized scans across selected columns.",
+        value,
+        flags=re.I,
+    )
     if re.search(r"\b(?:staleness|hallucinations|privacy|reliability|bias)\b", value, re.I):
         value = re.sub(r"^Solves\b", "Helps address", value)
     value = re.sub(
