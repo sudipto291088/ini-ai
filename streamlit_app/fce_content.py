@@ -22,7 +22,9 @@ FCE_MESSAGES: List[Dict[str, Any]] = [
         "text": "I won’t treat your topic as the destination.\n\nI’ll treat it as the beginning of a much larger knowledge journey.",
         "emphasis": "journey",
     },
-    {"text": "I’m improving continuously.\n\nNew capabilities and new ways to explore knowledge are being added as I grow."},
+    {"text": "You can now talk with me naturally—\n\nstart with a question, an idea, or an incomplete thought."},
+    {"text": "Explore my answers through Insight or Technical,\n\nand follow related questions to take the conversation further."},
+    {"text": "Whenever you want a deeper understanding, open the Knowledge Structure\n\nto explore prerequisites, connected topics, and a guided question map."},
     {
         "text": "There are two simple ways to begin.\n\nIntroduction helps you understand the philosophy and features behind InI.\n\nNew Chat lets you begin exploring immediately.",
     },

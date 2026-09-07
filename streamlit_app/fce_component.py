@@ -16,8 +16,8 @@ _FCE_COMPONENT = st.components.v2.component(
     .ini-fce-panel { position: relative; width: min(60vw, 810px); max-height: min(82vh, 790px); box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(226,232,240,.62); border-radius: 28px; background: rgba(255,255,255,.978); color: #1b2432; box-shadow: 0 30px 84px rgba(15,23,42,.15), 0 5px 18px rgba(15,23,42,.06); }
     .ini-fce-close { position: absolute; top: 18px; right: 18px; z-index: 2; width: 34px; height: 34px; border: 1px solid rgba(226,232,240,.62); border-radius: 50%; background: rgba(255,255,255,.82); color: #7a8492; box-shadow: 0 5px 16px rgba(15,23,42,.07); font: 400 21px/1 Aptos, "Segoe UI", sans-serif; cursor: pointer; backdrop-filter: blur(8px); }
     .ini-fce-close:hover, .ini-fce-close:focus-visible { border-color: rgba(203,210,220,.82); color: #17211f; outline: 2px solid rgba(245,27,63,.15); outline-offset: 2px; }
-    .ini-fce-body { flex: 1 1 auto; overflow: auto; padding: 26px 54px 0; scroll-behavior: smooth; }
-    .ini-fce-transcript { min-height: 100%; display: grid; grid-template-columns: 20px minmax(0, 1fr); align-content: center; align-items: start; gap: 13px; padding: 42px 0; box-sizing: border-box; }
+    .ini-fce-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 26px 54px 0; scroll-behavior: smooth; }
+    .ini-fce-transcript { min-height: 100%; display: grid; grid-template-columns: 20px minmax(0, 1fr); align-content: start; align-items: start; gap: 13px; padding: 42px 0; box-sizing: border-box; }
     .ini-fce-content { min-width: 0; }
     .ini-fce-speaker-icon { display: block; width: 16px; height: 27px; margin-top: 4px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(245,27,63,.16)); transform-origin: 50% 52%; animation: ini-fce-mukut-blink .92s steps(1, end) infinite; }
     .ini-fce-message { margin: 0; color: #4b5565; font-size: clamp(21px, 2vw, 29px); font-weight: 400; line-height: 1.46; letter-spacing: -.017em; white-space: pre-line; }
@@ -36,7 +36,7 @@ _FCE_COMPONENT = st.components.v2.component(
     .ini-fce-button:hover, .ini-fce-button:focus-visible { border-color: rgba(203,210,220,.82); background: #fff; box-shadow: 0 8px 20px rgba(15,23,42,.075); outline: 2px solid rgba(245,27,63,.14); outline-offset: 2px; }
     .ini-fce-button.primary { border-color: #f51b3f; background: #f51b3f; color: #fff; }
     .ini-fce-button.primary:hover, .ini-fce-button.primary:focus-visible { border-color: #d91435; background: #d91435; }
-    .ini-fce-final-actions { display: grid; grid-template-columns: .8fr 1.15fr 1.15fr; gap: 10px; margin-top: 4px; }
+    .ini-fce-final-actions { display: grid; grid-template-columns: .8fr 1.15fr 1.15fr; gap: 10px; padding: 18px 30px 22px; }
     .ini-fce-final-actions .ini-fce-button { min-height: 45px; }
     @keyframes ini-fce-cursor { 0%, 45% { opacity: 1; } 46%, 100% { opacity: 0; } }
     @keyframes ini-fce-mukut-blink { 0%, 42%, 72%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 5px 11px rgba(245,27,63,.28)); } 43%, 71% { opacity: 0; transform: scale(.94); filter: none; } }
@@ -51,6 +51,11 @@ _FCE_COMPONENT = st.components.v2.component(
     .ini-fce-overlay.is-mobile .ini-fce-button { flex: 1 1 auto; }
     .ini-fce-overlay.is-mobile .ini-fce-final-actions { grid-template-columns: 1fr; }
     @media (max-width: 640px) { .ini-fce-overlay { padding: 10px; } .ini-fce-panel { width: calc(100% - 20px); max-width: none; max-height: calc(100% - 20px); border-radius: 22px; } .ini-fce-close { top: 13px; right: 13px; } .ini-fce-body { min-width: 0; min-height: 0; padding: 34px 20px 0; } .ini-fce-transcript { min-width: 0; min-height: 0; padding-block: 22px; } .ini-fce-message { max-width: 100%; overflow-wrap: anywhere; font-size: clamp(18px, 5.2vw, 21px); } .ini-fce-footer { align-items: stretch; flex-direction: column-reverse; padding: 12px 17px 15px; } .ini-fce-controls { width: 100%; } .ini-fce-button { flex: 1 1 auto; } .ini-fce-final-actions { grid-template-columns: 1fr; } }
+    /* Reserve the complete welcome window before any words stream in. */
+    .ini-fce-panel { width: 78%; height: 78%; max-height: 100%; flex-shrink: 0; }
+    .ini-fce-footer-slot { flex: 0 0 auto; }
+    .ini-fce-overlay.is-mobile .ini-fce-panel { height: calc(100% - 20px); }
+    @media (max-width: 640px) { .ini-fce-panel { width: calc(100% - 20px); height: calc(100% - 20px); max-height: calc(100% - 20px); } }
     @media (prefers-reduced-motion: reduce) { .ini-fce-overlay { transition: none; } .ini-fce-body { scroll-behavior: auto; } .ini-fce-caret, .ini-fce-speaker-icon { animation: none; } }
     """,
     js="""
@@ -137,7 +142,8 @@ _FCE_COMPONENT = st.components.v2.component(
       const textMarkup = (message, text, isTyping) => `<p class="ini-fce-message ${escapeHtml(message.emphasis || '')}">${escapeHtml(text)}${isTyping ? '<span class="ini-fce-caret" aria-hidden="true"></span>' : ''}</p>`;
       const quoteMarkup = () => `<section class="ini-fce-quote"><div class="ini-fce-quote-text">“${escapeHtml(data.quote.quote)}”</div><div class="ini-fce-quote-author">— ${escapeHtml(data.quote.author)}</div>${data.quote.attribution_note ? `<div class="ini-fce-quote-note">${escapeHtml(data.quote.attribution_note)}</div>` : ''}</section>`;
       const topicsMarkup = () => `<div class="ini-fce-topics">${(data.topics || []).map((topic) => `<span class="ini-fce-topic">${escapeHtml(topic)}</span>`).join('')}</div>`;
-      const finalMarkup = () => `${textMarkup(data.messages[data.messages.length - 1], data.messages[data.messages.length - 1].text, false)}<div class="ini-fce-final-actions"><button class="ini-fce-button" type="button" data-action="replay">Replay</button><button class="ini-fce-button" type="button" data-action="go-introduction">Take Me to Introduction</button><button class="ini-fce-button primary" type="button" data-action="go-chat">Start a New Chat</button></div>`;
+      const finalMarkup = () => textMarkup(data.messages[data.messages.length - 1], data.messages[data.messages.length - 1].text, false);
+      const finalActionsMarkup = () => `<div class="ini-fce-final-actions"><button class="ini-fce-button" type="button" data-action="replay">Replay</button><button class="ini-fce-button" type="button" data-action="go-introduction">Take Me to Introduction</button><button class="ini-fce-button primary" type="button" data-action="go-chat">Start a New Chat</button></div>`;
 
       const currentProgress = () => {
         let elapsed = Date.now() - state.startedAt;
@@ -206,7 +212,7 @@ _FCE_COMPONENT = st.components.v2.component(
         overlay.className = `ini-fce-overlay${mobileClass}${Date.now() >= state.visibleAt ? ' is-visible' : ''}`;
         overlay.removeAttribute('style');
         root.querySelector('.ini-fce-content').innerHTML = content;
-        root.querySelector('.ini-fce-footer-slot').innerHTML = footer;
+        root.querySelector('.ini-fce-footer-slot').innerHTML = footer + ((end || all) ? finalActionsMarkup() : '');
         const body = root.querySelector('.ini-fce-body');
         if (!all && !end) {
           body.scrollTop = body.scrollHeight;
