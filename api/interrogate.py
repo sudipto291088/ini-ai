@@ -7,6 +7,8 @@ from typing import Dict, List, Tuple, Any, Optional
 from api.context_mode import build_carm_answer_prompt, classify_context
 from api.conversation_engine import build_conversation_prompt
 from api.intent_layer import detect_intent
+from streamlit_app.subject_metadata import normalize_topic_profile
+from streamlit_app.knowledge_map import normalize_map_title, _qualify_map_description
 
 
 # ------------------------------------------------------------
@@ -227,6 +229,81 @@ def _question_map_counts_ok(categories: Dict[str, List[Dict[str, Any]]]) -> bool
     return MIN_TOTAL_QUESTIONS <= total <= MAX_TOTAL_QUESTIONS
 
 
+def _question_map_content_issues(
+    categories: Dict[str, List[Dict[str, Any]]],
+) -> List[str]:
+    """Validate generated map leaves before they become persistent UI data."""
+    issues: List[str] = []
+    for category in CATEGORY_ORDER:
+        for index, item in enumerate(categories.get(category, []) or [], start=1):
+            if not isinstance(item, dict):
+                issues.append(f"{category} item {index} is not an object")
+                continue
+            title = re.sub(r"\s+", " ", str(item.get("map_title") or "")).strip()
+            description = re.sub(
+                r"\s+", " ", str(item.get("map_description") or "")
+            ).strip()
+            title_words = title.split()
+            description_words = description.split()
+            if not 2 <= len(title_words) <= 8:
+                issues.append(f"{category} item {index} has an incomplete or oversized map title")
+            if "?" in title or re.match(
+                r"^(?:what|which|how|why|when|where|can|should|does|do|is|are)\b",
+                title,
+                re.I,
+            ):
+                issues.append(f"{category} item {index} uses a question as its map title")
+            if re.search(r"\b(?:and|or|vs\.?|versus|of|for|with|between)$", title, re.I):
+                issues.append(f"{category} item {index} ends its map title with a connector")
+            if not 8 <= len(description_words) <= 30:
+                issues.append(f"{category} item {index} has a vague or oversized map description")
+            if re.match(
+                r"^(?:covers|explores|introduces|establishes|clarifies|outlines|shows why)\b",
+                description,
+                re.I,
+            ):
+                issues.append(f"{category} item {index} uses a meta-description")
+    return issues
+
+
+def _topic_profile_issues(profile: Dict[str, str], topic: str) -> List[str]:
+    required = {
+        "entity type", "broad field", "subject", "prerequisites",
+        "related topics", "difficulty",
+    }
+    values = {str(key).casefold(): str(value).strip() for key, value in profile.items()}
+    issues = [f"topic_profile missing {key}" for key in sorted(required - values.keys())]
+    acronyms = re.findall(r"\b[A-Z]{2,8}(?:-[A-Z0-9]{2,8})*\b", topic or "")
+    if acronyms and not values.get("full form"):
+        issues.append("topic_profile missing the central acronym's full form")
+    if re.match(
+        r"^(?:what|why|how|which|tell me|explain|describe)\b",
+        values.get("subject", ""),
+        re.I,
+    ):
+        issues.append("topic_profile subject is not a noun phrase")
+    return issues
+
+
+def _unpack_generated_map(
+    result: object,
+    topic: str,
+) -> tuple[List[str], Dict[str, List[Dict[str, Any]]], Dict[str, str], bool]:
+    """Accept legacy two-tuples while enforcing richer production results."""
+    if isinstance(result, tuple) and len(result) >= 2:
+        summary = result[0] if isinstance(result[0], list) else []
+        categories = result[1] if isinstance(result[1], dict) else {}
+        has_generated_profile = len(result) >= 3 and isinstance(result[2], dict)
+        raw_profile = result[2] if has_generated_profile else {}
+        return (
+            summary,
+            categories,
+            normalize_topic_profile(raw_profile, topic),
+            has_generated_profile,
+        )
+    return [], {}, normalize_topic_profile({}, topic), False
+
+
 def _normalize_question_map_terminology(
     categories: Dict[str, List[Dict[str, Any]]],
 ) -> Dict[str, List[Dict[str, Any]]]:
@@ -268,6 +345,15 @@ def _normalize_question_map_terminology(
                 flags=re.IGNORECASE,
             )
             clean_item["question"] = question
+            clean_item["map_title"] = normalize_map_title(
+                str(clean_item.get("map_title") or ""),
+                question,
+                category,
+            )
+            clean_item["map_description"] = _qualify_map_description(
+                str(clean_item.get("map_description") or ""),
+                f"{question} {clean_item['map_title']} {category}",
+            )
             normalized_items.append(clean_item)
         normalized[category] = normalized_items
     return normalized
@@ -734,7 +820,7 @@ def _llm_generate_questions_only(
     topic: str,
     topic_type: str,
     response_intent: str = "explore",
-) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
+) -> tuple:
     """
     One LLM call (AI/ML only):
     - Generates a brief summary
@@ -852,6 +938,13 @@ QUESTION RULES
 • Avoid vague or generic questions.
 • Questions should reveal gaps in understanding.
 • Do NOT generate more than 5 Orientation questions.
+• Return one topic_profile that every later answer can reuse. It must include Entity type,
+  Broad field, Subject, Prerequisites, Related topics, and Difficulty. Include Full form
+  whenever TOPIC is an acronym or initialism. Prerequisites must be prior knowledge only,
+  limited to what is genuinely necessary at the requested depth; state when no specialized
+  prior knowledge is required. Never use placeholder classifications.
+• For named processes, frameworks, and standards, distinguish documented core components
+  from modern extensions, adjacent practices, and implementation recommendations.
 
 STRUCTURE
 
@@ -863,6 +956,16 @@ Return STRICT JSON only.
     "short sentence about why it matters",
     "short sentence about how understanding will progress"
   ],
+
+  "topic_profile": {{
+    "Entity type": "specific type",
+    "Broad field": "specific field",
+    "Subject": "complete noun phrase",
+    "Full form": "include only when applicable",
+    "Prerequisites": "minimal prior knowledge",
+    "Related topics": "specific neighboring topics",
+    "Difficulty": "Beginner, Intermediate, or Advanced"
+  }},
 
     "categories": {{
     "Orientation": [{{"question": "...", "map_title": "2-6 word topic", "map_description": "concrete contents, types, components, or mechanisms"}}],
@@ -965,6 +1068,10 @@ Generate the questions now.
 
 
     summary = data.get("summary") if isinstance(data.get("summary"), list) else []
+    topic_profile = normalize_topic_profile(
+        data.get("topic_profile") if isinstance(data.get("topic_profile"), dict) else {},
+        topic,
+    )
     cats = _normalize_category_keys(
         data.get("categories") if isinstance(data.get("categories"), dict) else {}
     )
@@ -1009,7 +1116,7 @@ Generate the questions now.
     if not any(categories_out.get(c) for c in categories_out):
         return (build_summary(topic, topic_type, 0.67), {})
 
-    return (summary, categories_out)
+    return (summary, categories_out, topic_profile)
 
 
 def _normalize_category_keys(cats: Dict[str, Any]) -> Dict[str, Any]:
@@ -1051,7 +1158,7 @@ def _llm_generate_questions_only_rescue(
     topic: str,
     topic_type: str,
     response_intent: str = "explore",
-) -> Tuple[List[str], Dict[str, List[Dict[str, Any]]]]:
+) -> tuple:
     """
     Smaller rescue pass for AI/ML topics when the main JSON question-map fails.
     Keeps LLM-generated questions, but with a lighter prompt.
@@ -1122,6 +1229,11 @@ Rules:
 - Before returning, audit every map leaf for concrete contents, correct terminology, qualified claims, non-duplicate objectives, and a coherent foundation-to-application sequence. Repair any failed leaf before emitting the JSON.
 - Example: "Regularization techniques" must name ridge, lasso, and elastic net rather than say that the branch covers regularization.
 - Every requested dimension of a compound topic must appear explicitly in at least one map_title or map_description.
+- Return one topic_profile with Entity type, Broad field, Subject, Prerequisites,
+  Related topics, and Difficulty. Include Full form for an acronym or initialism.
+  Use only genuinely necessary prior knowledge; never use placeholder classifications.
+- For a named process, framework, or standard, distinguish its documented core from
+  modern extensions, adjacent practices, and implementation recommendations.
 
 JSON shape:
 {{
@@ -1130,6 +1242,15 @@ JSON shape:
     "short sentence about why it matters",
     "short sentence about how understanding will progress"
   ],
+  "topic_profile": {{
+    "Entity type": "specific type",
+    "Broad field": "specific field",
+    "Subject": "complete noun phrase",
+    "Full form": "include only when applicable",
+    "Prerequisites": "minimal prior knowledge",
+    "Related topics": "specific neighboring topics",
+    "Difficulty": "Beginner, Intermediate, or Advanced"
+  }},
   "categories": {{
     "Orientation": [{{"question": "...", "map_title": "2-6 word topic", "map_description": "concrete contents, types, components, or mechanisms"}}],
     "Foundations": [{{"question": "...", "map_title": "...", "map_description": "..."}}],
@@ -1157,6 +1278,10 @@ JSON shape:
         return (build_summary(topic, topic_type, 0.67), {})
 
     summary = data.get("summary") if isinstance(data.get("summary"), list) else []
+    topic_profile = normalize_topic_profile(
+        data.get("topic_profile") if isinstance(data.get("topic_profile"), dict) else {},
+        topic,
+    )
     cats = _normalize_category_keys(
         data.get("categories") if isinstance(data.get("categories"), dict) else {}
     )
@@ -1200,7 +1325,7 @@ JSON shape:
     if not any(categories_out.get(c) for c in categories_out):
         return (build_summary(topic, topic_type, 0.67), {})
 
-    return (summary, categories_out)
+    return (summary, categories_out, topic_profile)
 
 
 def attach_answers(categories: Dict[str, List[str]], topic: str, topic_type: str) -> Dict[str, List[Dict[str, Any]]]:
@@ -1481,18 +1606,28 @@ def interrogate(text: str) -> Dict[str, Any]:
 
     if use_llm:
         summary, llm_categories = [], {}
+        topic_profile = normalize_topic_profile({}, clean_topic)
+        strict_content = False
 
         # STEP 1: Use full LLM generation FIRST (stronger output)
         print("USING FULL QUESTION GENERATOR")
 
         for _ in range(MAIN_LLM_ATTEMPTS):
-            summary, llm_categories = _llm_generate_questions_only(
+            generated = _llm_generate_questions_only(
                 clean_topic,
                 topic_type,
                 response_intent,
             )
+            summary, llm_categories, topic_profile, strict_content = _unpack_generated_map(
+                generated,
+                clean_topic,
+            )
 
-            if _question_map_counts_ok(llm_categories):
+            content_ok = not strict_content or not (
+                _question_map_content_issues(llm_categories)
+                or _topic_profile_issues(topic_profile, clean_topic)
+            )
+            if _question_map_counts_ok(llm_categories) and content_ok:
                 print("FULL QUESTION GENERATOR SUCCESS")
                 break
             else:
@@ -1503,14 +1638,27 @@ def interrogate(text: str) -> Dict[str, Any]:
         if not (llm_categories and any(llm_categories.get(c) for c in llm_categories)):
             print("USING RESCUE QUESTION GENERATOR")
 
-            summary, llm_categories = _llm_generate_questions_only_rescue(
+            rescue_generated = _llm_generate_questions_only_rescue(
                 clean_topic,
                 topic_type,
                 response_intent,
             )
+            summary, llm_categories, topic_profile, strict_content = _unpack_generated_map(
+                rescue_generated,
+                clean_topic,
+            )
 
         # STEP 3: If we got a VALID full map → proceed normally
-        if _question_map_counts_ok(llm_categories):
+        if (
+            _question_map_counts_ok(llm_categories)
+            and (
+                not strict_content
+                or not (
+                    _question_map_content_issues(llm_categories)
+                    or _topic_profile_issues(topic_profile, clean_topic)
+                )
+            )
+        ):
 
             validated_summary = (
                     summary
@@ -1525,11 +1673,17 @@ def interrogate(text: str) -> Dict[str, Any]:
             )
 
             if missing_category:
-                repair_summary, repair_categories = _llm_generate_questions_only_rescue(
+                repair_generated = _llm_generate_questions_only_rescue(
                     clean_topic,
                     topic_type,
                     response_intent,
                 )
+                repair_summary, repair_categories, repair_profile, _ = _unpack_generated_map(
+                    repair_generated,
+                    clean_topic,
+                )
+                if repair_profile:
+                    topic_profile = repair_profile
 
                 for cat in CATEGORY_ORDER:
                     if len(llm_categories.get(cat, [])) == 0 and repair_categories.get(cat):
@@ -1575,6 +1729,7 @@ def interrogate(text: str) -> Dict[str, Any]:
                 "topic": clean_topic,
                 "topic_type": topic_type,
                 "categories": normalized_categories,
+                "topic_profile": topic_profile,
                 "summary": validated_summary,                
                 "confidence": confidence,
                 "notes": [

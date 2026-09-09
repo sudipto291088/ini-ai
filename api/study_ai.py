@@ -1,7 +1,8 @@
 # api/study_ai.py
 from typing import Dict, Any, Tuple, Optional, Union
+import json
 import re
-from api.response_accuracy import ACCURACY_CONTRACT
+from api.response_accuracy import ACCURACY_CONTRACT, normalize_response_accuracy
 
 from api.llm_answers import llm_enabled, generate_dynamic_answer_result
 from api.intent_layer import detect_intent
@@ -107,10 +108,11 @@ def _build_instruction(mode: str) -> str:
             "</TOPIC_PROFILE>\n"
             "- Include 6–9 concise profile fields that locate the user's exact topic within its wider learning landscape.\n"
             "- Always include Entity type, Broad field, Subject, Prerequisites, Related topics, and Difficulty.\n"
+            "- If the exact topic is an acronym or initialism, include Full form and introduce that full form before relying on the abbreviation. Never guess an ambiguous expansion.\n"
             "- Set Difficulty to Beginner, Intermediate, or Advanced by judging the exact question and the depth of reasoning it requests—not merely the broad subject.\n"
             "- For mathematical, scientific, or technical topics, include relevant fields such as Research area, Mathematical foundation, Typical applications, or Subfield.\n"
             "- For products, people, organizations, places, or other non-technical subjects, replace technical-only fields with accurate topic-specific labels such as Organization type, Manufacturer, Parent domain, Full form, Name type, Era, Region, or Primary significance.\n"
-            "- Always include a Prerequisites field with 3–6 distinct, concise foundations a learner should have before beginning this topic; separate the items with semicolons.\n"
+            "- Always include a Prerequisites field with 0–4 genuinely necessary foundations; separate multiple items with semicolons. For an introductory topic that needs no specialist background, say 'No specialized prior knowledge is required' instead of inventing prerequisites. Never list downstream methods, tools, project roles, or later phases as prerequisites.\n"
             "- Omit irrelevant labels instead of writing unknown, none, or not applicable.\n"
             "- Keep profile values factual and compact; do not use Markdown inside the JSON.\n"
             "- Immediately after the closing TOPIC_PROFILE tag, output this exact machine-readable block using valid JSON:\n"
@@ -158,7 +160,7 @@ def _build_instruction(mode: str) -> str:
             "</STAGES>\n"
             "<OUTCOME>One concise sentence explaining what completing or repeating the sequence achieves</OUTCOME>\n"
             "</LEARNING_LOOP>\n"
-            "- Create 5 to 6 causal or operational stages specific to the user's exact question.\n"
+            "- Create 5 to 6 mechanistic or operational stages specific to the user's exact question.\n"
             "- Never use placeholder-like stages such as Define the topic, closest related concepts, relate the main components, use a representative scenario, or summarize purpose and trade-offs. Name the actual concepts, mechanisms, or processes from the user's question in every stage.\n"
             "- Match the loop to the depth and form of the user's request: for a broad or introductory topic, use a conceptual learning progression; for a precise advanced question, use the technical reasoning or mechanism sequence; for an explicit practical request, use an actionable workflow.\n"
             "- Do not turn a broad topic into an advanced optimization, implementation, measurement, or troubleshooting workflow unless the user's wording or established context supports that depth.\n"
@@ -185,6 +187,8 @@ def _build_instruction(mode: str) -> str:
             "- Do not repeat the definition, governing relationship, worked example, learning goal, or step sequence already present in the structured blocks.\n"
             "- Do not preview the Learning Loop or explain how to use the Question Map; those cards must speak for themselves.\n"
             "- Structure the introduction as exactly three short paragraphs beginning with Purpose:, Major areas:, and Who should study this next:.\n"
+            "- Write all three sections as grammatical prose paragraphs. Do not use bullets or split a sentence into list fragments.\n"
+            "- For named frameworks, standards, and process models, separate documented core components from modern extensions, adjacent practices, and implementation advice.\n"
             "- Purpose must explain the subject's real-world role and why it matters. Do not describe the lesson format or say 'it frames the subject', 'short study', or 'technical treatment'.\n"
             "- Profile subjects must be complete noun phrases, never clipped questions. Difficulty reflects the requested explanation, not the hardest mathematics in the field.\n"
             "- For OAuth, distinguish delegated authorization from authentication: identity and SSO require an identity layer such as OpenID Connect. Public-key cryptography is optional background for an introductory overview.\n"
@@ -1121,12 +1125,21 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
             for item in (payload.get("validation_feedback") or [])
             if str(item).strip()
         ][:8]
+        raw_profile_context = payload.get("profile_context") or {}
+        if not isinstance(raw_profile_context, dict):
+            raw_profile_context = {}
+        profile_context = {
+            str(key).strip(): str(value).strip()
+            for key, value in raw_profile_context.items()
+            if str(key).strip() and str(value).strip()
+        }
     else:
         user_topic = str(payload).strip()
         mode = "deep"
         continue_mode = False
         previous_answer = ""
         validation_feedback = []
+        profile_context = {}
 
     if not user_topic:
         user_topic = "Explain Artificial Intelligence."
@@ -1206,6 +1219,12 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
 
     # ---- Build prompt ----
     instruction = _build_instruction(mode) + _processor_accuracy_contract(user_topic) + ACCURACY_CONTRACT
+    if profile_context:
+        instruction += (
+            "\nCANONICAL TOPIC PROFILE (reuse these facts consistently; do not contradict them):\n"
+            + json.dumps(profile_context, ensure_ascii=False)
+            + "\n"
+        )
 
     if continue_mode and previous_answer:
 
@@ -1262,6 +1281,7 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         (result.get("answer") or "").strip(),
         user_topic,
     )
+    ans = normalize_response_accuracy(ans, user_topic)
     if mode == "intro":
         # The first pass keeps the conservative bare-topic safeguard. If that
         # draft fails semantic validation, the retry prompt explicitly asks

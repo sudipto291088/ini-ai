@@ -44,16 +44,22 @@ from topic_profile import (
 )
 import response_profile
 
-if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 6:
+if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 7:
     response_profile = importlib.reload(response_profile)
 build_response_profile = response_profile.build_response_profile
+import api.response_accuracy as response_accuracy
+
+if getattr(response_accuracy, "ACCURACY_CONTRACT_VERSION", 0) < 3:
+    response_accuracy = importlib.reload(response_accuracy)
 import streamlit_app.knowledge_map as knowledge_map
 
-if getattr(knowledge_map, "KNOWLEDGE_MAP_VERSION", 0) < 11:
+if getattr(knowledge_map, "KNOWLEDGE_MAP_VERSION", 0) < 13:
     knowledge_map = importlib.reload(knowledge_map)
 compact_knowledge_map_projection = knowledge_map.compact_knowledge_map_projection
 expanded_knowledge_map_entry = knowledge_map.expanded_knowledge_map_entry
 from structured_validation import validate_structured_learning_answer
+from streamlit_app.subject_metadata import normalize_topic_profile
+from api.response_accuracy import normalize_response_accuracy
 # Product knowledge was introduced after the original Streamlit entry point.
 # Keep startup resilient while a deployment rolls between revisions: an older
 # checkout must still render instead of failing before the first frame.
@@ -4565,6 +4571,7 @@ def fetch_study(
     continue_mode: bool = False,
     previous_answer: Optional[str] = None,
     validation_feedback: Optional[list[str]] = None,
+    profile_context: Optional[dict[str, str]] = None,
 ) -> Dict[str, Any]:
     payload: Dict[str, Any] = {"topic": topic, "mode": mode}
 
@@ -4574,6 +4581,8 @@ def fetch_study(
 
     if validation_feedback:
         payload["validation_feedback"] = validation_feedback[:8]
+    if profile_context:
+        payload["profile_context"] = profile_context
 
     return post_json("/study/ai", payload, timeout=180)
 
@@ -4586,8 +4595,13 @@ def fetch_illustrate(topic: str) -> Dict[str, Any]:
     return post_json("/illustrate", {"topic": topic}, timeout=240)
 
 
-def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dict[str, Any]:
-    resp = fetch_study(topic, mode=mode)
+def fetch_study_full(
+    topic: str,
+    mode: str = "deep",
+    max_rounds: int = 4,
+    profile_context: Optional[dict[str, str]] = None,
+) -> Dict[str, Any]:
+    resp = fetch_study(topic, mode=mode, profile_context=profile_context)
     answer = normalize_whitespace_for_readability(
         normalize_mojibake(resp.get("answer", "") or "")
     )
@@ -4602,6 +4616,7 @@ def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dic
             mode=mode,
             continue_mode=True,
             previous_answer=answer,
+            profile_context=profile_context,
         )
         chunk = normalize_whitespace_for_readability(
             normalize_mojibake(resp.get("answer", "") or "")
@@ -4619,7 +4634,7 @@ def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dic
         "repairs": [],
     }
     if mode == "intro":
-        validation = validate_structured_learning_answer(answer)
+        validation = validate_structured_learning_answer(answer, topic)
         answer = str(validation.get("answer") or "").strip()
         if resp.get("incomplete") is True or (
             (resp.get("stop_reason") or "").strip().lower() == "max_output_tokens"
@@ -4637,11 +4652,12 @@ def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dic
                 topic,
                 mode="intro",
                 validation_feedback=list(validation.get("issues") or []),
+                profile_context=profile_context,
             )
             retry_answer = normalize_whitespace_for_readability(
                 normalize_mojibake(retry_resp.get("answer", "") or "")
             )
-            retry_validation = validate_structured_learning_answer(retry_answer)
+            retry_validation = validate_structured_learning_answer(retry_answer, topic)
             if retry_resp.get("incomplete") is True or (
                 (retry_resp.get("stop_reason") or "").strip().lower()
                 == "max_output_tokens"
@@ -4678,7 +4694,11 @@ def fetch_study_full(topic: str, mode: str = "deep", max_rounds: int = 4) -> Dic
                     )
                 else:
                     validation = retry_validation
-                    fallback_resp = fetch_study(topic, mode="focused")
+                    fallback_resp = fetch_study(
+                        topic,
+                        mode="focused",
+                        profile_context=profile_context,
+                    )
                     fallback_answer = normalize_whitespace_for_readability(
                         normalize_mojibake(fallback_resp.get("answer", "") or "")
                     ).strip()
@@ -4719,6 +4739,12 @@ def split_answer_and_embedded_followups(text: str) -> tuple[str, list[str]]:
     if not text:
         return "", []
 
+    text = re.sub(
+        r"\s+(Suggested Follow(?:-?up|up)s?(?: Questions)?)\s*:?\s*",
+        r"\n\1:\n",
+        text,
+        flags=re.IGNORECASE,
+    )
     lines = text.splitlines()
 
     marker_patterns = [
@@ -5386,7 +5412,7 @@ def render_nc_intro_preview(
     *,
     as_html: bool = False,
 ) -> Optional[str]:
-    text = (body or "").strip()
+    text = normalize_response_accuracy((body or "").strip(), body)
     text = re.sub(
         r"^(?:#{1,6}\s*)?Introduction\s*:?\s*",
         "",
@@ -5436,62 +5462,10 @@ def render_nc_intro_preview(
     def intro_sections_html(items: list[str], start_index: int = 0) -> str:
         def split_major_areas(value: str) -> tuple[list[str], str]:
             structured_areas, structured_lead = split_intro_major_areas(value)
-            if structured_areas:
-                return structured_areas, structured_lead
-
-            numbered_matches = list(
-                re.finditer(r"\(([0-9]+|[a-z])\)\s*", value, flags=re.IGNORECASE)
-            )
-            if len(numbered_matches) >= 3:
-                lead = value[: numbered_matches[0].start()].strip()
-                lead = re.sub(r"[,:;—–-]+$", "", lead).strip()
-                areas: list[str] = []
-                for index, match in enumerate(numbered_matches):
-                    end = (
-                        numbered_matches[index + 1].start()
-                        if index + 1 < len(numbered_matches)
-                        else len(value)
-                    )
-                    area = value[match.end() : end].strip()
-                    area = re.sub(r"^(?:and\s+)", "", area, flags=re.IGNORECASE)
-                    area = re.sub(r";?\s+and\s*$", "", area, flags=re.IGNORECASE)
-                    area = re.sub(r"[;,.\s]+$", "", area).strip()
-                    if area:
-                        areas.append(area[0].upper() + area[1:])
-                if len(areas) >= 3:
-                    return areas, lead
-
-            sentence_match = re.match(r"^(.+?[.!?])(?:\s+(.*))?$", value, flags=re.DOTALL)
-            first_sentence = sentence_match.group(1) if sentence_match else value
-            remainder = sentence_match.group(2).strip() if sentence_match and sentence_match.group(2) else ""
-            normalized = re.sub(r",?\s+and\s+", ", ", first_sentence.rstrip(".!?"), count=1)
-            areas: list[str] = []
-            current: list[str] = []
-            depth = 0
-            for char in normalized:
-                if char == "(":
-                    depth += 1
-                elif char == ")" and depth:
-                    depth -= 1
-                if char == "," and depth == 0:
-                    area = "".join(current).strip()
-                    if area:
-                        areas.append(area)
-                    current = []
-                else:
-                    current.append(char)
-            final_area = "".join(current).strip()
-            if final_area:
-                areas.append(final_area)
-
-            normalized_areas: list[str] = []
-            for area in areas:
-                area = re.sub(r"^and\s+", "", area.strip(), flags=re.IGNORECASE)
-                area = re.sub(r"[;,\.\s]+$", "", area).strip()
-                if area:
-                    normalized_areas.append(area[0].upper() + area[1:])
-
-            return (normalized_areas, remainder) if len(normalized_areas) >= 3 else ([], value)
+            # Prose containing commas or conjunctions is still prose. Only an
+            # explicitly numbered/lettered enumeration is safe to render as a
+            # list; heuristic splitting produced grammatical fragments.
+            return structured_areas, structured_lead
 
         html_parts = []
         for item_index, item in enumerate(items, start=start_index):
@@ -7214,7 +7188,12 @@ def page_new_chat() -> None:
                     )
                     _persist_new_chat_session(current_sid)
                     return
-            intro_resp = fetch_study_full(topic_text.strip(), mode="intro", max_rounds=0)
+            intro_resp = fetch_study_full(
+                topic_text.strip(),
+                mode="intro",
+                max_rounds=0,
+                profile_context=data.get("topic_profile"),
+            )
             intro = intro_resp.get("answer", "").strip()
             _append_interrogate_branch(topic_text.strip(), data, intro)
             _persist_new_chat_session(current_sid)
@@ -7244,12 +7223,22 @@ def page_new_chat() -> None:
         mode_override: str = "",
     ) -> list[tuple[str, str]]:
         info = payload if isinstance(payload, dict) else {}
-        return build_response_profile(
+        baseline = build_response_profile(
             info.get("profile_prompt") or prompt,
             intent=info.get("intent") or "",
             response_mode=mode_override or info.get("response_mode") or "",
             context_intent=info.get("context_intent") or "",
         )
+        generated_profile = info.get("topic_profile")
+        if isinstance(generated_profile, dict):
+            query = str(info.get("profile_prompt") or prompt)
+            normalized = normalize_topic_profile(generated_profile, query)
+            name_type = next(
+                (value for label, value in baseline if label == "Name type"),
+                "Learning topic",
+            )
+            return [("Name type", name_type), *normalized.items()]
+        return baseline
 
     def _render_simple_response(
         response_card_key: str,
@@ -7264,6 +7253,21 @@ def page_new_chat() -> None:
         response_payload: Optional[Dict[str, Any]] = None,
         stream_follow: bool = False,
     ) -> None:
+        payload_info = response_payload if isinstance(response_payload, dict) else {}
+        profile_source = str(
+            payload_info.get("profile_prompt")
+            or payload_info.get("prompt")
+            or ""
+        ).strip()
+        text = normalize_response_accuracy(text, profile_source)
+        if followups:
+            followups = [
+                normalize_response_accuracy(str(item), profile_source).replace(
+                    "Cross-Industry Standard Process for Data Mining (CRISP-DM)",
+                    "CRISP-DM",
+                )
+                for item in followups
+            ]
         response_icon_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
         response_icon_data = base64.b64encode(
             response_icon_path.read_bytes()
@@ -7273,17 +7277,11 @@ def page_new_chat() -> None:
         # response.  Resolve it here—not in individual routes—so a casual,
         # direct, practical, illustrated, or later response cannot silently
         # suppress it.  Full Knowledge Structures use their own composition.
-        payload_info = response_payload if isinstance(response_payload, dict) else {}
         is_knowledge_structure = bool(
             payload_info.get("knowledge_structure_rendered")
             or payload_info.get("response_mode") == "knowledge_structure"
         )
         if not is_knowledge_structure:
-            profile_source = str(
-                payload_info.get("profile_prompt")
-                or payload_info.get("prompt")
-                or ""
-            ).strip()
             if not topic_profile and profile_source:
                 topic_profile = _profile_for_response(
                     profile_source,
@@ -7329,8 +7327,16 @@ def page_new_chat() -> None:
                                 if str(view_text or "").strip():
                                     answer_views.setdefault(
                                         str(view_name),
-                                        str(view_text).strip(),
+                                        normalize_response_accuracy(
+                                            str(view_text).strip(),
+                                            profile_source,
+                                        ),
                                     )
+                        for view_name, view_text in list(answer_views.items()):
+                            answer_views[view_name] = normalize_response_accuracy(
+                                str(view_text or "").strip(),
+                                profile_source,
+                            )
                         original_mode = str(
                             response_payload.get("mode") or "focused"
                         ).strip().lower()
@@ -8259,7 +8265,10 @@ def page_new_chat() -> None:
                 branch.get("topic") or branch.get("prompt") or ""
             )
 
-            intro = (branch.get("intro") or "").strip()
+            intro = normalize_response_accuracy(
+                (branch.get("intro") or "").strip(),
+                branch_map_topic,
+            )
             if intro:
                 learning_paths, intro_without_paths = extract_learning_paths(intro)
                 your_question, intro_without_question = extract_your_question(
@@ -10085,6 +10094,7 @@ def page_new_chat() -> None:
                                 answer_prompt,
                                 mode=generation_mode,
                                 max_rounds=1 if generation_mode == "conversation" else 2,
+                                profile_context=data.get("topic_profile"),
                             )
                             reply = (direct_resp.get("answer") or "").strip() or "No answer generated."
                             followups = direct_resp.get("followups") or followups
@@ -10135,6 +10145,7 @@ def page_new_chat() -> None:
                                 else display_topic_text
                             )
                         ),
+                        "topic_profile": data.get("topic_profile"),
                         # A contextual CARM reply belongs to the existing
                         # implementation guide; repeating a new Topic Profile
                         # would incorrectly label replies such as "I don't
@@ -10296,6 +10307,7 @@ def page_new_chat() -> None:
                         response_learning_prompt,
                         mode="clear",
                         max_rounds=1,
+                        profile_context=data.get("topic_profile"),
                     )
                     direct_text = (
                         direct_resp.get("answer") or ""
@@ -10329,6 +10341,7 @@ def page_new_chat() -> None:
                         # when the full Knowledge Structure is deferred.
                         "suppress_profile": False,
                         "profile_prompt": resolved_learning_topic,
+                        "topic_profile": data.get("topic_profile"),
                         "knowledge_structure_available": True,
                         "knowledge_structure_topic": resolved_learning_topic,
                         "ks_suitability": ks_suitability,
@@ -10437,6 +10450,7 @@ def page_new_chat() -> None:
                         intro_topic,
                         mode="intro",
                         max_rounds=0,
+                        profile_context=data.get("topic_profile"),
                     )
                     intro = intro_resp.get("answer", "").strip()
                     _append_interrogate_branch(
@@ -10466,7 +10480,11 @@ def page_new_chat() -> None:
                     )
                     else resolved_learning_topic
                 )
-                intro_resp = fetch_study_full(intro_topic, mode="intro")
+                intro_resp = fetch_study_full(
+                    intro_topic,
+                    mode="intro",
+                    profile_context=data.get("topic_profile"),
+                )
                 intro = intro_resp.get("answer", "").strip()
 
                 st.session_state.chat_intro = intro
@@ -13560,7 +13578,15 @@ def page_new_chat() -> None:
             continue_journey: dict[str, Any] = {}
             cats = data.get("categories") or {}
 
-            intro = st.session_state.chat_intro
+            intro_topic = str(
+                st.session_state.chat_root_topic
+                or st.session_state.chat.get("topic")
+                or ""
+            )
+            intro = normalize_response_accuracy(
+                st.session_state.chat_intro,
+                intro_topic,
+            )
             if intro:
                 learning_paths, intro_without_paths = extract_learning_paths(intro)
                 your_question, intro_without_question = extract_your_question(

@@ -1,9 +1,10 @@
 import re
 from dataclasses import dataclass
 from streamlit_app.subject_metadata import subject_metadata
+from api.response_accuracy import normalize_response_accuracy
 
 
-KNOWLEDGE_MAP_VERSION = 11
+KNOWLEDGE_MAP_VERSION = 13
 
 
 @dataclass(frozen=True)
@@ -108,13 +109,14 @@ def _concept_led_anchor(query: str) -> str:
     return ""
 
 
-def _qualify_map_description(description: str) -> str:
+def _qualify_map_description(description: str, context: str = "") -> str:
     """Correct known misleading claim patterns, including in saved maps.
 
     These guards supplement the generation contract; they are not a general
     factuality checker and deliberately leave formal mathematical claims alone.
     """
     value = re.sub(r"\s+", " ", str(description or "")).strip()
+    value = normalize_response_accuracy(value, context)
     value = re.sub(r"\bkernel slogging\b", "kernel logging", value, flags=re.I)
     value = value.replace(
         "Allows representation of complex class boundaries, stabilizes gradients, and affects convergence speed and capacity.",
@@ -187,7 +189,66 @@ def _qualify_map_description(description: str) -> str:
             "Error mitigation and small logical demonstrations can support short-depth experiments; "
             "repetition codes protect only restricted error channels and are not general QEC for VQE."
         )
+    crisp_evidence = f"{context} {value}".casefold()
+    modern_markers = (
+        "mlops", "model registry", "model registries", "feature store",
+        "automated retraining", "continuous deployment", "ci/cd", "drift monitoring",
+    )
+    if (
+        ("crisp-dm" in crisp_evidence or "crisp dm" in crisp_evidence)
+        and any(marker in crisp_evidence for marker in modern_markers)
+        and not re.search(r"\b(?:modern|extension|adaptation|adjacent)\b", value, re.I)
+    ):
+        value = (
+            "Modern extensions to CRISP-DM may add these MLOps practices; "
+            "they are not core phases of the original process model. " + value
+        )
+    if (
+        "analytics solutions unified method (asum)" in value.casefold()
+        and ("crisp-dm" in crisp_evidence or "crisp dm" in crisp_evidence)
+        and "not an official crisp-dm variant" not in value.casefold()
+    ):
+        value = re.sub(
+            r"Analytics Solutions Unified Method \(ASUM\)",
+            "ASUM",
+            value,
+            count=1,
+            flags=re.I,
+        )
+        value = (
+            "Analytics Solutions Unified Method (ASUM) is a related analytics method, "
+            "not an official CRISP-DM variant. " + value
+        )
     return value
+
+
+def normalize_map_title(title: str, question: str = "", category: str = "") -> str:
+    """Return a complete map noun phrase without arbitrary word truncation."""
+    value = re.sub(r"\s+", " ", str(title or "")).strip(" ,.;:?!\"'")
+    prompt = re.sub(r"\s+", " ", str(question or "")).strip()
+    if not value or re.match(r"^(?:what|which|how|why|when|where|can|should)\b", value, re.I):
+        value = _clean_anchor(prompt) or category
+
+    comparison = re.match(r"^(.+?)\s+(?:vs\.?|versus)\s+(.+?)$", value, re.I)
+    if comparison:
+        left, right = (part.strip() for part in comparison.groups())
+        # A comparison ending with a role/modifier is incomplete. Recover an
+        # explicit shared object from the source question, or use the neutral
+        # noun "contexts" rather than displaying a fragment.
+        shared_noun = ""
+        for noun in (
+            "analytics", "projects", "applications", "approaches", "methods",
+            "settings", "systems", "models", "strategies", "workflows", "contexts",
+        ):
+            if re.search(rf"\b{re.escape(noun)}\b", prompt, re.I):
+                shared_noun = noun
+                break
+        if not shared_noun and len(right.split()) == 1:
+            shared_noun = "contexts"
+        value = f"{left} and {right}{' ' + shared_noun if shared_noun else ''}"
+
+    value = re.sub(r"\s+(?:and|or|vs\.?|versus|of|for|with|between)$", "", value, flags=re.I)
+    return value.strip(" ,.;:?!") or category
 
 
 def compact_knowledge_map_projection(
@@ -403,12 +464,14 @@ def expanded_knowledge_map_entry(
             body,
             flags=re.IGNORECASE,
         ).strip()
-        title = " ".join(body.split()[:7]).strip(" ,.;:?!") or category
+        title = body.strip(" ,.;:?!") or category
 
-    if len(title.split()) > 7:
-        title = " ".join(title.split()[:7]).rstrip(" ,.;:?!")
+    title = normalize_map_title(title, question, category)
 
-    description = _qualify_map_description(supplied_description) or _STAGE_DESCRIPTIONS.get(
+    description = _qualify_map_description(
+        supplied_description,
+        f"{question} {title} {category}",
+    ) or _STAGE_DESCRIPTIONS.get(
         category,
         "Shows how this idea continues the learning path.",
     )

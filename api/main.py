@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
@@ -30,6 +30,10 @@ class StudyAIIn(BaseModel):
     validation_feedback: List[str] = Field(
         default_factory=list,
         description="Structured-output defects to correct during one full regeneration",
+    )
+    profile_context: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Canonical topic metadata shared by the Question Map and answer",
     )
 
 

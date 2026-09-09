@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import re
 from typing import List, Tuple
-from streamlit_app.subject_metadata import subject_metadata
+from streamlit_app.subject_metadata import fallback_subject_metadata, subject_metadata
 
 
 ProfileRows = List[Tuple[str, str]]
 
 
-RESPONSE_PROFILE_VERSION = 6
+RESPONSE_PROFILE_VERSION = 7
 
 
 def _subject(text: str, limit: int = 92) -> str:
@@ -410,20 +410,9 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
                 ("Prerequisites", prerequisites),
             ]
 
-    subject = _subject(text)
     return [
         ("Name type", _learning_name_type(text)),
-        ("Entity type", "Learning inquiry"),
-        ("Broad field", "Not yet classified"),
-        ("Subject", subject),
-        (
-            "Related topics",
-            f"Definitions of {subject}; underlying mechanisms; evidence; applications; limitations",
-        ),
-        (
-            "Prerequisites",
-            "Specific prerequisites have not yet been identified for this query.",
-        ),
+        *fallback_subject_metadata(text).items(),
     ]
 
 

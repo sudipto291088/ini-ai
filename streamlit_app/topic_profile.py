@@ -1,7 +1,7 @@
 import json
 import re
 from typing import Any
-from streamlit_app.subject_metadata import subject_metadata
+from streamlit_app.subject_metadata import normalize_topic_profile, subject_metadata
 
 
 _PROFILE_BLOCK = re.compile(
@@ -40,7 +40,7 @@ def build_fallback_topic_profile(user_query: str) -> list[tuple[str, str]]:
     query = re.sub(r"\s+", " ", (user_query or "").strip())
     metadata = subject_metadata(query)
     if metadata:
-        return list(metadata.items())
+        return list(normalize_topic_profile(metadata, query).items())
     normalized = query.casefold()
     subject = query.rstrip(" ?.!")[:180] or "Learning question"
 
@@ -95,7 +95,8 @@ def build_fallback_topic_profile(user_query: str) -> list[tuple[str, str]]:
             ("Difficulty", "Beginner"),
         ]
 
-    return _correct_difficulty(rows, query)
+    normalized_rows = list(normalize_topic_profile(dict(rows), query).items())
+    return _correct_difficulty(normalized_rows, query)
 
 
 def _correct_difficulty(
@@ -369,9 +370,8 @@ def extract_topic_profile(
         }
         rows = [(label, corrections.get(label.casefold(), value)) for label, value in rows]
     rows = [(label, "Earthquake causes" if label.casefold() == "subject" and value.casefold() == "earthquakes occur" else value) for label, value in rows]
-    metadata = subject_metadata(user_query)
-    if metadata:
-        rows = [(label, metadata.get(label, value)) for label, value in rows]
+    if user_query.strip():
+        rows = list(normalize_topic_profile(dict(rows), user_query).items())[:10]
     rows = _correct_difficulty(rows, user_query)
     if "gradient descent" in evidence and not re.search(r"\b(?:derive|proof|prove|hessian|convergence analysis|mathematically|implement)\b", user_query, re.I):
         rows = [(label, "Intermediate" if label.casefold() == "difficulty" else value) for label, value in rows]

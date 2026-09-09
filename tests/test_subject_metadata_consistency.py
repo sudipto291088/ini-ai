@@ -36,11 +36,31 @@ class SubjectMetadataConsistencyTests(unittest.TestCase):
         query = 'Why do neural networks need activation functions?'
         for source in ('Introduction only', '<TOPIC_PROFILE>bad json</TOPIC_PROFILE>Introduction'):
             rows, _ = extract_topic_profile(source, query)
-            self.assertEqual(dict(rows), subject_metadata(query))
+            actual = dict(rows)
+            for key, value in subject_metadata(query).items():
+                self.assertEqual(actual[key], value)
+            self.assertEqual(actual["Difficulty"], "Beginner")
 
     def test_unknown_subject_is_not_invented_interdisciplinary(self):
         rows = dict(build_response_profile("Unclassified subject xyz", intent="topic_explore"))
-        self.assertEqual(rows['Broad field'], 'Not yet classified')
+        self.assertEqual(rows['Broad field'], 'General knowledge')
+        self.assertEqual(rows['Entity type'], 'Topic or concept')
+        self.assertNotIn('not yet', rows['Prerequisites'].lower())
+
+    def test_crisp_dm_profile_is_consistent_and_expands_the_name(self):
+        query = "Tell me about CRISP-DM"
+        ia = dict(build_response_profile(query, intent="topic_explore"))
+        ks, _ = extract_topic_profile(
+            '<TOPIC_PROFILE>{"Entity type":"Framework","Broad field":"Analytics",'
+            '"Subject":"CRISP-DM","Prerequisites":"Calculus; coding; MLOps",'
+            '"Related topics":"Modeling","Difficulty":"Advanced"}</TOPIC_PROFILE>',
+            query,
+        )
+        expected = subject_metadata(query)
+        self.assertEqual(ia["Full form"], "Cross-Industry Standard Process for Data Mining")
+        for key, value in expected.items():
+            self.assertEqual(ia[key], value)
+            self.assertEqual(dict(ks)[key], value)
 
     def test_other_topics_do_not_match_registry(self):
         for query in ('OAuth', 'Inflation', 'How are you?', 'Data science', 'Database indexing'):

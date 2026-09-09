@@ -232,7 +232,10 @@ def _repair_quantum_entanglement_content(
     return repaired, repairs
 
 
-def validate_structured_learning_answer(answer: str) -> dict[str, Any]:
+def validate_structured_learning_answer(
+    answer: str,
+    user_topic: str = "",
+) -> dict[str, Any]:
     """Repair safe defects and reject incomplete structured learning output."""
     source = (answer or "").strip()
     issues: list[str] = []
@@ -280,6 +283,48 @@ def validate_structured_learning_answer(answer: str) -> dict[str, Any]:
         missing = sorted(required_profile - labels)
         if missing:
             issues.append("TOPIC_PROFILE missing: " + ", ".join(missing))
+
+        profile_values = {
+            str(key).strip().casefold(): re.sub(r"\s+", " ", str(value or "")).strip()
+            for key, value in profile.items()
+        }
+        forbidden_values = {
+            "learning inquiry", "learning question", "not yet classified",
+            "knowledge and inquiry", "unknown", "n/a",
+            "specific prerequisites have not yet been identified for this query.",
+        }
+        if any(value.casefold() in forbidden_values for value in profile_values.values()):
+            issues.append("TOPIC_PROFILE contains generic placeholder classification")
+
+        difficulty = profile_values.get("difficulty", "").casefold()
+        if difficulty and difficulty not in {"beginner", "intermediate", "advanced", "expert"}:
+            issues.append("TOPIC_PROFILE Difficulty is not a supported level")
+
+        profile_subject = profile_values.get("subject", "")
+        if re.match(
+            r"^(?:what|why|how|when|where|who|which|should|can|could|does|do|is|are|"
+            r"tell me|explain|describe)\b",
+            profile_subject,
+            flags=re.IGNORECASE,
+        ) or profile_subject.endswith("?"):
+            issues.append("TOPIC_PROFILE Subject must be a complete noun phrase")
+
+        prerequisite_items = [
+            item.strip()
+            for item in re.split(r"[;\n]", profile_values.get("prerequisites", ""))
+            if item.strip()
+        ]
+        if len(prerequisite_items) > 6:
+            issues.append("TOPIC_PROFILE overstates prerequisites; keep only necessary foundations")
+
+        acronyms = set(
+            re.findall(r"\b(?:[A-Z]{2,8}(?:-[A-Z0-9]{2,8})*)\b", user_topic or "")
+        )
+        if acronyms and not profile_values.get("full form"):
+            issues.append(
+                "TOPIC_PROFILE must include the verified Full form for the central acronym: "
+                + ", ".join(sorted(acronyms))
+            )
 
     subject = str(profile.get("Subject") or "") if isinstance(profile, dict) else ""
     source, rag_repaired = _repair_rag_relationship(source, subject)
@@ -361,6 +406,40 @@ def validate_structured_learning_answer(answer: str) -> dict[str, Any]:
     for heading in ("Purpose:", "Major areas:", "Who should study this next:"):
         if heading.casefold() not in narrative.casefold():
             issues.append(f"Introduction missing {heading[:-1]} heading")
+
+    if re.search(r"(?m)^\s*(?:[-*•]|\d+[.)])\s+", narrative):
+        issues.append("Introduction must use complete paragraphs, not a bullet list")
+    if re.search(r"\bSuggested Follow(?:-?up|up)s?\b", narrative, re.I):
+        issues.append("Introduction must not contain a Suggested Follow-ups section")
+
+    if re.search(r"\busually (?:the )?largest time sink\b", source, re.I):
+        issues.append("unsupported frequency or ranking claim in Introduction")
+    if re.search(r"\b(?:causal or predictive|predictive or causal) signals\b", source, re.I):
+        issues.append("causal language overstates predictive or associative evidence")
+    if re.search(r"\bASUM-DM\b", source, re.I):
+        issues.append("ASUM is incorrectly named ASUM-DM")
+
+    framework_evidence = (
+        " ".join(str(profile.get(key) or "") for key in ("Entity type", "Subject")).casefold()
+        if isinstance(profile, dict)
+        else ""
+    )
+    if (
+        re.search(r"\b(?:framework|process model|methodology)\b", framework_evidence)
+        and re.search(
+            r"\b(?:MLOps|model registr(?:y|ies)|feature stores?|automated retraining|CI/CD|drift monitoring)\b",
+            source,
+            re.I,
+        )
+        and not re.search(
+            r"\b(?:modern|extension|adaptation|adjacent|not (?:a )?core)\b",
+            source,
+            re.I,
+        )
+    ):
+        issues.append(
+            "modern operational practices are not distinguished from the framework's core"
+        )
 
     # A Bell pair must contain two-qubit basis states. A common malformed
     # generation drops one qubit and writes (|0> + |1>)/sqrt(2), which is a
