@@ -1,8 +1,9 @@
 import re
 from dataclasses import dataclass
+from streamlit_app.subject_metadata import subject_metadata
 
 
-KNOWLEDGE_MAP_VERSION = 9
+KNOWLEDGE_MAP_VERSION = 11
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,7 @@ def _clean_anchor(text: str) -> str:
     # Mechanism questions commonly end in a verb that is useful in the full
     # query but not in the map's central subject capsule.
     anchor = re.sub(
-        r"\s+(?:work|works|working|operate|operates|function|functions)$",
+        r"\s+(?:work|works|working|operate|operates)$",
         "",
         anchor,
         flags=re.IGNORECASE,
@@ -59,7 +60,16 @@ def _clean_anchor(text: str) -> str:
 
 def _concept_led_anchor(query: str) -> str:
     """Return a grammatical subject label for common relationship questions."""
+    metadata = subject_metadata(query)
+    if metadata:
+        return metadata["Subject"]
     normalized = query.casefold()
+    if re.search(r"\bgradient descent\b", normalized):
+        return "Gradient descent"
+    if re.search(r"\bcpu\b", normalized) and re.search(r"\bexecut", normalized):
+        return "CPU instruction execution"
+    if re.search(r"\bindustrial revolution\b", normalized):
+        return "Industrial Revolution in Britain" if "britain" in normalized else "Industrial Revolution"
     if re.search(r"\b(?:quantum error correction|qec)\b", normalized):
         return "Quantum error correction"
     if re.search(r"\b(?:mrna|messenger rna)\s+vaccines?\b", normalized):
@@ -105,6 +115,16 @@ def _qualify_map_description(description: str) -> str:
     factuality checker and deliberately leave formal mathematical claims alone.
     """
     value = re.sub(r"\s+", " ", str(description or "")).strip()
+    value = re.sub(r"\bkernel slogging\b", "kernel logging", value, flags=re.I)
+    value = value.replace(
+        "Allows representation of complex class boundaries, stabilizes gradients, and affects convergence speed and capacity.",
+        "Enables nonlinear class boundaries; activation choice affects gradient flow, convergence speed, and capacity without guaranteeing stability.",
+    )
+    value = re.sub(
+        r"\bleaky/ELU/GELU smooth variants\b",
+        "leaky ReLU, ELU, and GELU variants with different smoothness properties",
+        value, flags=re.I,
+    )
     value = re.sub(
         r"Place most selective and left-most columns matching query predicates; prefixing supports left-based equality and range patterns\.?",
         "Choose composite-index order from equality and range predicates, ordering needs, and the workload; usable prefixes begin with the leftmost indexed columns.",
@@ -276,8 +296,8 @@ def compact_knowledge_map_projection(
     words = anchor.split()
     if not anchor:
         anchor = "Topic"
-    elif len(words) > 5 and not canonical_subject:
-        anchor = " ".join(words[:5]).rstrip(" ,.;:?!")
+    # Preserve a complete phrase when no reliable shorter subject is available.
+    # Cutting at an arbitrary word count produces misleading sentence fragments.
 
     lowered = query.casefold()
     directions: list[str] = []

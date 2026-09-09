@@ -44,12 +44,12 @@ from topic_profile import (
 )
 import response_profile
 
-if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 5:
+if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 6:
     response_profile = importlib.reload(response_profile)
 build_response_profile = response_profile.build_response_profile
 import streamlit_app.knowledge_map as knowledge_map
 
-if getattr(knowledge_map, "KNOWLEDGE_MAP_VERSION", 0) < 9:
+if getattr(knowledge_map, "KNOWLEDGE_MAP_VERSION", 0) < 11:
     knowledge_map = importlib.reload(knowledge_map)
 compact_knowledge_map_projection = knowledge_map.compact_knowledge_map_projection
 expanded_knowledge_map_entry = knowledge_map.expanded_knowledge_map_entry

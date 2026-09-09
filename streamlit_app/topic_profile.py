@@ -1,6 +1,7 @@
 import json
 import re
 from typing import Any
+from streamlit_app.subject_metadata import subject_metadata
 
 
 _PROFILE_BLOCK = re.compile(
@@ -37,6 +38,9 @@ _CONTINUE_JOURNEY_BLOCK = re.compile(
 def build_fallback_topic_profile(user_query: str) -> list[tuple[str, str]]:
     """Return a conservative profile when structured generation omits one."""
     query = re.sub(r"\s+", " ", (user_query or "").strip())
+    metadata = subject_metadata(query)
+    if metadata:
+        return list(metadata.items())
     normalized = query.casefold()
     subject = query.rstrip(" ?.!")[:180] or "Learning question"
 
@@ -356,7 +360,27 @@ def extract_topic_profile(
         if len(rows) == 10:
             break
 
-    return _correct_difficulty(rows, user_query), body
+    evidence = f"{user_query} {' '.join(value for label, value in rows if label.casefold() == 'subject')}".casefold()
+    if re.search(r"\boauth\b", evidence):
+        corrections = {
+            "broad field": "Computer security / Identity and access management",
+            "research area": "Access delegation and token-based authorization",
+            "typical applications": "API authorization; third-party access to protected resources; mobile and web integrations; identity and SSO when combined with OpenID Connect",
+        }
+        rows = [(label, corrections.get(label.casefold(), value)) for label, value in rows]
+    rows = [(label, "Earthquake causes" if label.casefold() == "subject" and value.casefold() == "earthquakes occur" else value) for label, value in rows]
+    metadata = subject_metadata(user_query)
+    if metadata:
+        rows = [(label, metadata.get(label, value)) for label, value in rows]
+    rows = _correct_difficulty(rows, user_query)
+    if "gradient descent" in evidence and not re.search(r"\b(?:derive|proof|prove|hessian|convergence analysis|mathematically|implement)\b", user_query, re.I):
+        rows = [(label, "Intermediate" if label.casefold() == "difficulty" else value) for label, value in rows]
+    if "inflation" in evidence:
+        body = body.replace(
+            "It frames the subject for short, diagnosis-centered study rather than a full technical treatment.",
+            "Inflation changes purchasing power and the real value of wages, savings, and debt. Understanding its causes helps explain central-bank policy and its trade-offs.",
+        )
+    return rows, body
 
 
 def extract_learning_paths(

@@ -1,4 +1,5 @@
 import re
+from api.response_accuracy import ACCURACY_CONTRACT
 import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -406,7 +407,7 @@ def generate_dynamic_answer_result(
     system_prompt = (
         "You are InI.ai — a teaching-first AI mentor and deep technical tutor.\n"
         "Your job is to make the learner genuinely understand, not just read text.\n\n"
-        "Hard rules:\n"
+        + ACCURACY_CONTRACT + "\nHard rules:\n"
         "- Be technically correct and specific. Prefer concrete mechanisms over vague claims.\n"
         "- Preserve technical distinctions exactly: do not swap adjacent classes, pathways, audiences, or error types.\n"
         "- Do not imply that one mechanism handles every failure mode. State assumptions, exclusions, and unresolved cases when they materially affect the answer.\n"

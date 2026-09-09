@@ -1,6 +1,7 @@
 # api/study_ai.py
 from typing import Dict, Any, Tuple, Optional, Union
 import re
+from api.response_accuracy import ACCURACY_CONTRACT
 
 from api.llm_answers import llm_enabled, generate_dynamic_answer_result
 from api.intent_layer import detect_intent
@@ -184,6 +185,9 @@ def _build_instruction(mode: str) -> str:
             "- Do not repeat the definition, governing relationship, worked example, learning goal, or step sequence already present in the structured blocks.\n"
             "- Do not preview the Learning Loop or explain how to use the Question Map; those cards must speak for themselves.\n"
             "- Structure the introduction as exactly three short paragraphs beginning with Purpose:, Major areas:, and Who should study this next:.\n"
+            "- Purpose must explain the subject's real-world role and why it matters. Do not describe the lesson format or say 'it frames the subject', 'short study', or 'technical treatment'.\n"
+            "- Profile subjects must be complete noun phrases, never clipped questions. Difficulty reflects the requested explanation, not the hardest mathematics in the field.\n"
+            "- For OAuth, distinguish delegated authorization from authentication: identity and SSO require an identity layer such as OpenID Connect. Public-key cryptography is optional background for an introductory overview.\n"
             "- Keep those labels concise; the paragraphs should provide wider context rather than repeat the Core Explanation.\n"
             "- For a named institution or organization, explain its identity, research focus, and relationship to the wider field without inventing current details.\n"
             "- Keep a natural educational flow across those three compact sections.\n"
@@ -1201,7 +1205,7 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         }
 
     # ---- Build prompt ----
-    instruction = _build_instruction(mode) + _processor_accuracy_contract(user_topic)
+    instruction = _build_instruction(mode) + _processor_accuracy_contract(user_topic) + ACCURACY_CONTRACT
 
     if continue_mode and previous_answer:
 

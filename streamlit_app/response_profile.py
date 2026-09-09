@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import re
 from typing import List, Tuple
+from streamlit_app.subject_metadata import subject_metadata
 
 
 ProfileRows = List[Tuple[str, str]]
 
 
-RESPONSE_PROFILE_VERSION = 5
+RESPONSE_PROFILE_VERSION = 6
 
 
 def _subject(text: str, limit: int = 92) -> str:
@@ -117,6 +118,9 @@ def _illustration_topic_profile(text: str, normalized: str) -> ProfileRows:
 
 def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
     """Describe a learning subject and expose its foundations immediately."""
+    metadata = subject_metadata(text)
+    if metadata:
+        return [("Name type", _learning_name_type(text)), *metadata.items()]
     if re.search(
         r"\b(?:cpu|processor)\b.*\b(?:execute|execution|instruction|program)\b|"
         r"\bfetch[-– ]decode[-– ]execute\b",
@@ -409,8 +413,8 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
     subject = _subject(text)
     return [
         ("Name type", _learning_name_type(text)),
-        ("Entity type", "Interdisciplinary learning inquiry"),
-        ("Broad field", "Interdisciplinary study"),
+        ("Entity type", "Learning inquiry"),
+        ("Broad field", "Not yet classified"),
         ("Subject", subject),
         (
             "Related topics",
@@ -418,7 +422,7 @@ def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
         ),
         (
             "Prerequisites",
-            f"Core terminology and introductory principles directly related to {subject}",
+            "Specific prerequisites have not yet been identified for this query.",
         ),
     ]
 
