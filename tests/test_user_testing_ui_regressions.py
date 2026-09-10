@@ -24,6 +24,17 @@ def test_projects_are_marked_unavailable_before_navigation() -> None:
     assert "Created projects will appear here." not in APP_SOURCE
 
 
+def test_my_new_learning_is_marked_unavailable_everywhere() -> None:
+    assert "My New Learning <small>Not available</small>" in APP_SOURCE
+    assert "Learning is not available yet" in APP_SOURCE
+    assert "This area is not ready for testing." in APP_SOURCE
+    assert "My New Learning has not entered development yet" in APP_SOURCE
+    assert "No active learning yet" not in APP_SOURCE
+    assert "Saved learning paths will appear here." not in APP_SOURCE
+    assert "not MNL_AVAILABLE" in APP_SOURCE
+    assert 'placeholder="Ask InI anything to learn..."' in APP_SOURCE
+
+
 def test_new_chat_mobile_styles_wrap_copy_and_clear_hosting_overlay() -> None:
     assert "white-space: normal !important;" in APP_SOURCE
     assert "word-break: normal !important;" in APP_SOURCE

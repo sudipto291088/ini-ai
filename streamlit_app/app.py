@@ -191,6 +191,7 @@ except Exception:
 # =========================
 DEFAULT_API_BASE = os.environ.get("INI_API_BASE", "http://127.0.0.1:8000")
 DEV_MODE = os.environ.get("INI_DEV_MODE", "0") == "1"
+MNL_AVAILABLE = False
 
 
 # =========================
@@ -753,7 +754,7 @@ button[kind="secondary"]{
   box-shadow:
     0 10px 28px rgba(31,41,55,.08),
     inset 0 1px 0 rgba(255,255,255,.92);
-  font-weight:700;
+  font-weight:400;
   text-align:center !important;
   transition:transform .16s ease, box-shadow .16s ease, color .16s ease;
 }
@@ -5845,7 +5846,7 @@ with st.sidebar:
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'chat' else ''}"
              href="{chat_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5.2 5.5h13.6a3.2 3.2 0 0 1 3.2 3.2v5.1a3.2 3.2 0 0 1-3.2 3.2h-6.4L7 20.4 8.1 17H5.2A3.2 3.2 0 0 1 2 13.8V8.7a3.2 3.2 0 0 1 3.2-3.2Z" stroke="currentColor" stroke-width="1.7"/></svg><span>New Chat</span></a>
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'learn' else ''}"
-             href="{learn_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 5.2-7.8 4L12 13.3l7.8-4.1L12 5.2Z" stroke="currentColor" stroke-width="1.7"/><path d="m5.8 11.6-1.6.9 7.8 4.1 7.8-4.1-1.6-.9M5.8 14.9l-1.6.9 7.8 4.1 7.8-4.1-1.6-.9" stroke="currentColor" stroke-width="1.7"/></svg><span>My New Learning</span></a>
+             href="{learn_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 5.2-7.8 4L12 13.3l7.8-4.1L12 5.2Z" stroke="currentColor" stroke-width="1.7"/><path d="m5.8 11.6-1.6.9 7.8 4.1 7.8-4.1-1.6-.9M5.8 14.9l-1.6.9 7.8 4.1 7.8-4.1-1.6-.9" stroke="currentColor" stroke-width="1.7"/></svg><span>My New Learning <small>Not available</small></span></a>
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'proj' else ''}"
              href="{project_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.3 3.5h3.2v3.1a2 2 0 1 0 4 0V3.5h3v5h-3a2 2 0 1 0 0 4h3v8h-8v-3a2 2 0 1 0-4 0v3h-3v-8h3a2 2 0 1 0 0-4h-3v-5h4.8Z" stroke="currentColor" stroke-width="1.65"/></svg><span>New Project <small>Coming soon</small></span></a>
         </div>
@@ -5917,11 +5918,15 @@ with st.sidebar:
     st.markdown('<div class="ini-sidebar-section ini-chat-section-title">Your Learning</div>', unsafe_allow_html=True)
 
 
-    rows = [
-        row
-        for row in list_sessions(st.session_state.visitor_id, limit=30)
-        if str(row[0]).startswith("learn-")
-    ]
+    rows = (
+        [
+            row
+            for row in list_sessions(st.session_state.visitor_id, limit=30)
+            if str(row[0]).startswith("learn-")
+        ]
+        if MNL_AVAILABLE
+        else []
+    )
     if rows:
         html = []
         for sid, title, created_at, updated_at in rows:
@@ -5970,8 +5975,8 @@ with st.sidebar:
         st.markdown(
             '''<div class="ini-sidebar-empty">
                  <span class="ini-sidebar-empty-icon">♧</span>
-                 <div><div class="ini-sidebar-empty-title">No active learning yet</div>
-                 <div class="ini-sidebar-empty-copy">Saved learning paths will appear here.</div></div>
+                 <div><div class="ini-sidebar-empty-title">Learning is not available yet</div>
+                 <div class="ini-sidebar-empty-copy">This area is not ready for testing.</div></div>
                </div>''',
             unsafe_allow_html=True,
         )
@@ -6880,7 +6885,7 @@ def page_home():
                 ("Question Map interactions", "More deliberate question selection and smoother introduction controls."),
                 ("Visitor privacy isolation", "Conversation records are separated by visitor instead of being shared."),
                 ("Local dates and timestamps", "Chat activity reflects each visitor's own local time."),
-                ("My New Learning refinements", "Improved learning modes, response cards, and query-to-response transitions."),
+                ("Learning workspace placeholder", "Reserved for future development and not yet available for testing."),
             ),
             "note": (
                 "v0.1.3 established a more dependable learning flow and strengthened "
@@ -7004,17 +7009,11 @@ def page_home():
                 <span class="intro-icon">◫</span>
                 <span>My New Learning</span>
               </div>
-              <span class="intro-status-badge">In active development</span>
+              <span class="intro-status-badge">Not available</span>
             </div>
             <div class="intro-learning-copy">
-              This learning workspace is being refined. Its research modes,
-              session continuity, and overall learning experience will continue
-              to improve in upcoming releases.
-            </div>
-            <div class="intro-learning-modes">
-              <span class="intro-mode-chip">Deep</span>
-              <span class="intro-mode-chip">Overview</span>
-              <span class="intro-mode-chip">Quiz</span>
+              My New Learning has not entered development yet and is not ready
+              for testing. Use New Chat for the currently available experience.
             </div>
             """,
             unsafe_allow_html=True,
@@ -14755,11 +14754,16 @@ def page_my_new_learning() -> None:
         """
         <div class="mnl-header">
           <div class="mnl-title">My New Learning</div>
-          <div class="mnl-status">In active development</div>
+          <div class="mnl-status">Not available</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+    st.info(
+        "My New Learning has not entered development yet and is not ready for testing.",
+        icon=":material/construction:",
+    )
+    st.caption("Please use New Chat for the currently available experience.")
 
     sid = ensure_learning_session()
     sess = st.session_state.learning_sessions[sid]
@@ -14767,7 +14771,7 @@ def page_my_new_learning() -> None:
     if "learn_seed_done" not in st.session_state:
         st.session_state.learn_seed_done = ""
 
-    if learn_q and st.session_state.learn_seed_done != learn_q:
+    if MNL_AVAILABLE and learn_q and st.session_state.learn_seed_done != learn_q:
         resolved_learn_q = normalize_clicked_followup_prompt(learn_q)
         if _queue_learning_request(
             sess,
@@ -14778,7 +14782,8 @@ def page_my_new_learning() -> None:
         ):
             st.session_state.learn_seed_done = learn_q
 
-    _consume_requested_learning_send(sess)
+    if MNL_AVAILABLE:
+        _consume_requested_learning_send(sess)
 
     last_incomplete_id = None
     for mm in reversed(sess.get("messages", [])):
@@ -14827,11 +14832,18 @@ def page_my_new_learning() -> None:
                 if needs_continue_flag(msg) and (msg.get("id") == last_incomplete_id):
                     msg_id = msg.get("id")
 
-                    if st.button("Continue", key=f"cont-{msg_id}"):
+                    if st.button(
+                        "Continue",
+                        key=f"cont-{msg_id}",
+                        disabled=not MNL_AVAILABLE,
+                    ):
                         st.session_state._mnl_continue_loading_id = msg_id
                         st.rerun()
 
-                    if st.session_state._mnl_continue_loading_id == msg_id:
+                    if (
+                        MNL_AVAILABLE
+                        and st.session_state._mnl_continue_loading_id == msg_id
+                    ):
                         st.markdown("⏳ **Continuing...**")
 
                         try:
@@ -14865,7 +14877,8 @@ def page_my_new_learning() -> None:
 
     current_mode = st.session_state.uib_mode
     composer_busy = bool(
-        st.session_state._mnl_pending_request
+        not MNL_AVAILABLE
+        or st.session_state._mnl_pending_request
         or st.session_state._mnl_generating
     )
     composer_revision = st.session_state._mnl_composer_revision
@@ -14926,13 +14939,13 @@ def page_my_new_learning() -> None:
         st.session_state._mnl_composer_revision += 1
         st.rerun()
 
-    if st.session_state._mnl_pending_request:
+    if MNL_AVAILABLE and st.session_state._mnl_pending_request:
         _generate_pending_learning_response(sess, generation_slot)
 
 def page_new_project() -> None:
     st.markdown('<div class="bigtitle">New Project · Coming soon</div>', unsafe_allow_html=True)
     st.info(
-        "Project creation is not available in this release. You can continue using New Chat and My New Learning.",
+        "Project creation is not available in this release. You can continue using New Chat.",
         icon=":material/construction:",
     )
 
