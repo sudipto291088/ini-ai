@@ -64,3 +64,24 @@ def test_truncated_final_example_is_not_presented() -> None:
 
     assert result["example_count"] == 9
     assert "Broken calculation" not in result["illustration_text"]
+
+
+def test_solar_annual_output_is_recomputed_from_stated_assumptions() -> None:
+    text = (
+        "**Example 6 — Solar-Powered Irrigation Pump for a Vineyard**\n\n"
+        "A 5 kW array provides ~25,000 kWh/year "
+        "(assuming 5 sun-hours/day × 365)."
+    )
+
+    repaired = illustrate_module._repair_numeric_claims(text)
+
+    assert "~9,125 kWh/year" in repaired
+    assert "25,000 kWh/year" not in repaired
+
+
+def test_explicit_multiplication_result_is_recomputed() -> None:
+    repaired = illustrate_module._repair_numeric_claims(
+        "Energy = 5 × 150 × 0.75 = 500 kWh."
+    )
+
+    assert "5 × 150 × 0.75 = 562.5 kWh" in repaired

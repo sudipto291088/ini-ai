@@ -22,6 +22,10 @@ if str(PROJECT_ROOT) not in sys.path:
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
+from streamlit_app.learning_flow import (
+    continuation_context,
+    resolve_learning_submission,
+)
 from storage_sqlite import (
     init_db,
     save_session,
@@ -735,6 +739,20 @@ button[kind="secondary"]{
 }
 .ini_plain_link:hover{
   text-decoration:none !important;
+}
+.ini_popup_resume{
+  display:block;
+  margin:4px 0 14px;
+  padding:10px 14px !important;
+  border-radius:10px;
+  color:#ffffff !important;
+  background:#087f7b !important;
+  font-weight:700;
+  text-align:center !important;
+}
+.ini_popup_resume:hover{
+  color:#ffffff !important;
+  background:#066c69 !important;
 }
 .ini_sidebar_link{
   display:block;
@@ -3609,7 +3627,7 @@ def mode_label(mode: str) -> str:
     m = (mode or "").strip().lower()
     if m == "high":
         return "Overview"
-    if m == "quiz":
+    if m in {"quiz", "quiz_grade"}:
         return "Quiz"
     return "Deep"
 
@@ -4496,7 +4514,7 @@ def _collect_chat_popup_data(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-@st.dialog("Session Branches")
+@st.dialog("Resume saved conversation")
 def _render_chat_session_popup() -> None:
     sid = st.session_state.chat_popup_sid
     if not sid:
@@ -4527,13 +4545,14 @@ def _render_chat_session_popup() -> None:
     fuq_target = "_blank" if has_visible_bg else "_self"
 
     st.markdown(
-        f'<a class="ini_plain_link" href="{_chat_root_view_href(sid)}" target="_self"><b>↠ {root_topic}</b></a>',
+        f'<a class="ini_plain_link ini_popup_resume" href="{_chat_root_view_href(sid)}" '
+        f'target="_self">Resume conversation: {escape(root_topic)}</a>',
         unsafe_allow_html=True,
     )
 
     st.markdown("---")
 
-    st.markdown("#### FUQs")
+    st.markdown("#### Follow-up questions")
     if fuqs:
         html = ['<div class="ini_popup_section">']
         for item in fuqs:
@@ -4542,9 +4561,9 @@ def _render_chat_session_popup() -> None:
         html.append("</div>")
         st.markdown("\n".join(html), unsafe_allow_html=True)
     else:
-        st.caption("No FUQs saved yet.")
+        st.caption("No follow-up questions have been saved yet.")
 
-    st.markdown("#### CTAs")
+    st.markdown("#### Suggested actions")
     if ctas:
         html = ['<div class="ini_popup_section">']
         for item in ctas:
@@ -4553,7 +4572,7 @@ def _render_chat_session_popup() -> None:
         html.append("</div>")
         st.markdown("\n".join(html), unsafe_allow_html=True)
     else:
-        st.caption("No CTAs saved yet.")
+        st.caption("No suggested actions have been saved yet.")
 
 # =========================
 # API calls
@@ -4575,8 +4594,9 @@ def fetch_study(
 ) -> Dict[str, Any]:
     payload: Dict[str, Any] = {"topic": topic, "mode": mode}
 
-    if continue_mode and previous_answer:
+    if continue_mode:
         payload["continue_mode"] = True
+    if previous_answer:
         payload["previous_answer"] = previous_answer
 
     if validation_feedback:
@@ -5814,7 +5834,7 @@ with st.sidebar:
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'learn' else ''}"
              href="{learn_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 5.2-7.8 4L12 13.3l7.8-4.1L12 5.2Z" stroke="currentColor" stroke-width="1.7"/><path d="m5.8 11.6-1.6.9 7.8 4.1 7.8-4.1-1.6-.9M5.8 14.9l-1.6.9 7.8 4.1 7.8-4.1-1.6-.9" stroke="currentColor" stroke-width="1.7"/></svg><span>My New Learning</span></a>
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'proj' else ''}"
-             href="{project_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.3 3.5h3.2v3.1a2 2 0 1 0 4 0V3.5h3v5h-3a2 2 0 1 0 0 4h3v8h-8v-3a2 2 0 1 0-4 0v3h-3v-8h3a2 2 0 1 0 0-4h-3v-5h4.8Z" stroke="currentColor" stroke-width="1.65"/></svg><span>New Project</span></a>
+             href="{project_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.3 3.5h3.2v3.1a2 2 0 1 0 4 0V3.5h3v5h-3a2 2 0 1 0 0 4h3v8h-8v-3a2 2 0 1 0-4 0v3h-3v-8h3a2 2 0 1 0 0-4h-3v-5h4.8Z" stroke="currentColor" stroke-width="1.65"/></svg><span>New Project <small>Coming soon</small></span></a>
         </div>
         """,
         unsafe_allow_html=True,
@@ -5950,8 +5970,8 @@ with st.sidebar:
              <svg class="ini-sidebar-empty-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="width:21px;height:21px;flex:0 0 21px;">
                <path d="M3.5 6.5h6l1.8 2h9.2v9.8a2.2 2.2 0 0 1-2.2 2.2H5.7a2.2 2.2 0 0 1-2.2-2.2V6.5Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/>
              </svg>
-             <div><div class="ini-sidebar-empty-title">No active projects yet</div>
-             <div class="ini-sidebar-empty-copy">Created projects will appear here.</div></div>
+             <div><div class="ini-sidebar-empty-title">Projects are coming soon</div>
+             <div class="ini-sidebar-empty-copy">Project creation is not available in this release.</div></div>
            </div>''',
         unsafe_allow_html=True,
     )
@@ -11517,16 +11537,18 @@ def page_new_chat() -> None:
             }}
 
             .nc-landing-heading {{
-                width: min(100%, 860px);
+                width: min(calc(100% - 32px), 860px);
                 margin: 18px auto 0;
-                transform: translateX(-139px);
+                transform: none;
                 color: #111827;
                 font-size: clamp(49px, 4.55vw, 66px);
                 font-weight: 610;
                 line-height: 1.12;
                 letter-spacing: 0.012em;
                 text-align: center;
-                white-space: nowrap !important;
+                overflow-wrap: normal;
+                text-wrap: balance;
+                white-space: normal !important;
             }}
 
             /* Size the landing copy from its real content lane, not the full
@@ -12139,10 +12161,8 @@ def page_new_chat() -> None:
                 .nc-landing-heading {{
                     width: min(calc(100% - 40px), 860px);
                     transform: none;
-                    /* Fit the full sentence inside the narrowed desktop content
-                       lane instead of letting either edge fall behind the shell. */
-                    font-size: clamp(13px, 5cqw, 56px);
-                    white-space: nowrap !important;
+                    font-size: clamp(30px, 5vw, 56px);
+                    white-space: normal !important;
                 }}
 
                 .st-key-nc_landing_composer,
@@ -12175,14 +12195,6 @@ def page_new_chat() -> None:
                 }}
             }}
 
-            /* Bridge the narrow desktop shell immediately above the 1100px
-               breakpoint without moving or resizing the UIB. */
-            @media (min-width: 1101px) and (max-width: 1160px) {{
-                .nc-landing-heading {{
-                    transform: translateX(-120px);
-                }}
-            }}
-
             @media (max-width: 760px) {{
                 [data-testid="stElementContainer"]:has(.nc-landing-brand) {{
                     margin-top: 42px;
@@ -12210,26 +12222,26 @@ def page_new_chat() -> None:
                     max-width: 92%;
                     margin-top: 18px;
                     transform: none;
-                    /* Mobile has a wider usable lane after the sidebar collapses.
-                       Scale against that lane so the phrase stays fully visible. */
-                    font-size: clamp(13px, 5cqw, 42px);
+                    font-size: clamp(28px, 8vw, 42px);
                     font-weight: 610;
                     line-height: 1.16;
-                    white-space: nowrap !important;
+                    white-space: normal !important;
                 }}
 
                 .nc-landing-subtitle {{
                     max-width: 92%;
-                    height: 2.8em;
+                    height: 3.4em;
                     margin-bottom: 22px;
                     color: #171717;
-                    font-size: clamp(11px, 2.8cqw, 17px);
+                    font-size: clamp(15px, 4.2vw, 17px);
                     white-space: normal;
                 }}
 
                 .nc-landing-subtitle__line {{
                     width: 100%;
                     max-width: 100%;
+                    overflow: visible !important;
+                    clip-path: none !important;
                     line-height: 1.4;
                     white-space: normal;
                     text-wrap: balance;
@@ -12260,13 +12272,13 @@ def page_new_chat() -> None:
 
                 .nc-landing-subtitle__line--two-stage .nc-landing-subtitle__segment {{
                     display: block;
-                    width: max-content;
+                    width: 100%;
                     max-width: 100%;
                     margin-inline: auto;
-                    overflow: hidden;
+                    overflow: visible;
                     opacity: 0;
-                    clip-path: inset(0 100% 0 0);
-                    white-space: nowrap;
+                    clip-path: none !important;
+                    white-space: normal;
                     animation-duration: 28s;
                     animation-timing-function: steps(var(--segment-chars), end);
                     animation-iteration-count: infinite;
@@ -12450,7 +12462,9 @@ def page_new_chat() -> None:
 
                 .st-key-nc_explore_grid div.stButton > button p {{
                     font-size: 13px !important;
-                    overflow-wrap: anywhere !important;
+                    overflow-wrap: normal !important;
+                    word-break: normal !important;
+                    hyphens: none !important;
                 }}
 
                 .st-key-nc_explore_grid div.stButton > button::after {{
@@ -12499,7 +12513,8 @@ def page_new_chat() -> None:
 
                 .st-key-nc_explore_grid div.stButton > button p {{
                     font-size: 13px !important;
-                    overflow-wrap: anywhere !important;
+                    overflow-wrap: normal !important;
+                    word-break: normal !important;
                 }}
 
                 .st-key-nc_explore_grid div.stButton > button::after {{
@@ -12523,7 +12538,8 @@ def page_new_chat() -> None:
                     font-size: 11px;
                     line-height: 1.2;
                     white-space: normal;
-                    overflow-wrap: anywhere;
+                    overflow-wrap: normal;
+                    word-break: normal;
                 }}
             }}
 
@@ -12597,14 +12613,14 @@ def page_new_chat() -> None:
                     "Interrogate",
                     key="nc_top_interrogate",
                     type="secondary",
-                    use_container_width=True,
+                    width="stretch",
                 )
             with action_cols[1]:
                 illustrate_run = st.form_submit_button(
                     "Illustrate",
                     key="nc_top_illustrate",
                     type="secondary",
-                    use_container_width=True,
+                    width="stretch",
                 )
 
         st.markdown(
@@ -13004,6 +13020,7 @@ def page_new_chat() -> None:
                 }
 
                 div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
+                    bottom: calc(58px + env(safe-area-inset-bottom));
                     width: calc(100% - 12px);
                     padding: 7px;
                     display: grid !important;
@@ -13020,7 +13037,7 @@ def page_new_chat() -> None:
                 }
 
                 [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
-                    padding-bottom: 144px !important;
+                    padding-bottom: calc(196px + env(safe-area-inset-bottom)) !important;
                 }
 
                 [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"])::after,
@@ -13028,7 +13045,7 @@ def page_new_chat() -> None:
                     [data-testid="stSidebar"][aria-expanded="true"]
                 ) [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"])::after {
                     left: 0;
-                    height: 124px;
+                    height: calc(176px + env(safe-area-inset-bottom));
                 }
 
                 div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"])
@@ -13095,14 +13112,14 @@ def page_new_chat() -> None:
                     run = st.form_submit_button(
                         "Interrogate",
                         key="nc_bottom_interrogate",
-                        use_container_width=True,
+                        width="stretch",
                     )
 
                 with ill_col:
                     illustrate_run = st.form_submit_button(
                         "Illustrate",
                         key="nc_bottom_illustrate",
-                        use_container_width=True,
+                        width="stretch",
                     )
 
         if illustrate_run:
@@ -13999,11 +14016,12 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
         m["stop_reason"] = None
         return
 
+    prior_answer = continuation_context(sess.get("messages", []), msg_id)
     resp = fetch_study(
         topic=prompt,
         mode=mode,
         continue_mode=True,
-        previous_answer=m.get("text") or "",
+        previous_answer=prior_answer or (m.get("text") or ""),
     )
 
     chunk_raw = normalize_mojibake(resp.get("answer", "") or "")
@@ -14016,35 +14034,26 @@ def _continue_one_chunk(sess: Dict[str, Any], msg_id: str) -> None:
         return
 
     root_id = m.get("continued_root") or m.get("id")
-    parts = 1
-    for mm in sess["messages"]:
-        if mm.get("role") == "assistant" and (mm.get("continued_root") or mm.get("id")) == root_id:
-            if mm.get("continued_part"):
-                parts = max(parts, int(mm["continued_part"]))
-
-    next_part = parts + 1
-    labeled = f"**Continued (Part {next_part})**\n\n{chunk}"
-
-    m["incomplete"] = False
-    m["stop_reason"] = None
-    m["ts"] = now_label()
-
-    followups = resp.get("followups") or []
-    sess["messages"].append(
-        {
-            "id": new_msg_id("a"),
-            "role": "assistant",
-            "text": labeled,
-            "ts": now_label(),
-            "incomplete": bool(resp.get("incomplete")),
-            "stop_reason": resp.get("stop_reason") or None,
-            "prompt": prompt,
-            "mode": mode,
-            "continued_root": root_id,
-            "continued_part": next_part,
-            "followups": followups,
-        }
+    root = next(
+        (
+            candidate
+            for candidate in sess["messages"]
+            if candidate.get("role") == "assistant"
+            and candidate.get("id") == root_id
+        ),
+        m,
     )
+    existing = (root.get("text") or "").rstrip()
+    root["text"] = f"{existing}\n\n{chunk}".strip()
+    root["incomplete"] = bool(resp.get("incomplete"))
+    root["stop_reason"] = resp.get("stop_reason") or None
+    root["ts"] = now_label()
+    if not root["incomplete"]:
+        root["followups"] = resp.get("followups") or []
+
+    if m is not root:
+        m["incomplete"] = False
+        m["stop_reason"] = None
 
     _persist_learning_session(st.session_state.learning_active_id, sess)
 
@@ -14053,7 +14062,7 @@ def _mode_hint_text(mode: str) -> str:
     m = (mode or "deep").lower()
     if m == "high":
         return "Overview"
-    if m == "quiz":
+    if m in {"quiz", "quiz_grade"}:
         return "Quiz"
     return "Deep (default)"
 
@@ -14112,6 +14121,10 @@ def _queue_learning_request(
     ):
         return False
 
+    routed = resolve_learning_submission(sess.get("messages", []), prompt, mode)
+    request_mode = str(routed.get("mode") or mode)
+    display_mode = str(routed.get("display_mode") or mode)
+
     if _typed_continue_should_fire(sess, prompt):
         sess["messages"].append(
             {"id": new_msg_id("u"), "role": "user", "text": prompt, "ts": now_label(), "mode_label": mode_label(mode)}
@@ -14131,14 +14144,16 @@ def _queue_learning_request(
             "role": "user",
             "text": (display_prompt or prompt).strip(),
             "ts": now_label(),
-            "mode_label": mode_label(mode),
+            "mode_label": mode_label(display_mode),
         }
     )
     sess["last_prompt"] = (display_prompt or prompt).strip()
     st.session_state.uib_text = ""
     st.session_state._mnl_pending_request = {
         "prompt": prompt,
-        "mode": mode,
+        "mode": request_mode,
+        "previous_answer": routed.get("previous_answer") or "",
+        "quiz_root_id": routed.get("quiz_root_id"),
         "fetch_full": bool(fetch_full),
     }
     _persist_learning_session(st.session_state.learning_active_id, sess)
@@ -14180,6 +14195,7 @@ def _generate_pending_learning_response(
 
     prompt = (pending.get("prompt") or "").strip()
     mode = (pending.get("mode") or "deep").strip().lower()
+    previous_answer = (pending.get("previous_answer") or "").strip()
     fetch_full = bool(pending.get("fetch_full"))
     st.session_state._mnl_generating = True
 
@@ -14191,7 +14207,11 @@ def _generate_pending_learning_response(
                     if fetch_full:
                         resp = fetch_study_full(prompt, mode=mode)
                     else:
-                        resp = fetch_study(prompt, mode=mode)
+                        resp = fetch_study(
+                            prompt,
+                            mode=mode,
+                            previous_answer=previous_answer or None,
+                        )
 
             answer = normalize_whitespace_for_readability(normalize_mojibake(resp.get("answer", "") or "")) or "No answer generated."
             followups = resp.get("followups") or []
@@ -14205,6 +14225,7 @@ def _generate_pending_learning_response(
                     "stop_reason": resp.get("stop_reason") or None,
                     "prompt": prompt,
                     "mode": mode,
+                    "quiz_root_id": pending.get("quiz_root_id"),
                     "response_id": resp.get("response_id"),
                     "continue_token": resp.get("continue_token"),
                     "followups": followups,
@@ -14896,8 +14917,11 @@ def page_my_new_learning() -> None:
         _generate_pending_learning_response(sess, generation_slot)
 
 def page_new_project() -> None:
-    st.markdown('<div class="bigtitle">New Project</div>', unsafe_allow_html=True)
-    st.info("Coming soon in v1.", icon="🧩")
+    st.markdown('<div class="bigtitle">New Project · Coming soon</div>', unsafe_allow_html=True)
+    st.info(
+        "Project creation is not available in this release. You can continue using New Chat and My New Learning.",
+        icon=":material/construction:",
+    )
 
 
 # =========================

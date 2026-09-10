@@ -43,6 +43,7 @@ def _normalize_mode(raw: Optional[str]) -> str:
       - intro (New Chat topic introduction)
       - high (overview)
       - quiz
+      - quiz_grade (evaluate answers against an active quiz)
       - focused (FUQ-style direct deep bullets)
       - clear (human-readable conceptual answer)
       - technical (mechanism-focused answer)
@@ -73,6 +74,9 @@ def _normalize_mode(raw: Optional[str]) -> str:
         "q": "quiz",
         "questions": "quiz",
         "test": "quiz",
+        "quiz_grade": "quiz_grade",
+        "grade_quiz": "quiz_grade",
+        "grade": "quiz_grade",
 
         "focused": "focused",
         "focus": "focused",
@@ -247,6 +251,19 @@ def _build_instruction(mode: str) -> str:
             "- End with: 'Reply with your answers and I will grade you.'\n"
         )
 
+    if mode == "quiz_grade":
+        return (
+            "You are InI, an interactive AI tutor grading the learner's active quiz.\n"
+            "- Evaluate the submitted answers against the supplied original quiz.\n"
+            "- Never generate a replacement quiz.\n"
+            "- Begin with an overall score in the form 'Score: X/7'.\n"
+            "- Grade every numbered answer as Correct, Partly correct, or Incorrect.\n"
+            "- Give a concise correction or missing point for every answer that is not fully correct.\n"
+            "- Independently recompute all arithmetic and show the corrected calculation when needed.\n"
+            "- If an answer number is missing, mark it Unanswered instead of inventing an answer.\n"
+            "- End with two specific concepts the learner should review; do not ask for another submission.\n"
+        )
+
     if mode == "focused":
         return (
             "You are InI, a thoughtful and visually clear AI tutor.\n"
@@ -398,6 +415,99 @@ def _continuation_context(previous_answer: str, max_chars: int = 6000) -> str:
         + "\n\n[...middle omitted...]\n\n"
         + text[-ending_chars:].lstrip()
     )
+
+
+_NUMBER_WORDS = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+}
+
+
+def _requested_sequence_spec(user_topic: str) -> Optional[tuple[str, int]]:
+    """Extract an explicitly promised sequence that continuation must finish."""
+    topic = re.sub(r"\s+", " ", (user_topic or "").strip().lower())
+    if not topic:
+        return None
+
+    day_match = re.search(
+        r"\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)"
+        r"(?:[- ]day|\s+days?)\b",
+        topic,
+    )
+    if day_match:
+        raw = day_match.group(1)
+        count = int(raw) if raw.isdigit() else _NUMBER_WORDS.get(raw, 0)
+        if 1 < count <= 31:
+            return "Day", count
+
+    if re.search(r"\b(?:in|for|over)\s+(?:one|1|a)\s+week\b", topic):
+        return "Day", 7
+
+    item_match = re.search(
+        r"\b(\d{1,2})[- ](?:step|part|module)\b",
+        topic,
+    )
+    if item_match:
+        label_match = re.search(r"[- ](step|part|module)\b", item_match.group(0))
+        count = int(item_match.group(1))
+        if label_match and 1 < count <= 20:
+            return label_match.group(1).title(), count
+    return None
+
+
+def _sequence_numbers(text: str, label: str) -> set[int]:
+    return {
+        int(value)
+        for value in re.findall(
+            rf"(?im)^\s*(?:[-*+]\s+|\d+\.\s+)?(?:#+\s*)?(?:\*\*)?"
+            rf"{re.escape(label)}\s+(\d{{1,2}})\b",
+            text or "",
+        )
+    }
+
+
+def _continuation_structure_contract(user_topic: str, previous_answer: str) -> str:
+    spec = _requested_sequence_spec(user_topic)
+    if not spec:
+        return ""
+    label, count = spec
+    present = _sequence_numbers(previous_answer, label)
+    missing = [number for number in range(1, count + 1) if number not in present]
+    if not missing:
+        return ""
+    next_number = missing[0]
+    return (
+        "\nORIGINAL STRUCTURE COMPLETION CONTRACT:\n"
+        f"- The user requested a complete {count}-{label.lower()} structure.\n"
+        f"- The supplied answer is missing {label} "
+        + ", ".join(str(number) for number in missing)
+        + ".\n"
+        f"- Start with {label} {next_number} and complete through {label} {count} in order.\n"
+        "- Do not branch into a detailed treatment of the last completed item.\n"
+        "- Do not add suggested follow-ups until every requested item is complete.\n"
+    )
+
+
+def _requested_structure_is_complete(
+    user_topic: str,
+    combined_answer: str,
+) -> bool:
+    spec = _requested_sequence_spec(user_topic)
+    if not spec:
+        return True
+    label, count = spec
+    present = _sequence_numbers(combined_answer, label)
+    return all(number in present for number in range(1, count + 1))
 
 
 _LEARNING_LOOP_BLOCK = re.compile(
@@ -1185,7 +1295,7 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
 
     # Normal conversational behavior: greeting / thanks / help / etc.
     if (
-        mode not in {"focused", "clear", "technical"}
+        mode not in {"focused", "clear", "technical", "quiz_grade"}
         and not should_interrogate
         and not should_answer_direct
     ):
@@ -1226,24 +1336,31 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
             + "\n"
         )
 
-    if continue_mode and previous_answer:
-
-    # --- STRICT TOKEN CONTINUATION ---
-    # Preserve the established outline as well as the unfinished tail.
+    if mode == "quiz_grade" and previous_answer:
+        question = (
+            f"{instruction}\n"
+            "ORIGINAL QUIZ:\n"
+            f"{previous_answer}\n\n"
+            "LEARNER ANSWERS:\n"
+            f"{llm_topic}\n"
+        )
+    elif continue_mode and previous_answer:
+        # Preserve the established outline as well as the unfinished tail.
         prior_context = _continuation_context(previous_answer)
 
         question = (
-        f"{instruction}\n"
-        "STRICT CONTINUATION MODE:\n"
-        "- Review the supplied context before writing.\n"
-        "- Continue only the unfinished point from where the text stopped.\n"
-        "- Do NOT restart the topic, definition, example, checklist, or conclusion.\n"
-        "- Do NOT repeat any heading or idea already present in the context.\n"
-        "- Do NOT add generic sections merely to make the answer longer.\n"
-        "- Output ONLY genuinely new continuation text.\n\n"
-        "Answer context (opening and latest text are preserved):\n"
-        f"{prior_context}\n"
-    )
+            f"{instruction}\n"
+            "STRICT CONTINUATION MODE:\n"
+            "- Review the supplied context before writing.\n"
+            "- Continue only the unfinished point from where the text stopped.\n"
+            "- Do NOT restart the topic, definition, example, checklist, or conclusion.\n"
+            "- Do NOT repeat any heading or idea already present in the context.\n"
+            "- Do NOT add generic sections merely to make the answer longer.\n"
+            "- Output ONLY genuinely new continuation text.\n\n"
+            "Answer context (opening and latest text are preserved):\n"
+            f"{prior_context}\n"
+        )
+        question += _continuation_structure_contract(user_topic, previous_answer)
     else:
         question = (
             f"{instruction}\n"
@@ -1282,6 +1399,48 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         user_topic,
     )
     ans = normalize_response_accuracy(ans, user_topic)
+
+    structure_spec = _requested_sequence_spec(user_topic) if continue_mode else None
+    if structure_spec and previous_answer:
+        structure_label, _ = structure_spec
+        prior_numbers = _sequence_numbers(previous_answer, structure_label)
+        draft_numbers = _sequence_numbers(
+            f"{previous_answer}\n\n{ans}",
+            structure_label,
+        )
+        if len(draft_numbers) <= len(prior_numbers):
+            retry_result = generate_dynamic_answer_result(
+                topic=llm_topic,
+                topic_type="concept",
+                archetype=archetype,
+                question=(
+                    question
+                    + "\nVALIDATION RETRY:\n"
+                    + "The draft did not add any missing requested items. Discard it. "
+                    + "Return only the missing ordered items required by the structure contract.\n"
+                ),
+                meta={
+                    "mode": "study_ai",
+                    "level": mode,
+                    "expects": "text",
+                    "continue_mode": True,
+                    "validation_retry": "missing_requested_structure",
+                },
+                timeout_s=120,
+            )
+            retry_ans = _normalize_processor_terminology(
+                (retry_result.get("answer") or "").strip(),
+                user_topic,
+            )
+            retry_ans = normalize_response_accuracy(retry_ans, user_topic)
+            retry_numbers = _sequence_numbers(
+                f"{previous_answer}\n\n{retry_ans}",
+                structure_label,
+            )
+            if len(retry_numbers) > len(draft_numbers):
+                result = retry_result
+                ans = retry_ans
+
     if mode == "intro":
         # The first pass keeps the conservative bare-topic safeguard. If that
         # draft fails semantic validation, the retry prompt explicitly asks
@@ -1296,6 +1455,12 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         ans = _normalize_response_text(ans, user_topic)
     incomplete = bool(result.get("incomplete", False))
     stop_reason = result.get("stop_reason", None)
+    if continue_mode and not _requested_structure_is_complete(
+        user_topic,
+        f"{previous_answer}\n\n{ans}",
+    ):
+        incomplete = True
+        stop_reason = "missing_requested_structure"
     if mode == "intro" and not continue_mode:
         missing_sections = _missing_intro_sections(ans)
         if missing_sections:

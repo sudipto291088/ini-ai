@@ -22,7 +22,7 @@ class TopicIn(BaseModel):
 class StudyAIIn(BaseModel):
     # v0 inputs
     topic: str = Field(..., description="User question/topic for the AI tutor")
-    mode: str = Field("deep", description="deep | high | quiz")
+    mode: str = Field("deep", description="deep | high | quiz | quiz_grade")
 
     # v0 continuation (optional; UI may wire later)
     continue_mode: bool = Field(False, description="If true, continue from previous_answer")

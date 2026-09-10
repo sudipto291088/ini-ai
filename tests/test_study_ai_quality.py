@@ -600,6 +600,107 @@ Purpose: A partial response."""
         self.assertIn("Do NOT repeat any heading or idea", question)
         self.assertIn("only the unfinished point", question)
 
+    def test_quiz_answer_submission_uses_grading_contract(self) -> None:
+        captured = {}
+
+        def fake_generate(**kwargs):
+            captured.update(kwargs)
+            return {
+                "answer": "Score: 6/7\n\n1. Correct\n\n2. Partly correct",
+                "incomplete": False,
+                "stop_reason": None,
+            }
+
+        with (
+            patch.object(study_module, "llm_enabled", return_value=True),
+            patch.object(
+                study_module,
+                "detect_intent",
+                return_value={
+                    "intent": "clarify",
+                    "should_interrogate": False,
+                    "should_answer_direct": False,
+                },
+            ),
+            patch.object(study_module, "generate_dynamic_answer_result", fake_generate),
+        ):
+            result = study_module.study_ai(
+                {
+                    "topic": "1. Radiation\n2. Silicon\n6. 562.5 kWh",
+                    "mode": "quiz_grade",
+                    "previous_answer": "Quiz (7 questions)\n1. Define irradiance.",
+                }
+            )
+
+        self.assertEqual(result["mode"], "quiz_grade")
+        self.assertIn("Score: 6/7", result["answer"])
+        self.assertIn("ORIGINAL QUIZ", captured["question"])
+        self.assertIn("LEARNER ANSWERS", captured["question"])
+        self.assertIn("Never generate a replacement quiz", captured["question"])
+
+    def test_week_plan_contract_identifies_missing_days(self) -> None:
+        previous = "\n".join(f"## Day {number}" for number in range(1, 5))
+
+        contract = study_module._continuation_structure_contract(
+            "I want to learn the basics of solar energy in one week.",
+            previous,
+        )
+
+        self.assertIn("missing Day 5, 6, 7", contract)
+        self.assertIn("Start with Day 5 and complete through Day 7", contract)
+        self.assertFalse(
+            study_module._requested_structure_is_complete(
+                "I want to learn the basics of solar energy in one week.",
+                previous,
+            )
+        )
+
+    def test_week_plan_continuation_retries_a_nonprogressing_draft(self) -> None:
+        captured_questions = []
+
+        def fake_generate(**kwargs):
+            captured_questions.append(kwargs["question"])
+            if len(captured_questions) == 1:
+                return {
+                    "answer": "More detail about inverter sizing and failure modes.",
+                    "incomplete": False,
+                    "stop_reason": None,
+                }
+            return {
+                "answer": "## Day 5\nStorage\n## Day 6\nSizing\n## Day 7\nReview",
+                "incomplete": False,
+                "stop_reason": None,
+            }
+
+        previous = "\n".join(f"## Day {number}\nLesson" for number in range(1, 5))
+        with (
+            patch.object(study_module, "llm_enabled", return_value=True),
+            patch.object(
+                study_module,
+                "detect_intent",
+                return_value={
+                    "intent": "topic",
+                    "should_interrogate": True,
+                    "should_answer_direct": False,
+                },
+            ),
+            patch.object(study_module, "generate_dynamic_answer_result", fake_generate),
+        ):
+            result = study_module.study_ai(
+                {
+                    "topic": "I want to learn solar energy in one week.",
+                    "mode": "deep",
+                    "continue_mode": True,
+                    "previous_answer": previous,
+                }
+            )
+
+        self.assertEqual(len(captured_questions), 2)
+        self.assertIn("VALIDATION RETRY", captured_questions[1])
+        self.assertIn("Day 5", result["answer"])
+        self.assertIn("Day 7", result["answer"])
+        self.assertFalse(result["incomplete"])
+
     def test_processor_topics_receive_core_thread_accuracy_contract(self) -> None:
         contract = study_module._processor_accuracy_contract("Explain a hexa-core CPU")
 

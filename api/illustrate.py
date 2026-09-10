@@ -159,6 +159,95 @@ def _repair_sqrt_approximations(text: str) -> str:
     return pattern.sub(replace, text or "")
 
 
+def _format_calculated_number(value: float) -> str:
+    if math.isclose(value, round(value), rel_tol=0.0, abs_tol=1e-9):
+        return f"{int(round(value)):,}"
+    return f"{value:,.2f}".rstrip("0").rstrip(".")
+
+
+def _repair_explicit_products(text: str) -> str:
+    """Correct simple multiplication chains that disagree with their result."""
+    pattern = re.compile(
+        r"(?P<expr>\b\d[\d,]*(?:\.\d+)?"
+        r"(?:\s*(?:×|x|\*)\s*\d[\d,]*(?:\.\d+)?){1,5})"
+        r"(?P<join>\s*(?:=|≈|~=|about)\s*)"
+        r"(?P<claim>\d[\d,]*(?:\.\d+)?)",
+        flags=re.IGNORECASE,
+    )
+
+    def replace(match: re.Match[str]) -> str:
+        factors = [
+            float(value.replace(",", ""))
+            for value in re.findall(r"\d[\d,]*(?:\.\d+)?", match.group("expr"))
+        ]
+        actual = math.prod(factors)
+        claimed = float(match.group("claim").replace(",", ""))
+        tolerance = max(0.01, abs(actual) * 0.001)
+        if abs(claimed - actual) <= tolerance:
+            return match.group(0)
+        return (
+            match.group("expr")
+            + match.group("join")
+            + _format_calculated_number(actual)
+        )
+
+    return pattern.sub(replace, text or "")
+
+
+def _repair_solar_annual_output(text: str) -> str:
+    """Reconcile annual solar output claims with stated array and sun-hour inputs."""
+    value = text or ""
+    blocks = re.split(r"(?=\*\*Example\s+\d+\s*[—–:-])", value)
+    repaired: List[str] = []
+    for block in blocks:
+        capacity = re.search(
+            r"\b(\d+(?:\.\d+)?)\s*kW(?:\s+[A-Za-z-]+){0,3}\s+(?:array|system)\b",
+            block,
+            flags=re.IGNORECASE,
+        )
+        sun_hours = re.search(
+            r"\b(\d+(?:\.\d+)?)\s*(?:peak[- ]?)?sun[- ]?hours?\s*/\s*day\b",
+            block,
+            flags=re.IGNORECASE,
+        )
+        days = re.search(
+            r"(?:×|x|\*)\s*(365|366)\b",
+            block,
+            flags=re.IGNORECASE,
+        )
+        output = re.search(
+            r"(?P<prefix>[~≈]?\s*)(?P<claim>\d[\d,]*(?:\.\d+)?)"
+            r"(?P<unit>\s*kWh\s*/\s*(?:year|yr)\b)",
+            block,
+            flags=re.IGNORECASE,
+        )
+        if not all((capacity, sun_hours, days, output)):
+            repaired.append(block)
+            continue
+
+        actual = (
+            float(capacity.group(1))
+            * float(sun_hours.group(1))
+            * float(days.group(1))
+        )
+        claimed = float(output.group("claim").replace(",", ""))
+        if abs(claimed - actual) <= max(1.0, actual * 0.01):
+            repaired.append(block)
+            continue
+
+        start, end = output.span("claim")
+        repaired.append(
+            block[:start] + _format_calculated_number(actual) + block[end:]
+        )
+    return "".join(repaired)
+
+
+def _repair_numeric_claims(text: str) -> str:
+    return _repair_solar_annual_output(
+        _repair_explicit_products(_repair_sqrt_approximations(text))
+    )
+
+
 def _drop_incomplete_final_example(text: str) -> str:
     """Remove a visibly truncated final block so it is never presented."""
     value = (text or "").rstrip()
@@ -305,7 +394,7 @@ def illustrate(topic: str) -> Dict[str, object]:
                     break
                 rounds += 1
 
-            examples_text = _repair_sqrt_approximations(
+            examples_text = _repair_numeric_claims(
                 _drop_incomplete_final_example(examples_text)
             )
         except Exception:
