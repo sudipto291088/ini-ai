@@ -11554,7 +11554,7 @@ def page_new_chat() -> None:
                 margin: 18px auto 0;
                 transform: none;
                 color: #111827;
-                font-size: clamp(52px, 4.85vw, 70px);
+                font-size: clamp(58px, calc(5.2vw + 2px), 78px);
                 font-weight: 610;
                 line-height: 1.12;
                 letter-spacing: 0.012em;
@@ -12174,7 +12174,7 @@ def page_new_chat() -> None:
                 .nc-landing-heading {{
                     width: min(calc(100% - 40px), 860px);
                     transform: none;
-                    font-size: clamp(32px, 5.4vw, 60px);
+                    font-size: clamp(37px, calc(5.8vw + 2px), 66px);
                     white-space: normal !important;
                 }}
 
@@ -12235,7 +12235,7 @@ def page_new_chat() -> None:
                     max-width: 92%;
                     margin-top: 18px;
                     transform: none;
-                    font-size: clamp(30px, 8.6vw, 46px);
+                    font-size: clamp(34px, calc(9.2vw + 2px), 51px);
                     font-weight: 610;
                     line-height: 1.16;
                     white-space: normal !important;
