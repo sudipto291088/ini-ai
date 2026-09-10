@@ -744,15 +744,28 @@ button[kind="secondary"]{
   display:block;
   margin:4px 0 14px;
   padding:10px 14px !important;
+  border:1px solid transparent;
   border-radius:10px;
-  color:#ffffff !important;
-  background:#087f7b !important;
+  color:#26303d !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.98), rgba(241,243,246,.94) 58%, rgba(224,228,233,.9)) padding-box,
+    linear-gradient(90deg, transparent, rgba(139,148,160,.58) 50%, transparent) border-box !important;
+  box-shadow:
+    0 10px 28px rgba(31,41,55,.08),
+    inset 0 1px 0 rgba(255,255,255,.92);
   font-weight:700;
   text-align:center !important;
+  transition:transform .16s ease, box-shadow .16s ease, color .16s ease;
 }
 .ini_popup_resume:hover{
-  color:#ffffff !important;
-  background:#066c69 !important;
+  color:#111827 !important;
+  background:
+    linear-gradient(135deg, #ffffff, #f4f5f7 58%, #e6e9ed) padding-box,
+    linear-gradient(90deg, transparent, rgba(112,121,133,.72) 50%, transparent) border-box !important;
+  box-shadow:
+    0 13px 32px rgba(31,41,55,.12),
+    inset 0 1px 0 #ffffff;
+  transform:translateY(-1px);
 }
 .ini_sidebar_link{
   display:block;
@@ -11541,7 +11554,7 @@ def page_new_chat() -> None:
                 margin: 18px auto 0;
                 transform: none;
                 color: #111827;
-                font-size: clamp(49px, 4.55vw, 66px);
+                font-size: clamp(52px, 4.85vw, 70px);
                 font-weight: 610;
                 line-height: 1.12;
                 letter-spacing: 0.012em;
@@ -12161,7 +12174,7 @@ def page_new_chat() -> None:
                 .nc-landing-heading {{
                     width: min(calc(100% - 40px), 860px);
                     transform: none;
-                    font-size: clamp(30px, 5vw, 56px);
+                    font-size: clamp(32px, 5.4vw, 60px);
                     white-space: normal !important;
                 }}
 
@@ -12222,7 +12235,7 @@ def page_new_chat() -> None:
                     max-width: 92%;
                     margin-top: 18px;
                     transform: none;
-                    font-size: clamp(28px, 8vw, 42px);
+                    font-size: clamp(30px, 8.6vw, 46px);
                     font-weight: 610;
                     line-height: 1.16;
                     white-space: normal !important;
