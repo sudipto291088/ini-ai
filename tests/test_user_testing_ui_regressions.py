@@ -17,7 +17,8 @@ def test_saved_chat_dialog_uses_plain_language_and_clear_resume_action() -> None
 
 
 def test_projects_are_marked_unavailable_before_navigation() -> None:
-    assert "New Project <small>Coming soon</small>" in APP_SOURCE
+    assert '<span class="ini-sidebar-nav-title">New Project</span>' in APP_SOURCE
+    assert '<small class="ini-sidebar-nav-status">Coming soon</small>' in APP_SOURCE
     assert "Projects are coming soon" in APP_SOURCE
     assert "Project creation is not available in this release." in APP_SOURCE
     assert "No active projects yet" not in APP_SOURCE
@@ -25,7 +26,8 @@ def test_projects_are_marked_unavailable_before_navigation() -> None:
 
 
 def test_my_new_learning_is_marked_unavailable_everywhere() -> None:
-    assert "My New Learning <small>Not available</small>" in APP_SOURCE
+    assert '<span class="ini-sidebar-nav-title">My New Learning</span>' in APP_SOURCE
+    assert '<small class="ini-sidebar-nav-status">Not available</small>' in APP_SOURCE
     assert "Learning is not available yet" in APP_SOURCE
     assert "This area is not ready for testing." in APP_SOURCE
     assert "My New Learning has not entered development yet" in APP_SOURCE

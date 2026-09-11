@@ -523,6 +523,24 @@ div[data-testid="stSidebar"] .block-container{
   box-shadow:none;
   transition:background 160ms ease, color 160ms ease;
 }
+.ini-sidebar-nav-copy{
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+}
+.ini-sidebar-nav-title{
+  display:block;
+  line-height:1.2;
+}
+.ini-sidebar-nav-status{
+  display:block;
+  color:#7b8490;
+  font-size:10.5px;
+  font-weight:450;
+  line-height:1.15;
+}
 .ini-sidebar-nav-icon{
   width:27px;
   height:27px;
@@ -5846,9 +5864,9 @@ with st.sidebar:
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'chat' else ''}"
              href="{chat_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5.2 5.5h13.6a3.2 3.2 0 0 1 3.2 3.2v5.1a3.2 3.2 0 0 1-3.2 3.2h-6.4L7 20.4 8.1 17H5.2A3.2 3.2 0 0 1 2 13.8V8.7a3.2 3.2 0 0 1 3.2-3.2Z" stroke="currentColor" stroke-width="1.7"/></svg><span>New Chat</span></a>
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'learn' else ''}"
-             href="{learn_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 5.2-7.8 4L12 13.3l7.8-4.1L12 5.2Z" stroke="currentColor" stroke-width="1.7"/><path d="m5.8 11.6-1.6.9 7.8 4.1 7.8-4.1-1.6-.9M5.8 14.9l-1.6.9 7.8 4.1 7.8-4.1-1.6-.9" stroke="currentColor" stroke-width="1.7"/></svg><span>My New Learning <small>Not available</small></span></a>
+             href="{learn_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 5.2-7.8 4L12 13.3l7.8-4.1L12 5.2Z" stroke="currentColor" stroke-width="1.7"/><path d="m5.8 11.6-1.6.9 7.8 4.1 7.8-4.1-1.6-.9M5.8 14.9l-1.6.9 7.8 4.1 7.8-4.1-1.6-.9" stroke="currentColor" stroke-width="1.7"/></svg><span class="ini-sidebar-nav-copy"><span class="ini-sidebar-nav-title">My New Learning</span><small class="ini-sidebar-nav-status">Not available</small></span></a>
           <a class="ini-sidebar-nav-card {'is-active' if page_param == 'proj' else ''}"
-             href="{project_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.3 3.5h3.2v3.1a2 2 0 1 0 4 0V3.5h3v5h-3a2 2 0 1 0 0 4h3v8h-8v-3a2 2 0 1 0-4 0v3h-3v-8h3a2 2 0 1 0 0-4h-3v-5h4.8Z" stroke="currentColor" stroke-width="1.65"/></svg><span>New Project <small>Coming soon</small></span></a>
+             href="{project_nav_href}" target="_self"><svg class="ini-sidebar-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8.3 3.5h3.2v3.1a2 2 0 1 0 4 0V3.5h3v5h-3a2 2 0 1 0 0 4h3v8h-8v-3a2 2 0 1 0-4 0v3h-3v-8h3a2 2 0 1 0 0-4h-3v-5h4.8Z" stroke="currentColor" stroke-width="1.65"/></svg><span class="ini-sidebar-nav-copy"><span class="ini-sidebar-nav-title">New Project</span><small class="ini-sidebar-nav-status">Coming soon</small></span></a>
         </div>
         """,
         unsafe_allow_html=True,
