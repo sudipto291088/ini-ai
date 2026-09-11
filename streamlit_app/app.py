@@ -22,11 +22,16 @@ if str(PROJECT_ROOT) not in sys.path:
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
-from streamlit_app.learning_flow import (
-    continuation_context,
-    resolve_generation_status,
-    resolve_learning_submission,
-)
+import streamlit_app.learning_flow as learning_flow
+
+# Streamlit Cloud can rerun this entry point in a process that still has an
+# older helper module cached. Reload before binding newly added helpers so a
+# deployment cannot fail with a stale-module ImportError.
+if not hasattr(learning_flow, "resolve_generation_status"):
+    learning_flow = importlib.reload(learning_flow)
+continuation_context = learning_flow.continuation_context
+resolve_generation_status = learning_flow.resolve_generation_status
+resolve_learning_submission = learning_flow.resolve_learning_submission
 from storage_sqlite import (
     init_db,
     save_session,

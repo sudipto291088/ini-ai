@@ -42,3 +42,9 @@ def test_new_chat_mobile_styles_wrap_copy_and_clear_hosting_overlay() -> None:
     assert "word-break: normal !important;" in APP_SOURCE
     assert "bottom: calc(58px + env(safe-area-inset-bottom));" in APP_SOURCE
     assert "padding-bottom: calc(196px + env(safe-area-inset-bottom))" in APP_SOURCE
+
+
+def test_learning_flow_import_recovers_from_a_stale_streamlit_module() -> None:
+    assert "import streamlit_app.learning_flow as learning_flow" in APP_SOURCE
+    assert 'if not hasattr(learning_flow, "resolve_generation_status"):' in APP_SOURCE
+    assert "learning_flow = importlib.reload(learning_flow)" in APP_SOURCE
