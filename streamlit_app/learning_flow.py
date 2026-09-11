@@ -94,10 +94,30 @@ def continuation_context(
     return "\n\n".join(chunks)
 
 
+def resolve_generation_status(
+    action: str,
+    *,
+    request_kind: str = "",
+    explicit_question_map: bool = False,
+    confirmed_question_map: bool = False,
+) -> str:
+    """Choose truthful generation copy without inferring a map from chat history."""
+    if (action or "").strip().lower() == "illustrate":
+        return "generating"
+    if (
+        (request_kind or "").strip().lower() == "knowledge_structure"
+        or explicit_question_map
+        or confirmed_question_map
+    ):
+        return "question_map"
+    return "forming"
+
+
 __all__ = [
     "continuation_context",
     "find_active_quiz",
     "is_quiz_response",
     "looks_like_quiz_answers",
+    "resolve_generation_status",
     "resolve_learning_submission",
 ]

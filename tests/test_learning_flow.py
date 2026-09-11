@@ -1,6 +1,7 @@
 from streamlit_app.learning_flow import (
     continuation_context,
     find_active_quiz,
+    resolve_generation_status,
     resolve_learning_submission,
 )
 
@@ -68,3 +69,30 @@ def test_continuation_context_contains_the_whole_existing_chain() -> None:
     ]
 
     assert continuation_context(messages, "part-2") == "Days 1 through 4\n\nDay 5"
+
+
+def test_ordinary_ia_uses_answer_forming_status() -> None:
+    assert resolve_generation_status("interrogate") == "forming"
+
+
+def test_chat_history_does_not_change_ia_status_to_question_map() -> None:
+    assert (
+        resolve_generation_status(
+            "interrogate",
+            explicit_question_map=False,
+            confirmed_question_map=False,
+        )
+        == "forming"
+    )
+
+
+def test_only_explicit_map_flows_use_question_map_status() -> None:
+    assert (
+        resolve_generation_status("interrogate", explicit_question_map=True)
+        == "question_map"
+    )
+    assert (
+        resolve_generation_status("interrogate", request_kind="knowledge_structure")
+        == "question_map"
+    )
+    assert resolve_generation_status("illustrate") == "generating"

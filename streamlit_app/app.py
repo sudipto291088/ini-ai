@@ -24,6 +24,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from streamlit_app.learning_flow import (
     continuation_context,
+    resolve_generation_status,
     resolve_learning_submission,
 )
 from storage_sqlite import (
@@ -10912,33 +10913,22 @@ def page_new_chat() -> None:
             # Keep the decision phase visible long enough to feel intentional,
             # even after Streamlit's rerun/render latency is accounted for.
             time.sleep(8.0)
-            if action == "illustrate":
-                resolved_status = "generating"
-            elif request_kind == "knowledge_structure" or (
+            confirmed_question_map = bool(
                 isinstance(
                     st.session_state.get("chat_pending_qm_confirmation"),
                     dict,
                 )
-                and bool(
-                    re.match(
-                        r"^(yes|yeah|yep|sure|okay|ok|please|go ahead|do it|generate)\b",
-                        re.sub(r"[^a-z0-9 ]+", " ", prompt.lower()).strip(),
-                    )
+                and re.match(
+                    r"^(yes|yeah|yep|sure|okay|ok|please|go ahead|do it|generate)\b",
+                    re.sub(r"[^a-z0-9 ]+", " ", prompt.lower()).strip(),
                 )
-            ) or _is_explicit_qm_prompt(prompt) or (
-                st.session_state.chat_study_mode_established
-                and not _looks_like_casual_generation(prompt)
-                and not _looks_like_answer_to_last_question(
-                    prompt,
-                    _latest_assistant_conversation_reply(),
-                )
-            ):
-                resolved_status = "question_map"
-            else:
-                # Interpretation is complete: ordinary conversational and
-                # learning responses now visibly enter their answer-forming
-                # phase before the generated text begins streaming.
-                resolved_status = "forming"
+            )
+            resolved_status = resolve_generation_status(
+                action,
+                request_kind=request_kind,
+                explicit_question_map=_is_explicit_qm_prompt(prompt),
+                confirmed_question_map=confirmed_question_map,
+            )
 
             if resolved_status != "thinking":
                 generation_slot.empty()
