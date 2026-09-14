@@ -12049,23 +12049,35 @@ def page_new_chat() -> None:
                 gap: 3px !important;
                 padding: 20px 24px 20px 84px !important;
                 overflow: hidden !important;
-                border: 1px solid rgba(215, 220, 227, 0.9) !important;
+                border: 0 !important;
                 border-radius: 18px !important;
                 color: #111827 !important;
-                background: rgba(255, 255, 255, 0.9) !important;
+                background: rgba(255, 255, 255, 0.98) !important;
                 box-shadow:
-                    0 12px 30px rgba(15, 23, 42, 0.045),
+                    0 14px 34px rgba(15, 23, 42, 0.065),
+                    0 3px 10px rgba(15, 23, 42, 0.035),
                     inset 0 1px 0 rgba(255, 255, 255, 0.98) !important;
-                transition: transform 150ms ease, border-color 150ms ease,
-                    box-shadow 150ms ease, background 150ms ease;
+                transition: transform 180ms ease, box-shadow 180ms ease,
+                    background 180ms ease;
             }}
 
             .st-key-nc_explore_grid div.stButton > button:hover {{
                 transform: translateY(-2px);
-                border-color: rgba(245, 27, 63, 0.32) !important;
                 color: #111827 !important;
-                background: rgba(255, 250, 251, 0.96) !important;
-                box-shadow: 0 16px 36px rgba(92, 25, 38, 0.085) !important;
+                background: linear-gradient(
+                    145deg,
+                    rgba(255, 255, 255, 0.96),
+                    rgba(255, 247, 249, 0.78)
+                ) !important;
+                box-shadow:
+                    0 18px 42px rgba(92, 25, 38, 0.085),
+                    0 4px 12px rgba(15, 23, 42, 0.04),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.98) !important;
+            }}
+
+            .st-key-nc_explore_grid div.stButton > button:focus-visible {{
+                outline: 2px solid rgba(245, 27, 63, 0.26) !important;
+                outline-offset: 3px !important;
             }}
 
             .st-key-nc_explore_grid div.stButton > button p {{
