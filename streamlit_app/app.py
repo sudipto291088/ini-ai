@@ -12086,7 +12086,7 @@ def page_new_chat() -> None:
                 color: #111827 !important;
                 -webkit-text-fill-color: #111827 !important;
                 font-size: 16px !important;
-                font-weight: 720 !important;
+                font-weight: 560 !important;
                 line-height: 1.3 !important;
                 text-align: left !important;
                 text-overflow: clip !important;

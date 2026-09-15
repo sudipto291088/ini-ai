@@ -62,6 +62,7 @@ def test_explore_direction_cards_have_borderless_quiet_surfaces() -> None:
     assert "background: rgba(255, 255, 255, 0.98) !important;" in APP_SOURCE
     assert "0 14px 34px rgba(15, 23, 42, 0.065)" in APP_SOURCE
     assert "0 3px 10px rgba(15, 23, 42, 0.035)" in APP_SOURCE
+    assert "font-weight: 560 !important;" in APP_SOURCE
     assert ".st-key-nc_explore_grid div.stButton > button:focus-visible" in APP_SOURCE
 
 
