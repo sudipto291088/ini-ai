@@ -4,6 +4,12 @@ from pathlib import Path
 APP_SOURCE = (
     Path(__file__).resolve().parents[1] / "streamlit_app" / "app.py"
 ).read_text(encoding="utf-8")
+FCE_CONTENT_SOURCE = (
+    Path(__file__).resolve().parents[1] / "streamlit_app" / "fce_content.py"
+).read_text(encoding="utf-8")
+FCE_COMPONENT_SOURCE = (
+    Path(__file__).resolve().parents[1] / "streamlit_app" / "fce_component.py"
+).read_text(encoding="utf-8")
 
 
 def test_saved_chat_dialog_uses_plain_language_and_clear_resume_action() -> None:
@@ -57,3 +63,14 @@ def test_explore_direction_cards_have_borderless_quiet_surfaces() -> None:
     assert "0 14px 34px rgba(15, 23, 42, 0.065)" in APP_SOURCE
     assert "0 3px 10px rgba(15, 23, 42, 0.035)" in APP_SOURCE
     assert ".st-key-nc_explore_grid div.stButton > button:focus-visible" in APP_SOURCE
+
+
+def test_first_visit_introduction_is_shorter_and_visually_demonstrates_features() -> None:
+    assert FCE_CONTENT_SOURCE.count('"text":') == 6
+    assert FCE_CONTENT_SOURCE.count('"visual":') == 3
+    assert "Most AI systems answer your question" not in FCE_CONTENT_SOURCE
+    assert "My New Learning is also evolving" not in FCE_CONTENT_SOURCE
+    assert "const visualMarkup = (visual)" in FCE_COMPONENT_SOURCE
+    assert "From one thought to a learning path" in FCE_COMPONENT_SOURCE
+    assert "Two ways to read an answer" in FCE_COMPONENT_SOURCE
+    assert "A connected knowledge structure" in FCE_COMPONENT_SOURCE

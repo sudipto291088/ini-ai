@@ -30,6 +30,25 @@ _FCE_COMPONENT = st.components.v2.component(
     .ini-fce-quote-note { margin-top: 5px; color: #87909e; font-size: 12px; }
     .ini-fce-topics { display: flex; flex-wrap: wrap; gap: 9px; margin: 22px 0 0; }
     .ini-fce-topic { padding: 7px 10px; border: 1px solid rgba(226,232,240,.68); border-radius: 999px; background: rgba(247,248,250,.74); color: #596373; font-size: 13px; line-height: 1.2; }
+    .ini-fce-visual { margin-top: 22px; padding: 18px; border: 1px solid rgba(226,232,240,.72); border-radius: 18px; background: linear-gradient(145deg, rgba(255,255,255,.98), rgba(248,249,251,.92)); box-shadow: 0 14px 34px rgba(15,23,42,.055); }
+    .ini-fce-visual-label { margin-bottom: 11px; color: #98a2b3; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .ini-fce-question-path { display: grid; grid-template-columns: minmax(145px,.9fr) 28px minmax(0,1.45fr); align-items: center; gap: 10px; }
+    .ini-fce-seed { padding: 13px 14px; border-radius: 13px; background: #17211f; color: #fff; font-size: 13px; font-weight: 650; line-height: 1.35; }
+    .ini-fce-flow-arrow { color: #f51b3f; font-size: 22px; text-align: center; }
+    .ini-fce-path-nodes { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; }
+    .ini-fce-path-node { padding: 11px 7px; border-radius: 11px; background: #fff4f6; color: #344054; font-size: 11px; font-weight: 680; line-height: 1.25; text-align: center; }
+    .ini-fce-view-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+    .ini-fce-view-card { padding: 15px; border-radius: 14px; background: #fff; box-shadow: inset 0 0 0 1px rgba(226,232,240,.72); }
+    .ini-fce-view-icon { display: grid; width: 30px; height: 30px; margin-bottom: 11px; place-items: center; border-radius: 10px; background: #fff1f4; color: #e2173b; font-size: 16px; font-weight: 760; }
+    .ini-fce-view-title { color: #17211f; font-size: 13px; font-weight: 760; }
+    .ini-fce-view-copy { margin-top: 4px; color: #7a8492; font-size: 11px; line-height: 1.35; }
+    .ini-fce-map { position: relative; display: grid; grid-template-columns: minmax(116px,.78fr) minmax(0,1.5fr); align-items: center; gap: 34px; }
+    .ini-fce-map-root { position: relative; z-index: 1; padding: 14px 12px; border-radius: 13px; background: #f51b3f; color: #fff; font-size: 12px; font-weight: 720; text-align: center; box-shadow: 0 9px 22px rgba(245,27,63,.17); }
+    .ini-fce-map-root::after { position: absolute; top: 50%; left: 100%; width: 34px; height: 1px; content: ""; background: rgba(245,27,63,.28); }
+    .ini-fce-map-branches { position: relative; display: grid; gap: 7px; }
+    .ini-fce-map-branches::before { position: absolute; top: 17%; bottom: 17%; left: -18px; width: 1px; content: ""; background: rgba(245,27,63,.25); }
+    .ini-fce-map-node { position: relative; padding: 10px 12px; border-radius: 11px; background: #fff; color: #465163; font-size: 11px; font-weight: 650; box-shadow: inset 0 0 0 1px rgba(226,232,240,.7); }
+    .ini-fce-map-node::before { position: absolute; top: 50%; right: 100%; width: 18px; height: 1px; content: ""; background: rgba(245,27,63,.25); }
     .ini-fce-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: 0 0 auto; padding: 18px 30px 22px; background: rgba(255,255,255,.72); }
     .ini-fce-controls { display: flex; flex-wrap: wrap; gap: 8px; }
     .ini-fce-button { min-height: 38px; padding: 9px 12px; border: 1px solid rgba(225,229,235,.68); border-radius: 14px; background: rgba(255,255,255,.88); color: #4b5563; box-shadow: 0 5px 15px rgba(15,23,42,.055); font: 600 13px/1.2 Aptos, "Segoe UI", sans-serif; cursor: pointer; }
@@ -46,11 +65,18 @@ _FCE_COMPONENT = st.components.v2.component(
     .ini-fce-overlay.is-mobile .ini-fce-body { min-width: 0; min-height: 0; padding-inline: 20px; }
     .ini-fce-overlay.is-mobile .ini-fce-transcript { min-width: 0; min-height: 0; padding-block: 22px; }
     .ini-fce-overlay.is-mobile .ini-fce-message { max-width: 100%; overflow-wrap: anywhere; word-break: normal; font-size: clamp(18px, 5.2vw, 21px); }
+    .ini-fce-overlay.is-mobile .ini-fce-visual { margin-top: 16px; padding: 14px; }
+    .ini-fce-overlay.is-mobile .ini-fce-question-path { grid-template-columns: 1fr; gap: 8px; }
+    .ini-fce-overlay.is-mobile .ini-fce-flow-arrow { transform: rotate(90deg); }
+    .ini-fce-overlay.is-mobile .ini-fce-path-nodes { grid-template-columns: 1fr; }
+    .ini-fce-overlay.is-mobile .ini-fce-map { grid-template-columns: 1fr; gap: 15px; }
+    .ini-fce-overlay.is-mobile .ini-fce-map-root::after, .ini-fce-overlay.is-mobile .ini-fce-map-branches::before, .ini-fce-overlay.is-mobile .ini-fce-map-node::before { display: none; }
     .ini-fce-overlay.is-mobile .ini-fce-footer { align-items: stretch; flex-direction: column-reverse; padding: 12px 17px 15px; }
     .ini-fce-overlay.is-mobile .ini-fce-controls { width: 100%; }
     .ini-fce-overlay.is-mobile .ini-fce-button { flex: 1 1 auto; }
     .ini-fce-overlay.is-mobile .ini-fce-final-actions { grid-template-columns: 1fr; }
     @media (max-width: 640px) { .ini-fce-overlay { padding: 10px; } .ini-fce-panel { width: calc(100% - 20px); max-width: none; max-height: calc(100% - 20px); border-radius: 22px; } .ini-fce-close { top: 13px; right: 13px; } .ini-fce-body { min-width: 0; min-height: 0; padding: 34px 20px 0; } .ini-fce-transcript { min-width: 0; min-height: 0; padding-block: 22px; } .ini-fce-message { max-width: 100%; overflow-wrap: anywhere; font-size: clamp(18px, 5.2vw, 21px); } .ini-fce-footer { align-items: stretch; flex-direction: column-reverse; padding: 12px 17px 15px; } .ini-fce-controls { width: 100%; } .ini-fce-button { flex: 1 1 auto; } .ini-fce-final-actions { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { .ini-fce-visual { margin-top: 16px; padding: 14px; } .ini-fce-question-path { grid-template-columns: 1fr; gap: 8px; } .ini-fce-flow-arrow { transform: rotate(90deg); } .ini-fce-path-nodes { grid-template-columns: 1fr; } .ini-fce-map { grid-template-columns: 1fr; gap: 15px; } .ini-fce-map-root::after, .ini-fce-map-branches::before, .ini-fce-map-node::before { display: none; } }
     /* Reserve the complete welcome window before any words stream in. */
     .ini-fce-panel { width: 78%; height: 78%; max-height: 100%; flex-shrink: 0; }
     .ini-fce-footer-slot { flex: 0 0 auto; }
@@ -142,6 +168,12 @@ _FCE_COMPONENT = st.components.v2.component(
       const textMarkup = (message, text, isTyping) => `<p class="ini-fce-message ${escapeHtml(message.emphasis || '')}">${escapeHtml(text)}${isTyping ? '<span class="ini-fce-caret" aria-hidden="true"></span>' : ''}</p>`;
       const quoteMarkup = () => `<section class="ini-fce-quote"><div class="ini-fce-quote-text">“${escapeHtml(data.quote.quote)}”</div><div class="ini-fce-quote-author">— ${escapeHtml(data.quote.author)}</div>${data.quote.attribution_note ? `<div class="ini-fce-quote-note">${escapeHtml(data.quote.attribution_note)}</div>` : ''}</section>`;
       const topicsMarkup = () => `<div class="ini-fce-topics">${(data.topics || []).map((topic) => `<span class="ini-fce-topic">${escapeHtml(topic)}</span>`).join('')}</div>`;
+      const visualMarkup = (visual) => {
+        if (visual === 'question-path') return `<section class="ini-fce-visual" aria-label="A question expanding into a learning path"><div class="ini-fce-visual-label">From one thought to a learning path</div><div class="ini-fce-question-path"><div class="ini-fce-seed">How does solar energy work?</div><div class="ini-fce-flow-arrow" aria-hidden="true">→</div><div class="ini-fce-path-nodes"><div class="ini-fce-path-node">Foundations</div><div class="ini-fce-path-node">Connections</div><div class="ini-fce-path-node">Next questions</div></div></div></section>`;
+        if (visual === 'answer-views') return `<section class="ini-fce-visual" aria-label="Insight and Technical answer views"><div class="ini-fce-visual-label">Two ways to read an answer</div><div class="ini-fce-view-grid"><div class="ini-fce-view-card"><div class="ini-fce-view-icon" aria-hidden="true">○</div><div class="ini-fce-view-title">Insight</div><div class="ini-fce-view-copy">Plain-language intuition and meaning</div></div><div class="ini-fce-view-card"><div class="ini-fce-view-icon" aria-hidden="true">⌁</div><div class="ini-fce-view-title">Technical</div><div class="ini-fce-view-copy">Mechanisms, detail, and precision</div></div></div></section>`;
+        if (visual === 'knowledge-map') return `<section class="ini-fce-visual" aria-label="A connected knowledge structure"><div class="ini-fce-visual-label">Knowledge Structure</div><div class="ini-fce-map"><div class="ini-fce-map-root">Your topic</div><div class="ini-fce-map-branches"><div class="ini-fce-map-node">Prerequisites</div><div class="ini-fce-map-node">Connected concepts</div><div class="ini-fce-map-node">Guided question map</div></div></div></section>`;
+        return '';
+      };
       const finalMarkup = () => textMarkup(data.messages[data.messages.length - 1], data.messages[data.messages.length - 1].text, false);
       const finalActionsMarkup = () => `<div class="ini-fce-final-actions"><button class="ini-fce-button" type="button" data-action="replay">Replay</button><button class="ini-fce-button" type="button" data-action="go-introduction">Take Me to Introduction</button><button class="ini-fce-button primary" type="button" data-action="go-chat">Start a New Chat</button></div>`;
 
@@ -177,6 +209,7 @@ _FCE_COMPONENT = st.components.v2.component(
         const message = data.messages[progress.index];
         let block = textMarkup(message, message.text.slice(0, progress.characters), progress.characters < message.text.length);
         if (progress.characters >= message.text.length) {
+          if (message.visual) block += visualMarkup(message.visual);
           if (message.topics) block += topicsMarkup();
           if (message.quote) block += quoteMarkup();
         }
@@ -200,7 +233,7 @@ _FCE_COMPONENT = st.components.v2.component(
         const all = state.view === 'all';
         const end = state.view === 'end';
         const content = end ? finalMarkup() : all
-          ? `${data.messages.slice(0, -1).map((message) => `${textMarkup(message, message.text, false)}${message.topics ? topicsMarkup() : ''}${message.quote ? quoteMarkup() : ''}`).join('')}${finalMarkup()}`
+          ? `${data.messages.slice(0, -1).map((message) => `${textMarkup(message, message.text, false)}${message.visual ? visualMarkup(message.visual) : ''}${message.topics ? topicsMarkup() : ''}${message.quote ? quoteMarkup() : ''}`).join('')}${finalMarkup()}`
           : transcriptMarkup();
         const canGoBack = progress && progress.index > 0 && progress.index < data.messages.length - 1;
         const footer = end ? '' : `<footer class="ini-fce-footer">${all ? '<div></div>' : `<div class="ini-fce-controls">${canGoBack ? '<button class="ini-fce-button" type="button" data-action="back">Previous</button>' : ''}<button class="ini-fce-button" type="button" data-action="skip">Skip Introduction</button><button class="ini-fce-button" type="button" data-action="show-all">Show Everything</button></div>`}<button class="ini-fce-button" type="button" data-action="skip-end">Skip to End</button></footer>`;
