@@ -35,12 +35,37 @@ def _stream_text(message: str, *, max_seconds: float = 5.0) -> None:
             yield letter
             time.sleep(delay)
 
-    st.write_stream(letters(), cursor="▍")
+    st.write_stream(letters())
 
 
 def _reveal_pause(item_count: int) -> float:
     """Give each item a visible entrance, capped for large subjects."""
     return min(0.18, 4.0 / max(item_count, 1))
+
+
+def _subject_icon(subject: str) -> str:
+    """Choose a familiar Material Symbol for the subject, with a neutral fallback."""
+    name = subject.casefold()
+    subject_icons = (
+        (("biology", "genetic", "biochemistry", "biotechnology", "anatomy"), "biotech"),
+        (("ecology", "environment", "botany", "zoology"), "eco"),
+        (("chemistry", "chemical"), "science"),
+        (("physics", "mechanics", "thermodynamics"), "waves"),
+        (("mathematics", "math", "algebra", "calculus", "statistics"), "functions"),
+        (("cognitive", "psychology", "neuroscience"), "psychology"),
+        (("computer", "programming", "software", "coding"), "code"),
+        (("machine learning", "artificial intelligence", "data science"), "memory"),
+        (("quantum",), "hub"),
+        (("history", "archaeology"), "history_edu"),
+        (("geography", "geology", "earth science"), "public"),
+        (("economics", "finance", "accounting"), "monitoring"),
+        (("literature", "philosophy"), "auto_stories"),
+        (("language", "linguistics"), "translate"),
+    )
+    for keywords, icon in subject_icons:
+        if any(keyword in name for keyword in keywords):
+            return icon
+    return "menu_book"
 
 
 def _begin(subject: str, visitor_id: str, api_base: str,
@@ -252,9 +277,30 @@ def _render_qc_body(visitor_id: str, api_base: str,
         return
 
     st.caption("New Chat · Subject learning")
-    st.title(state["subject"])
     st.markdown(
         """<style>
+        .st-key-qc_subject_title {
+            width: 100% !important;
+            padding: 12px 20px !important;
+            border: 1px solid rgba(194, 202, 213, 0.14) !important;
+            border-radius: 18px !important;
+            background: linear-gradient(100deg, #ffffff 0%, #ffffff 62%, #fff8f9 82%, #fcecee 100%) !important;
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05) !important;
+        }
+        .st-key-qc_subject_title h3 {
+            margin: 0 !important;
+            color: #1b2430 !important;
+            font-size: clamp(23px, 3vw, 29px) !important;
+            font-weight: 620 !important;
+            letter-spacing: -0.025em !important;
+            line-height: 1.25 !important;
+            overflow-wrap: anywhere;
+        }
+        .st-key-qc_subject_title h3 [role="img"] {
+            color: #e33250;
+            font-size: 1.05em;
+            vertical-align: -0.08em;
+        }
         .st-key-qc_primary_response {
             width: min(1180px, 100%) !important;
             margin: 14px 0 24px !important;
@@ -266,6 +312,28 @@ def _render_qc_body(visitor_id: str, api_base: str,
         }
         .st-key-qc_primary_response > div {
             background: transparent !important;
+        }
+        .st-key-qc_subject_map_card {
+            margin: 18px 0 20px !important;
+            padding: 20px !important;
+            border: 1px solid rgba(194, 202, 213, 0.16) !important;
+            border-radius: 18px !important;
+            background: #ffffff !important;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045) !important;
+        }
+        .st-key-qc_subject_map_card h3 {
+            margin: 0 !important;
+            color: #17211f;
+            font-size: 16.5px !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.01em !important;
+            line-height: 1.4 !important;
+        }
+        .st-key-qc_subject_map_card h3 [role="img"] {
+            color: #e33250;
+            font-size: 21px;
+            margin-right: 5px;
+            vertical-align: -0.16em;
         }
         .st-key-qc_chapter_list,
         .st-key-qc_question_list {
@@ -316,31 +384,38 @@ def _render_qc_body(visitor_id: str, api_base: str,
                 padding: 16px !important;
                 border-radius: 18px !important;
             }
+            .st-key-qc_subject_map_card {
+                padding: 16px !important;
+            }
         }
         </style>""",
         unsafe_allow_html=True,
     )
+    with st.container(border=True, width="stretch", key="qc_subject_title"):
+        st.markdown(f"### :material/{_subject_icon(state['subject'])}: {escape(state['subject'])}")
     outline = state["outline"]
     chapters = outline["chapters"]
     selected_chapter_id = state.get("selected_chapter")
     if not selected_chapter_id:
         reveal_intro = not state.get("intro_revealed", False)
         intro = "Here is your Subject Map. It shows the chapters in the order we'll learn them."
-        if reveal_intro:
-            _stream_text(intro)
-        else:
-            st.write(intro)
-        st.subheader("Subject Map")
-        if reveal_intro:
-            with st.spinner("Forming the Subject Map..."):
-                map_slot = st.empty()
-                map_slot.image(_subject_map_svg(state["subject"], chapters, 0), width="stretch")
-                time.sleep(0.25)
-                for visible in range(1, len(chapters) + 1):
-                    map_slot.image(_subject_map_svg(state["subject"], chapters, visible), width="stretch")
-                    time.sleep(_reveal_pause(len(chapters)))
-        else:
-            st.image(_subject_map_svg(state["subject"], chapters), width="stretch")
+        with st.container(border=True, key="qc_subject_map_card"):
+            st.markdown("### :material/route: Subject Map")
+            st.space(20)
+            if reveal_intro:
+                _stream_text(intro)
+            else:
+                st.write(intro)
+            if reveal_intro:
+                with st.spinner("Forming the Subject Map..."):
+                    map_slot = st.empty()
+                    map_slot.image(_subject_map_svg(state["subject"], chapters, 0), width="stretch")
+                    time.sleep(0.25)
+                    for visible in range(1, len(chapters) + 1):
+                        map_slot.image(_subject_map_svg(state["subject"], chapters, visible), width="stretch")
+                        time.sleep(_reveal_pause(len(chapters)))
+            else:
+                st.image(_subject_map_svg(state["subject"], chapters), width="stretch")
         guidance = "I've broken the chapters into progressive questions, from foundations to advanced ideas. Choose a chapter to begin."
         if reveal_intro:
             _stream_text(guidance)
@@ -466,7 +541,8 @@ def _render_qc_body(visitor_id: str, api_base: str,
 
 
 def render_qc(visitor_id: str, api_base: str,
-              attach_to_chat: Callable[[str, str, str], None] | None = None) -> None:
+              attach_to_chat: Callable[[str, str, str], None] | None,
+              render_user_bubble: Callable[..., None]) -> None:
     """Keep the user's request visible above one primary curriculum response card."""
     if st.session_state.get("qc_clarification"):
         _render_qc_body(visitor_id, api_base, attach_to_chat)
@@ -478,13 +554,17 @@ def render_qc(visitor_id: str, api_base: str,
     )
     if isinstance(state, dict):
         prompt = state.get("request_prompt") or f"Teach me {state['subject']} as a subject"
-        st.markdown(
-            f"""<div style="display:flex;justify-content:flex-end;margin:8px 0 20px;">
-            <div style="max-width:min(72%,680px);padding:12px 16px;border:1px solid #e5e7eb;
-                border-radius:18px;background:#f8f9fb;color:#111827;font-size:14px;
-                line-height:1.5;overflow-wrap:anywhere;">{escape(prompt)}</div></div>""",
-            unsafe_allow_html=True,
+        timestamp = next(
+            (
+                entry.get("ts") or ""
+                for entry in reversed(st.session_state.get("chat_query_log") or [])
+                if isinstance(entry, dict)
+                and entry.get("text") == prompt
+                and entry.get("action") == "interrogate"
+            ),
+            "",
         )
+        render_user_bubble(escape(prompt), timestamp, query_mode="interrogate")
     # The previous run's loading element can linger while Streamlit streams
     # this response. Hide it as soon as the primary card enters the DOM.
     st.markdown(

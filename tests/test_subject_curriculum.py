@@ -1,7 +1,7 @@
 import os
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from api import subject_curriculum as qc
 from streamlit_app import storage_sqlite
@@ -83,6 +83,40 @@ class SubjectIntentTests(unittest.TestCase):
 
 
 class GenerationTests(unittest.TestCase):
+    def test_subject_icons_match_the_field_and_fall_back_gracefully(self):
+        self.assertEqual(qc_ui._subject_icon("Biology"), "biotech")
+        self.assertEqual(qc_ui._subject_icon("Mathematics"), "functions")
+        self.assertEqual(qc_ui._subject_icon("Quantum Computing"), "hub")
+        self.assertEqual(qc_ui._subject_icon("Unfamiliar field"), "menu_book")
+
+    def test_subject_request_uses_normal_chat_bubble_with_saved_date(self):
+        prompt = "Teach me Chemistry as a subject"
+        session = {
+            "qc_active_id": "qc-1",
+            "qc_state": {"subject": "Chemistry", "request_prompt": prompt},
+            "chat_query_log": [
+                {"text": prompt, "action": "interrogate", "ts": "Thu, Sep 17 • 09:30 AM"},
+            ],
+        }
+        render_user_bubble = Mock()
+        with patch.object(qc_ui.st, "session_state", session), \
+             patch.object(qc_ui.st, "markdown"), \
+             patch.object(qc_ui.st, "container"), \
+             patch.object(qc_ui, "_render_qc_body"):
+            qc_ui.render_qc("visitor", "http://api", None, render_user_bubble)
+
+        render_user_bubble.assert_called_once_with(
+            prompt, "Thu, Sep 17 • 09:30 AM", query_mode="interrogate",
+        )
+
+    def test_subject_stream_has_no_trailing_cursor(self):
+        with patch.object(qc_ui.st, "write_stream") as write_stream, \
+             patch.object(qc_ui.time, "sleep"):
+            qc_ui._stream_text("Hello", max_seconds=0)
+            args, kwargs = write_stream.call_args
+            self.assertEqual(kwargs, {})
+            self.assertEqual("".join(args[0]), "Hello")
+
     def test_outline_and_chapter_questions_have_stable_ids_and_no_fixed_count(self):
         outline_data = {
             "chapters": [

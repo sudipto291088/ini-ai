@@ -13299,6 +13299,7 @@ def page_new_chat() -> None:
         qc_ui.render_qc(
             st.session_state.visitor_id, st.session_state.api_base,
             _attach_curriculum_to_new_chat,
+            _render_nc_user_bubble,
         )
         _render_new_chat_bottom_uib()
         return
