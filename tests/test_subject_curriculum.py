@@ -60,13 +60,30 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(questions[-1]["id"], "chapter-1-q17")
 
     def test_generated_map_is_svg_with_the_chapter_structure(self):
-        svg = qc_ui._subject_map_svg("Machine Learning", [
+        chapters = [
             {"title": "Foundations & Data"}, {"title": "Models"},
-        ])
+        ]
+        svg = qc_ui._subject_map_svg("Machine Learning", chapters)
         self.assertIn("<svg", svg)
         self.assertIn("Foundations &amp; Data", svg)
         self.assertIn("Models", svg)
+        self.assertIn("1. Foundations &amp; Data", svg)
+        self.assertIn("2. Models", svg)
         self.assertEqual(svg.count("<line "), 2)
+        first_frame = qc_ui._subject_map_svg("Machine Learning", chapters, 1)
+        self.assertIn("1. Foundations &amp; Data", first_frame)
+        self.assertNotIn("2. Models", first_frame)
+        self.assertEqual(first_frame.count("<line "), 1)
+
+    def test_qc_text_streams_one_character_at_a_time(self):
+        chunks = []
+
+        def capture(stream, **_kwargs):
+            chunks.extend(stream)
+
+        with patch.object(qc_ui.st, "write_stream", side_effect=capture), patch.object(qc_ui.time, "sleep"):
+            qc_ui._stream_text("Learn.")
+        self.assertEqual(chunks, list("Learn."))
 
     def test_chapter_sequence_keeps_valid_questions_when_one_is_duplicate_or_malformed(self):
         outline = {
@@ -144,6 +161,19 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(storage_sqlite.list_curricula("visitor-B"), [])
         storage_sqlite.save_curriculum("visitor-B", "qc-1", {"subject": "Hijacked"})
         self.assertEqual(storage_sqlite.load_curriculum("visitor-A", "qc-1"), state)
+
+    def test_curriculum_can_be_reopened_from_a_new_chat_session(self):
+        state = {"subject": "Computer Networks", "selected_chapter": "chapter-2", "visited_questions": ["chapter-2-q1"]}
+        storage_sqlite.save_curriculum("visitor-A", "qc-1", state)
+        storage_sqlite.save_session(
+            "visitor-A", "chat-1", "Computer Networks", "Sep 16.2026",
+            {"topic": "Computer Networks", "qc_curricula_ids": ["qc-1"], "qc_active_id": "qc-1"},
+        )
+        self.assertEqual(storage_sqlite.list_sessions("visitor-A")[0][0], "chat-1")
+        saved_chat = storage_sqlite.load_session("visitor-A", "chat-1")
+        self.assertEqual(saved_chat["messages"]["qc_active_id"], "qc-1")
+        self.assertEqual(storage_sqlite.load_curriculum("visitor-A", saved_chat["messages"]["qc_active_id"]), state)
+        self.assertIsNone(storage_sqlite.load_session("visitor-B", "chat-1"))
 
 
 if __name__ == "__main__":

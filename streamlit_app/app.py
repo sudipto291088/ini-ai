@@ -4227,6 +4227,7 @@ def _reset_new_chat_state() -> None:
     st.session_state.qc_active_id = None
     st.session_state.qc_state = None
     st.session_state.qc_clarification = None
+    st.session_state.qc_curricula_ids = []
     st.session_state.chat = {"topic": "", "interrogate": None, "illustrate": None}
     st.session_state.chat_intro = ""
     st.session_state.chat_answers = {}
@@ -4266,6 +4267,8 @@ def _reset_new_chat_state() -> None:
 
 def _current_new_chat_payload() -> Dict[str, Any]:
     return {
+        "qc_curricula_ids": list(st.session_state.get("qc_curricula_ids") or []),
+        "qc_active_id": st.session_state.get("qc_active_id"),
         "topic": (st.session_state.chat.get("topic") or "").strip(),
         "interrogate": st.session_state.chat.get("interrogate"),
         "illustrate": st.session_state.chat.get("illustrate"),
@@ -4297,6 +4300,8 @@ def _current_new_chat_payload() -> Dict[str, Any]:
 
 
 def _new_chat_title_from_payload(payload: Dict[str, Any]) -> str:
+    if payload.get("qc_curricula_ids"):
+        return (payload.get("topic") or "Subject learning").strip()
     root_topic = (payload.get("chat_root_topic") or "").strip()
     if root_topic:
         return root_topic
@@ -4327,6 +4332,7 @@ def _persist_new_chat_session(sid: Optional[str] = None) -> str:
     payload = _current_new_chat_payload()
 
     has_meaningful_content = any([
+        payload.get("qc_curricula_ids"),
         payload.get("topic"),
         payload.get("interrogate"),
         payload.get("illustrate"),
@@ -4371,6 +4377,21 @@ def _persist_new_chat_session(sid: Optional[str] = None) -> str:
     return sid
 
 
+def _attach_curriculum_to_new_chat(curriculum_id: str, subject: str) -> None:
+    """Keep QC in the same persisted New Chat history as other responses."""
+    ids = list(st.session_state.get("qc_curricula_ids") or [])
+    if curriculum_id not in ids:
+        ids.append(curriculum_id)
+    st.session_state.qc_curricula_ids = ids
+    st.session_state.qc_active_id = curriculum_id
+    st.session_state.chat["topic"] = subject
+    st.session_state.nc_started = True
+    _record_chat_query(f"Teach me {subject} as a subject", "interrogate")
+    sid = _persist_new_chat_session()
+    if sid:
+        st.query_params["chat_sid"] = sid
+
+
 def _record_chat_query(text: str, action: str) -> None:
     """Persist every user submission verbatim, including repeated casual turns."""
     exact_text = text or ""
@@ -4395,6 +4416,10 @@ def _load_new_chat_session(sid: str) -> bool:
     payload = loaded.get("messages") or {}
     if not isinstance(payload, dict):
         return False
+
+    st.session_state.qc_curricula_ids = list(payload.get("qc_curricula_ids") or [])
+    st.session_state.qc_active_id = payload.get("qc_active_id")
+    st.session_state.qc_state = None
 
     st.session_state.chat_active_id = sid
     st.session_state.chat_loaded_sid = sid
@@ -4570,6 +4595,16 @@ def _render_chat_session_popup() -> None:
     payload = loaded.get("messages") or {}
     if not isinstance(payload, dict):
         st.warning("Session payload is invalid.")
+        return
+
+    if payload.get("qc_curricula_ids"):
+        subject = escape((loaded.get("title") or payload.get("topic") or "Subject learning").strip())
+        st.markdown(
+            f'<a class="ini_plain_link ini_popup_resume" href="{_chat_root_href(sid)}" '
+            f'target="_self">Resume subject learning: {subject}</a>',
+            unsafe_allow_html=True,
+        )
+        st.caption("Your subject map, chapter questions, and answers are saved in this chat.")
         return
 
     data = _collect_chat_popup_data(payload)
@@ -5729,19 +5764,21 @@ if page_param in param_to_page:
 
 
 previous_page_param = st.session_state.get("_last_page_param")
+previous_chat_sid_param = st.session_state.get("_last_chat_sid_param")
 
 if (
     page_param == "chat"
     and not chat_sid
     and not chat_q
     and not popup_chat_sid
-    and previous_page_param != "chat"
+    and (previous_page_param != "chat" or bool(previous_chat_sid_param))
 ):
     _reset_new_chat_state()
     st.session_state.chat_active_id = None
     st.session_state.chat_loaded_sid = None
 
 st.session_state._last_page_param = page_param
+st.session_state._last_chat_sid_param = chat_sid
 
 if popup_chat_sid:
     st.session_state.chat_popup_sid = popup_chat_sid
@@ -7049,7 +7086,10 @@ def page_home():
 
 def page_new_chat() -> None:
     if st.session_state.get("qc_active_id") or st.session_state.get("qc_clarification"):
-        qc_ui.render_qc(st.session_state.visitor_id, st.session_state.api_base)
+        qc_ui.render_qc(
+            st.session_state.visitor_id, st.session_state.api_base,
+            _attach_curriculum_to_new_chat,
+        )
         return
     if "chat_answers" not in st.session_state:
         st.session_state.chat_answers = {}
@@ -12756,7 +12796,7 @@ def page_new_chat() -> None:
         if run:
             if not qc_ui.maybe_start_qc(
                 top_prompt, "interrogate", st.session_state.visitor_id,
-                st.session_state.api_base,
+                st.session_state.api_base, _attach_curriculum_to_new_chat,
             ):
                 _queue_new_chat_request(top_prompt, "interrogate")
 
@@ -13176,7 +13216,7 @@ def page_new_chat() -> None:
         if run:
             if not qc_ui.maybe_start_qc(
                 bottom_prompt, "interrogate", st.session_state.visitor_id,
-                st.session_state.api_base,
+                st.session_state.api_base, _attach_curriculum_to_new_chat,
             ):
                 _queue_new_chat_request(bottom_prompt, "interrogate")
 
@@ -13233,7 +13273,6 @@ def page_new_chat() -> None:
 
     if is_new_chat_landing:
         _render_new_chat_top_uib()
-        qc_ui.render_saved_curricula(st.session_state.visitor_id)
     elif not pending_new_chat_request:
         active_chat_title = (st.session_state.chat_root_topic or "").strip()
         if st.session_state.chat_branch_answers:

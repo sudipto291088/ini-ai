@@ -1,9 +1,10 @@
-"""Separate Subject Map → Question Curriculum experience in New Chat."""
+"""Subject Map → Question Curriculum inside a New Chat session."""
 
 import math
 import secrets
+import time
 from html import escape
-from typing import Any
+from typing import Any, Callable
 
 import requests
 import streamlit as st
@@ -25,23 +26,46 @@ def _post(api_base: str, path: str, payload: dict[str, Any]) -> dict[str, Any]:
     return response.json()
 
 
-def _begin(subject: str, visitor_id: str, api_base: str) -> None:
+def _stream_text(message: str, *, max_seconds: float = 5.0) -> None:
+    """Reveal prose at a readable pace without changing its final Markdown."""
+    delay = min(0.035, max_seconds / max(len(message), 1))
+
+    def letters():
+        for letter in message:
+            yield letter
+            time.sleep(delay)
+
+    st.write_stream(letters(), cursor="▍")
+
+
+def _reveal_pause(item_count: int) -> float:
+    """Give each item a visible entrance, capped for large subjects."""
+    return min(0.18, 4.0 / max(item_count, 1))
+
+
+def _begin(subject: str, visitor_id: str, api_base: str,
+           attach_to_chat: Callable[[str, str], None] | None = None) -> None:
+    _stream_text(f"Sure. Let's study {subject} as a whole subject. I'll begin by mapping its chapters.")
     with st.spinner(f"Mapping {subject} as a subject..."):
         outline = _post(api_base, "/qc/outline", {"topic": subject})
     curriculum_id = f"qc-{secrets.token_urlsafe(12)}"
     state = {
         "version": 1, "subject": subject, "outline": outline,
         "selected_chapter": None, "selected_question": None,
-        "answers": {}, "completed": [],
+        "answers": {}, "completed": [], "visited_questions": [],
+        "intro_revealed": False,
     }
     save_curriculum(visitor_id, curriculum_id, state)
     st.session_state.qc_active_id = curriculum_id
     st.session_state.qc_state = state
     st.session_state.qc_clarification = None
+    if attach_to_chat:
+        attach_to_chat(curriculum_id, subject)
     st.rerun()
 
 
-def maybe_start_qc(prompt: str, action: str, visitor_id: str, api_base: str) -> bool:
+def maybe_start_qc(prompt: str, action: str, visitor_id: str, api_base: str,
+                   attach_to_chat: Callable[[str, str], None] | None = None) -> bool:
     """Return False for all ordinary topics, card clicks, and Illustrate sends."""
     if action != "interrogate":
         return False
@@ -59,17 +83,18 @@ def maybe_start_qc(prompt: str, action: str, visitor_id: str, api_base: str) -> 
                 "question": scope.get("question") or "Which entire subject would you like to study?",
             }
             st.rerun()
-        _begin(scope.get("subject") or candidate, visitor_id, api_base)
+        _begin(scope.get("subject") or candidate, visitor_id, api_base, attach_to_chat)
     except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
         st.error(f"I couldn't start the Question Curriculum: {exc}")
     return True
 
 
-def _subject_map_svg(subject: str, chapters: list[dict[str, Any]]) -> str:
+def _subject_map_svg(subject: str, chapters: list[dict[str, Any]],
+                     visible_count: int | None = None) -> str:
     """Draw the actual generated chapter structure as a radial SVG map."""
     count = len(chapters)
     ring_capacity = 8
-    rings = math.ceil(count / ring_capacity)
+    rings = max(1, math.ceil(count / ring_capacity))
     outer_radius = 290 + (rings - 1) * 215
     size = int(outer_radius * 2 + 240)
     center = size / 2
@@ -80,6 +105,7 @@ def _subject_map_svg(subject: str, chapters: list[dict[str, Any]]) -> str:
         f'<rect width="{size}" height="{size}" rx="28" fill="#ffffff"/>',
     ]
     positions = []
+    visible_count = count if visible_count is None else max(0, min(visible_count, count))
     for index, chapter in enumerate(chapters):
         ring = index // ring_capacity
         ring_items = chapters[ring * ring_capacity:(ring + 1) * ring_capacity]
@@ -88,13 +114,14 @@ def _subject_map_svg(subject: str, chapters: list[dict[str, Any]]) -> str:
         radius = 290 + ring * 215
         x = center + radius * math.cos(angle)
         y = center + radius * math.sin(angle)
-        positions.append((x, y, chapter))
-        parts.append(
-            f'<line x1="{center}" y1="{center}" x2="{x:.1f}" y2="{y:.1f}" '
-            'stroke="#eec7ce" stroke-width="2"/>'
-        )
-    for x, y, chapter in positions:
-        full_title = str(chapter["title"])
+        positions.append((x, y, index + 1, chapter))
+        if index < visible_count:
+            parts.append(
+                f'<line x1="{center}" y1="{center}" x2="{x:.1f}" y2="{y:.1f}" '
+                'stroke="#eec7ce" stroke-width="2"/>'
+            )
+    for x, y, number, chapter in positions[:visible_count]:
+        full_title = f"{number}. {chapter['title']}"
         title = full_title[:48]
         words = title.split()
         lines = []
@@ -150,7 +177,8 @@ def render_saved_curricula(visitor_id: str) -> None:
                 st.rerun()
 
 
-def render_qc(visitor_id: str, api_base: str) -> None:
+def render_qc(visitor_id: str, api_base: str,
+              attach_to_chat: Callable[[str, str], None] | None = None) -> None:
     clarification = st.session_state.get("qc_clarification")
     if clarification:
         st.subheader("What would you like to study as a whole subject?")
@@ -163,7 +191,7 @@ def render_qc(visitor_id: str, api_base: str) -> None:
                 with st.spinner("Checking subject scope..."):
                     scope = _post(api_base, "/qc/assess", {"topic": subject})
                 if scope["decision"] == "subject":
-                    _begin(scope.get("subject") or subject, visitor_id, api_base)
+                    _begin(scope.get("subject") or subject, visitor_id, api_base, attach_to_chat)
                 elif scope["decision"] == "clarify":
                     st.session_state.qc_clarification = {
                         "candidate": scope.get("subject") or subject,
@@ -174,7 +202,7 @@ def render_qc(visitor_id: str, api_base: str) -> None:
                     st.warning("That appears to be a topic within a subject. Name the broader subject, or use ordinary New Chat.")
             except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
                 st.error(f"I couldn't create the curriculum: {exc}")
-        if st.button("Back to New Chat", key="qc_cancel_clarification"):
+        if st.button("Cancel", key="qc_cancel_clarification"):
             st.session_state.qc_clarification = None
             st.rerun()
         return
@@ -188,94 +216,168 @@ def render_qc(visitor_id: str, api_base: str) -> None:
         st.error("This curriculum could not be restored.")
         return
 
-    if st.button("← Back to New Chat", key="qc_back_to_chat"):
-        st.session_state.qc_active_id = None
-        st.session_state.qc_state = None
-        st.rerun()
-    st.caption("SUBJECT-LEVEL QUESTION INTELLIGENCE")
+    st.caption("New Chat · Subject learning")
     st.title(state["subject"])
-    st.subheader("Subject Map")
-    st.caption("See the subject before you question your way through it.")
+    st.markdown(
+        """<style>
+        .st-key-qc_chapter_list button,
+        .st-key-qc_question_list button {
+            justify-content: flex-start;
+            text-align: left;
+            height: auto;
+            min-height: 3.1rem;
+            white-space: normal;
+            padding: 0.8rem 1rem;
+        }
+        .st-key-qc_chapter_list button p,
+        .st-key-qc_question_list button p {
+            text-align: left;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+        </style>""",
+        unsafe_allow_html=True,
+    )
     outline = state["outline"]
     chapters = outline["chapters"]
-    st.image(_subject_map_svg(state["subject"], chapters), width="stretch")
-    st.subheader("Question Curriculum")
-    st.write("Now that you can see the subject as a whole, choose a chapter to follow its ordered questions.")
-
     selected_chapter_id = state.get("selected_chapter")
-    for index, chapter in enumerate(chapters):
-        chapter_id = chapter["id"]
-        questions = chapter.get("questions") or []
-        complete = sum(question["id"] in state["completed"] for question in questions)
-        label = f"Chapter {index + 1} — {chapter['title']}"
-        if questions:
-            label += f" · {complete}/{len(questions)} understood"
-        if st.button(label, key=f"qc_select_{chapter_id}", width="stretch"):
-            state["selected_chapter"] = chapter_id
-            state["selected_question"] = None
-            _save(visitor_id, curriculum_id, state)
-            st.rerun()
-
     if not selected_chapter_id:
+        reveal_intro = not state.get("intro_revealed", False)
+        intro = "Here is your Subject Map. It shows the chapters in the order we'll learn them."
+        if reveal_intro:
+            _stream_text(intro)
+        else:
+            st.write(intro)
+        st.subheader("Subject Map")
+        if reveal_intro:
+            with st.spinner("Forming the Subject Map..."):
+                map_slot = st.empty()
+                map_slot.image(_subject_map_svg(state["subject"], chapters, 0), width="stretch")
+                time.sleep(0.25)
+                for visible in range(1, len(chapters) + 1):
+                    map_slot.image(_subject_map_svg(state["subject"], chapters, visible), width="stretch")
+                    time.sleep(_reveal_pause(len(chapters)))
+        else:
+            st.image(_subject_map_svg(state["subject"], chapters), width="stretch")
+        guidance = "I've broken the chapters into progressive questions, from foundations to advanced ideas. Choose a chapter to begin."
+        if reveal_intro:
+            _stream_text(guidance)
+        else:
+            st.write(guidance)
+        with st.container(border=True, key="qc_chapter_list"):
+            for index, chapter in enumerate(chapters):
+                chapter_id = chapter["id"]
+                questions = chapter.get("questions") or []
+                complete = sum(question["id"] in state["completed"] for question in questions)
+                label = f"{index + 1}. {chapter['title']}"
+                if questions:
+                    label += f" · {complete}/{len(questions)} understood"
+                if st.button(label, key=f"qc_select_{chapter_id}", width="stretch"):
+                    state["selected_chapter"] = chapter_id
+                    state["selected_question"] = None
+                    _save(visitor_id, curriculum_id, state)
+                    st.rerun()
+                if reveal_intro:
+                    time.sleep(_reveal_pause(len(chapters)))
+        if reveal_intro:
+            state["intro_revealed"] = True
+            _save(visitor_id, curriculum_id, state)
         return
     chapter = next((item for item in chapters if item["id"] == selected_chapter_id), None)
     if not chapter:
         return
-    st.subheader(chapter["title"])
+    chapter_index = chapters.index(chapter)
+    if st.button("← Subject Map", key="qc_subject_map"):
+        state["selected_chapter"] = None
+        state["selected_question"] = None
+        _save(visitor_id, curriculum_id, state)
+        st.rerun()
+    st.subheader(f"Chapter {chapter_index + 1} — {chapter['title']}")
     if not chapter.get("questions"):
-        st.caption("The questions for this chapter are prepared when you open it, then saved for later visits.")
-        if st.button("Prepare this chapter's questions", key="qc_prepare_chapter"):
-            try:
-                with st.spinner("Building a progressive question sequence..."):
-                    payload = _post(api_base, "/qc/chapter", {"outline": outline, "chapter_id": selected_chapter_id})
-                chapter["questions"] = payload["questions"]
-                _save(visitor_id, curriculum_id, state)
-                st.rerun()
-            except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
-                st.error(f"I couldn't prepare this chapter: {exc}")
-        return
+        try:
+            with st.spinner("Forming this chapter's questions..."):
+                payload = _post(api_base, "/qc/chapter", {"outline": outline, "chapter_id": selected_chapter_id})
+            chapter["questions"] = payload["questions"]
+            chapter["questions_revealed"] = False
+            _save(visitor_id, curriculum_id, state)
+        except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
+            st.error(f"I couldn't form this chapter's questions: {exc}")
+            return
 
     questions = chapter["questions"]
-    for index, question in enumerate(questions):
-        marker = "✓ " if question["id"] in state["completed"] else ""
-        if st.button(f"{marker}{index + 1}. {question['text']}", key=f"qc_question_{question['id']}", width="stretch"):
-            state["selected_question"] = question["id"]
-            _save(visitor_id, curriculum_id, state)
-            st.rerun()
-
     selected_question_id = state.get("selected_question")
     question_index = next((index for index, item in enumerate(questions) if item["id"] == selected_question_id), None)
     if question_index is None:
+        reveal_questions = not chapter.get("questions_revealed", False)
+        guidance = "Let's work through this chapter from its foundations to its more advanced questions."
+        if reveal_questions:
+            _stream_text(guidance)
+        else:
+            st.write(guidance)
+        with st.container(border=True, key="qc_question_list"):
+            for index, question in enumerate(questions):
+                marker = "✓ " if question["id"] in state["completed"] else ""
+                if st.button(f"{marker}{index + 1}. {question['text']}", key=f"qc_question_{question['id']}", width="stretch"):
+                    state["selected_question"] = question["id"]
+                    visited = state.setdefault("visited_questions", [])
+                    if question["id"] not in visited:
+                        visited.append(question["id"])
+                    _save(visitor_id, curriculum_id, state)
+                    st.rerun()
+                if reveal_questions:
+                    time.sleep(_reveal_pause(len(questions)))
+        if reveal_questions:
+            chapter["questions_revealed"] = True
+            _save(visitor_id, curriculum_id, state)
         return
     question = questions[question_index]
-    st.caption(f"{state['subject']} → {chapter['title']} → Question {question_index + 1} of {len(questions)}")
-    st.markdown(f"### {question['text']}")
-    if question["id"] not in state["answers"]:
-        try:
-            with st.spinner("Teaching this question..."):
-                result = _post(api_base, "/qc/answer", {
-                    "subject": state["subject"], "chapter": chapter,
-                    "questions": questions, "index": question_index,
-                })
-            state["answers"][question["id"]] = result["answer"]
-            _save(visitor_id, curriculum_id, state)
-        except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
-            st.error(f"I couldn't answer this question: {exc}")
-            return
-    st.markdown(state["answers"][question["id"]])
-    if question["id"] not in state["completed"]:
-        if st.button("Mark understood", key="qc_mark_understood"):
-            state["completed"].append(question["id"])
-            _save(visitor_id, curriculum_id, state)
-            st.rerun()
+    if st.button("← Chapter questions", key="qc_back_to_questions"):
+        state["selected_question"] = None
+        _save(visitor_id, curriculum_id, state)
+        st.rerun()
+    visited = state.setdefault("visited_questions", [])
+    if question["id"] not in visited:
+        visited.append(question["id"])
+        _save(visitor_id, curriculum_id, state)
+    st.caption(f"Question {question_index + 1} of {len(questions)}")
+    with st.container(border=True):
+        st.markdown(f"### {question['text']}")
+        if question["id"] not in state["answers"]:
+            try:
+                with st.spinner("Forming your answer..."):
+                    result = _post(api_base, "/qc/answer", {
+                        "subject": state["subject"], "chapter": chapter,
+                        "questions": questions, "index": question_index,
+                    })
+                state["answers"][question["id"]] = result["answer"]
+                _save(visitor_id, curriculum_id, state)
+                _stream_text(result["answer"], max_seconds=20.0)
+            except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
+                st.error(f"I couldn't answer this question: {exc}")
+                return
+        else:
+            st.markdown(state["answers"][question["id"]])
+    if question["id"] not in state["completed"] and st.button("Mark understood", key="qc_mark_understood"):
+        state["completed"].append(question["id"])
+        _save(visitor_id, curriculum_id, state)
+        st.rerun()
     previous_col, next_col = st.columns(2)
     with previous_col:
         if question_index > 0 and st.button("← Previous question", key="qc_previous"):
             state["selected_question"] = questions[question_index - 1]["id"]
+            if questions[question_index - 1]["id"] not in visited:
+                visited.append(questions[question_index - 1]["id"])
             _save(visitor_id, curriculum_id, state)
             st.rerun()
     with next_col:
         if question_index + 1 < len(questions) and st.button("Next question →", key="qc_next"):
             state["selected_question"] = questions[question_index + 1]["id"]
+            if questions[question_index + 1]["id"] not in visited:
+                visited.append(questions[question_index + 1]["id"])
+            _save(visitor_id, curriculum_id, state)
+            st.rerun()
+        elif question_index + 1 == len(questions) and chapter_index + 1 < len(chapters) and st.button("Next chapter →", key="qc_next_chapter"):
+            state["selected_chapter"] = chapters[chapter_index + 1]["id"]
+            state["selected_question"] = None
             _save(visitor_id, curriculum_id, state)
             st.rerun()
