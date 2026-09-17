@@ -533,7 +533,13 @@ def generate_dynamic_answer_result(
     doaj_prompt_context = ""
     europe_pmc_context: Dict[str, Any] = {}
     europe_pmc_prompt_context = ""
-    if not (isinstance(meta, dict) and str(meta.get("mode") or "").lower() == "warmup"):
+    # QC's scope check, outline, chapter sequence, and lesson are generated from
+    # their own curriculum context. Generic topic retrieval adds latency and can
+    # distract from the requested structured sequence; ordinary IA is unchanged.
+    retrieval_free_modes = {
+        "warmup", "qc_subject_scope", "qc_outline", "qc_chapter_questions", "qc_answer",
+    }
+    if not (isinstance(meta, dict) and str(meta.get("mode") or "").lower() in retrieval_free_modes):
         # Independent public lookups run together so additional sources do not
         # multiply the user's retrieval wait.
         with ThreadPoolExecutor(max_workers=9) as executor:
@@ -609,6 +615,10 @@ def generate_dynamic_answer_result(
     arch = (archetype or "").upper().strip()
 
     answer_token_limit = INI_LLM_MAX_TOKENS
+    if expects_json and isinstance(meta, dict) and str(meta.get("mode") or "").lower() in {
+        "qc_outline", "qc_chapter_questions",
+    }:
+        answer_token_limit = max(answer_token_limit, 6000)
 
     # IMPORTANT:
     # Never aggressively cap JSON generation.
@@ -632,6 +642,9 @@ def generate_dynamic_answer_result(
 
         elif arch == "CURRENT":
             answer_token_limit = 220
+
+        if isinstance(meta, dict) and str(meta.get("mode") or "").lower() == "qc_answer":
+            answer_token_limit = max(answer_token_limit, 3000)
 
         # The New Chat introduction now carries the complete structured learning
         # response (profile, explanation, loop, paths, map context, and journey).

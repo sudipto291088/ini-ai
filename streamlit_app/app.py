@@ -23,6 +23,7 @@ import requests
 import streamlit as st
 import streamlit.components.v1 as components
 import streamlit_app.learning_flow as learning_flow
+import streamlit_app.qc_ui as qc_ui
 
 # Streamlit Cloud can rerun this entry point in a process that still has an
 # older helper module cached. Reload before binding newly added helpers so a
@@ -4223,6 +4224,9 @@ def _empty_new_chat_state() -> Dict[str, Any]:
 
 
 def _reset_new_chat_state() -> None:
+    st.session_state.qc_active_id = None
+    st.session_state.qc_state = None
+    st.session_state.qc_clarification = None
     st.session_state.chat = {"topic": "", "interrogate": None, "illustrate": None}
     st.session_state.chat_intro = ""
     st.session_state.chat_answers = {}
@@ -7044,6 +7048,9 @@ def page_home():
         )
 
 def page_new_chat() -> None:
+    if st.session_state.get("qc_active_id") or st.session_state.get("qc_clarification"):
+        qc_ui.render_qc(st.session_state.visitor_id, st.session_state.api_base)
+        return
     if "chat_answers" not in st.session_state:
         st.session_state.chat_answers = {}
     if "chat_open_questions" not in st.session_state:
@@ -12747,10 +12754,11 @@ def page_new_chat() -> None:
             _queue_new_chat_request(explore_topic, "interrogate")
 
         if run:
-            _queue_new_chat_request(
-                top_prompt,
-                "interrogate",
-            )
+            if not qc_ui.maybe_start_qc(
+                top_prompt, "interrogate", st.session_state.visitor_id,
+                st.session_state.api_base,
+            ):
+                _queue_new_chat_request(top_prompt, "interrogate")
 
 
     def _render_new_chat_bottom_uib() -> None:
@@ -13166,10 +13174,11 @@ def page_new_chat() -> None:
             )
 
         if run:
-            _queue_new_chat_request(
-                bottom_prompt,
-                "interrogate",
-            )
+            if not qc_ui.maybe_start_qc(
+                bottom_prompt, "interrogate", st.session_state.visitor_id,
+                st.session_state.api_base,
+            ):
+                _queue_new_chat_request(bottom_prompt, "interrogate")
 
     # Auto-run FUQ opened in a new tab for New Chat
     if chat_q and st.session_state.chat_seed_done != chat_q:
@@ -13224,6 +13233,7 @@ def page_new_chat() -> None:
 
     if is_new_chat_landing:
         _render_new_chat_top_uib()
+        qc_ui.render_saved_curricula(st.session_state.visitor_id)
     elif not pending_new_chat_request:
         active_chat_title = (st.session_state.chat_root_topic or "").strip()
         if st.session_state.chat_branch_answers:

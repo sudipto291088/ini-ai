@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import Dict, List, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from api.interrogate import interrogate
@@ -10,6 +10,12 @@ from api.resume import resume as resume_logic
 from api.llm_answers import llm_enabled, generate_dynamic_answer
 from api.study_ai import study_ai
 from api.intent_layer import detect_intent
+from api.subject_curriculum import (
+    assess_subject,
+    generate_subject_outline,
+    generate_chapter_questions,
+    answer_curriculum_question,
+)
 from api.wikidata_knowledge import wikidata_enabled
 from api.wikipedia_knowledge import wikipedia_enabled
 from api.wikibooks_knowledge import wikibooks_enabled
@@ -17,6 +23,18 @@ from api.wikibooks_knowledge import wikibooks_enabled
 
 class TopicIn(BaseModel):
     topic: str
+
+
+class QCChapterIn(BaseModel):
+    outline: Dict
+    chapter_id: str
+
+
+class QCAnswerIn(BaseModel):
+    subject: str
+    chapter: Dict
+    questions: List[Dict[str, str]]
+    index: int = Field(..., ge=0)
 
 
 class StudyAIIn(BaseModel):
@@ -99,6 +117,32 @@ def root():
 def interrogate_route(payload: TopicIn):
     topic = (payload.topic or "").strip()
     return interrogate(topic)
+
+
+@app.post("/qc/assess")
+def qc_assess_route(payload: TopicIn):
+    return assess_subject(payload.topic)
+
+
+@app.post("/qc/outline")
+def qc_outline_route(payload: TopicIn):
+    return generate_subject_outline(payload.topic)
+
+
+@app.post("/qc/chapter")
+def qc_chapter_route(payload: QCChapterIn):
+    try:
+        return {"questions": generate_chapter_questions(payload.outline, payload.chapter_id)}
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/qc/answer")
+def qc_answer_route(payload: QCAnswerIn):
+    try:
+        return {"answer": answer_curriculum_question(payload.subject, payload.chapter, payload.questions, payload.index)}
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 

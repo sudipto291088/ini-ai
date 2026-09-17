@@ -51,7 +51,60 @@ def init_db() -> None:
             ON learning_sessions (visitor_id, updated_at DESC)
             """
         )
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS question_curricula (
+                curriculum_id TEXT PRIMARY KEY,
+                visitor_id TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                curriculum_json TEXT NOT NULL
+            )
+            """
+        )
+        c.execute(
+            """CREATE INDEX IF NOT EXISTS idx_qc_visitor_updated
+               ON question_curricula (visitor_id, updated_at DESC)"""
+        )
         c.commit()
+
+
+def save_curriculum(visitor_id: str, curriculum_id: str, state: Dict[str, Any]) -> None:
+    with _conn() as c:
+        c.execute(
+            """INSERT INTO question_curricula
+               (curriculum_id, visitor_id, subject, updated_at, curriculum_json)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(curriculum_id) DO UPDATE SET
+                 subject=excluded.subject,
+                 updated_at=excluded.updated_at,
+                 curriculum_json=excluded.curriculum_json
+               WHERE question_curricula.visitor_id=excluded.visitor_id""",
+            (
+                curriculum_id, visitor_id, str(state.get("subject") or ""),
+                datetime.now().isoformat(timespec="seconds"),
+                json.dumps(state, ensure_ascii=False),
+            ),
+        )
+        c.commit()
+
+
+def load_curriculum(visitor_id: str, curriculum_id: str) -> Optional[Dict[str, Any]]:
+    with _conn() as c:
+        row = c.execute(
+            "SELECT curriculum_json FROM question_curricula WHERE visitor_id=? AND curriculum_id=?",
+            (visitor_id, curriculum_id),
+        ).fetchone()
+    return json.loads(row[0]) if row else None
+
+
+def list_curricula(visitor_id: str, limit: int = 20) -> List[Tuple[str, str, str]]:
+    with _conn() as c:
+        return c.execute(
+            """SELECT curriculum_id, subject, updated_at FROM question_curricula
+               WHERE visitor_id=? ORDER BY updated_at DESC LIMIT ?""",
+            (visitor_id, limit),
+        ).fetchall()
 
 
 def save_session(
