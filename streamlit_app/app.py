@@ -4227,6 +4227,7 @@ def _reset_new_chat_state() -> None:
     st.session_state.qc_active_id = None
     st.session_state.qc_state = None
     st.session_state.qc_clarification = None
+    st.session_state.qc_pending_request = None
     st.session_state.qc_curricula_ids = []
     st.session_state.chat = {"topic": "", "interrogate": None, "illustrate": None}
     st.session_state.chat_intro = ""
@@ -4377,7 +4378,7 @@ def _persist_new_chat_session(sid: Optional[str] = None) -> str:
     return sid
 
 
-def _attach_curriculum_to_new_chat(curriculum_id: str, subject: str) -> None:
+def _attach_curriculum_to_new_chat(curriculum_id: str, subject: str, prompt: str) -> None:
     """Keep QC in the same persisted New Chat history as other responses."""
     ids = list(st.session_state.get("qc_curricula_ids") or [])
     if curriculum_id not in ids:
@@ -4386,7 +4387,7 @@ def _attach_curriculum_to_new_chat(curriculum_id: str, subject: str) -> None:
     st.session_state.qc_active_id = curriculum_id
     st.session_state.chat["topic"] = subject
     st.session_state.nc_started = True
-    _record_chat_query(f"Teach me {subject} as a subject", "interrogate")
+    _record_chat_query(prompt, "interrogate")
     sid = _persist_new_chat_session()
     if sid:
         st.query_params["chat_sid"] = sid
@@ -7085,12 +7086,6 @@ def page_home():
         )
 
 def page_new_chat() -> None:
-    if st.session_state.get("qc_active_id") or st.session_state.get("qc_clarification"):
-        qc_ui.render_qc(
-            st.session_state.visitor_id, st.session_state.api_base,
-            _attach_curriculum_to_new_chat,
-        )
-        return
     if "chat_answers" not in st.session_state:
         st.session_state.chat_answers = {}
     if "chat_open_questions" not in st.session_state:
@@ -10739,8 +10734,15 @@ def page_new_chat() -> None:
             not prompt
             or st.session_state._nc_pending_request
             or st.session_state._nc_generating
+            or st.session_state.get("qc_pending_request")
         ):
             return False
+
+        # The active subject view shares this composer with ordinary New Chat.
+        # Keep its curriculum in history while allowing the next message to run.
+        if st.session_state.get("qc_active_id"):
+            st.session_state.qc_active_id = None
+            st.session_state.qc_state = None
 
         # Product facts are deterministic local responses. Sending them
         # through the asynchronous-looking generation lifecycle only creates
@@ -10816,15 +10818,15 @@ def page_new_chat() -> None:
         generation_icon_data = base64.b64encode(
             generation_icon_path.read_bytes()
         ).decode("ascii")
-        status_copy = "Creating illustration..." if action == "illustrate" else (
-            "Thinking..."
-            if status_mode == "thinking"
-            else "Forming your answer..."
-            if status_mode == "forming"
-            else "Generating Question Map..."
-            if status_mode == "question_map"
-            else "Generating response... may take some time."
-        )
+        if action == "illustrate":
+            status_copy = "Creating illustration..."
+        else:
+            status_copy = {
+                "subject_learning": "Building your subject learning path...",
+                "thinking": "Thinking...",
+                "forming": "Forming your answer...",
+                "question_map": "Generating Question Map...",
+            }.get(status_mode, "Generating response... may take some time.")
         forming_lines = "" if status_mode != "forming" else """
               <div class="nc-answer-forming-lines" aria-label="Answer is forming">
                 <span class="nc-answer-forming-line"></span>
@@ -13256,6 +13258,50 @@ def page_new_chat() -> None:
             st.rerun()
         except Exception as e:
             st.error(f"Error auto-running chat FUQ: {e}")
+
+    pending_qc = st.session_state.get("qc_pending_request")
+    if isinstance(pending_qc, dict):
+        st.markdown(
+            """
+            <style>
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_ai),
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_quantum),
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_cognitive),
+            div[data-testid="stHorizontalBlock"]:has(.st-key-nc_explore_kubernetes),
+            [data-testid="stElementContainer"]:has(.nc-explore-label) {
+                display: none !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown('<div class="nc-pending-screen" aria-hidden="true"></div>', unsafe_allow_html=True)
+        _render_nc_user_bubble(
+            pending_qc["prompt"], now_label(), extra_class="nc-pending-query",
+            query_mode="interrogate",
+        )
+        _render_new_chat_generation_placeholder(
+            "interrogate",
+            "subject_learning" if pending_qc.get("phase") == "building" else "thinking",
+        )
+        _render_new_chat_bottom_uib()
+        if not qc_ui.process_pending_qc(
+            st.session_state.visitor_id,
+            st.session_state.api_base,
+            _attach_curriculum_to_new_chat,
+        ):
+            _queue_new_chat_request(pending_qc["prompt"], "interrogate")
+        return
+
+    if st.session_state.get("qc_active_id") or st.session_state.get("qc_clarification"):
+        if st.session_state.get("qc_active_id"):
+            _render_nc_scroll_controls()
+        qc_ui.render_qc(
+            st.session_state.visitor_id, st.session_state.api_base,
+            _attach_curriculum_to_new_chat,
+        )
+        _render_new_chat_bottom_uib()
+        return
 
     has_new_chat_content = any([
         st.session_state.chat.get("interrogate"),

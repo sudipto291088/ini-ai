@@ -44,13 +44,13 @@ def _reveal_pause(item_count: int) -> float:
 
 
 def _begin(subject: str, visitor_id: str, api_base: str,
-           attach_to_chat: Callable[[str, str], None] | None = None) -> None:
-    _stream_text(f"Sure. Let's study {subject} as a whole subject. I'll begin by mapping its chapters.")
-    with st.spinner(f"Mapping {subject} as a subject..."):
-        outline = _post(api_base, "/qc/outline", {"topic": subject})
+           attach_to_chat: Callable[[str, str, str], None] | None = None,
+           request_prompt: str = "") -> None:
+    outline = _post(api_base, "/qc/outline", {"topic": subject})
     curriculum_id = f"qc-{secrets.token_urlsafe(12)}"
     state = {
         "version": 1, "subject": subject, "outline": outline,
+        "request_prompt": request_prompt.strip() or f"Teach me {subject} as a subject",
         "selected_chapter": None, "selected_question": None,
         "answers": {}, "completed": [], "visited_questions": [],
         "intro_revealed": False,
@@ -59,32 +59,63 @@ def _begin(subject: str, visitor_id: str, api_base: str,
     st.session_state.qc_active_id = curriculum_id
     st.session_state.qc_state = state
     st.session_state.qc_clarification = None
+    st.session_state.qc_pending_request = None
     if attach_to_chat:
-        attach_to_chat(curriculum_id, subject)
+        attach_to_chat(curriculum_id, subject, state["request_prompt"])
     st.rerun()
 
 
 def maybe_start_qc(prompt: str, action: str, visitor_id: str, api_base: str,
-                   attach_to_chat: Callable[[str, str], None] | None = None) -> bool:
-    """Return False for all ordinary topics, card clicks, and Illustrate sends."""
+                   attach_to_chat: Callable[[str, str, str], None] | None = None) -> bool:
+    """Queue explicit subject learning before any slow API work or rendering."""
+    if st.session_state.get("qc_pending_request"):
+        return True
     if action != "interrogate":
         return False
     candidate = learning_subject_candidate(prompt)
     if not candidate:
         return False
+    st.session_state.qc_pending_request = {
+        "prompt": prompt, "candidate": candidate, "phase": "thinking",
+    }
+    st.session_state.nc_started = True
+    st.rerun()
+    return True
+
+
+def process_pending_qc(visitor_id: str, api_base: str,
+                       attach_to_chat: Callable[[str, str], None] | None = None) -> bool:
+    """Process an already-visible active-state request; False routes a narrow topic to chat."""
+    pending = st.session_state.get("qc_pending_request")
+    if not isinstance(pending, dict):
+        return True
+    candidate = pending["candidate"]
     try:
-        with st.spinner("Checking whether this is an entire subject..."):
-            scope = _post(api_base, "/qc/assess", {"topic": candidate})
+        if pending.get("phase") == "building":
+            _begin(
+                pending["subject"], visitor_id, api_base, attach_to_chat,
+                request_prompt=pending["prompt"],
+            )
+            return True
+        scope = _post(api_base, "/qc/assess", {"topic": candidate})
         if scope["decision"] == "topic":
+            st.session_state.qc_pending_request = None
             return False
         if scope["decision"] == "clarify":
+            st.session_state.qc_pending_request = None
             st.session_state.qc_clarification = {
                 "candidate": scope.get("subject") or candidate,
                 "question": scope.get("question") or "Which entire subject would you like to study?",
+                "request_prompt": pending["prompt"],
             }
             st.rerun()
-        _begin(scope.get("subject") or candidate, visitor_id, api_base, attach_to_chat)
+            return True
+        pending["subject"] = scope.get("subject") or candidate
+        pending["phase"] = "building"
+        st.session_state.qc_pending_request = pending
+        st.rerun()
     except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
+        st.session_state.qc_pending_request = None
         st.error(f"I couldn't start the Question Curriculum: {exc}")
     return True
 
@@ -177,8 +208,8 @@ def render_saved_curricula(visitor_id: str) -> None:
                 st.rerun()
 
 
-def render_qc(visitor_id: str, api_base: str,
-              attach_to_chat: Callable[[str, str], None] | None = None) -> None:
+def _render_qc_body(visitor_id: str, api_base: str,
+                    attach_to_chat: Callable[[str, str, str], None] | None = None) -> None:
     clarification = st.session_state.get("qc_clarification")
     if clarification:
         st.subheader("What would you like to study as a whole subject?")
@@ -191,7 +222,11 @@ def render_qc(visitor_id: str, api_base: str,
                 with st.spinner("Checking subject scope..."):
                     scope = _post(api_base, "/qc/assess", {"topic": subject})
                 if scope["decision"] == "subject":
-                    _begin(scope.get("subject") or subject, visitor_id, api_base, attach_to_chat)
+                    with st.spinner("Building your subject learning path..."):
+                        _begin(
+                            scope.get("subject") or subject, visitor_id, api_base,
+                            attach_to_chat, request_prompt=clarification.get("request_prompt") or "",
+                        )
                 elif scope["decision"] == "clarify":
                     st.session_state.qc_clarification = {
                         "candidate": scope.get("subject") or subject,
@@ -220,20 +255,67 @@ def render_qc(visitor_id: str, api_base: str,
     st.title(state["subject"])
     st.markdown(
         """<style>
-        .st-key-qc_chapter_list button,
-        .st-key-qc_question_list button {
+        .st-key-qc_primary_response {
+            width: min(1180px, 100%) !important;
+            margin: 14px 0 24px !important;
+            padding: 22px !important;
+            border: 1px solid rgba(194, 202, 213, 0.13) !important;
+            border-radius: 22px !important;
+            background: linear-gradient(145deg, #ffffff 0%, #fbfcfe 100%) !important;
+            box-shadow: 0 14px 34px rgba(15, 23, 42, 0.045) !important;
+        }
+        .st-key-qc_primary_response > div {
+            background: transparent !important;
+        }
+        .st-key-qc_chapter_list,
+        .st-key-qc_question_list {
+            padding: 0 !important;
+            border: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+        .st-key-qc_chapter_list [data-testid="stButton"],
+        .st-key-qc_question_list [data-testid="stButton"] {
+            width: fit-content !important;
+            max-width: 100% !important;
+        }
+        .st-key-qc_chapter_list div.stButton > button,
+        .st-key-qc_question_list div.stButton > button {
             justify-content: flex-start;
+            align-items: flex-start;
             text-align: left;
             height: auto;
-            min-height: 3.1rem;
+            min-height: 0;
+            width: fit-content !important;
+            max-width: 100% !important;
             white-space: normal;
-            padding: 0.8rem 1rem;
+            padding: 0.78rem 1.05rem;
+            border: 1px solid rgba(194, 202, 213, 0.16) !important;
+            border-radius: 16px !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.045) !important;
         }
-        .st-key-qc_chapter_list button p,
-        .st-key-qc_question_list button p {
+        .st-key-qc_chapter_list div.stButton > button:hover,
+        .st-key-qc_question_list div.stButton > button:hover {
+            border-color: rgba(227, 50, 80, 0.22) !important;
+            background: #fffafb !important;
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.065) !important;
+        }
+        .st-key-qc_chapter_list div.stButton > button p,
+        .st-key-qc_question_list div.stButton > button p {
             text-align: left;
             white-space: normal;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
+            word-break: normal;
+            line-height: 1.42;
+            font-weight: 450;
+        }
+        @media (max-width: 700px) {
+            .st-key-qc_primary_response {
+                width: 100% !important;
+                padding: 16px !important;
+                border-radius: 18px !important;
+            }
         }
         </style>""",
         unsafe_allow_html=True,
@@ -264,7 +346,7 @@ def render_qc(visitor_id: str, api_base: str,
             _stream_text(guidance)
         else:
             st.write(guidance)
-        with st.container(border=True, key="qc_chapter_list"):
+        with st.container(border=False, key="qc_chapter_list"):
             for index, chapter in enumerate(chapters):
                 chapter_id = chapter["id"]
                 questions = chapter.get("questions") or []
@@ -272,7 +354,7 @@ def render_qc(visitor_id: str, api_base: str,
                 label = f"{index + 1}. {chapter['title']}"
                 if questions:
                     label += f" · {complete}/{len(questions)} understood"
-                if st.button(label, key=f"qc_select_{chapter_id}", width="stretch"):
+                if st.button(label, key=f"qc_select_{chapter_id}", width="content"):
                     state["selected_chapter"] = chapter_id
                     state["selected_question"] = None
                     _save(visitor_id, curriculum_id, state)
@@ -314,10 +396,10 @@ def render_qc(visitor_id: str, api_base: str,
             _stream_text(guidance)
         else:
             st.write(guidance)
-        with st.container(border=True, key="qc_question_list"):
+        with st.container(border=False, key="qc_question_list"):
             for index, question in enumerate(questions):
                 marker = "✓ " if question["id"] in state["completed"] else ""
-                if st.button(f"{marker}{index + 1}. {question['text']}", key=f"qc_question_{question['id']}", width="stretch"):
+                if st.button(f"{marker}{index + 1}. {question['text']}", key=f"qc_question_{question['id']}", width="content"):
                     state["selected_question"] = question["id"]
                     visited = state.setdefault("visited_questions", [])
                     if question["id"] not in visited:
@@ -381,3 +463,27 @@ def render_qc(visitor_id: str, api_base: str,
             state["selected_question"] = None
             _save(visitor_id, curriculum_id, state)
             st.rerun()
+
+
+def render_qc(visitor_id: str, api_base: str,
+              attach_to_chat: Callable[[str, str, str], None] | None = None) -> None:
+    """Keep the user's request visible above one primary curriculum response card."""
+    if st.session_state.get("qc_clarification"):
+        _render_qc_body(visitor_id, api_base, attach_to_chat)
+        return
+
+    curriculum_id = st.session_state.get("qc_active_id")
+    state = st.session_state.get("qc_state") or (
+        load_curriculum(visitor_id, curriculum_id) if curriculum_id else None
+    )
+    if isinstance(state, dict):
+        prompt = state.get("request_prompt") or f"Teach me {state['subject']} as a subject"
+        st.markdown(
+            f"""<div style="display:flex;justify-content:flex-end;margin:8px 0 20px;">
+            <div style="max-width:min(72%,680px);padding:12px 16px;border:1px solid #e5e7eb;
+                border-radius:18px;background:#f8f9fb;color:#111827;font-size:14px;
+                line-height:1.5;overflow-wrap:anywhere;">{escape(prompt)}</div></div>""",
+            unsafe_allow_html=True,
+        )
+    with st.container(border=True, key="qc_primary_response"):
+        _render_qc_body(visitor_id, api_base, attach_to_chat)

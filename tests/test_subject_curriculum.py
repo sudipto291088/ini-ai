@@ -34,11 +34,52 @@ class SubjectIntentTests(unittest.TestCase):
                 self.assertEqual(qc.learning_subject_candidate(prompt), subject)
 
     def test_narrow_topic_is_sent_back_to_normal_chat(self):
-        with patch.object(qc_ui, "_post", return_value={"decision": "topic"}):
-            self.assertFalse(qc_ui.maybe_start_qc("I want to learn gradient descent", "interrogate", "v", "http://api"))
+        class Session(dict):
+            def __getattr__(self, name):
+                return self[name]
+
+            def __setattr__(self, name, value):
+                self[name] = value
+
+        session = Session()
+        with patch.object(qc_ui.st, "session_state", session), \
+             patch.object(qc_ui.st, "rerun"), \
+             patch.object(qc_ui, "_post", return_value={"decision": "topic"}) as post:
+            self.assertTrue(qc_ui.maybe_start_qc("I want to learn gradient descent", "interrogate", "v", "http://api"))
+            post.assert_not_called()  # The landing page is exited before assessment begins.
+            self.assertEqual(session.qc_pending_request["candidate"], "gradient descent")
+            self.assertEqual(session.qc_pending_request["phase"], "thinking")
+            self.assertTrue(session.nc_started)
+            self.assertFalse(qc_ui.process_pending_qc("v", "http://api"))
+            self.assertIsNone(session.qc_pending_request)
         with patch.object(qc_ui, "_post", side_effect=AssertionError("QC must not run")):
             self.assertFalse(qc_ui.maybe_start_qc("Machine learning", "interrogate", "v", "http://api"))
             self.assertFalse(qc_ui.maybe_start_qc("Teach me Data Science", "illustrate", "v", "http://api"))
+
+    def test_subject_assessment_runs_only_after_request_is_queued(self):
+        class Session(dict):
+            def __getattr__(self, name):
+                return self[name]
+
+            def __setattr__(self, name, value):
+                self[name] = value
+
+        session = Session()
+        with patch.object(qc_ui.st, "session_state", session), \
+             patch.object(qc_ui.st, "rerun"), \
+             patch.object(qc_ui, "_post", return_value={"decision": "subject", "subject": "Data Science"}) as post, \
+             patch.object(qc_ui, "_begin") as begin:
+            qc_ui.maybe_start_qc("Teach me Data Science", "interrogate", "v", "http://api")
+            post.assert_not_called()
+            self.assertTrue(qc_ui.process_pending_qc("v", "http://api"))
+            post.assert_called_once_with("http://api", "/qc/assess", {"topic": "Data Science"})
+            self.assertEqual(session.qc_pending_request["phase"], "building")
+            begin.assert_not_called()
+            self.assertTrue(qc_ui.process_pending_qc("v", "http://api"))
+            begin.assert_called_once_with(
+                "Data Science", "v", "http://api", None,
+                request_prompt="Teach me Data Science",
+            )
 
 
 class GenerationTests(unittest.TestCase):
