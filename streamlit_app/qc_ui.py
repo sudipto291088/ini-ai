@@ -485,5 +485,15 @@ def render_qc(visitor_id: str, api_base: str,
                 line-height:1.5;overflow-wrap:anywhere;">{escape(prompt)}</div></div>""",
             unsafe_allow_html=True,
         )
+    # The previous run's loading element can linger while Streamlit streams
+    # this response. Hide it as soon as the primary card enters the DOM.
+    st.markdown(
+        """<style>
+        body:has(.st-key-qc_primary_response) .nc-generation-placeholder {
+            display: none !important;
+        }
+        </style>""",
+        unsafe_allow_html=True,
+    )
     with st.container(border=True, key="qc_primary_response"):
         _render_qc_body(visitor_id, api_base, attach_to_chat)
