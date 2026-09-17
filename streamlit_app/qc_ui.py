@@ -10,6 +10,7 @@ import requests
 import streamlit as st
 
 from api.subject_curriculum import learning_subject_candidate
+from streamlit_app.qc_map_viewer import render_subject_map
 from streamlit_app.storage_sqlite import load_curriculum, list_curricula, save_curriculum
 
 
@@ -414,8 +415,10 @@ def _render_qc_body(visitor_id: str, api_base: str,
                     for visible in range(1, len(chapters) + 1):
                         map_slot.image(_subject_map_svg(state["subject"], chapters, visible), width="stretch")
                         time.sleep(_reveal_pause(len(chapters)))
+                    with map_slot.container():
+                        render_subject_map(_subject_map_svg(state["subject"], chapters), state["subject"])
             else:
-                st.image(_subject_map_svg(state["subject"], chapters), width="stretch")
+                render_subject_map(_subject_map_svg(state["subject"], chapters), state["subject"])
         guidance = "I've broken the chapters into progressive questions, from foundations to advanced ideas. Choose a chapter to begin."
         if reveal_intro:
             _stream_text(guidance)
