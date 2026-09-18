@@ -160,6 +160,9 @@ def _subject_map_svg(subject: str, chapters: list[dict[str, Any]],
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" '
         f'width="{size}" height="{size}" role="img" '
         f'aria-label="Subject map for {escape(subject, quote=True)}">',
+        '<defs><filter id="qc-card-shadow" x="-25%" y="-35%" width="150%" height="180%">'
+        '<feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#243447" '
+        'flood-opacity="0.08"/></filter></defs>',
         f'<rect width="{size}" height="{size}" rx="28" fill="#ffffff"/>',
     ]
     positions = []
@@ -176,41 +179,52 @@ def _subject_map_svg(subject: str, chapters: list[dict[str, Any]],
         if index < visible_count:
             parts.append(
                 f'<line x1="{center}" y1="{center}" x2="{x:.1f}" y2="{y:.1f}" '
-                'stroke="#eec7ce" stroke-width="2"/>'
+                'stroke="#ead9dd" stroke-width="1.5"/>'
             )
     for x, y, number, chapter in positions[:visible_count]:
-        full_title = f"{number}. {chapter['title']}"
-        title = full_title[:54]
-        words = title.split()
+        full_title = str(chapter["title"])
+        words = full_title.split()
         lines = []
         current = ""
         for word in words:
-            if len(current) + len(word) + 1 > 22 and current:
+            if len(current) + len(word) + 1 > 19 and current:
                 lines.append(current)
                 current = word
             else:
                 current = (current + " " + word).strip()
         if current:
             lines.append(current)
-        lines = lines[:3]
-        height = max(64, 30 + 20 * len(lines))
+        if len(lines) > 3:
+            lines = lines[:3]
+            lines[-1] = lines[-1][:18].rstrip() + "…"
+        height = max(64, 26 + 20 * len(lines))
         parts.append(
+            f'<g role="group" aria-label="Chapter {number}: {escape(full_title, quote=True)}">'
+            f'<title>{escape(full_title)}</title>'
             f'<rect x="{x - 102:.1f}" y="{y - height/2:.1f}" width="204" '
-            f'height="{height}" rx="13" fill="#ffffff" stroke="#e33250" stroke-width="1.8"/>'
+            f'height="{height}" rx="15" fill="#ffffff" stroke="#e5e9ee" '
+            'stroke-width="1.2" filter="url(#qc-card-shadow)"/>'
+            f'<rect x="{x - 92:.1f}" y="{y - 12:.1f}" width="27" height="24" '
+            'rx="9" fill="#fff1f3"/>'
+            f'<text x="{x - 78.5:.1f}" y="{y + 0.5:.1f}" text-anchor="middle" '
+            'dominant-baseline="middle" fill="#a93d51" font-family="Arial,sans-serif" '
+            f'font-size="11.5" font-weight="650">{number}</text>'
         )
         first_y = y - (len(lines) - 1) * 10
         for line_index, line in enumerate(lines):
             parts.append(
-                f'<text x="{x:.1f}" y="{first_y + 20 * line_index:.1f}" '
-                'text-anchor="middle" dominant-baseline="middle" fill="#961d34" '
-                f'font-family="Arial,sans-serif" font-size="16" font-weight="600">{escape(line)}</text>'
+                f'<text x="{x - 57:.1f}" y="{first_y + 20 * line_index:.1f}" '
+                'text-anchor="start" dominant-baseline="middle" fill="#263342" '
+                f'font-family="Arial,sans-serif" font-size="15" font-weight="500">{escape(line)}</text>'
             )
+        parts.append('</g>')
     root = escape(subject[:28] + ("…" if len(subject) > 28 else ""))
     parts.extend([
         f'<rect x="{center-112:.1f}" y="{center-42:.1f}" width="224" height="84" '
-        'rx="20" fill="#fff8fa" stroke="#d91d3f" stroke-width="3"/>',
+        'rx="20" fill="#fff9fa" stroke="#efcbd1" stroke-width="1.5" '
+        'filter="url(#qc-card-shadow)"/>',
         f'<text x="{center}" y="{center}" text-anchor="middle" dominant-baseline="middle" '
-        f'fill="#b4233d" font-family="Arial,sans-serif" font-size="18" font-weight="700">{root}</text>',
+        f'fill="#8f2b40" font-family="Arial,sans-serif" font-size="18" font-weight="650">{root}</text>',
         '</svg>',
     ])
     return "".join(parts)
@@ -316,7 +330,8 @@ def _render_qc_body(visitor_id: str, api_base: str,
             background: transparent !important;
         }
         .st-key-qc_subject_map_card,
-        .st-key-qc_chapter_path_card {
+        .st-key-qc_chapter_path_card,
+        .st-key-qc_chapter_content_card {
             margin: 18px 0 20px !important;
             padding: 20px !important;
             border: 1px solid rgba(194, 202, 213, 0.16) !important;
@@ -347,6 +362,9 @@ def _render_qc_body(visitor_id: str, api_base: str,
             background: transparent !important;
             box-shadow: none !important;
         }
+        .st-key-qc_chapter_nav {
+            margin-bottom: 10px !important;
+        }
         @media (max-width: 700px) {
             .st-key-qc_primary_response {
                 width: 100% !important;
@@ -354,7 +372,8 @@ def _render_qc_body(visitor_id: str, api_base: str,
                 border-radius: 18px !important;
             }
             .st-key-qc_subject_map_card,
-            .st-key-qc_chapter_path_card {
+            .st-key-qc_chapter_path_card,
+            .st-key-qc_chapter_content_card {
                 padding: 16px !important;
             }
         }
@@ -422,107 +441,117 @@ def _render_qc_body(visitor_id: str, api_base: str,
     if not chapter:
         return
     chapter_index = chapters.index(chapter)
-    if st.button("← Subject Map", key="qc_subject_map"):
-        state["selected_chapter"] = None
-        state["selected_question"] = None
-        _save(visitor_id, curriculum_id, state)
-        st.rerun()
-    st.subheader(f"Chapter {chapter_index + 1} — {chapter['title']}")
-    if not chapter.get("questions"):
-        try:
-            with st.spinner("Forming this chapter's questions..."):
-                payload = _post(api_base, "/qc/chapter", {"outline": outline, "chapter_id": selected_chapter_id})
-            chapter["questions"] = payload["questions"]
-            chapter["questions_revealed"] = False
-            _save(visitor_id, curriculum_id, state)
-        except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
-            st.error(f"I couldn't form this chapter's questions: {exc}")
-            return
-
-    questions = chapter["questions"]
-    selected_question_id = state.get("selected_question")
-    question_index = next((index for index, item in enumerate(questions) if item["id"] == selected_question_id), None)
-    if question_index is None:
-        reveal_questions = not chapter.get("questions_revealed", False)
-        guidance = "Let's work through this chapter from its foundations to its more advanced questions."
-        if reveal_questions:
-            _stream_text(guidance)
-        else:
-            st.write(guidance)
-        question_items = [
-            {
-                "id": question["id"],
-                "label": f"{'✓ ' if question['id'] in state['completed'] else ''}{index + 1}. {question['text']}",
-            }
-            for index, question in enumerate(questions)
-        ]
-        with st.container(border=False, key="qc_question_list"):
-            selected = render_stream_cards(
-                question_items, key=f"qc_question_cards_{curriculum_id}_{selected_chapter_id}",
-                label="Chapter questions", animate=reveal_questions,
-            )
-        if selected and any(item["id"] == selected for item in question_items):
-            state["selected_question"] = selected
-            visited = state.setdefault("visited_questions", [])
-            if selected not in visited:
-                visited.append(selected)
-            _save(visitor_id, curriculum_id, state)
-            st.rerun()
-        if reveal_questions:
-            chapter["questions_revealed"] = True
-            _save(visitor_id, curriculum_id, state)
-        return
-    question = questions[question_index]
-    if st.button("← Chapter questions", key="qc_back_to_questions"):
-        state["selected_question"] = None
-        _save(visitor_id, curriculum_id, state)
-        st.rerun()
-    visited = state.setdefault("visited_questions", [])
-    if question["id"] not in visited:
-        visited.append(question["id"])
-        _save(visitor_id, curriculum_id, state)
-    st.caption(f"Question {question_index + 1} of {len(questions)}")
-    with st.container(border=True):
-        st.markdown(f"### {question['text']}")
-        if question["id"] not in state["answers"]:
-            try:
-                with st.spinner("Forming your answer..."):
-                    result = _post(api_base, "/qc/answer", {
-                        "subject": state["subject"], "chapter": chapter,
-                        "questions": questions, "index": question_index,
-                    })
-                state["answers"][question["id"]] = result["answer"]
+    with st.container(border=True, key="qc_chapter_content_card"):
+        with st.container(horizontal=True, horizontal_alignment="distribute",
+                          vertical_alignment="center", key="qc_chapter_nav"):
+            if st.button("← Subject Map", key="qc_subject_map"):
+                state["selected_chapter"] = None
+                state["selected_question"] = None
                 _save(visitor_id, curriculum_id, state)
-                _stream_text(result["answer"], max_seconds=20.0)
+                st.rerun()
+            if chapter_index + 1 < len(chapters) and st.button(
+                "Next Chapter →", key="qc_next_chapter_top"
+            ):
+                state["selected_chapter"] = chapters[chapter_index + 1]["id"]
+                state["selected_question"] = None
+                _save(visitor_id, curriculum_id, state)
+                st.rerun()
+        st.subheader(f"Chapter {chapter_index + 1} — {chapter['title']}")
+        if not chapter.get("questions"):
+            try:
+                with st.spinner("Forming this chapter's questions..."):
+                    payload = _post(api_base, "/qc/chapter", {"outline": outline, "chapter_id": selected_chapter_id})
+                chapter["questions"] = payload["questions"]
+                chapter["questions_revealed"] = False
+                _save(visitor_id, curriculum_id, state)
             except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
-                st.error(f"I couldn't answer this question: {exc}")
+                st.error(f"I couldn't form this chapter's questions: {exc}")
                 return
-        else:
-            st.markdown(state["answers"][question["id"]])
-    if question["id"] not in state["completed"] and st.button("Mark understood", key="qc_mark_understood"):
-        state["completed"].append(question["id"])
-        _save(visitor_id, curriculum_id, state)
-        st.rerun()
-    previous_col, next_col = st.columns(2)
-    with previous_col:
-        if question_index > 0 and st.button("← Previous question", key="qc_previous"):
-            state["selected_question"] = questions[question_index - 1]["id"]
-            if questions[question_index - 1]["id"] not in visited:
-                visited.append(questions[question_index - 1]["id"])
-            _save(visitor_id, curriculum_id, state)
-            st.rerun()
-    with next_col:
-        if question_index + 1 < len(questions) and st.button("Next question →", key="qc_next"):
-            state["selected_question"] = questions[question_index + 1]["id"]
-            if questions[question_index + 1]["id"] not in visited:
-                visited.append(questions[question_index + 1]["id"])
-            _save(visitor_id, curriculum_id, state)
-            st.rerun()
-        elif question_index + 1 == len(questions) and chapter_index + 1 < len(chapters) and st.button("Next chapter →", key="qc_next_chapter"):
-            state["selected_chapter"] = chapters[chapter_index + 1]["id"]
+
+        questions = chapter["questions"]
+        selected_question_id = state.get("selected_question")
+        question_index = next((index for index, item in enumerate(questions) if item["id"] == selected_question_id), None)
+        if question_index is None:
+            reveal_questions = not chapter.get("questions_revealed", False)
+            guidance = "Let's work through this chapter from its foundations to its more advanced questions."
+            if reveal_questions:
+                _stream_text(guidance)
+            else:
+                st.write(guidance)
+            question_items = [
+                {
+                    "id": question["id"],
+                    "label": f"{'✓ ' if question['id'] in state['completed'] else ''}{index + 1}. {question['text']}",
+                }
+                for index, question in enumerate(questions)
+            ]
+            with st.container(border=False, key="qc_question_list"):
+                selected = render_stream_cards(
+                    question_items, key=f"qc_question_cards_{curriculum_id}_{selected_chapter_id}",
+                    label="Chapter questions", animate=reveal_questions,
+                )
+            if selected and any(item["id"] == selected for item in question_items):
+                state["selected_question"] = selected
+                visited = state.setdefault("visited_questions", [])
+                if selected not in visited:
+                    visited.append(selected)
+                _save(visitor_id, curriculum_id, state)
+                st.rerun()
+            if reveal_questions:
+                chapter["questions_revealed"] = True
+                _save(visitor_id, curriculum_id, state)
+            return
+        question = questions[question_index]
+        if st.button("← Chapter questions", key="qc_back_to_questions"):
             state["selected_question"] = None
             _save(visitor_id, curriculum_id, state)
             st.rerun()
+        visited = state.setdefault("visited_questions", [])
+        if question["id"] not in visited:
+            visited.append(question["id"])
+            _save(visitor_id, curriculum_id, state)
+        st.caption(f"Question {question_index + 1} of {len(questions)}")
+        with st.container(border=True):
+            st.markdown(f"### {question['text']}")
+            if question["id"] not in state["answers"]:
+                try:
+                    with st.spinner("Forming your answer..."):
+                        result = _post(api_base, "/qc/answer", {
+                            "subject": state["subject"], "chapter": chapter,
+                            "questions": questions, "index": question_index,
+                        })
+                    state["answers"][question["id"]] = result["answer"]
+                    _save(visitor_id, curriculum_id, state)
+                    _stream_text(result["answer"], max_seconds=20.0)
+                except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
+                    st.error(f"I couldn't answer this question: {exc}")
+                    return
+            else:
+                st.markdown(state["answers"][question["id"]])
+        if question["id"] not in state["completed"] and st.button("Mark understood", key="qc_mark_understood"):
+            state["completed"].append(question["id"])
+            _save(visitor_id, curriculum_id, state)
+            st.rerun()
+        previous_col, next_col = st.columns(2)
+        with previous_col:
+            if question_index > 0 and st.button("← Previous question", key="qc_previous"):
+                state["selected_question"] = questions[question_index - 1]["id"]
+                if questions[question_index - 1]["id"] not in visited:
+                    visited.append(questions[question_index - 1]["id"])
+                _save(visitor_id, curriculum_id, state)
+                st.rerun()
+        with next_col:
+            if question_index + 1 < len(questions) and st.button("Next question →", key="qc_next"):
+                state["selected_question"] = questions[question_index + 1]["id"]
+                if questions[question_index + 1]["id"] not in visited:
+                    visited.append(questions[question_index + 1]["id"])
+                _save(visitor_id, curriculum_id, state)
+                st.rerun()
+            elif question_index + 1 == len(questions) and chapter_index + 1 < len(chapters) and st.button("Next chapter →", key="qc_next_chapter"):
+                state["selected_chapter"] = chapters[chapter_index + 1]["id"]
+                state["selected_question"] = None
+                _save(visitor_id, curriculum_id, state)
+                st.rerun()
 
 
 def render_qc(visitor_id: str, api_base: str,

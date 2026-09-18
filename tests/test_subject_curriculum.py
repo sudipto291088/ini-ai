@@ -153,19 +153,24 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(questions[-1]["id"], "chapter-1-q17")
 
     def test_generated_map_is_svg_with_the_chapter_structure(self):
+        from xml.etree import ElementTree
+
         chapters = [
             {"title": "Foundations & Data"}, {"title": "Models"},
         ]
         svg = qc_ui._subject_map_svg("Machine Learning", chapters)
+        ElementTree.fromstring(svg)
         self.assertIn("<svg", svg)
         self.assertIn("Foundations &amp; Data", svg)
         self.assertIn("Models", svg)
-        self.assertIn("1. Foundations &amp; Data", svg)
-        self.assertIn("2. Models", svg)
+        self.assertIn('aria-label="Chapter 1: Foundations &amp; Data"', svg)
+        self.assertIn('aria-label="Chapter 2: Models"', svg)
+        self.assertIn('stroke="#e5e9ee"', svg)
+        self.assertNotIn('stroke="#e33250"', svg)
         self.assertEqual(svg.count("<line "), 2)
         first_frame = qc_ui._subject_map_svg("Machine Learning", chapters, 1)
-        self.assertIn("1. Foundations &amp; Data", first_frame)
-        self.assertNotIn("2. Models", first_frame)
+        self.assertIn('aria-label="Chapter 1: Foundations &amp; Data"', first_frame)
+        self.assertNotIn('aria-label="Chapter 2: Models"', first_frame)
         self.assertEqual(first_frame.count("<line "), 1)
 
     def test_qc_text_streams_one_character_at_a_time(self):
