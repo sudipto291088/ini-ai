@@ -101,6 +101,61 @@ class SubjectIntentTests(unittest.TestCase):
 
 
 class GenerationTests(unittest.TestCase):
+    def test_chapter_navigation_respects_first_middle_and_last_chapter(self):
+        chapters = [{"id": f"chapter-{index}"} for index in range(1, 4)]
+        self.assertEqual(qc_ui._chapter_neighbors(chapters, 0), (None, "chapter-2"))
+        self.assertEqual(qc_ui._chapter_neighbors(chapters, 1), ("chapter-1", "chapter-3"))
+        self.assertEqual(qc_ui._chapter_neighbors(chapters, 2), ("chapter-2", None))
+        self.assertEqual(qc_ui._chapter_neighbors(chapters[:1], 0), (None, None))
+
+    def test_chapter_controls_show_only_reachable_directions(self):
+        chapters = [
+            {
+                "id": f"chapter-{index}",
+                "title": f"Chapter {index}",
+                "questions": [{"id": f"chapter-{index}-q1", "text": "A question?"}],
+                "questions_revealed": True,
+            }
+            for index in range(1, 4)
+        ]
+        expected = [
+            {"Back to Subject Map", "Next chapter"},
+            {"Back to Subject Map", "Previous chapter", "Next chapter"},
+            {"Back to Subject Map", "Previous chapter"},
+        ]
+        for index, labels in enumerate(expected):
+            state = {
+                "subject": "Biology", "outline": {"chapters": chapters},
+                "selected_chapter": chapters[index]["id"], "selected_question": None,
+                "completed": [],
+            }
+            with self.subTest(chapter=index + 1), \
+                 patch.object(qc_ui.st, "session_state", {"qc_active_id": "qc-1", "qc_state": state}), \
+                 patch.object(qc_ui.st, "container") as container, \
+                 patch.object(qc_ui.st, "button", return_value=False) as button, \
+                 patch.object(qc_ui.st, "markdown"), \
+                 patch.object(qc_ui.st, "caption"), \
+                 patch.object(qc_ui.st, "subheader"), \
+                 patch.object(qc_ui.st, "write"), \
+                 patch.object(qc_ui, "render_stream_cards", return_value=None):
+                qc_ui._render_qc_body("visitor", "http://api")
+                self.assertEqual({call.args[0] for call in button.call_args_list}, labels)
+                self.assertTrue(any(
+                    call.kwargs.get("key") == "qc_chapter_arrows"
+                    and call.kwargs.get("width") == "content"
+                    for call in container.call_args_list
+                ))
+
+    def test_subject_map_uses_the_knowledge_atlas_artwork(self):
+        from urllib.parse import unquote
+        from xml.etree import ElementTree
+
+        icon_uri = qc_ui._KNOWLEDGE_ATLAS_ICON
+        self.assertTrue(icon_uri.startswith("data:image/svg+xml,"))
+        svg = unquote(icon_uri.split(",", 1)[1])
+        ElementTree.fromstring(svg)
+        self.assertIn('stroke="#e33250"', svg)
+
     def test_subject_icons_match_the_field_and_fall_back_gracefully(self):
         self.assertEqual(qc_ui._subject_icon("Biology"), "biotech")
         self.assertEqual(qc_ui._subject_icon("Mathematics"), "functions")

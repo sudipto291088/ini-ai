@@ -4,7 +4,9 @@ import math
 import secrets
 import time
 from html import escape
+from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import quote
 
 import requests
 import streamlit as st
@@ -13,6 +15,12 @@ from api.subject_curriculum import learning_subject_candidate
 from streamlit_app.qc_map_viewer import render_subject_map
 from streamlit_app.qc_stream_cards import render_stream_cards
 from streamlit_app.storage_sqlite import load_curriculum, list_curricula, save_curriculum
+
+
+_KNOWLEDGE_ATLAS_ICON = "data:image/svg+xml," + quote(
+    (Path(__file__).parent / "assets" / "qc_knowledge_atlas.svg").read_text(encoding="utf-8"),
+    safe="",
+)
 
 
 def _post(api_base: str, path: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -43,6 +51,13 @@ def _stream_text(message: str, *, max_seconds: float = 5.0) -> None:
 def _reveal_pause(item_count: int) -> float:
     """Give each item a visible entrance, capped for large subjects."""
     return min(0.18, 4.0 / max(item_count, 1))
+
+
+def _chapter_neighbors(chapters: list[dict[str, Any]], index: int) -> tuple[str | None, str | None]:
+    """Return only the chapter IDs reachable from the current position."""
+    previous_id = chapters[index - 1]["id"] if index > 0 else None
+    next_id = chapters[index + 1]["id"] if index + 1 < len(chapters) else None
+    return previous_id, next_id
 
 
 def _subject_icon(subject: str) -> str:
@@ -348,7 +363,6 @@ def _render_qc_body(visitor_id: str, api_base: str,
             letter-spacing: -0.01em !important;
             line-height: 1.4 !important;
         }
-        .st-key-qc_subject_map_card h3 [role="img"],
         .st-key-qc_chapter_path_card h3 [role="img"] {
             color: #e33250;
             font-size: 21px;
@@ -363,7 +377,109 @@ def _render_qc_body(visitor_id: str, api_base: str,
             box-shadow: none !important;
         }
         .st-key-qc_chapter_nav {
-            margin-bottom: 10px !important;
+            margin-bottom: 16px !important;
+            gap: 12px !important;
+        }
+        .st-key-qc_subject_map button[kind="secondary"] {
+            width: auto !important;
+            border: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            padding: 7px 4px !important;
+            min-height: 38px !important;
+            justify-content: flex-start !important;
+            color: #697585 !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+        }
+        .st-key-qc_subject_map button[kind="secondary"]:hover {
+            color: #c92e49 !important;
+            background: transparent !important;
+        }
+        .st-key-qc_chapter_arrows {
+            gap: 4px !important;
+        }
+        .st-key-qc_previous_chapter_top button[kind="secondary"],
+        .st-key-qc_next_chapter_top button[kind="secondary"] {
+            width: 38px !important;
+            min-width: 38px !important;
+            height: 38px !important;
+            min-height: 38px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            position: relative !important;
+            justify-content: center !important;
+            text-align: center !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+        .st-key-qc_previous_chapter_top button[kind="secondary"]:hover,
+        .st-key-qc_next_chapter_top button[kind="secondary"]:hover {
+            background: transparent !important;
+        }
+        .st-key-qc_previous_chapter_top button p,
+        .st-key-qc_next_chapter_top button p {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            overflow: hidden !important;
+            clip-path: inset(50%) !important;
+            white-space: nowrap !important;
+        }
+        .st-key-qc_previous_chapter_top button::before,
+        .st-key-qc_next_chapter_top button::before {
+            content: "";
+            display: block;
+            width: 0;
+            height: 0;
+            border-top: 9px solid transparent;
+            border-bottom: 9px solid transparent;
+            transition: transform 150ms ease, filter 150ms ease;
+        }
+        .st-key-qc_previous_chapter_top button::before {
+            border-right: 15px solid #e33250;
+        }
+        .st-key-qc_next_chapter_top button::before {
+            border-left: 15px solid #e33250;
+        }
+        .st-key-qc_previous_chapter_top button:hover::before,
+        .st-key-qc_next_chapter_top button:hover::before {
+            transform: scale(1.12);
+            filter: brightness(0.85);
+        }
+        .st-key-qc_previous_chapter_top button::after,
+        .st-key-qc_next_chapter_top button::after {
+            position: absolute;
+            right: 0;
+            bottom: calc(100% + 8px);
+            width: max-content;
+            padding: 6px 9px;
+            border-radius: 7px;
+            background: #273241;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 1.25;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(4px);
+            transition: opacity 150ms ease, transform 150ms ease;
+            z-index: 10;
+        }
+        .st-key-qc_previous_chapter_top button::after {
+            content: "Previous chapter";
+        }
+        .st-key-qc_next_chapter_top button::after {
+            content: "Next chapter";
+        }
+        .st-key-qc_previous_chapter_top button:hover::after,
+        .st-key-qc_next_chapter_top button:hover::after,
+        .st-key-qc_previous_chapter_top button:focus-visible::after,
+        .st-key-qc_next_chapter_top button:focus-visible::after {
+            opacity: 1;
+            transform: translateY(0);
         }
         @media (max-width: 700px) {
             .st-key-qc_primary_response {
@@ -380,6 +496,24 @@ def _render_qc_body(visitor_id: str, api_base: str,
         </style>""",
         unsafe_allow_html=True,
     )
+    st.markdown(
+        f"""<style>
+        .st-key-qc_subject_map_card h3::before,
+        .st-key-qc_subject_map button::before {{
+            content: "";
+            display: inline-block;
+            flex: 0 0 20px;
+            width: 20px;
+            height: 20px;
+            margin-right: 7px;
+            background: url("{_KNOWLEDGE_ATLAS_ICON}") center / contain no-repeat;
+        }}
+        .st-key-qc_subject_map_card h3::before {{
+            vertical-align: -0.22em;
+        }}
+        </style>""",
+        unsafe_allow_html=True,
+    )
     with st.container(border=True, width="stretch", key="qc_subject_title"):
         st.markdown(f"### :material/{_subject_icon(state['subject'])}: {escape(state['subject'])}")
     outline = state["outline"]
@@ -389,7 +523,7 @@ def _render_qc_body(visitor_id: str, api_base: str,
         reveal_intro = not state.get("intro_revealed", False)
         intro = "Here is your Subject Map. It shows the chapters in the order we'll learn them."
         with st.container(border=True, key="qc_subject_map_card"):
-            st.markdown("### :material/route: Subject Map")
+            st.markdown("### Subject Map")
             st.space(20)
             if reveal_intro:
                 _stream_text(intro)
@@ -441,21 +575,31 @@ def _render_qc_body(visitor_id: str, api_base: str,
     if not chapter:
         return
     chapter_index = chapters.index(chapter)
+    previous_chapter_id, next_chapter_id = _chapter_neighbors(chapters, chapter_index)
     with st.container(border=True, key="qc_chapter_content_card"):
         with st.container(horizontal=True, horizontal_alignment="distribute",
                           vertical_alignment="center", key="qc_chapter_nav"):
-            if st.button("← Subject Map", key="qc_subject_map"):
+            if st.button("Back to Subject Map", key="qc_subject_map"):
                 state["selected_chapter"] = None
                 state["selected_question"] = None
                 _save(visitor_id, curriculum_id, state)
                 st.rerun()
-            if chapter_index + 1 < len(chapters) and st.button(
-                "Next Chapter →", key="qc_next_chapter_top"
-            ):
-                state["selected_chapter"] = chapters[chapter_index + 1]["id"]
-                state["selected_question"] = None
-                _save(visitor_id, curriculum_id, state)
-                st.rerun()
+            with st.container(horizontal=True, horizontal_alignment="right", vertical_alignment="center",
+                              width="content", key="qc_chapter_arrows"):
+                if previous_chapter_id and st.button(
+                    "Previous chapter", key="qc_previous_chapter_top"
+                ):
+                    state["selected_chapter"] = previous_chapter_id
+                    state["selected_question"] = None
+                    _save(visitor_id, curriculum_id, state)
+                    st.rerun()
+                if next_chapter_id and st.button(
+                    "Next chapter", key="qc_next_chapter_top"
+                ):
+                    state["selected_chapter"] = next_chapter_id
+                    state["selected_question"] = None
+                    _save(visitor_id, curriculum_id, state)
+                    st.rerun()
         st.subheader(f"Chapter {chapter_index + 1} — {chapter['title']}")
         if not chapter.get("questions"):
             try:
