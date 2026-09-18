@@ -179,12 +179,12 @@ def _subject_map_svg(subject: str, chapters: list[dict[str, Any]],
             )
     for x, y, number, chapter in positions[:visible_count]:
         full_title = f"{number}. {chapter['title']}"
-        title = full_title[:48]
+        title = full_title[:54]
         words = title.split()
         lines = []
         current = ""
         for word in words:
-            if len(current) + len(word) + 1 > 21 and current:
+            if len(current) + len(word) + 1 > 22 and current:
                 lines.append(current)
                 current = word
             else:
@@ -192,17 +192,17 @@ def _subject_map_svg(subject: str, chapters: list[dict[str, Any]],
         if current:
             lines.append(current)
         lines = lines[:3]
-        height = max(58, 27 + 17 * len(lines))
+        height = max(64, 30 + 20 * len(lines))
         parts.append(
-            f'<rect x="{x - 89:.1f}" y="{y - height/2:.1f}" width="178" '
+            f'<rect x="{x - 102:.1f}" y="{y - height/2:.1f}" width="204" '
             f'height="{height}" rx="13" fill="#ffffff" stroke="#e33250" stroke-width="1.8"/>'
         )
-        first_y = y - (len(lines) - 1) * 8
+        first_y = y - (len(lines) - 1) * 10
         for line_index, line in enumerate(lines):
             parts.append(
-                f'<text x="{x:.1f}" y="{first_y + 17 * line_index:.1f}" '
-                'text-anchor="middle" dominant-baseline="middle" fill="#b4233d" '
-                f'font-family="Arial,sans-serif" font-size="13" font-weight="600">{escape(line)}</text>'
+                f'<text x="{x:.1f}" y="{first_y + 20 * line_index:.1f}" '
+                'text-anchor="middle" dominant-baseline="middle" fill="#961d34" '
+                f'font-family="Arial,sans-serif" font-size="16" font-weight="600">{escape(line)}</text>'
             )
     root = escape(subject[:28] + ("…" if len(subject) > 28 else ""))
     parts.extend([
@@ -314,7 +314,8 @@ def _render_qc_body(visitor_id: str, api_base: str,
         .st-key-qc_primary_response > div {
             background: transparent !important;
         }
-        .st-key-qc_subject_map_card {
+        .st-key-qc_subject_map_card,
+        .st-key-qc_chapter_path_card {
             margin: 18px 0 20px !important;
             padding: 20px !important;
             border: 1px solid rgba(194, 202, 213, 0.16) !important;
@@ -322,7 +323,8 @@ def _render_qc_body(visitor_id: str, api_base: str,
             background: #ffffff !important;
             box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045) !important;
         }
-        .st-key-qc_subject_map_card h3 {
+        .st-key-qc_subject_map_card h3,
+        .st-key-qc_chapter_path_card h3 {
             margin: 0 !important;
             color: #17211f;
             font-size: 16.5px !important;
@@ -330,7 +332,8 @@ def _render_qc_body(visitor_id: str, api_base: str,
             letter-spacing: -0.01em !important;
             line-height: 1.4 !important;
         }
-        .st-key-qc_subject_map_card h3 [role="img"] {
+        .st-key-qc_subject_map_card h3 [role="img"],
+        .st-key-qc_chapter_path_card h3 [role="img"] {
             color: #e33250;
             font-size: 21px;
             margin-right: 5px;
@@ -385,7 +388,8 @@ def _render_qc_body(visitor_id: str, api_base: str,
                 padding: 16px !important;
                 border-radius: 18px !important;
             }
-            .st-key-qc_subject_map_card {
+            .st-key-qc_subject_map_card,
+            .st-key-qc_chapter_path_card {
                 padding: 16px !important;
             }
         }
@@ -419,26 +423,29 @@ def _render_qc_body(visitor_id: str, api_base: str,
                         render_subject_map(_subject_map_svg(state["subject"], chapters), state["subject"])
             else:
                 render_subject_map(_subject_map_svg(state["subject"], chapters), state["subject"])
-        guidance = "I've broken the chapters into progressive questions, from foundations to advanced ideas. Choose a chapter to begin."
-        if reveal_intro:
-            _stream_text(guidance)
-        else:
-            st.write(guidance)
-        with st.container(border=False, key="qc_chapter_list"):
-            for index, chapter in enumerate(chapters):
-                chapter_id = chapter["id"]
-                questions = chapter.get("questions") or []
-                complete = sum(question["id"] in state["completed"] for question in questions)
-                label = f"{index + 1}. {chapter['title']}"
-                if questions:
-                    label += f" · {complete}/{len(questions)} understood"
-                if st.button(label, key=f"qc_select_{chapter_id}", width="content"):
-                    state["selected_chapter"] = chapter_id
-                    state["selected_question"] = None
-                    _save(visitor_id, curriculum_id, state)
-                    st.rerun()
-                if reveal_intro:
-                    time.sleep(_reveal_pause(len(chapters)))
+        with st.container(border=True, key="qc_chapter_path_card"):
+            st.markdown("### :material/menu_book: Chapter path")
+            st.space(20)
+            guidance = "I've broken the chapters into progressive questions, from foundations to advanced ideas. Choose a chapter to begin."
+            if reveal_intro:
+                _stream_text(guidance)
+            else:
+                st.write(guidance)
+            with st.container(border=False, key="qc_chapter_list"):
+                for index, chapter in enumerate(chapters):
+                    chapter_id = chapter["id"]
+                    questions = chapter.get("questions") or []
+                    complete = sum(question["id"] in state["completed"] for question in questions)
+                    label = f"{index + 1}. {chapter['title']}"
+                    if questions:
+                        label += f" · {complete}/{len(questions)} understood"
+                    if st.button(label, key=f"qc_select_{chapter_id}", width="content"):
+                        state["selected_chapter"] = chapter_id
+                        state["selected_question"] = None
+                        _save(visitor_id, curriculum_id, state)
+                        st.rerun()
+                    if reveal_intro:
+                        time.sleep(_reveal_pause(len(chapters)))
         if reveal_intro:
             state["intro_revealed"] = True
             _save(visitor_id, curriculum_id, state)

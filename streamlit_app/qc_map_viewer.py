@@ -21,7 +21,6 @@ _MAP_HTML = """
     </button>
   </div>
   <div class="qc-map-viewport" aria-label="Zoomable subject map">
-    <img alt="Subject map" draggable="false" />
   </div>
 </div>
 """
@@ -44,15 +43,11 @@ _MAP_CSS = """
 }
 .qc-map-viewport.is-zoomed { cursor: grab; touch-action: none; }
 .qc-map-viewport.is-dragging { cursor: grabbing; }
-.qc-map-viewport img {
+.qc-map-viewport > svg {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  transform-origin: center center;
   user-select: none;
-  -webkit-user-drag: none;
-  will-change: transform;
 }
 .qc-map-toolbar {
   position: absolute;
@@ -127,33 +122,48 @@ _MAP_JS = """
 export default function ({ data, parentElement }) {
   const viewer = parentElement.querySelector('.qc-map-viewer');
   const viewport = viewer.querySelector('.qc-map-viewport');
-  const image = viewport.querySelector('img');
+  // Keep the generated map as live SVG: changing its viewBox rerenders glyphs
+  // as vectors, unlike CSS-transforming an image layer that may be rasterized.
+  const parsed = new DOMParser().parseFromString(data.svg, 'image/svg+xml');
+  const map = parsed.documentElement;
+  if (map.tagName.toLowerCase() !== 'svg' || parsed.querySelector('parsererror')) {
+    throw new Error('Invalid subject map SVG');
+  }
+  map.setAttribute('aria-label', data.label || 'Subject map');
+  viewport.replaceChildren(document.importNode(map, true));
+  const svg = viewport.querySelector('svg');
+  const sourceBox = svg.viewBox.baseVal;
+  const original = { x: sourceBox.x, y: sourceBox.y };
+  const mapWidth = sourceBox.width;
+  const mapHeight = sourceBox.height;
   const zoomIn = viewer.querySelector('[data-action="zoom-in"]');
   const zoomOut = viewer.querySelector('[data-action="zoom-out"]');
   const reset = viewer.querySelector('[data-action="reset"]');
   const expand = viewer.querySelector('[data-action="expand"]');
   const zoomLabel = viewer.querySelector('.qc-map-zoom');
-  image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data.svg);
-  image.alt = data.label || 'Subject map';
-
   let scale = 1;
-  let offsetX = 0;
-  let offsetY = 0;
+  let centerX = original.x + mapWidth / 2;
+  let centerY = original.y + mapHeight / 2;
   let drag = null;
   const minScale = 1;
-  const maxScale = 6;
+  const maxScale = 8;
 
-  function clampOffset() {
-    const base = Math.min(viewport.clientWidth, viewport.clientHeight);
-    const maxX = Math.max(0, (base * scale - viewport.clientWidth) / 2);
-    const maxY = Math.max(0, (base * scale - viewport.clientHeight) / 2);
-    offsetX = Math.max(-maxX, Math.min(maxX, offsetX));
-    offsetY = Math.max(-maxY, Math.min(maxY, offsetY));
+  function visibleBox() {
+    const width = Math.max(1, viewport.clientWidth);
+    const height = Math.max(1, viewport.clientHeight);
+    const base = Math.min(width / mapWidth, height / mapHeight);
+    return { width: width / (base * scale), height: height / (base * scale) };
   }
 
   function render() {
-    clampOffset();
-    image.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+    const box = visibleBox();
+    const left = original.x + mapWidth / 2;
+    const top = original.y + mapHeight / 2;
+    const freeX = Math.max(0, (mapWidth - box.width) / 2);
+    const freeY = Math.max(0, (mapHeight - box.height) / 2);
+    centerX = Math.max(left - freeX, Math.min(left + freeX, centerX));
+    centerY = Math.max(top - freeY, Math.min(top + freeY, centerY));
+    svg.setAttribute('viewBox', `${centerX - box.width / 2} ${centerY - box.height / 2} ${box.width} ${box.height}`);
     zoomLabel.textContent = `${Math.round(scale * 100)}%`;
     zoomOut.disabled = scale <= minScale;
     reset.disabled = scale <= minScale;
@@ -163,12 +173,15 @@ export default function ({ data, parentElement }) {
 
   function setScale(next) {
     scale = Math.max(minScale, Math.min(maxScale, next));
-    if (scale === minScale) { offsetX = 0; offsetY = 0; }
+    if (scale === minScale) {
+      centerX = original.x + mapWidth / 2;
+      centerY = original.y + mapHeight / 2;
+    }
     render();
   }
 
-  zoomIn.onclick = () => setScale(scale * 1.5);
-  zoomOut.onclick = () => setScale(scale / 1.5);
+  zoomIn.onclick = () => setScale(scale * 2);
+  zoomOut.onclick = () => setScale(scale / 2);
   reset.onclick = () => setScale(1);
   function isExpanded() {
     // The document retargets fullscreenElement to the shadow host.
@@ -194,7 +207,7 @@ export default function ({ data, parentElement }) {
   function onPointerDown(event) {
     if (scale <= minScale) return;
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY,
-             offsetX, offsetY };
+             centerX, centerY };
     viewport.setPointerCapture(event.pointerId);
     viewport.classList.add('is-dragging');
     event.preventDefault();
@@ -202,8 +215,9 @@ export default function ({ data, parentElement }) {
 
   function onPointerMove(event) {
     if (!drag || drag.id !== event.pointerId) return;
-    offsetX = drag.offsetX + event.clientX - drag.x;
-    offsetY = drag.offsetY + event.clientY - drag.y;
+    const box = visibleBox();
+    centerX = drag.centerX - (event.clientX - drag.x) * box.width / viewport.clientWidth;
+    centerY = drag.centerY - (event.clientY - drag.y) * box.height / viewport.clientHeight;
     render();
   }
 

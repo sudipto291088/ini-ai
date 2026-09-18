@@ -15,6 +15,12 @@ class SubjectMapViewerTests(unittest.TestCase):
             key="qc_subject_map_viewer",
         )
 
+    def test_zoom_rerenders_vector_svg_instead_of_scaling_an_image(self):
+        self.assertIn("DOMParser", qc_map_viewer._MAP_JS)
+        self.assertIn("svg.setAttribute('viewBox'", qc_map_viewer._MAP_JS)
+        self.assertNotIn("image.style.transform", qc_map_viewer._MAP_JS)
+        self.assertNotIn("<img", qc_map_viewer._MAP_HTML)
+
 
 if __name__ == "__main__":
     unittest.main()
