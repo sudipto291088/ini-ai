@@ -11,6 +11,7 @@ import streamlit as st
 
 from api.subject_curriculum import learning_subject_candidate
 from streamlit_app.qc_map_viewer import render_subject_map
+from streamlit_app.qc_stream_cards import render_stream_cards
 from streamlit_app.storage_sqlite import load_curriculum, list_curricula, save_curriculum
 
 
@@ -346,42 +347,6 @@ def _render_qc_body(visitor_id: str, api_base: str,
             background: transparent !important;
             box-shadow: none !important;
         }
-        .st-key-qc_chapter_list [data-testid="stButton"],
-        .st-key-qc_question_list [data-testid="stButton"] {
-            width: fit-content !important;
-            max-width: 100% !important;
-        }
-        .st-key-qc_chapter_list div.stButton > button,
-        .st-key-qc_question_list div.stButton > button {
-            justify-content: flex-start;
-            align-items: flex-start;
-            text-align: left;
-            height: auto;
-            min-height: 0;
-            width: fit-content !important;
-            max-width: 100% !important;
-            white-space: normal;
-            padding: 0.78rem 1.05rem;
-            border: 1px solid rgba(194, 202, 213, 0.16) !important;
-            border-radius: 16px !important;
-            background: rgba(255, 255, 255, 0.95) !important;
-            box-shadow: 0 5px 18px rgba(15, 23, 42, 0.045) !important;
-        }
-        .st-key-qc_chapter_list div.stButton > button:hover,
-        .st-key-qc_question_list div.stButton > button:hover {
-            border-color: rgba(227, 50, 80, 0.22) !important;
-            background: #fffafb !important;
-            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.065) !important;
-        }
-        .st-key-qc_chapter_list div.stButton > button p,
-        .st-key-qc_question_list div.stButton > button p {
-            text-align: left;
-            white-space: normal;
-            overflow-wrap: break-word;
-            word-break: normal;
-            line-height: 1.42;
-            font-weight: 450;
-        }
         @media (max-width: 700px) {
             .st-key-qc_primary_response {
                 width: 100% !important;
@@ -431,21 +396,24 @@ def _render_qc_body(visitor_id: str, api_base: str,
                 _stream_text(guidance)
             else:
                 st.write(guidance)
+            chapter_items = []
+            for index, chapter in enumerate(chapters):
+                questions = chapter.get("questions") or []
+                complete = sum(question["id"] in state["completed"] for question in questions)
+                label = f"{index + 1}. {chapter['title']}"
+                if questions:
+                    label += f" · {complete}/{len(questions)} understood"
+                chapter_items.append({"id": chapter["id"], "label": label})
             with st.container(border=False, key="qc_chapter_list"):
-                for index, chapter in enumerate(chapters):
-                    chapter_id = chapter["id"]
-                    questions = chapter.get("questions") or []
-                    complete = sum(question["id"] in state["completed"] for question in questions)
-                    label = f"{index + 1}. {chapter['title']}"
-                    if questions:
-                        label += f" · {complete}/{len(questions)} understood"
-                    if st.button(label, key=f"qc_select_{chapter_id}", width="content"):
-                        state["selected_chapter"] = chapter_id
-                        state["selected_question"] = None
-                        _save(visitor_id, curriculum_id, state)
-                        st.rerun()
-                    if reveal_intro:
-                        time.sleep(_reveal_pause(len(chapters)))
+                selected = render_stream_cards(
+                    chapter_items, key=f"qc_chapter_cards_{curriculum_id}",
+                    label="Chapter path", animate=reveal_intro,
+                )
+            if selected and any(item["id"] == selected for item in chapter_items):
+                state["selected_chapter"] = selected
+                state["selected_question"] = None
+                _save(visitor_id, curriculum_id, state)
+                st.rerun()
         if reveal_intro:
             state["intro_revealed"] = True
             _save(visitor_id, curriculum_id, state)
@@ -481,18 +449,25 @@ def _render_qc_body(visitor_id: str, api_base: str,
             _stream_text(guidance)
         else:
             st.write(guidance)
+        question_items = [
+            {
+                "id": question["id"],
+                "label": f"{'✓ ' if question['id'] in state['completed'] else ''}{index + 1}. {question['text']}",
+            }
+            for index, question in enumerate(questions)
+        ]
         with st.container(border=False, key="qc_question_list"):
-            for index, question in enumerate(questions):
-                marker = "✓ " if question["id"] in state["completed"] else ""
-                if st.button(f"{marker}{index + 1}. {question['text']}", key=f"qc_question_{question['id']}", width="content"):
-                    state["selected_question"] = question["id"]
-                    visited = state.setdefault("visited_questions", [])
-                    if question["id"] not in visited:
-                        visited.append(question["id"])
-                    _save(visitor_id, curriculum_id, state)
-                    st.rerun()
-                if reveal_questions:
-                    time.sleep(_reveal_pause(len(questions)))
+            selected = render_stream_cards(
+                question_items, key=f"qc_question_cards_{curriculum_id}_{selected_chapter_id}",
+                label="Chapter questions", animate=reveal_questions,
+            )
+        if selected and any(item["id"] == selected for item in question_items):
+            state["selected_question"] = selected
+            visited = state.setdefault("visited_questions", [])
+            if selected not in visited:
+                visited.append(selected)
+            _save(visitor_id, curriculum_id, state)
+            st.rerun()
         if reveal_questions:
             chapter["questions_revealed"] = True
             _save(visitor_id, curriculum_id, state)
