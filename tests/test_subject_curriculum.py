@@ -33,6 +33,24 @@ class SubjectIntentTests(unittest.TestCase):
             with self.subTest(prompt=prompt):
                 self.assertEqual(qc.learning_subject_candidate(prompt), subject)
 
+    def test_new_chat_can_pass_the_chat_attachment_callback_to_qc(self):
+        class Session(dict):
+            def __getattr__(self, name):
+                return self[name]
+
+            def __setattr__(self, name, value):
+                self[name] = value
+
+        session = Session()
+        attach_to_chat = Mock()
+        with patch.object(qc_ui.st, "session_state", session), \
+             patch.object(qc_ui.st, "rerun"):
+            self.assertTrue(qc_ui.maybe_start_qc(
+                "teach me kubernetes as a subject", "interrogate", "v",
+                "http://api", attach_to_chat,
+            ))
+        self.assertEqual(session.qc_pending_request["candidate"], "kubernetes")
+
     def test_narrow_topic_is_sent_back_to_normal_chat(self):
         class Session(dict):
             def __getattr__(self, name):

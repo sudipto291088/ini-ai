@@ -30,6 +30,11 @@ import streamlit_app.qc_ui as qc_ui
 # deployment cannot fail with a stale-module ImportError.
 if not hasattr(learning_flow, "resolve_generation_status"):
     learning_flow = importlib.reload(learning_flow)
+# The same hot-deploy behavior can leave the first QC module version in
+# sys.modules. That version takes four arguments in maybe_start_qc, while
+# this entry point passes the chat-attachment callback as a fifth argument.
+if not hasattr(qc_ui, "process_pending_qc"):
+    qc_ui = importlib.reload(qc_ui)
 continuation_context = learning_flow.continuation_context
 resolve_generation_status = learning_flow.resolve_generation_status
 resolve_learning_submission = learning_flow.resolve_learning_submission
