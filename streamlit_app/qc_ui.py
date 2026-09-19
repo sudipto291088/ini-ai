@@ -1,6 +1,7 @@
 """Subject Map → Question Curriculum inside a New Chat session."""
 
 import math
+import re
 import secrets
 import time
 from html import escape
@@ -47,6 +48,35 @@ def _stream_text(message: str, *, max_seconds: float = 5.0) -> None:
             time.sleep(delay)
 
     st.write_stream(letters())
+
+
+def _format_curriculum_answer(answer: str) -> str:
+    """Give plain-text section labels room to breathe without rewriting the lesson."""
+    lines = answer.strip().splitlines()
+    formatted: list[str] = []
+    in_code = False
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            in_code = not in_code
+        next_line = lines[index + 1].strip() if index + 1 < len(lines) else ""
+        is_section_label = (
+            not in_code
+            and stripped
+            and next_line
+            and len(stripped) <= 72
+            and len(stripped.split()) <= 10
+            and not stripped.endswith((".", ";", "?", "!"))
+            and not re.match(r"^(?:[#>*+\-]|\d+[.)])(?:\s|$)", stripped)
+            and not stripped.startswith(("**", "<", "```"))
+        )
+        if is_section_label:
+            if formatted and formatted[-1] != "":
+                formatted.append("")
+            formatted.extend((f"**{stripped}**", ""))
+        else:
+            formatted.append(line)
+    return "\n".join(formatted)
 
 
 def _reveal_pause(item_count: int) -> float:
@@ -413,6 +443,112 @@ def _render_qc_body(visitor_id: str, api_base: str,
             margin-bottom: 16px !important;
             gap: 12px !important;
         }
+        .st-key-qc_answer_card {
+            width: 100% !important;
+            margin: 14px 0 8px !important;
+            padding: 24px 28px !important;
+            border: 1px solid rgba(194, 202, 213, 0.24) !important;
+            border-radius: 20px !important;
+            background: linear-gradient(125deg, #ffffff 0%, #ffffff 72%, #fff9fa 100%) !important;
+            box-shadow: 0 12px 32px rgba(25, 34, 49, 0.065) !important;
+        }
+        .st-key-qc_answer_card h3 {
+            margin: 0 0 18px !important;
+            color: #202a36 !important;
+            font-size: clamp(19px, 2.1vw, 22px) !important;
+            font-weight: 590 !important;
+            line-height: 1.4 !important;
+            letter-spacing: -0.018em !important;
+            overflow-wrap: anywhere;
+        }
+        .st-key-qc_answer_body {
+            border-top: 1px solid rgba(194, 202, 213, 0.2) !important;
+            padding-top: 18px !important;
+            max-width: 92ch !important;
+        }
+        .st-key-qc_answer_body p,
+        .st-key-qc_answer_body li {
+            color: #344153 !important;
+            font-size: 15.5px !important;
+            font-weight: 400 !important;
+            line-height: 1.7 !important;
+        }
+        .st-key-qc_answer_body p {
+            margin-bottom: 0.75em !important;
+        }
+        .st-key-qc_answer_body strong {
+            color: #202a36 !important;
+            font-weight: 610 !important;
+        }
+        .st-key-qc_answer_body ul,
+        .st-key-qc_answer_body ol {
+            padding-left: 1.45em !important;
+            margin: 0.35em 0 1em !important;
+        }
+        .st-key-qc_answer_actions {
+            margin-top: 22px !important;
+            padding-top: 18px !important;
+            border-top: 1px solid rgba(194, 202, 213, 0.2) !important;
+        }
+        .st-key-qc_back_to_questions button[kind="secondary"] {
+            width: auto !important;
+            min-height: 36px !important;
+            padding: 6px 4px !important;
+            border: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: #687587 !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+        }
+        .st-key-qc_back_to_questions button[kind="secondary"]:hover {
+            color: #c92e49 !important;
+            background: transparent !important;
+        }
+        .st-key-qc_mark_understood button[kind="secondary"] {
+            width: auto !important;
+            min-height: 40px !important;
+            padding: 8px 14px !important;
+            border: 1px solid rgba(194, 202, 213, 0.32) !important;
+            border-radius: 11px !important;
+            background: #f7f9fb !important;
+            box-shadow: none !important;
+            color: #3d4a59 !important;
+            font-size: 13px !important;
+            font-weight: 550 !important;
+        }
+        .st-key-qc_mark_understood button[kind="secondary"]:hover {
+            border-color: rgba(201, 46, 73, 0.22) !important;
+            background: #fff8f9 !important;
+            color: #c92e49 !important;
+        }
+        .st-key-qc_previous button[kind="secondary"],
+        .st-key-qc_next button[kind="secondary"],
+        .st-key-qc_next_chapter button[kind="secondary"] {
+            width: auto !important;
+            min-height: 40px !important;
+            padding: 8px 12px !important;
+            border: 0 !important;
+            border-radius: 11px !important;
+            box-shadow: none !important;
+            font-size: 13px !important;
+            font-weight: 550 !important;
+        }
+        .st-key-qc_previous button[kind="secondary"] {
+            background: transparent !important;
+            color: #657286 !important;
+        }
+        .st-key-qc_next button[kind="secondary"],
+        .st-key-qc_next_chapter button[kind="secondary"] {
+            background: #fff2f4 !important;
+            color: #c92e49 !important;
+        }
+        .st-key-qc_previous button[kind="secondary"]:hover,
+        .st-key-qc_next button[kind="secondary"]:hover,
+        .st-key-qc_next_chapter button[kind="secondary"]:hover {
+            background: #ffe8ec !important;
+            color: #ac2740 !important;
+        }
         .st-key-qc_subject_map button[kind="secondary"] {
             width: auto !important;
             border: 0 !important;
@@ -524,6 +660,13 @@ def _render_qc_body(visitor_id: str, api_base: str,
             .st-key-qc_chapter_path_card,
             .st-key-qc_chapter_content_card {
                 padding: 16px !important;
+            }
+            .st-key-qc_answer_card {
+                padding: 18px !important;
+            }
+            .st-key-qc_answer_body p,
+            .st-key-qc_answer_body li {
+                font-size: 15px !important;
             }
         }
         </style>""",
@@ -687,48 +830,54 @@ def _render_qc_body(visitor_id: str, api_base: str,
         if question["id"] not in visited:
             visited.append(question["id"])
             _save(visitor_id, curriculum_id, state)
-        st.caption(f"Question {question_index + 1} of {len(questions)}")
-        with st.container(border=True):
+        with st.container(border=True, key="qc_answer_card"):
+            st.caption(f"Question {question_index + 1} of {len(questions)}")
             st.markdown(f"### {question['text']}")
-            if question["id"] not in state["answers"]:
-                try:
-                    with st.spinner("Forming your answer..."):
-                        result = _post(api_base, "/qc/answer", {
-                            "subject": state["subject"], "chapter": chapter,
-                            "questions": questions, "index": question_index,
-                        })
-                    state["answers"][question["id"]] = result["answer"]
-                    _save(visitor_id, curriculum_id, state)
-                    _stream_text(result["answer"], max_seconds=20.0)
-                except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
-                    st.error(f"I couldn't answer this question: {exc}")
-                    return
-            else:
-                st.markdown(state["answers"][question["id"]])
-        if question["id"] not in state["completed"] and st.button("Mark understood", key="qc_mark_understood"):
-            state["completed"].append(question["id"])
-            _save(visitor_id, curriculum_id, state)
-            st.rerun()
-        previous_col, next_col = st.columns(2)
-        with previous_col:
-            if question_index > 0 and st.button("← Previous question", key="qc_previous"):
-                state["selected_question"] = questions[question_index - 1]["id"]
-                if questions[question_index - 1]["id"] not in visited:
-                    visited.append(questions[question_index - 1]["id"])
-                _save(visitor_id, curriculum_id, state)
-                st.rerun()
-        with next_col:
-            if question_index + 1 < len(questions) and st.button("Next question →", key="qc_next"):
-                state["selected_question"] = questions[question_index + 1]["id"]
-                if questions[question_index + 1]["id"] not in visited:
-                    visited.append(questions[question_index + 1]["id"])
-                _save(visitor_id, curriculum_id, state)
-                st.rerun()
-            elif question_index + 1 == len(questions) and chapter_index + 1 < len(chapters) and st.button("Next chapter →", key="qc_next_chapter"):
-                state["selected_chapter"] = chapters[chapter_index + 1]["id"]
-                state["selected_question"] = None
-                _save(visitor_id, curriculum_id, state)
-                st.rerun()
+            with st.container(border=False, key="qc_answer_body"):
+                if question["id"] not in state["answers"]:
+                    try:
+                        with st.spinner("Forming your answer..."):
+                            result = _post(api_base, "/qc/answer", {
+                                "subject": state["subject"], "chapter": chapter,
+                                "questions": questions, "index": question_index,
+                            })
+                        state["answers"][question["id"]] = result["answer"]
+                        _save(visitor_id, curriculum_id, state)
+                        _stream_text(_format_curriculum_answer(result["answer"]), max_seconds=20.0)
+                    except (requests.RequestException, RuntimeError, ValueError, KeyError) as exc:
+                        st.error(f"I couldn't answer this question: {exc}")
+                        return
+                else:
+                    st.markdown(_format_curriculum_answer(state["answers"][question["id"]]))
+            with st.container(border=False, key="qc_answer_actions"):
+                action_col, navigation_col = st.columns(2, vertical_alignment="center")
+                with action_col:
+                    if question["id"] not in state["completed"]:
+                        if st.button("Mark understood", key="qc_mark_understood"):
+                            state["completed"].append(question["id"])
+                            _save(visitor_id, curriculum_id, state)
+                            st.rerun()
+                    else:
+                        st.caption("Understood")
+                with navigation_col:
+                    with st.container(horizontal=True, horizontal_alignment="right"):
+                        if question_index > 0 and st.button("← Previous question", key="qc_previous"):
+                            state["selected_question"] = questions[question_index - 1]["id"]
+                            if questions[question_index - 1]["id"] not in visited:
+                                visited.append(questions[question_index - 1]["id"])
+                            _save(visitor_id, curriculum_id, state)
+                            st.rerun()
+                        if question_index + 1 < len(questions) and st.button("Next question →", key="qc_next"):
+                            state["selected_question"] = questions[question_index + 1]["id"]
+                            if questions[question_index + 1]["id"] not in visited:
+                                visited.append(questions[question_index + 1]["id"])
+                            _save(visitor_id, curriculum_id, state)
+                            st.rerun()
+                        elif question_index + 1 == len(questions) and chapter_index + 1 < len(chapters) and st.button("Next chapter →", key="qc_next_chapter"):
+                            state["selected_chapter"] = chapters[chapter_index + 1]["id"]
+                            state["selected_question"] = None
+                            _save(visitor_id, curriculum_id, state)
+                            st.rerun()
 
 
 def render_qc(visitor_id: str, api_base: str,

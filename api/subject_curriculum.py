@@ -175,9 +175,12 @@ def answer_curriculum_question(subject: str, chapter: dict[str, Any], questions:
             f"'{subject}'. The current question is: {question}\n"
             f"Earlier questions in this sequence: {json.dumps(previous)}.\n"
             "Answer THIS question directly and accurately. Build on earlier learning without "
-            "repeating the whole curriculum. Keep the complete lesson to about 400-650 words; "
-            "cover the specific concepts asked, explain important mechanisms and one useful "
-            "example when appropriate, then end naturally. Do not generate a Knowledge Map "
+            "repeating the whole curriculum. Match the answer's length to this question: "
+            "be concise for simple definitions, and go deeper only when the question calls "
+            "for mechanisms, comparisons, or examples. Start with the direct answer. Use "
+            "short paragraphs and clear Markdown section headings where they help; keep "
+            "lists properly indented and avoid a wall of text. Explain one useful example "
+            "when appropriate, then end naturally. Do not generate a Knowledge Map "
             "or a new question list."
         ),
         meta={"mode": "qc_answer"},

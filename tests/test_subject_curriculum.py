@@ -261,6 +261,17 @@ class GenerationTests(unittest.TestCase):
             qc_ui._stream_text("Learn.")
         self.assertEqual(chunks, list("Learn."))
 
+    def test_saved_plain_text_answer_gets_readable_sections_without_changing_content(self):
+        answer = (
+            "Definition\nMachine learning learns from data.\n\n"
+            "Why this matters\n- It can generalize.\n- It can fail.\n\n"
+            "```python\nresult = model.predict(data)\n```"
+        )
+        formatted = qc_ui._format_curriculum_answer(answer)
+        self.assertIn("**Definition**\n\nMachine learning learns from data.", formatted)
+        self.assertIn("**Why this matters**\n\n- It can generalize.", formatted)
+        self.assertIn("```python\nresult = model.predict(data)\n```", formatted)
+
     def test_chapter_sequence_keeps_valid_questions_when_one_is_duplicate_or_malformed(self):
         outline = {
             "subject": "Machine Learning",
