@@ -101,6 +101,27 @@ class SubjectIntentTests(unittest.TestCase):
 
 
 class GenerationTests(unittest.TestCase):
+    def test_stream_follower_only_mounts_for_new_curriculum_content(self):
+        chapter = {
+            "id": "chapter-1", "questions": [{"id": "chapter-1-q1"}],
+            "questions_revealed": False,
+        }
+        state = {
+            "outline": {"chapters": [chapter]}, "selected_chapter": None,
+            "selected_question": None, "intro_revealed": False, "answers": {},
+        }
+        self.assertTrue(qc_ui._should_follow_qc_stream(state))
+        state["intro_revealed"] = True
+        self.assertFalse(qc_ui._should_follow_qc_stream(state))
+        state["selected_chapter"] = "chapter-1"
+        self.assertTrue(qc_ui._should_follow_qc_stream(state))
+        chapter["questions_revealed"] = True
+        self.assertFalse(qc_ui._should_follow_qc_stream(state))
+        state["selected_question"] = "chapter-1-q1"
+        self.assertTrue(qc_ui._should_follow_qc_stream(state))
+        state["answers"]["chapter-1-q1"] = "An answer."
+        self.assertFalse(qc_ui._should_follow_qc_stream(state))
+
     def test_chapter_navigation_respects_first_middle_and_last_chapter(self):
         chapters = [{"id": f"chapter-{index}"} for index in range(1, 4)]
         self.assertEqual(qc_ui._chapter_neighbors(chapters, 0), (None, "chapter-2"))
@@ -175,8 +196,10 @@ class GenerationTests(unittest.TestCase):
         with patch.object(qc_ui.st, "session_state", session), \
              patch.object(qc_ui.st, "markdown"), \
              patch.object(qc_ui.st, "container"), \
+             patch.object(qc_ui, "follow_qc_stream") as follow_stream, \
              patch.object(qc_ui, "_render_qc_body"):
             qc_ui.render_qc("visitor", "http://api", None, render_user_bubble)
+            follow_stream.assert_called_once_with()
 
         render_user_bubble.assert_called_once_with(
             prompt, "Thu, Sep 17 • 09:30 AM", query_mode="interrogate",

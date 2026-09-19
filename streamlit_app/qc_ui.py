@@ -13,6 +13,7 @@ import streamlit as st
 
 from api.subject_curriculum import learning_subject_candidate
 from streamlit_app.qc_map_viewer import render_subject_map
+from streamlit_app.qc_scroll_follow import follow_qc_stream
 from streamlit_app.qc_stream_cards import render_stream_cards
 from streamlit_app.storage_sqlite import load_curriculum, list_curricula, save_curriculum
 
@@ -58,6 +59,23 @@ def _chapter_neighbors(chapters: list[dict[str, Any]], index: int) -> tuple[str 
     previous_id = chapters[index - 1]["id"] if index > 0 else None
     next_id = chapters[index + 1]["id"] if index + 1 < len(chapters) else None
     return previous_id, next_id
+
+
+def _should_follow_qc_stream(state: dict[str, Any] | None) -> bool:
+    """Follow only a curriculum view that is about to reveal new content."""
+    if not isinstance(state, dict):
+        return False
+    chapter_id = state.get("selected_chapter")
+    if not chapter_id:
+        return not state.get("intro_revealed", False)
+    chapters = (state.get("outline") or {}).get("chapters") or []
+    chapter = next((item for item in chapters if item.get("id") == chapter_id), None)
+    if not chapter:
+        return False
+    question_id = state.get("selected_question")
+    if question_id:
+        return question_id not in (state.get("answers") or {})
+    return not chapter.get("questions") or not chapter.get("questions_revealed", False)
 
 
 def _subject_icon(subject: str) -> str:
@@ -343,6 +361,15 @@ def _render_qc_body(visitor_id: str, api_base: str,
         }
         .st-key-qc_primary_response > div {
             background: transparent !important;
+        }
+        /* Streamlit keeps the prior run's widgets as faded placeholders while
+           a new chapter loads. They are not part of the active response. */
+        .st-key-qc_primary_response [data-stale="true"] {
+            display: none !important;
+        }
+        /* A chapter rerun can also briefly leave two container wrappers. */
+        .st-key-qc_primary_response > [data-testid="stLayoutWrapper"]:has(> .st-key-qc_chapter_content_card):has(~ [data-testid="stLayoutWrapper"] > .st-key-qc_chapter_content_card) {
+            display: none !important;
         }
         .st-key-qc_subject_map_card,
         .st-key-qc_chapter_path_card,
@@ -730,8 +757,16 @@ def render_qc(visitor_id: str, api_base: str,
         body:has(.st-key-qc_primary_response) .nc-generation-placeholder {
             display: none !important;
         }
+        .st-key-qc_stream_follow {
+            position: absolute !important;
+            width: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
         </style>""",
         unsafe_allow_html=True,
     )
     with st.container(border=True, key="qc_primary_response"):
+        if _should_follow_qc_stream(state):
+            follow_qc_stream()
         _render_qc_body(visitor_id, api_base, attach_to_chat)
