@@ -371,6 +371,12 @@ def _render_qc_body(visitor_id: str, api_base: str,
         .st-key-qc_primary_response > [data-testid="stLayoutWrapper"]:has(> .st-key-qc_chapter_content_card):has(~ [data-testid="stLayoutWrapper"] > .st-key-qc_chapter_content_card) {
             display: none !important;
         }
+        /* The previous Subject Map run can leave empty card shells behind
+           after a chapter opens, even when Streamlit no longer marks them stale. */
+        .st-key-qc_primary_response:has(.st-key-qc_chapter_content_card) > [data-testid="stLayoutWrapper"]:has(> .st-key-qc_subject_map_card),
+        .st-key-qc_primary_response:has(.st-key-qc_chapter_content_card) > [data-testid="stLayoutWrapper"]:has(> .st-key-qc_chapter_path_card) {
+            display: none !important;
+        }
         .st-key-qc_subject_map_card,
         .st-key-qc_chapter_path_card,
         .st-key-qc_chapter_content_card {
