@@ -10,12 +10,23 @@ FCE_CONTENT_SOURCE = (
 FCE_COMPONENT_SOURCE = (
     Path(__file__).resolve().parents[1] / "streamlit_app" / "fce_component.py"
 ).read_text(encoding="utf-8")
+LANDING_GUIDANCE_SOURCE = (
+    Path(__file__).resolve().parents[1] / "streamlit_app" / "landing_guidance.py"
+).read_text(encoding="utf-8")
 
 
 def test_sidebar_clock_does_not_force_periodic_app_rerenders() -> None:
     assert "_render_clock_tile()" in APP_SOURCE
     assert 'run_every="1s"' not in APP_SOURCE
     assert "st_autorefresh" not in APP_SOURCE
+
+
+def test_landing_guidance_streams_only_one_sentence_at_a_time() -> None:
+    assert "render_landing_guidance()" in APP_SOURCE
+    assert '<div class="nc-landing-subtitle"' not in APP_SOURCE
+    assert "copy.textContent = ''" in LANDING_GUIDANCE_SOURCE
+    assert "copy.textContent += characters[charIndex++]" in LANDING_GUIDANCE_SOURCE
+    assert "window.clearTimeout(timer)" in LANDING_GUIDANCE_SOURCE
 
 
 def test_saved_chat_dialog_uses_plain_language_and_clear_resume_action() -> None:

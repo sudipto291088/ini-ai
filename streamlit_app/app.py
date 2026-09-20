@@ -188,6 +188,7 @@ FOCUS_MATCHER_VERSION = question_map_focus.FOCUS_MATCHER_VERSION
 from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
 from splash_component import render_app_splash
+from landing_guidance import render_landing_guidance
 
 
 
@@ -12656,18 +12657,10 @@ def page_new_chat() -> None:
               <span class="nc-landing-wordmark nc-landing-wordmark-accent">ai</span>
             </div>
             <div class="nc-landing-heading">What would you like to understand?</div>
-            <div class="nc-landing-subtitle" aria-label="InI guidance">
-              <span class="nc-landing-subtitle__line" style="--chars: 39">Begin with a topic, question, or idea.</span>
-              <span class="nc-landing-subtitle__line nc-landing-subtitle__line--two-stage" style="--chars: 62"><span class="nc-landing-subtitle__segment" style="--segment-chars: 35">InI turns your first question into </span><span class="nc-landing-subtitle__mobile-break"><br></span><span class="nc-landing-subtitle__segment" style="--segment-chars: 27">a structured learning path.</span></span>
-              <span class="nc-landing-subtitle__line nc-landing-subtitle__line--two-stage" style="--chars: 69"><span class="nc-landing-subtitle__segment" style="--segment-chars: 37">You do not need to know the right </span><span class="nc-landing-subtitle__mobile-break"><br></span><span class="nc-landing-subtitle__segment" style="--segment-chars: 32">terminology before you begin.</span></span>
-              <span class="nc-landing-subtitle__line nc-landing-subtitle__line--two-stage" style="--chars: 94"><span class="nc-landing-subtitle__segment" style="--segment-chars: 49">Even an incomplete thought can become a clear path </span><span class="nc-landing-subtitle__mobile-break"><br></span><span class="nc-landing-subtitle__segment" style="--segment-chars: 45">of questions, concepts, and connections.</span></span>
-              <span class="nc-landing-subtitle__line nc-landing-subtitle__line--two-stage" style="--chars: 91"><span class="nc-landing-subtitle__segment" style="--segment-chars: 45">Use Interrogate to explore the topic through </span><span class="nc-landing-subtitle__mobile-break"><br></span><span class="nc-landing-subtitle__segment" style="--segment-chars: 46">explanations, relationships, and questions.</span></span>
-              <span class="nc-landing-subtitle__line nc-landing-subtitle__line--two-stage" style="--chars: 74"><span class="nc-landing-subtitle__segment" style="--segment-chars: 43">Use Illustrate to transform the idea into </span><span class="nc-landing-subtitle__mobile-break"><br></span><span class="nc-landing-subtitle__segment" style="--segment-chars: 31">a clear visual explanation.</span></span>
-              <span class="nc-landing-subtitle__line" style="--chars: 44">Follow one question naturally into the next.</span>
-            </div>
             """,
             unsafe_allow_html=True,
         )
+        render_landing_guidance()
 
         run = False
         illustrate_run = False
