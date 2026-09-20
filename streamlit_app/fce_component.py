@@ -86,7 +86,7 @@ _FCE_COMPONENT = st.components.v2.component(
     """,
     js="""
     export default function (component) {
-      const { parentElement, data, setStateValue, setTriggerValue } = component;
+      const { parentElement, data, setTriggerValue } = component;
       const root = parentElement.querySelector('#ini-fce-root');
       if (!root) return;
       const host = root.getRootNode().host;
@@ -200,7 +200,7 @@ _FCE_COMPONENT = st.components.v2.component(
         root.innerHTML = '';
         collapseHost();
         sessionStorage.removeItem(flowStorageKey);
-        setStateValue('action', action);
+        // Navigation is a one-shot event, never persistent component state.
         setTriggerValue('action', action);
       };
 

@@ -92,3 +92,10 @@ def test_first_visit_introduction_is_shorter_and_visually_demonstrates_features(
     assert "From one thought to a learning path" in FCE_COMPONENT_SOURCE
     assert "Two ways to read an answer" in FCE_COMPONENT_SOURCE
     assert "A connected knowledge structure" in FCE_COMPONENT_SOURCE
+
+
+def test_first_visit_navigation_is_consumed_once() -> None:
+    assert "setTriggerValue('action', action)" in FCE_COMPONENT_SOURCE
+    assert "setStateValue('action', action)" not in FCE_COMPONENT_SOURCE
+    assert "st.session_state.fce_pending_action = action" in APP_SOURCE
+    assert APP_SOURCE.count("if fce_action:") == 1

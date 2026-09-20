@@ -15212,7 +15212,7 @@ if mount_fce_component:
     fce_icon_data = "data:image/png;base64," + base64.b64encode(
         fce_icon_path.read_bytes()
     ).decode("ascii")
-    fce_action = render_fce(
+    render_fce(
         messages=FCE_MESSAGES,
         topics=FCE_TOPIC_EXAMPLES,
         quote=st.session_state.fce_quote,
@@ -15221,11 +15221,3 @@ if mount_fce_component:
         force_open=st.session_state.fce_force_open,
         on_action_change=_capture_fce_action,
     )
-
-    if fce_action:
-        st.session_state.fce_static_open = False
-        if fce_action == "go-introduction":
-            _reset_query_to_page("home")
-        elif fce_action == "go-chat":
-            _reset_query_to_page("chat")
-        st.rerun()
