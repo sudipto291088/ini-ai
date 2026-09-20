@@ -191,13 +191,6 @@ from splash_component import render_app_splash
 
 
 
-# Try autorefresh (for live clock). If not installed, app still runs.
-try:
-    from streamlit_autorefresh import st_autorefresh  # type: ignore
-except Exception:
-    st_autorefresh = None
-
-
 # =========================
 # Config
 # =========================
@@ -5892,17 +5885,9 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
-    if hasattr(st, "fragment"):
-        @st.fragment(run_every="1s")  # type: ignore[arg-type]
-        def _clock_fragment():
-            _render_clock_tile()
-        _clock_fragment()
-    elif st_autorefresh is not None:
-        st_autorefresh(interval=1000, key="ini_clock_tick")
-        _render_clock_tile()
-    else:
-        _render_clock_tile()
-        st.caption("Tip: install 'streamlit-autorefresh' to enable a live-updating clock.")
+    # A timed Streamlit update dims the entire app in some browsers. Refresh the
+    # clock on normal interactions instead of forcing a rerender every second.
+    _render_clock_tile()
 
     st.markdown('<div class="ini-sidebar-section">Navigation</div>', unsafe_allow_html=True)
     intro_nav_href = _private_href(page="home")

@@ -12,6 +12,12 @@ FCE_COMPONENT_SOURCE = (
 ).read_text(encoding="utf-8")
 
 
+def test_sidebar_clock_does_not_force_periodic_app_rerenders() -> None:
+    assert "_render_clock_tile()" in APP_SOURCE
+    assert 'run_every="1s"' not in APP_SOURCE
+    assert "st_autorefresh" not in APP_SOURCE
+
+
 def test_saved_chat_dialog_uses_plain_language_and_clear_resume_action() -> None:
     assert '@st.dialog("Resume saved conversation")' in APP_SOURCE
     assert "Resume conversation:" in APP_SOURCE
