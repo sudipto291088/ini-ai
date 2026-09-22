@@ -172,6 +172,7 @@ initial_answer_opening = response_strategy.initial_answer_opening
 related_questions_bridge = response_strategy.related_questions_bridge
 knowledge_structure_bridge = response_strategy.knowledge_structure_bridge
 knowledge_structure_action = response_strategy.knowledge_structure_action
+knowledge_structure_map_for_action = response_strategy.knowledge_structure_map_for_action
 no_knowledge_structure_notice = response_strategy.no_knowledge_structure_notice
 import api.question_map_focus as question_map_focus
 
@@ -8085,24 +8086,18 @@ def page_new_chat() -> None:
                             response_payload.get("knowledge_structure_topic") or ""
                         ).strip()
                         if ks_topic:
-                            # The original KS hint may contain a mechanically extracted
-                            # fragment (especially in older saved IA responses).  Reuse
-                            # the Topic Profile's canonical Subject so both the visible
-                            # action and the generated structure stay on the real topic.
-                            profile_rows = _profile_for_response(
-                                guidance_seed,
-                                response_payload,
-                                mode_override="standard",
-                            )
-                            canonical_subject = str(
-                                dict(profile_rows).get("Subject") or ks_topic
-                            ).strip()
-                            ks_action = knowledge_structure_action(canonical_subject)
+                            # The profile's Subject may be an LLM paraphrase. Use the
+                            # original learning topic, which also matches the map saved
+                            # alongside this initial answer.
+                            ks_action = knowledge_structure_action(ks_topic)
                             _queue_new_chat_request(
                                 ks_action.get("prompt") or ks_topic,
                                 "interrogate",
                                 request_kind=ks_action.get("request_kind") or "",
                                 semantic_topic=ks_action.get("semantic_topic") or ks_topic,
+                                knowledge_structure_data=response_payload.get(
+                                    "knowledge_structure_data"
+                                ),
                             )
                 elif (
                     isinstance(response_payload, dict)
@@ -9300,6 +9295,7 @@ def page_new_chat() -> None:
         topic_text: str,
         show_spinner: bool = True,
         forced_knowledge_structure_topic: str = "",
+        forced_knowledge_structure_data: Optional[Dict[str, Any]] = None,
     ) -> None:
         # Context-dependent phrases must remain verbatim. Otherwise the fuzzy
         # follow-up resolver can expand "what else" into an older suggested
@@ -9767,10 +9763,30 @@ def page_new_chat() -> None:
                         "reply": capability_boundary.reply,
                     }
                 elif forced_ks_topic:
-                    data = fetch_interrogate(forced_ks_topic)
-                    data["knowledge_structure_rendered"] = True
-                    data["response_mode"] = "knowledge_structure"
-                    data["profile_prompt"] = forced_ks_topic
+                    data = knowledge_structure_map_for_action(
+                        forced_ks_topic,
+                        forced_knowledge_structure_data,
+                        fetch_interrogate,
+                    )
+                    if any(bool(items) for items in (data.get("categories") or {}).values()):
+                        data["knowledge_structure_rendered"] = True
+                        data["response_mode"] = "knowledge_structure"
+                        data["profile_prompt"] = forced_ks_topic
+                    else:
+                        # An explicit button action must never become a normal
+                        # answer about the button label when generation fails.
+                        data = {
+                            "topic": forced_ks_topic,
+                            "categories": {},
+                            "intent": "knowledge_structure_unavailable",
+                            "response_mode": "knowledge_structure_unavailable",
+                            "should_answer_direct": False,
+                            "suppress_profile": True,
+                            "reply": (
+                                f"I couldn't build a reliable Knowledge Structure for "
+                                f"{forced_ks_topic} right now. Please try again."
+                            ),
+                        }
                 elif context_correction_question:
                     data = {
                         "categories": {},
@@ -10433,6 +10449,7 @@ def page_new_chat() -> None:
                         "topic_profile": data.get("topic_profile"),
                         "knowledge_structure_available": True,
                         "knowledge_structure_topic": resolved_learning_topic,
+                        "knowledge_structure_data": data,
                         "ks_suitability": ks_suitability,
                         "ts": now_label(),
                     }
@@ -10715,6 +10732,7 @@ def page_new_chat() -> None:
         *,
         request_kind: str = "",
         semantic_topic: str = "",
+        knowledge_structure_data: Optional[Dict[str, Any]] = None,
     ) -> bool:
         prompt = (topic_text or "").strip()
         action = (action or "interrogate").strip().lower()
@@ -10793,6 +10811,7 @@ def page_new_chat() -> None:
             "hide_user_bubble": hide_internal_qm_action,
             "request_kind": request_kind,
             "semantic_topic": semantic_topic,
+            "knowledge_structure_data": knowledge_structure_data,
         }
         st.session_state._nc_bottom_composer_revision += 1
         st.session_state.chat_top_enter_submit = False
@@ -10939,6 +10958,7 @@ def page_new_chat() -> None:
         action = (pending.get("action") or "interrogate").strip().lower()
         request_kind = (pending.get("request_kind") or "").strip().lower()
         semantic_topic = (pending.get("semantic_topic") or "").strip()
+        knowledge_structure_data = pending.get("knowledge_structure_data")
         status_mode = (pending.get("status_mode") or "generating").strip().lower()
         if not prompt:
             st.session_state._nc_pending_request = None
@@ -11073,6 +11093,11 @@ def page_new_chat() -> None:
                             semantic_topic
                             if request_kind == "knowledge_structure"
                             else ""
+                        ),
+                        forced_knowledge_structure_data=(
+                            knowledge_structure_data
+                            if request_kind == "knowledge_structure"
+                            else None
                         ),
                     )
         finally:

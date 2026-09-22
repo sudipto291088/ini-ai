@@ -11,6 +11,7 @@ from api.response_strategy import (
     initial_answer_opening,
     knowledge_structure_bridge,
     knowledge_structure_action,
+    knowledge_structure_map_for_action,
     no_knowledge_structure_notice,
     question_intelligence_limit,
     related_questions_bridge,
@@ -56,6 +57,49 @@ class ResponseStrategyTests(unittest.TestCase):
         self.assertEqual(action["request_kind"], "knowledge_structure")
         self.assertEqual(action["semantic_topic"], "Inflation: causes and effects")
         self.assertIn("Knowledge Structure", action["prompt"])
+
+    def test_knowledge_structure_button_does_not_nest_old_button_prompts(self):
+        action = knowledge_structure_action(
+            "Open the complete Knowledge Structure for "
+            "Open the complete Knowledge Structure for artificial intelligence"
+        )
+        self.assertEqual(action["semantic_topic"], "artificial intelligence")
+        self.assertEqual(
+            action["prompt"],
+            "Open the complete Knowledge Structure for artificial intelligence",
+        )
+
+    def test_knowledge_structure_button_reuses_original_map(self):
+        saved = {
+            "topic": "Artificial intelligence",
+            "categories": {"Foundations": [{"question": "What is AI?"}]},
+        }
+
+        def should_not_generate(_topic):
+            self.fail("A saved map should avoid another generation")
+
+        self.assertEqual(
+            knowledge_structure_map_for_action(
+                "Artificial intelligence", saved, should_not_generate
+            ),
+            saved,
+        )
+
+    def test_knowledge_structure_button_regenerates_missing_or_wrong_map(self):
+        generated = {"topic": "Biology", "categories": {"Foundations": ["Q"]}}
+        calls = []
+
+        def generate(topic):
+            calls.append(topic)
+            return generated
+
+        self.assertEqual(
+            knowledge_structure_map_for_action(
+                "Biology", {"topic": "AI", "categories": {"Foundations": ["Q"]}}, generate
+            ),
+            generated,
+        )
+        self.assertEqual(calls, ["Biology"])
 
     def test_conversation_never_surfaces_knowledge_structure(self):
         self.assertEqual(

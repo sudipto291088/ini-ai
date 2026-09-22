@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 
 NO_KS = "NO_KS"
@@ -156,6 +156,13 @@ def extract_knowledge_structure_topic(query: str) -> str:
 def knowledge_structure_action(topic: str) -> dict[str, str]:
     """Build a typed UI action that never needs conversational reclassification."""
     canonical_topic = re.sub(r"\s+", " ", (topic or "").strip()).strip(" .?!:;-")
+    # Older saved responses may have treated this button's label as a topic.
+    # Do not let a second click prepend the command again.
+    for _ in range(4):
+        extracted = extract_knowledge_structure_topic(canonical_topic)
+        if not extracted or extracted == canonical_topic:
+            break
+        canonical_topic = extracted
     if not canonical_topic:
         return {}
     return {
@@ -163,6 +170,25 @@ def knowledge_structure_action(topic: str) -> dict[str, str]:
         "semantic_topic": canonical_topic,
         "prompt": f"Open the complete Knowledge Structure for {canonical_topic}",
     }
+
+
+def knowledge_structure_map_for_action(
+    topic: str,
+    saved_map: Mapping[str, Any] | None,
+    generate: Callable[[str], dict[str, Any]],
+) -> dict[str, Any]:
+    """Reuse the initial answer's map before making another fallible API call."""
+
+    source = saved_map if isinstance(saved_map, Mapping) else {}
+    categories = source.get("categories")
+    saved_topic = str(source.get("topic") or "").strip().casefold()
+    if (
+        isinstance(categories, dict)
+        and any(bool(items) for items in categories.values())
+        and saved_topic == topic.strip().casefold()
+    ):
+        return dict(source)
+    return generate(topic)
 
 
 def assess_ks_suitability(
