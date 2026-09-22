@@ -3379,6 +3379,18 @@ div[class*="st-key-branch_question_map_panel_"]
   grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
   gap: 8px !important;
 }
+/* Keep the header toggle away from the hosted iframe's clipped right edge. */
+.st-key-root_qmap_header,
+div[class*="st-key-branch_qmap_header_"] {
+  padding-right: 56px !important;
+  box-sizing: border-box !important;
+}
+@media (max-width: 700px) {
+  .st-key-root_qmap_header,
+  div[class*="st-key-branch_qmap_header_"] {
+    padding-right: 12px !important;
+  }
+}
 .st-key-root_question_map_panel [data-testid="stRadio"] div[role="radiogroup"] label,
 div[class*="st-key-branch_question_map_panel_"]
   [data-testid="stRadio"] div[role="radiogroup"] label {
