@@ -156,7 +156,10 @@ if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 6:
 detect_intent = intent_layer.detect_intent
 import api.response_strategy as response_strategy
 
-if getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 7:
+if (
+    getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 8
+    or not hasattr(response_strategy, "knowledge_structure_map_for_action")
+):
     response_strategy = importlib.reload(response_strategy)
 KS_EXPLICIT = response_strategy.KS_EXPLICIT
 KS_RECOMMENDED = response_strategy.KS_RECOMMENDED

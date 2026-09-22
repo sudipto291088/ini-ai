@@ -16,7 +16,7 @@ NO_KS = "NO_KS"
 CONDITIONAL_KS = "CONDITIONAL_KS"
 KS_RECOMMENDED = "KS_RECOMMENDED"
 KS_EXPLICIT = "KS_EXPLICIT"
-RESPONSE_STRATEGY_VERSION = 7
+RESPONSE_STRATEGY_VERSION = 8
 
 
 def _stable_variant(seed: str, options: tuple[str, ...]) -> str:
@@ -421,6 +421,7 @@ __all__ = [
     "is_explicit_knowledge_structure_request",
     "knowledge_structure_bridge",
     "knowledge_structure_action",
+    "knowledge_structure_map_for_action",
     "no_knowledge_structure_notice",
     "question_intelligence_limit",
     "related_questions_bridge",

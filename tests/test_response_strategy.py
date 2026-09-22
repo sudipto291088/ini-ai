@@ -1,4 +1,7 @@
 import unittest
+import importlib
+
+import api.response_strategy as response_strategy
 
 from api.response_strategy import (
     CONDITIONAL_KS,
@@ -20,6 +23,22 @@ from api.response_strategy import (
 
 
 class ResponseStrategyTests(unittest.TestCase):
+    def test_streamlit_import_contract_survives_cached_old_module(self):
+        # Streamlit keeps imports alive across hot reloads. The app must
+        # recognize and refresh the previous strategy contract.
+        self.assertGreaterEqual(response_strategy.RESPONSE_STRATEGY_VERSION, 8)
+        old_helper = response_strategy.knowledge_structure_map_for_action
+        try:
+            del response_strategy.knowledge_structure_map_for_action
+            if (
+                getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 8
+                or not hasattr(response_strategy, "knowledge_structure_map_for_action")
+            ):
+                importlib.reload(response_strategy)
+            self.assertTrue(hasattr(response_strategy, "knowledge_structure_map_for_action"))
+        finally:
+            response_strategy.knowledge_structure_map_for_action = old_helper
+
     def test_human_guidance_copy_is_stable_and_contextual(self):
         query = "What is data science?"
         self.assertEqual(initial_answer_opening(query), initial_answer_opening(query))
