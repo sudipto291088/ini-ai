@@ -43,6 +43,10 @@ from api.europe_pmc_knowledge import (
     format_europe_pmc_prompt_context,
     retrieve_europe_pmc_context,
 )
+from api.arxiv_knowledge import (
+    format_arxiv_prompt_context,
+    retrieve_arxiv_context,
+)
 
 
 # ============================================================
@@ -533,6 +537,8 @@ def generate_dynamic_answer_result(
     doaj_prompt_context = ""
     europe_pmc_context: Dict[str, Any] = {}
     europe_pmc_prompt_context = ""
+    arxiv_context: Dict[str, Any] = {}
+    arxiv_prompt_context = ""
     # QC's scope check, outline, chapter sequence, and lesson are generated from
     # their own curriculum context. Generic topic retrieval adds latency and can
     # distract from the requested structured sequence; ordinary IA is unchanged.
@@ -542,7 +548,7 @@ def generate_dynamic_answer_result(
     if not (isinstance(meta, dict) and str(meta.get("mode") or "").lower() in retrieval_free_modes):
         # Independent public lookups run together so additional sources do not
         # multiply the user's retrieval wait.
-        with ThreadPoolExecutor(max_workers=9) as executor:
+        with ThreadPoolExecutor(max_workers=10) as executor:
             wikidata_future = executor.submit(retrieve_wikidata_context, topic)
             wikipedia_future = executor.submit(retrieve_wikipedia_context, topic)
             wikibooks_future = executor.submit(retrieve_wikibooks_context, topic)
@@ -552,6 +558,7 @@ def generate_dynamic_answer_result(
             openalex_future = executor.submit(retrieve_openalex_context, topic)
             doaj_future = executor.submit(retrieve_doaj_context, topic)
             europe_pmc_future = executor.submit(retrieve_europe_pmc_context, topic)
+            arxiv_future = executor.submit(retrieve_arxiv_context, topic)
             wikidata_context = wikidata_future.result()
             wikipedia_context = wikipedia_future.result()
             wikibooks_context = wikibooks_future.result()
@@ -561,6 +568,7 @@ def generate_dynamic_answer_result(
             openalex_context = openalex_future.result()
             doaj_context = doaj_future.result()
             europe_pmc_context = europe_pmc_future.result()
+            arxiv_context = arxiv_future.result()
         wikidata_prompt_context = format_wikidata_prompt_context(wikidata_context)
         wikipedia_prompt_context = format_wikipedia_prompt_context(wikipedia_context)
         wikibooks_prompt_context = format_wikibooks_prompt_context(wikibooks_context)
@@ -570,6 +578,7 @@ def generate_dynamic_answer_result(
         openalex_prompt_context = format_openalex_prompt_context(openalex_context)
         doaj_prompt_context = format_doaj_prompt_context(doaj_context)
         europe_pmc_prompt_context = format_europe_pmc_prompt_context(europe_pmc_context)
+        arxiv_prompt_context = format_arxiv_prompt_context(arxiv_context)
 
     knowledge_sources = [
         context
@@ -583,6 +592,7 @@ def generate_dynamic_answer_result(
             openalex_context,
             doaj_context,
             europe_pmc_context,
+            arxiv_context,
         )
         if context
     ]
@@ -603,6 +613,7 @@ def generate_dynamic_answer_result(
         f"{openalex_prompt_context}\n\n"
         f"{doaj_prompt_context}\n\n"
         f"{europe_pmc_prompt_context}\n\n"
+        f"{arxiv_prompt_context}\n\n"
         f"User question / instruction:\n{question}\n"
     )
 

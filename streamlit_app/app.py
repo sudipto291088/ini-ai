@@ -7092,6 +7092,8 @@ def page_home():
             unsafe_allow_html=True,
         )
 
+    st.caption("Thank you to arXiv for use of its open access interoperability.")
+
 def page_new_chat() -> None:
     if "chat_answers" not in st.session_state:
         st.session_state.chat_answers = {}

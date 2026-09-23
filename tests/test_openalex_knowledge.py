@@ -82,6 +82,8 @@ class OpenAlexKnowledgeTests(unittest.TestCase):
             llm, "retrieve_openalex_context", return_value=openalex
         ), patch.object(
             llm, "format_openalex_prompt_context", return_value="OPENALEX CONTEXT"
+        ), patch.object(
+            llm, "retrieve_arxiv_context", return_value={}
         ), patch.object(llm.requests, "post") as post:
             post.return_value.status_code = 200
             post.return_value.json.return_value = response

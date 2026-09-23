@@ -56,6 +56,7 @@ class EuropePMCKnowledgeTests(unittest.TestCase):
             "retrieve_wikibooks_context", "retrieve_wikiversity_context",
             "retrieve_crossref_context", "retrieve_datacite_context",
             "retrieve_openalex_context", "retrieve_doaj_context",
+            "retrieve_arxiv_context",
         )
         patches = [patch.object(llm, name, return_value={}) for name in retrieval_names]
         for item in patches:

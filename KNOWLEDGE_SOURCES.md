@@ -140,6 +140,33 @@ permission to retrieve other websites linked by that source.
 - `INI_OPENALEX_USER_AGENT` may override the identifying User-Agent.
 - `OPENALEX_API_KEY` may supply a free OpenAlex API key for dependable production capacity; it is never hard-coded or returned in model context.
 
+## arXiv e-print discovery metadata
+
+- Status: enabled
+- Purpose: add recent technical and scientific preprints to research discovery and topic orientation
+- Access method: official arXiv API (`https://export.arxiv.org/api/query`)
+- Retrieved scope: at most two records containing title, authors, dates, categories, bounded abstract metadata, DOI, journal reference, and canonical abstract-page URL
+- Metadata licence: Creative Commons CC0 1.0 for descriptive metadata, including abstracts
+- Terms: https://info.arxiv.org/help/api/tou.html
+- API guidance: https://info.arxiv.org/help/api/user-manual.html
+- Attribution: `Thank you to arXiv for use of its open access interoperability.`
+- Review boundary: arXiv records are presented as preprints/e-prints and are not treated as peer reviewed unless journal metadata independently establishes that status
+- Excluded scope: PDFs, source files, attachments, full text, and linked-page content
+- Storage: bounded in-memory cache only; default TTL 24 hours
+- Failure behavior: fail open to InI's existing pipeline; never block a response; no automatic retry through rate limits
+- Traffic behavior: one connection, no more than one request every three seconds, one bounded query, at most two records, and no pagination or bulk harvesting
+- Privacy behavior: only short public-topic queries are sent; personal, URL, email, credential-like, and long free-form inputs are rejected locally
+
+### arXiv configuration
+
+- `INI_ARXIV_ENABLED=1` enables the connector (default).
+- `INI_ARXIV_ENABLED=0` is the immediate kill switch.
+- `INI_ARXIV_TIMEOUT=6` sets the request timeout in seconds (bounded to 1–12).
+- `INI_ARXIV_CACHE_SECONDS=86400` sets the in-memory cache lifetime (bounded to 60–604800).
+
+The following sentence is displayed in InI's Introduction to satisfy arXiv's
+requested product acknowledgement: `Thank you to arXiv for use of its open access interoperability.`
+
 ## Admission rule for future sources
 
 No additional source should be connected until its copyright status, licence,

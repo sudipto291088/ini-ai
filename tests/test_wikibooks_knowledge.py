@@ -152,6 +152,8 @@ class WikibooksKnowledgeTests(unittest.TestCase):
                 llm, "retrieve_datacite_context", return_value={}
             ), patch.object(
                 llm, "retrieve_wikiversity_context", return_value={}
+            ), patch.object(
+                llm, "retrieve_arxiv_context", return_value={}
             ), patch.object(llm.requests, "post", side_effect=fake_post):
                 result = llm.generate_dynamic_answer_result(
                     topic="linear regression",
