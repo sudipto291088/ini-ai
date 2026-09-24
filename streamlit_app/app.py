@@ -33,7 +33,10 @@ if not hasattr(learning_flow, "resolve_generation_status"):
 # The same hot-deploy behavior can leave the first QC module version in
 # sys.modules. That version takes four arguments in maybe_start_qc, while
 # this entry point passes the chat-attachment callback as a fifth argument.
-if not hasattr(qc_ui, "process_pending_qc"):
+if (
+    not hasattr(qc_ui, "process_pending_qc")
+    or getattr(qc_ui, "QC_UI_VERSION", 0) < 2
+):
     qc_ui = importlib.reload(qc_ui)
 continuation_context = learning_flow.continuation_context
 resolve_generation_status = learning_flow.resolve_generation_status
@@ -4459,9 +4462,33 @@ def _attach_curriculum_to_new_chat(curriculum_id: str, subject: str, prompt: str
         ids.append(curriculum_id)
     st.session_state.qc_curricula_ids = ids
     st.session_state.qc_active_id = curriculum_id
-    st.session_state.chat["topic"] = subject
+    has_existing_chat = any([
+        st.session_state.get("chat_root_topic"),
+        st.session_state.get("chat_root_interrogate"),
+        st.session_state.get("chat_root_illustrate"),
+        st.session_state.get("chat_root_intro"),
+        st.session_state.get("chat_root_direct_answer"),
+        st.session_state.get("chat_root_answers"),
+    ])
+    if not has_existing_chat:
+        st.session_state.chat["topic"] = subject
     st.session_state.nc_started = True
     _record_chat_query(prompt, "interrogate")
+    curriculum_turns = st.session_state.chat_branch_answers
+    if not any(
+        isinstance(item, dict)
+        and item.get("kind") == "curriculum"
+        and item.get("curriculum_id") == curriculum_id
+        for item in curriculum_turns
+    ):
+        curriculum_turns.append({
+            "kind": "curriculum",
+            "topic": prompt.strip() or f"Teach me {subject} as a subject",
+            "subject": subject,
+            "curriculum_id": curriculum_id,
+            "ts": now_label(),
+        })
+    st.session_state._nc_scroll_to_latest_response = True
     sid = _persist_new_chat_session()
     if sid:
         st.query_params["chat_sid"] = sid
@@ -11292,6 +11319,50 @@ def page_new_chat() -> None:
 
         _generate_pending_new_chat_response(generation_slot)
 
+    def _render_pending_qc_continuation(pending: Dict[str, Any]) -> None:
+        """Append QC's loading turn without replacing the existing chat timeline."""
+        pending_prompt = (pending.get("prompt") or "").strip()
+        if not pending_prompt:
+            return
+
+        st.markdown('<div class="nc-pending-inline-anchor"></div>', unsafe_allow_html=True)
+        _render_nc_user_bubble(
+            pending_prompt,
+            (pending.get("ts") or now_label()).strip(),
+            extra_class="nc-pending-inline-query",
+            query_mode="interrogate",
+        )
+        generation_slot = st.empty()
+        with generation_slot.container():
+            _render_new_chat_generation_placeholder(
+                "interrogate",
+                "subject_learning" if pending.get("phase") == "building" else "thinking",
+            )
+
+        _render_new_chat_bottom_uib()
+        st.iframe(
+            """
+            <script>
+            requestAnimationFrame(() => {
+              try {
+                const doc = window.parent.document;
+                const anchor = doc.querySelector('.nc-pending-inline-anchor');
+                if (anchor) anchor.scrollIntoView({ block: 'center', behavior: 'smooth' });
+              } catch (err) {}
+            });
+            </script>
+            """,
+            height=1,
+            tab_index=-1,
+        )
+
+        if not qc_ui.process_pending_qc(
+            st.session_state.visitor_id,
+            st.session_state.api_base,
+            _attach_curriculum_to_new_chat,
+        ):
+            _queue_new_chat_request(pending_prompt, "interrogate")
+
     def _render_nc_latest_scroll_target() -> None:
         st.markdown(
             '<div id="nc-latest-response" class="nc-latest-response-anchor"></div>',
@@ -13428,7 +13499,38 @@ def page_new_chat() -> None:
             st.error(f"Error auto-running chat FUQ: {e}")
 
     pending_qc = st.session_state.get("qc_pending_request")
-    if isinstance(pending_qc, dict):
+    pending_qc_continuation = (
+        pending_qc
+        if isinstance(pending_qc, dict) and _session_has_existing_root()
+        else None
+    )
+    active_qc_id = st.session_state.get("qc_active_id")
+    if active_qc_id and _session_has_existing_root() and not any(
+        isinstance(item, dict)
+        and item.get("kind") == "curriculum"
+        and item.get("curriculum_id") == active_qc_id
+        for item in st.session_state.chat_branch_answers
+    ):
+        active_qc_state = st.session_state.get("qc_state") or qc_ui.load_curriculum(
+            st.session_state.visitor_id,
+            active_qc_id,
+        )
+        if isinstance(active_qc_state, dict):
+            st.session_state.qc_state = active_qc_state
+            subject = (active_qc_state.get("subject") or "Subject learning").strip()
+            prompt = (
+                active_qc_state.get("request_prompt")
+                or f"Teach me {subject} as a subject"
+            ).strip()
+            st.session_state.chat_branch_answers.append({
+                "kind": "curriculum",
+                "topic": prompt,
+                "subject": subject,
+                "curriculum_id": active_qc_id,
+                "ts": now_label(),
+            })
+            _persist_new_chat_session()
+    if isinstance(pending_qc, dict) and pending_qc_continuation is None:
         st.markdown(
             """
             <style>
@@ -13461,7 +13563,10 @@ def page_new_chat() -> None:
             _queue_new_chat_request(pending_qc["prompt"], "interrogate")
         return
 
-    if st.session_state.get("qc_active_id") or st.session_state.get("qc_clarification"):
+    if (
+        st.session_state.get("qc_active_id")
+        or st.session_state.get("qc_clarification")
+    ) and not _session_has_existing_root():
         if st.session_state.get("qc_active_id"):
             _render_nc_scroll_controls()
         qc_ui.render_qc(
@@ -13599,7 +13704,11 @@ def page_new_chat() -> None:
                     _render_nc_latest_scroll_target()
 
                 if not item.get("hide_user_topic"):
-                    _render_nc_user_bubble(topic, ts, query_mode=kind)
+                    _render_nc_user_bubble(
+                        topic,
+                        ts,
+                        query_mode="interrogate" if kind == "curriculum" else kind,
+                    )
 
                 if kind == "illustrate":
                     illustrate_payload = item.get("illustrate") or {}
@@ -13624,6 +13733,16 @@ def page_new_chat() -> None:
                             _persist_new_chat_session()
                     else:
                         st.caption("No illustration generated.")
+
+                elif kind == "curriculum":
+                    qc_ui.render_qc(
+                        st.session_state.visitor_id,
+                        st.session_state.api_base,
+                        _attach_curriculum_to_new_chat,
+                        _render_nc_user_bubble,
+                        include_user_bubble=False,
+                        curriculum_id=item.get("curriculum_id"),
+                    )
 
                 elif kind == "direct":
                     direct_payload = item.get("direct_answer") or {}
@@ -13667,7 +13786,9 @@ def page_new_chat() -> None:
 
                 st.markdown("---")
 
-        if isinstance(pending_new_chat_request, dict):
+        if isinstance(pending_qc_continuation, dict):
+            _render_pending_qc_continuation(pending_qc_continuation)
+        elif isinstance(pending_new_chat_request, dict):
             _render_pending_new_chat_continuation(pending_new_chat_request)
         elif not chat_q:
             _render_nc_scroll_to_latest_once()
@@ -13735,7 +13856,11 @@ def page_new_chat() -> None:
                     _render_nc_latest_scroll_target()
 
                 if not item.get("hide_user_topic"):
-                    _render_nc_user_bubble(topic, ts, query_mode=kind)
+                    _render_nc_user_bubble(
+                        topic,
+                        ts,
+                        query_mode="interrogate" if kind == "curriculum" else kind,
+                    )
 
                 if kind == "illustrate":
                     illustrate_payload = item.get("illustrate") or {}
@@ -13761,6 +13886,15 @@ def page_new_chat() -> None:
                             _persist_new_chat_session()
                     else:
                         st.caption("No illustration generated.")
+                elif kind == "curriculum":
+                    qc_ui.render_qc(
+                        st.session_state.visitor_id,
+                        st.session_state.api_base,
+                        _attach_curriculum_to_new_chat,
+                        _render_nc_user_bubble,
+                        include_user_bubble=False,
+                        curriculum_id=item.get("curriculum_id"),
+                    )
                 elif kind == "direct":
                     branch_payload = item.get("direct_answer") or {}
                     raw_branch_answer = (
@@ -13868,7 +14002,9 @@ def page_new_chat() -> None:
 
                         st.rerun()
 
-        if isinstance(pending_new_chat_request, dict):
+        if isinstance(pending_qc_continuation, dict):
+            _render_pending_qc_continuation(pending_qc_continuation)
+        elif isinstance(pending_new_chat_request, dict):
             _render_pending_new_chat_continuation(pending_new_chat_request)
         elif not chat_q:
             _render_nc_scroll_to_latest_once()
@@ -14225,7 +14361,11 @@ def page_new_chat() -> None:
                     _render_nc_latest_scroll_target()
 
                 if not item.get("hide_user_topic"):
-                    _render_nc_user_bubble(topic, ts, query_mode=kind)
+                    _render_nc_user_bubble(
+                        topic,
+                        ts,
+                        query_mode="interrogate" if kind == "curriculum" else kind,
+                    )
 
                 if kind == "illustrate":
                     illustrate_payload = item.get("illustrate") or {}
@@ -14250,6 +14390,16 @@ def page_new_chat() -> None:
                             _persist_new_chat_session()
                     else:
                         st.caption("No illustration generated.")
+
+                elif kind == "curriculum":
+                    qc_ui.render_qc(
+                        st.session_state.visitor_id,
+                        st.session_state.api_base,
+                        _attach_curriculum_to_new_chat,
+                        _render_nc_user_bubble,
+                        include_user_bubble=False,
+                        curriculum_id=item.get("curriculum_id"),
+                    )
 
                 elif kind == "direct":
                     direct_payload = item.get("direct_answer") or {}
@@ -14288,7 +14438,9 @@ def page_new_chat() -> None:
 
                 st.markdown("---")
 
-        if isinstance(pending_new_chat_request, dict):
+        if isinstance(pending_qc_continuation, dict):
+            _render_pending_qc_continuation(pending_qc_continuation)
+        elif isinstance(pending_new_chat_request, dict):
             _render_pending_new_chat_continuation(pending_new_chat_request)
         else:
             _render_nc_scroll_to_latest_once()

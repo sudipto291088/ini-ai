@@ -205,6 +205,32 @@ class GenerationTests(unittest.TestCase):
             prompt, "Thu, Sep 17 • 09:30 AM", query_mode="interrogate",
         )
 
+    def test_timeline_curriculum_does_not_duplicate_the_user_bubble(self):
+        session = {
+            "qc_active_id": "qc-1",
+            "qc_state": {
+                "subject": "Chemistry",
+                "request_prompt": "Teach me Chemistry as a subject",
+            },
+            "chat_query_log": [],
+        }
+        render_user_bubble = Mock()
+        with patch.object(qc_ui.st, "session_state", session), \
+             patch.object(qc_ui.st, "markdown"), \
+             patch.object(qc_ui.st, "container"), \
+             patch.object(qc_ui, "follow_qc_stream"), \
+             patch.object(qc_ui, "_render_qc_body"):
+            qc_ui.render_qc(
+                "visitor",
+                "http://api",
+                None,
+                render_user_bubble,
+                include_user_bubble=False,
+                curriculum_id="qc-1",
+            )
+
+        render_user_bubble.assert_not_called()
+
     def test_subject_stream_has_no_trailing_cursor(self):
         with patch.object(qc_ui.st, "write_stream") as write_stream, \
              patch.object(qc_ui.time, "sleep"):

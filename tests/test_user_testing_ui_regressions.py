@@ -99,3 +99,10 @@ def test_first_visit_navigation_is_consumed_once() -> None:
     assert "setStateValue('action', action)" not in FCE_COMPONENT_SOURCE
     assert "st.session_state.fce_pending_action = action" in APP_SOURCE
     assert APP_SOURCE.count("if fce_action:") == 1
+
+
+def test_subject_learning_is_appended_to_the_existing_chat_timeline() -> None:
+    assert '"kind": "curriculum"' in APP_SOURCE
+    assert "def _render_pending_qc_continuation" in APP_SOURCE
+    assert "include_user_bubble=False" in APP_SOURCE
+    assert "pending_qc_continuation" in APP_SOURCE

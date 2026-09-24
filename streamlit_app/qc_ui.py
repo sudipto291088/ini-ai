@@ -19,6 +19,9 @@ from streamlit_app.qc_stream_cards import render_stream_cards
 from streamlit_app.storage_sqlite import load_curriculum, list_curricula, save_curriculum
 
 
+QC_UI_VERSION = 2
+
+
 _KNOWLEDGE_ATLAS_ICON = "data:image/svg+xml," + quote(
     (Path(__file__).parent / "assets" / "qc_knowledge_atlas.svg").read_text(encoding="utf-8"),
     safe="",
@@ -911,16 +914,21 @@ def _render_qc_body(visitor_id: str, api_base: str,
 
 def render_qc(visitor_id: str, api_base: str,
               attach_to_chat: Callable[[str, str, str], None] | None,
-              render_user_bubble: Callable[..., None]) -> None:
+              render_user_bubble: Callable[..., None], *,
+              include_user_bubble: bool = True,
+              curriculum_id: str | None = None) -> None:
     """Keep the user's request visible above one primary curriculum response card."""
     if st.session_state.get("qc_clarification"):
         _render_qc_body(visitor_id, api_base, attach_to_chat)
         return
 
-    curriculum_id = st.session_state.get("qc_active_id")
+    curriculum_id = curriculum_id or st.session_state.get("qc_active_id")
     state = st.session_state.get("qc_state") or (
         load_curriculum(visitor_id, curriculum_id) if curriculum_id else None
     )
+    if curriculum_id and isinstance(state, dict):
+        st.session_state["qc_active_id"] = curriculum_id
+        st.session_state["qc_state"] = state
     if isinstance(state, dict):
         prompt = state.get("request_prompt") or f"Teach me {state['subject']} as a subject"
         timestamp = next(
@@ -933,7 +941,8 @@ def render_qc(visitor_id: str, api_base: str,
             ),
             "",
         )
-        render_user_bubble(escape(prompt), timestamp, query_mode="interrogate")
+        if include_user_bubble:
+            render_user_bubble(escape(prompt), timestamp, query_mode="interrogate")
     # The previous run's loading element can linger while Streamlit streams
     # this response. Hide it as soon as the primary card enters the DOM.
     st.markdown(
