@@ -651,22 +651,51 @@ def _render_qc_body(visitor_id: str, api_base: str,
             transform: translateY(0);
         }
         @media (max-width: 700px) {
+            .st-key-qc_subject_title {
+                padding: 10px 14px !important;
+                border-radius: 15px !important;
+            }
+            .st-key-qc_subject_title h3 {
+                font-size: clamp(21px, 6.6vw, 25px) !important;
+            }
             .st-key-qc_primary_response {
                 width: 100% !important;
-                padding: 16px !important;
-                border-radius: 18px !important;
+                margin-top: 10px !important;
+                padding: 12px !important;
+                border-radius: 17px !important;
             }
             .st-key-qc_subject_map_card,
             .st-key-qc_chapter_path_card,
             .st-key-qc_chapter_content_card {
-                padding: 16px !important;
+                margin: 12px 0 14px !important;
+                padding: 14px !important;
+                border-radius: 15px !important;
             }
             .st-key-qc_answer_card {
-                padding: 18px !important;
+                padding: 16px !important;
+                border-radius: 16px !important;
             }
             .st-key-qc_answer_body p,
             .st-key-qc_answer_body li {
                 font-size: 15px !important;
+            }
+            .st-key-qc_chapter_nav {
+                flex-wrap: wrap !important;
+                row-gap: 6px !important;
+            }
+            .st-key-qc_chapter_arrows {
+                margin-left: auto !important;
+            }
+            .st-key-qc_answer_actions > div[data-testid="stLayoutWrapper"]
+            > div[data-testid="stHorizontalBlock"] {
+                align-items: stretch !important;
+                flex-direction: column !important;
+                gap: 9px !important;
+            }
+            .st-key-qc_answer_actions div[data-testid="stColumn"] {
+                width: 100% !important;
+                min-width: 0 !important;
+                flex: 1 1 auto !important;
             }
         }
         </style>""",

@@ -6766,8 +6766,13 @@ def page_home():
             .st-key-intro_release_card,
             .st-key-intro_release_history_card,
             .st-key-intro_learning_card {
-                padding: 20px 18px;
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+                padding: 19px 16px;
                 border-radius: 16px;
+                box-sizing: border-box;
+                overflow: hidden;
             }
 
             .st-key-intro_welcome_card {
@@ -6777,7 +6782,39 @@ def page_home():
 
             .st-key-intro_welcome_card .st-key-replay_fce_welcome {
                 top: 18px;
-                right: 18px;
+                right: 16px;
+            }
+
+            .st-key-intro_welcome_card .st-key-replay_fce_welcome button {
+                max-width: calc(100vw - 64px);
+                padding-inline: 12px !important;
+                font-size: 12px !important;
+            }
+
+            .intro-hero-title {
+                max-width: 100%;
+                font-size: clamp(31px, 9vw, 40px);
+                line-height: 1.08;
+            }
+
+            .intro-hero-subtitle {
+                font-size: 18px;
+                line-height: 1.3;
+            }
+
+            .intro-hero-copy,
+            .intro-mode-copy,
+            .intro-step-copy,
+            .intro-learning-copy,
+            .intro-release-item,
+            .intro-release-note {
+                max-width: 100%;
+                overflow-wrap: anywhere;
+            }
+
+            .intro-card-heading {
+                align-items: flex-start;
+                font-size: 18px;
             }
 
             .intro-mode-grid,
@@ -6794,6 +6831,34 @@ def page_home():
             .intro-learning-header {
                 align-items: flex-start;
                 flex-direction: column;
+            }
+
+            .intro-topic-chip,
+            .intro-mode-chip,
+            .intro-release-badge,
+            .intro-status-badge {
+                max-width: 100%;
+                white-space: normal;
+                overflow-wrap: anywhere;
+            }
+
+            .intro-guide-section {
+                margin-top: 26px;
+                padding-top: 24px;
+            }
+
+            .intro-guide-grid { gap: 20px; }
+
+            .st-key-intro_release_card,
+            .st-key-intro_release_history_card {
+                height: auto;
+                min-height: 0;
+            }
+
+            .intro-release-scroll {
+                max-height: none;
+                overflow: visible;
+                padding-right: 0;
             }
         }
         </style>
@@ -12663,21 +12728,40 @@ def page_new_chat() -> None:
             }}
 
             @media (max-width: 380px) {{
+                .st-key-nc_explore_grid div[data-testid="stHorizontalBlock"] {{
+                    display: grid !important;
+                    grid-template-columns: minmax(0, 1fr) !important;
+                }}
+
+                .st-key-nc_explore_grid div[data-testid="stHorizontalBlock"]
+                > div[data-testid="stColumn"] {{
+                    width: 100% !important;
+                    min-width: 0 !important;
+                    flex: none !important;
+                }}
+
+                .st-key-nc_explore_grid div.stButton > button {{
+                    height: 82px !important;
+                    min-height: 82px !important;
+                    padding: 13px 14px 13px 50px !important;
+                }}
+
                 .st-key-nc_explore_ai button,
                 .st-key-nc_explore_quantum button,
                 .st-key-nc_explore_cognitive button,
                 .st-key-nc_explore_kubernetes button {{
                     gap: 5px;
-                    padding-inline: 7px !important;
                 }}
 
                 .st-key-nc_explore_ai button::before,
                 .st-key-nc_explore_quantum button::before,
                 .st-key-nc_explore_cognitive button::before,
                 .st-key-nc_explore_kubernetes button::before {{
-                    width: 14px;
-                    height: 14px;
-                    flex-basis: 14px;
+                    top: 29px;
+                    left: 16px;
+                    width: 22px;
+                    height: 22px;
+                    flex-basis: 22px;
                 }}
 
                 .st-key-nc_explore_ai button p,
@@ -15089,11 +15173,44 @@ def page_my_new_learning() -> None:
         _generate_pending_learning_response(sess, generation_slot)
 
 def page_new_project() -> None:
-    st.markdown('<div class="bigtitle">New Project · Coming soon</div>', unsafe_allow_html=True)
-    st.info(
-        "Project creation is not available in this release. You can continue using New Chat.",
-        icon=":material/construction:",
+    st.markdown(
+        """
+        <style>
+        [data-testid="stMainBlockContainer"]:has(.project-page-marker) {
+          width: min(100%, 980px);
+          padding-top: clamp(2rem, 8vh, 5.5rem);
+        }
+        .project-page-marker { display: none; }
+        .project-page-title {
+          margin: 0 0 18px;
+          color: #111827;
+          font-size: clamp(34px, 5vw, 52px);
+          font-weight: 720;
+          letter-spacing: -0.035em;
+          line-height: 1.08;
+        }
+        @media (max-width: 700px) {
+          [data-testid="stMainBlockContainer"]:has(.project-page-marker) {
+            padding-top: 2rem;
+          }
+          .project-page-title {
+            max-width: 100%;
+            margin-bottom: 14px;
+            font-size: clamp(29px, 9vw, 38px);
+            overflow-wrap: anywhere;
+          }
+        }
+        </style>
+        <div class="project-page-marker"></div>
+        <h1 class="project-page-title">New Project · Coming soon</h1>
+        """,
+        unsafe_allow_html=True,
     )
+    with st.container(key="project_unavailable_notice"):
+        st.info(
+            "Project creation is not available in this release. You can continue using New Chat.",
+            icon=":material/construction:",
+        )
 
 
 # =========================
@@ -15221,9 +15338,38 @@ st.markdown(
         --ini-secondary-size: 14.5px;
         --ini-compact-size: 13.5px;
       }
+      [data-testid="stMain"],
+      [data-testid="stMainBlockContainer"],
+      [data-testid="stMainBlockContainer"] > div,
+      [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"],
+      [data-testid="stMainBlockContainer"] [data-testid="stElementContainer"] {
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+      [data-testid="stMainBlockContainer"] p,
+      [data-testid="stMainBlockContainer"] li,
+      [data-testid="stMainBlockContainer"] h1,
+      [data-testid="stMainBlockContainer"] h2,
+      [data-testid="stMainBlockContainer"] h3,
+      [data-testid="stMainBlockContainer"] h4 {
+        overflow-wrap: anywhere;
+      }
+      [data-testid="stMainBlockContainer"] [data-testid="stAlert"] {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+      [data-testid="stMainBlockContainer"] [data-testid="stAlert"] > div {
+        min-width: 0;
+      }
       .ini-nc-your-question__prompt {
         font-size: 18px !important;
       }
+      .mnl-title { overflow-wrap: anywhere; }
+      .mnl-header { max-width: 100%; }
+      .st-key-project_unavailable_notice { max-width: 100%; }
     }
     </style>
     """,

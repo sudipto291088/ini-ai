@@ -31,10 +31,18 @@ _GUIDANCE = st.components.v2.component(
     .ini-landing-guidance__copy { display: block; }
     @media (max-width: 720px) {
       .ini-landing-guidance {
-        width: 92%;
-        min-height: 3.4em;
-        margin-bottom: 22px;
-        font-size: clamp(15px, 4.2vw, 17px);
+        width: 100%;
+        max-width: 100%;
+        min-height: 3.1em;
+        margin: 14px auto 20px;
+        padding-inline: 6px;
+        font-size: clamp(14.5px, 4vw, 16px);
+        line-height: 1.45;
+      }
+      .ini-landing-guidance__copy {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        text-wrap: balance;
       }
     }
     """,

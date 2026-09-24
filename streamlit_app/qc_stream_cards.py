@@ -49,6 +49,16 @@ _CARDS_CSS = """
   outline: 2px solid #e33250;
   outline-offset: 2px;
 }
+@media (max-width: 600px) {
+  .qc-stream-cards { gap: 0.48rem; }
+  .qc-stream-cards button {
+    width: 100%;
+    padding: 0.72rem 0.82rem;
+    border-radius: 13px;
+    font-size: 0.88rem;
+    line-height: 1.4;
+  }
+}
 """
 
 _CARDS_JS = """
