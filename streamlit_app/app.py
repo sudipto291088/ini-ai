@@ -3563,8 +3563,8 @@ div[class*="st-key-direct_answer_pointer_stage_"] div.stButton button:hover {
     overflow: visible !important;
   }
 }
-.st-key-root_question_map_content [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div:first-child,
-div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div:first-child {
+.st-key-root_question_map_content [data-testid="stRadio"] label[data-testid="stRadioOption"] > span:has(input[type="radio"]),
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label[data-testid="stRadioOption"] > span:has(input[type="radio"]) {
   display: none !important;
 }
 .st-key-root_question_map_content [data-testid="stRadio"] label[data-selected="true"],
@@ -3578,8 +3578,67 @@ div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label[
 div[class*="st-key-branch_question_map_content_"] [data-testid="stRadio"] label[data-selected="true"] p {
   color: #ffffff !important;
 }
-.st-key-root_question_map_panel [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div:first-child,
-div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"] label[data-testid="stRadioOption"] > div > div:first-child {
+.st-key-root_question_map_panel [data-testid="stRadio"] label[data-testid="stRadioOption"] > span:has(input[type="radio"]),
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadio"] label[data-testid="stRadioOption"] > span:has(input[type="radio"]) {
+  display: none !important;
+}
+/* Streamlit 1.5x exposes the option row as stRadioGroup rather than a
+   role=radiogroup element. Keep Question Map pills readable across both DOMs. */
+.st-key-root_question_map_content [data-testid="stRadioGroup"],
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"],
+.st-key-root_question_map_panel [data-testid="stRadioGroup"],
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+}
+.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"],
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"],
+.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"],
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] {
+  display: block !important;
+  width: auto !important;
+  min-width: max-content !important;
+  flex: 0 0 auto !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 8px 12px !important;
+  text-align: center !important;
+}
+.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div,
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div,
+.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div,
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div,
+.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div,
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div,
+.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div,
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div {
+  display: flex !important;
+  width: auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] p,
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] p,
+.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] p,
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] p {
+  display: block !important;
+  width: auto !important;
+  min-width: max-content !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]),
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]),
+.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]),
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]) {
   display: none !important;
 }
 .st-key-root_question_map_panel [data-testid="stRadio"] label[data-selected="true"],
