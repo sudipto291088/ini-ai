@@ -3638,10 +3638,10 @@ div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] lab
   overflow-wrap: normal !important;
   word-break: normal !important;
 }
-.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]),
-div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]),
-.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]),
-div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]) {
+.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]),
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]),
+.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]),
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]) {
   display: none !important;
 }
 .st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div:first-child:not(:has([data-testid="stMarkdownContainer"])),

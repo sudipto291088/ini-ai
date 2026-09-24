@@ -115,6 +115,12 @@ def test_question_map_hides_radio_indicators_without_hiding_label_copy() -> None
     )
     assert '> span:has(input[type="radio"])' in APP_SOURCE
     assert (
+        'label[data-testid="stRadioOption"] div:has(> '
+        '[data-testid="stMarkdownContainer"]) > div:not('
+        '[data-testid="stMarkdownContainer"])'
+        in APP_SOURCE
+    )
+    assert (
         'label[data-testid="stRadioOption"] > div,\n'
         not in APP_SOURCE
     )
