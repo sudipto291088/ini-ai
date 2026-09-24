@@ -106,3 +106,15 @@ def test_subject_learning_is_appended_to_the_existing_chat_timeline() -> None:
     assert "def _render_pending_qc_continuation" in APP_SOURCE
     assert "include_user_bubble=False" in APP_SOURCE
     assert "pending_qc_continuation" in APP_SOURCE
+
+
+def test_question_map_hides_radio_indicators_without_hiding_label_copy() -> None:
+    assert (
+        '> div:first-child:not(:has([data-testid="stMarkdownContainer"]))'
+        in APP_SOURCE
+    )
+    assert '> span:has(input[type="radio"])' in APP_SOURCE
+    assert (
+        'label[data-testid="stRadioOption"] > div,\n'
+        not in APP_SOURCE
+    )

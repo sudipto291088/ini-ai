@@ -3613,14 +3613,14 @@ div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] lab
   padding: 8px 12px !important;
   text-align: center !important;
 }
-.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div,
-div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div,
-.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div,
-div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div,
-.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div,
-div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div,
-.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div,
-div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div {
+.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div:has([data-testid="stMarkdownContainer"]),
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div:has([data-testid="stMarkdownContainer"]),
+.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div:has([data-testid="stMarkdownContainer"]),
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div:has([data-testid="stMarkdownContainer"]),
+.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] [data-testid="stMarkdownContainer"],
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] [data-testid="stMarkdownContainer"],
+.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] [data-testid="stMarkdownContainer"],
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] [data-testid="stMarkdownContainer"] {
   display: flex !important;
   width: auto !important;
   align-items: center !important;
@@ -3642,6 +3642,12 @@ div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] lab
 div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]),
 .st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]),
 div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div > div:has(> [data-testid="stMarkdownContainer"]) > div:not([data-testid="stMarkdownContainer"]) {
+  display: none !important;
+}
+.st-key-root_question_map_content [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div:first-child:not(:has([data-testid="stMarkdownContainer"])),
+div[class*="st-key-branch_question_map_content_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div:first-child:not(:has([data-testid="stMarkdownContainer"])),
+.st-key-root_question_map_panel [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div:first-child:not(:has([data-testid="stMarkdownContainer"])),
+div[class*="st-key-branch_question_map_panel_"] [data-testid="stRadioGroup"] label[data-testid="stRadioOption"] > div:first-child:not(:has([data-testid="stMarkdownContainer"])) {
   display: none !important;
 }
 .st-key-root_question_map_panel [data-testid="stRadio"] label[data-selected="true"],
