@@ -11806,7 +11806,7 @@ def page_new_chat() -> None:
 
             [data-testid="stElementContainer"]:has(.nc-landing-brand) {{
                 width: min(100%, 900px);
-                margin: clamp(70px, 13vh, 145px) auto 0;
+                margin: 0 auto;
             }}
 
             .nc-landing-brand {{
@@ -12523,7 +12523,7 @@ def page_new_chat() -> None:
 
             @media (max-width: 760px) {{
                 [data-testid="stElementContainer"]:has(.nc-landing-brand) {{
-                    margin-top: 42px;
+                    margin-top: 0;
                 }}
 
                 .nc-landing-brand {{

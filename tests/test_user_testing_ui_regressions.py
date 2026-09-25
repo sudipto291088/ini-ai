@@ -131,3 +131,9 @@ def test_generation_lights_cover_answer_subject_and_question_map_states() -> Non
     assert '"forming": "Answer is forming"' in APP_SOURCE
     assert '"question_map": "Question Map is being generated"' in APP_SOURCE
     assert 'forming_lines = "" if not progress_light_label else f"""' in APP_SOURCE
+
+
+def test_new_chat_landing_does_not_reserve_a_blank_top_band() -> None:
+    assert 'margin: clamp(70px, 13vh, 145px) auto 0;' not in APP_SOURCE
+    assert 'margin-top: 42px;' not in APP_SOURCE
+    assert 'width: min(100%, 900px);\n                margin: 0 auto;' in APP_SOURCE
