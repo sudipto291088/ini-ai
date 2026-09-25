@@ -25,7 +25,7 @@ SOURCE_TERMS_URL = "https://info.arxiv.org/help/api/tou.html"
 SOURCE_MANUAL_URL = "https://info.arxiv.org/help/api/user-manual.html"
 ACKNOWLEDGEMENT = "Thank you to arXiv for use of its open access interoperability."
 DEFAULT_USER_AGENT = (
-    "InI.ai/0.1.6 (educational research discovery; "
+    "InI.ai/0.1.7 (educational research discovery; "
     "+https://github.com/sudipto291088/ini-ai)"
 )
 

@@ -21,7 +21,7 @@ SOURCE_NAME = "Crossref"
 SOURCE_LICENSE = "Bibliographic facts / Crossref-generated CC0 data"
 SOURCE_TERMS_URL = "https://www.crossref.org/documentation/retrieve-metadata/"
 DEFAULT_USER_AGENT = (
-    "InI.ai/0.1.6 (educational metadata retrieval; "
+    "InI.ai/0.1.7 (educational metadata retrieval; "
     "+https://github.com/sudipto291088/ini-ai)"
 )
 

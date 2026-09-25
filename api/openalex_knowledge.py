@@ -22,7 +22,7 @@ SOURCE_NAME = "OpenAlex"
 SOURCE_TERMS_URL = "https://openalex.org/OpenAlex_termsofservice.pdf"
 SOURCE_LICENSE_URL = "https://help.openalex.org/data/licenses/"
 DEFAULT_USER_AGENT = (
-    "InI.ai/0.1.6 (metadata-only scholarly discovery; "
+    "InI.ai/0.1.7 (metadata-only scholarly discovery; "
     "+https://github.com/sudipto291088/ini-ai)"
 )
 

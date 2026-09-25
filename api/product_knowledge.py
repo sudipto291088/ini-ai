@@ -6,7 +6,7 @@ import re
 from typing import Any, Dict, Optional
 
 
-PRODUCT_KNOWLEDGE_VERSION = 7
+PRODUCT_KNOWLEDGE_VERSION = 8
 
 
 def _normalize(text: str) -> str:
@@ -159,12 +159,17 @@ def answer_ini_product_query(
 
     if re.search(r"\b(how many|which|previous|earlier|history).*(versions?|releases?)\b", s):
         return (
-            "I am currently on v0.1.6. I have six documented releases, from v0.1.1 "
-            "through v0.1.6; work before v0.1.1 belonged to the experimental v0 phase "
+            "I am currently on v0.1.7. I have seven documented releases, from v0.1.1 "
+            "through v0.1.7; work before v0.1.1 belonged to the experimental v0 phase "
             "rather than the formal release history."
         )
 
     earlier_releases = {
+        "v0.1.6": (
+            "v0.1.6 expanded trusted knowledge retrieval, strengthened topic and conversation "
+            "routing, made Knowledge Maps more meaningful, improved direct-answer navigation, "
+            "and refined New Chat, sidebar, mobile, and narrow-browser experiences."
+        ),
         "v0.1.5": (
             "v0.1.5 deepened structured responses, strengthened conversation repair and "
             "capability boundaries, completed Illustrate, redesigned the Introduction, and "
@@ -192,14 +197,14 @@ def answer_ini_product_query(
         if version in s:
             return summary
 
-    if re.search(r"\b(current|latest|new|special|update|changed|improved).*(versions?|releases?|v0.1.6)\b", s) or re.search(
-        r"\b(versions?|releases?|v0.1.6).*(current|latest|new|special|update|changed|improved)\b", s
+    if re.search(r"\b(current|latest|new|special|update|changed|improved).*(versions?|releases?|v0.1.7)\b", s) or re.search(
+        r"\b(versions?|releases?|v0.1.7).*(current|latest|new|special|update|changed|improved)\b", s
     ):
         return (
-            "v0.1.6 is my current release. It expands trusted knowledge retrieval, strengthens "
-            "topic and conversation routing, makes Knowledge Maps more meaningful, improves "
-            "direct-answer navigation, and refines the New Chat, sidebar, mobile, and "
-            "narrow-browser experiences."
+            "v0.1.7 is my current release. It introduces Question Curriculum (QC), which turns "
+            "complete subjects into navigable chapter maps, progressive questions, and answers; "
+            "clarifies the IA, KS, and QC learning layers; expands trusted research retrieval; "
+            "and strengthens streaming, persistence, routing, mobile behavior, and the first-use experience."
         )
 
     if re.search(r"\b(plan|planned|planning|roadmap|future|coming|next)\b", s):

@@ -89,7 +89,7 @@ try:
     # helper modules after a deployment sync. Force a reload when the running
     # module predates the routing repair so hosted sessions cannot retain the
     # old product-query detector.
-    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 7:
+    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 8:
         product_knowledge = importlib.reload(product_knowledge)
     answer_ini_product_query = product_knowledge.answer_ini_product_query
 except ModuleNotFoundError as exc:
@@ -5988,7 +5988,7 @@ with st.sidebar:
                   <div class="clock_ampm">{cp["ampm"]}</div>
                 </div>
               </div>
-              <div class="badge">v0.1.6 &nbsp;&middot;&nbsp; Question Intelligence</div>
+              <div class="badge">v0.1.7 &nbsp;&middot;&nbsp; Question Intelligence</div>
             </div>
             ''',
             unsafe_allow_html=True,
@@ -7050,6 +7050,24 @@ def page_home():
         )
 
     intro_releases = {
+        "v0.1.7": {
+            "date": "September 24, 2026",
+            "items": (
+                ("Question Curriculum", "A complete subject can now become a navigable learning path of numbered chapters, progressive questions, and focused answers inside New Chat."),
+                ("Living subject maps", "Zoomable maps reveal the shape of a subject, while adaptive central cards, readable chapter nodes, and direct chapter navigation preserve clarity at every scale."),
+                ("Three learning layers", "Initial Answers, Knowledge Structures, and Question Curricula now serve distinct purposes—from answering one question to exploring a topic or studying an entire subject."),
+                ("Progressive response intelligence", "Insight and technical views, prerequisite guidance, in-card questions, clearer response profiles, and stronger knowledge validation make learning paths more deliberate."),
+                ("Persistent subject learning", "Question Curricula remain attached to their New Chat conversation, preserve earlier messages, and support resumable chapter, question, and answer navigation."),
+                ("Expanded trusted research", "OpenAlex, DOAJ, Europe PMC, and arXiv extend InI's source-aware scholarly discovery while retaining conservative retrieval boundaries."),
+                ("More expressive generation", "Unified progress lights, visible thinking states, streamed answers, chapter cards, and question cards make the formation of each response easier to follow."),
+                ("A steadier product experience", "Refined the welcome journey, Explore cards, chat history, mobile layouts, hosted controls, transitions, and deployment resilience across fresh and returning sessions."),
+            ),
+            "note": (
+                "v0.1.7 advances InI from mapping questions around a topic to teaching an entire subject "
+                "through questions. It connects visual structure, progressive inquiry, persistent learning, "
+                "and grounded answers in one coherent Question Engine experience."
+            ),
+        },
         "v0.1.6": {
             "date": "August 21, 2026",
             "items": (
@@ -7150,11 +7168,11 @@ def page_home():
             ),
         },
     }
-    if st.session_state.get("intro_release_catalog_version") != "v0.1.6":
-        st.session_state.intro_release_catalog_version = "v0.1.6"
-        st.session_state.intro_selected_release = "v0.1.6"
+    if st.session_state.get("intro_release_catalog_version") != "v0.1.7":
+        st.session_state.intro_release_catalog_version = "v0.1.7"
+        st.session_state.intro_selected_release = "v0.1.7"
     elif st.session_state.get("intro_selected_release") not in intro_releases:
-        st.session_state.intro_selected_release = "v0.1.6"
+        st.session_state.intro_selected_release = "v0.1.7"
 
     selected_release = st.session_state.intro_selected_release
     release = intro_releases[selected_release]
@@ -7190,7 +7208,7 @@ def page_home():
             )
             for version in release_slots:
                 is_released = version in intro_releases
-                if version == "v0.1.6":
+                if version == "v0.1.7":
                     button_label = f"{version}  ·  Current"
                 elif not is_released:
                     button_label = f"{version}  ·  Unreleased"
@@ -10051,11 +10069,11 @@ def page_new_chat() -> None:
                         "needs_clarification": False,
                         "suppress_profile": False,
                         "reply": (
-                            "InI.ai v0.1.6 expands trusted knowledge retrieval, strengthens topic and "
-                            "conversation routing, makes compact and expanded Knowledge Maps more "
-                            "meaningful, improves direct-answer navigation, and refines the New Chat, "
-                            "sidebar, mobile, and narrow-browser experiences. It was released on "
-                            "August 21, 2026."
+                            "InI.ai v0.1.7 introduces Question Curriculum (QC), turning complete subjects "
+                            "into navigable chapter maps, progressive questions, and focused answers. It "
+                            "clarifies the IA, KS, and QC learning layers, expands trusted research retrieval, "
+                            "and strengthens streaming, persistence, routing, mobile behavior, and the "
+                            "first-use experience. It was released on September 24, 2026."
                         ),
                     }
                 elif start_discussion_topic:

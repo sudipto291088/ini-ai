@@ -22,7 +22,7 @@ SOURCE_NAME = "DOAJ"
 SOURCE_LICENSE = "CC0 metadata waiver"
 SOURCE_TERMS_URL = "https://doaj.org/terms/"
 DEFAULT_USER_AGENT = (
-    "InI.ai/0.1.6 (educational metadata retrieval; "
+    "InI.ai/0.1.7 (educational metadata retrieval; "
     "+https://github.com/sudipto291088/ini-ai)"
 )
 

@@ -22,7 +22,7 @@ SOURCE_NAME = "Europe PMC"
 SOURCE_API_URL = "https://europepmc.org/RestfulWebService"
 SOURCE_COPYRIGHT_URL = "https://europepmc.org/Copyright"
 DEFAULT_USER_AGENT = (
-    "InI.ai/0.1.6 (metadata-only life-science discovery; "
+    "InI.ai/0.1.7 (metadata-only life-science discovery; "
     "+https://github.com/sudipto291088/ini-ai)"
 )
 
