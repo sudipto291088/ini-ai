@@ -124,3 +124,10 @@ def test_question_map_hides_radio_indicators_without_hiding_label_copy() -> None
         'label[data-testid="stRadioOption"] > div,\n'
         not in APP_SOURCE
     )
+
+
+def test_generation_lights_cover_answer_subject_and_question_map_states() -> None:
+    assert '"subject_learning": "Subject learning path is being built"' in APP_SOURCE
+    assert '"forming": "Answer is forming"' in APP_SOURCE
+    assert '"question_map": "Question Map is being generated"' in APP_SOURCE
+    assert 'forming_lines = "" if not progress_light_label else f"""' in APP_SOURCE

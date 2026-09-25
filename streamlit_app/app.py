@@ -11011,8 +11011,14 @@ def page_new_chat() -> None:
                 "forming": "Forming your answer...",
                 "question_map": "Generating Question Map...",
             }.get(status_mode, "Generating response... may take some time.")
-        forming_lines = "" if status_mode != "forming" else """
-              <div class="nc-answer-forming-lines" aria-label="Answer is forming">
+        progress_light_labels = {
+            "subject_learning": "Subject learning path is being built",
+            "forming": "Answer is forming",
+            "question_map": "Question Map is being generated",
+        }
+        progress_light_label = progress_light_labels.get(status_mode)
+        forming_lines = "" if not progress_light_label else f"""
+              <div class="nc-answer-forming-lines" aria-label="{progress_light_label}">
                 <span class="nc-answer-forming-line"></span>
                 <span class="nc-answer-forming-line"></span>
                 <span class="nc-answer-forming-line"></span>
