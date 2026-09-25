@@ -226,6 +226,15 @@ def _subject_map_svg(subject: str, chapters: list[dict[str, Any]],
     outer_radius = 290 + (rings - 1) * 215
     size = int(outer_radius * 2 + 240)
     center = size / 2
+    root_lines = textwrap.TextWrapper(
+        width=18,
+        break_long_words=True,
+        break_on_hyphens=False,
+    ).wrap(" ".join(subject.split())) or ["Subject"]
+    root_height = max(84, 34 + 22 * len(root_lines))
+    root_y = center - root_height / 2
+    root_clip_y = root_y + 8
+    root_clip_height = root_height - 16
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" '
         f'width="{size}" height="{size}" role="img" '
@@ -233,8 +242,8 @@ def _subject_map_svg(subject: str, chapters: list[dict[str, Any]],
         '<defs><filter id="qc-card-shadow" x="-25%" y="-35%" width="150%" height="180%">'
         '<feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#243447" '
         'flood-opacity="0.08"/></filter>'
-        f'<clipPath id="qc-root-label-clip"><rect x="{center-102:.1f}" y="{center-34:.1f}" '
-        'width="204" height="68" rx="14"/></clipPath></defs>',
+        f'<clipPath id="qc-root-label-clip"><rect x="{center-102:.1f}" y="{root_clip_y:.1f}" '
+        f'width="204" height="{root_clip_height:.1f}" rx="14"/></clipPath></defs>',
         f'<rect width="{size}" height="{size}" rx="28" fill="#ffffff"/>',
     ]
     positions = []
@@ -290,16 +299,8 @@ def _subject_map_svg(subject: str, chapters: list[dict[str, Any]],
                 f'font-family="Arial,sans-serif" font-size="15" font-weight="500">{escape(line)}</text>'
             )
         parts.append('</g>')
-    root_lines = textwrap.TextWrapper(
-        width=18,
-        max_lines=2,
-        placeholder="…",
-        break_long_words=True,
-        break_on_hyphens=False,
-    ).wrap(" ".join(subject.split())) or ["Subject"]
-
     parts.extend([
-        f'<rect x="{center-112:.1f}" y="{center-42:.1f}" width="224" height="84" '
+        f'<rect x="{center-112:.1f}" y="{root_y:.1f}" width="224" height="{root_height}" '
         'rx="20" fill="#fff9fa" stroke="#efcbd1" stroke-width="1.5" '
         'filter="url(#qc-card-shadow)"/>',
         f'<g role="group" aria-label="Subject: {escape(subject, quote=True)}" '

@@ -1,4 +1,5 @@
 import os
+import re
 import tempfile
 import unittest
 from unittest.mock import Mock, patch
@@ -314,11 +315,28 @@ class GenerationTests(unittest.TestCase):
     def test_subject_map_contains_unbroken_root_label_of_any_length(self):
         subject = "Pneumonoultramicroscopicsilicovolcanoconiosis" * 4
         svg = qc_ui._subject_map_svg(subject, [{"title": "Foundations"}])
+        subject_group = svg.split('aria-label="Subject: ', 1)[1].split("</g>", 1)[0]
+        rendered_subject = "".join(re.findall(r"<text[^>]*>(.*?)</text>", subject_group))
 
         self.assertIn('clipPath id="qc-root-label-clip"', svg)
         self.assertIn('clip-path="url(#qc-root-label-clip)"', svg)
         self.assertIn(f'aria-label="Subject: {subject}"', svg)
         self.assertNotIn(f'>{subject}</text>', svg)
+        self.assertEqual(rendered_subject, subject)
+        self.assertNotIn("…", subject_group)
+
+    def test_subject_map_grows_root_card_to_show_every_line(self):
+        svg = qc_ui._subject_map_svg(
+            "Environmental Science and Sustainable Development",
+            [{"title": "Foundations"}],
+        )
+
+        self.assertIn('width="224" height="122"', svg)
+        self.assertIn(">Environmental</text>", svg)
+        self.assertIn(">Science and</text>", svg)
+        self.assertIn(">Sustainable</text>", svg)
+        self.assertIn(">Development</text>", svg)
+        self.assertNotIn("…", svg.split('aria-label="Subject: ', 1)[1].split("</g>", 1)[0])
 
     def test_qc_text_streams_one_character_at_a_time(self):
         chunks = []
