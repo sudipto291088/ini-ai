@@ -3,6 +3,7 @@
 import math
 import re
 import secrets
+import textwrap
 import time
 from html import escape
 from pathlib import Path
@@ -231,7 +232,9 @@ def _subject_map_svg(subject: str, chapters: list[dict[str, Any]],
         f'aria-label="Subject map for {escape(subject, quote=True)}">',
         '<defs><filter id="qc-card-shadow" x="-25%" y="-35%" width="150%" height="180%">'
         '<feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#243447" '
-        'flood-opacity="0.08"/></filter></defs>',
+        'flood-opacity="0.08"/></filter>'
+        f'<clipPath id="qc-root-label-clip"><rect x="{center-102:.1f}" y="{center-34:.1f}" '
+        'width="204" height="68" rx="14"/></clipPath></defs>',
         f'<rect width="{size}" height="{size}" rx="28" fill="#ffffff"/>',
     ]
     positions = []
@@ -287,15 +290,41 @@ def _subject_map_svg(subject: str, chapters: list[dict[str, Any]],
                 f'font-family="Arial,sans-serif" font-size="15" font-weight="500">{escape(line)}</text>'
             )
         parts.append('</g>')
-    root = escape(subject[:28] + ("…" if len(subject) > 28 else ""))
+    root_lines = textwrap.TextWrapper(
+        width=18,
+        max_lines=2,
+        placeholder="…",
+        break_long_words=True,
+        break_on_hyphens=False,
+    ).wrap(" ".join(subject.split())) or ["Subject"]
+
     parts.extend([
         f'<rect x="{center-112:.1f}" y="{center-42:.1f}" width="224" height="84" '
         'rx="20" fill="#fff9fa" stroke="#efcbd1" stroke-width="1.5" '
         'filter="url(#qc-card-shadow)"/>',
-        f'<text x="{center}" y="{center}" text-anchor="middle" dominant-baseline="middle" '
-        f'fill="#8f2b40" font-family="Arial,sans-serif" font-size="18" font-weight="650">{root}</text>',
-        '</svg>',
+        f'<g role="group" aria-label="Subject: {escape(subject, quote=True)}" '
+        'clip-path="url(#qc-root-label-clip)">'
+        f'<title>{escape(subject)}</title>',
     ])
+    root_first_y = center - (len(root_lines) - 1) * 11
+    for line_index, line in enumerate(root_lines):
+        width_units = sum(
+            1.0 if character in "MW@#%&" else
+            0.32 if character in "ijlI.,' `" else
+            0.58
+            for character in line
+        )
+        fit_attributes = (
+            ' textLength="188" lengthAdjust="spacingAndGlyphs"'
+            if width_units * 18 > 188 else ""
+        )
+        parts.append(
+            f'<text x="{center}" y="{root_first_y + 22 * line_index:.1f}" '
+            'text-anchor="middle" dominant-baseline="middle" fill="#8f2b40" '
+            f'font-family="Arial,sans-serif" font-size="18" font-weight="650"'
+            f'{fit_attributes}>{escape(line)}</text>'
+        )
+    parts.extend(['</g>', '</svg>'])
     return "".join(parts)
 
 

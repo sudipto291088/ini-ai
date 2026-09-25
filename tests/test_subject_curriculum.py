@@ -299,6 +299,27 @@ class GenerationTests(unittest.TestCase):
         self.assertNotIn('aria-label="Chapter 2: Models"', first_frame)
         self.assertEqual(first_frame.count("<line "), 1)
 
+    def test_subject_map_wraps_long_root_label_inside_its_card(self):
+        svg = qc_ui._subject_map_svg(
+            "Natural Language Processing",
+            [{"title": "Foundations"}],
+        )
+
+        self.assertIn(">Natural Language</text>", svg)
+        self.assertIn(">Processing</text>", svg)
+        self.assertNotIn(">Natural Language Processing</text>", svg)
+        self.assertIn('aria-label="Subject: Natural Language Processing"', svg)
+        self.assertIn('clip-path="url(#qc-root-label-clip)"', svg)
+
+    def test_subject_map_contains_unbroken_root_label_of_any_length(self):
+        subject = "Pneumonoultramicroscopicsilicovolcanoconiosis" * 4
+        svg = qc_ui._subject_map_svg(subject, [{"title": "Foundations"}])
+
+        self.assertIn('clipPath id="qc-root-label-clip"', svg)
+        self.assertIn('clip-path="url(#qc-root-label-clip)"', svg)
+        self.assertIn(f'aria-label="Subject: {subject}"', svg)
+        self.assertNotIn(f'>{subject}</text>', svg)
+
     def test_qc_text_streams_one_character_at_a_time(self):
         chunks = []
 
