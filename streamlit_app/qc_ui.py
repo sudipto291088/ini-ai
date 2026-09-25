@@ -14,7 +14,7 @@ import streamlit as st
 
 from api.subject_curriculum import learning_subject_candidate
 from streamlit_app.qc_map_viewer import render_subject_map
-from streamlit_app.qc_scroll_follow import follow_qc_stream
+from streamlit_app.qc_scroll_follow import finish_qc_stream, follow_qc_stream
 from streamlit_app.qc_stream_cards import render_stream_cards
 from streamlit_app.storage_sqlite import load_curriculum, list_curricula, save_curriculum
 
@@ -159,7 +159,8 @@ def _begin(subject: str, visitor_id: str, api_base: str,
 
 
 def maybe_start_qc(prompt: str, action: str, visitor_id: str, api_base: str,
-                   attach_to_chat: Callable[[str, str, str], None] | None = None) -> bool:
+                   attach_to_chat: Callable[[str, str, str], None] | None = None,
+                   on_queued: Callable[[], None] | None = None) -> bool:
     """Queue explicit subject learning before any slow API work or rendering."""
     if st.session_state.get("qc_pending_request"):
         return True
@@ -172,6 +173,8 @@ def maybe_start_qc(prompt: str, action: str, visitor_id: str, api_base: str,
         "prompt": prompt, "candidate": candidate, "phase": "thinking",
     }
     st.session_state.nc_started = True
+    if on_queued:
+        on_queued()
     st.rerun()
     return True
 
@@ -950,7 +953,8 @@ def render_qc(visitor_id: str, api_base: str,
         body:has(.st-key-qc_primary_response) .nc-generation-placeholder {
             display: none !important;
         }
-        .st-key-qc_stream_follow {
+        .st-key-qc_stream_follow,
+        .st-key-qc_stream_finish {
             position: absolute !important;
             width: 0 !important;
             height: 0 !important;
@@ -959,7 +963,10 @@ def render_qc(visitor_id: str, api_base: str,
         </style>""",
         unsafe_allow_html=True,
     )
+    should_follow_stream = _should_follow_qc_stream(state)
     with st.container(border=True, key="qc_primary_response"):
-        if _should_follow_qc_stream(state):
+        if should_follow_stream:
             follow_qc_stream()
         _render_qc_body(visitor_id, api_base, attach_to_chat)
+        if should_follow_stream:
+            finish_qc_stream()

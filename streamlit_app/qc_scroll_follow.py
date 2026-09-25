@@ -5,7 +5,7 @@ import streamlit as st
 
 _FOLLOW_JS = """
 export default function ({ data }) {
-  const card = document.querySelector(data.selector);
+  const card = [...document.querySelectorAll(data.selector)].at(-1);
   if (!card) return;
 
   const win = document.defaultView;
@@ -47,6 +47,11 @@ export default function ({ data }) {
 
   function follow() {
     frame = 0;
+    if (card.dataset.qcStreamComplete === 'true') {
+      following = false;
+      win.clearInterval(poll);
+      return;
+    }
     if (!following || !card.isConnected) return;
     const reserve = Math.min(120, Math.max(72, win.innerHeight * 0.12));
     for (const element of activeScrollers()) {
@@ -109,10 +114,10 @@ export default function ({ data }) {
     }
   }
 
-  const mutation = new MutationObserver(schedule);
-  mutation.observe(card, { childList: true, subtree: true, characterData: true });
-  const resize = new ResizeObserver(schedule);
-  resize.observe(card);
+  // CCv2 can expose the surrounding Streamlit element through a cross-realm
+  // proxy. Polling avoids observer type errors while still following each
+  // incremental text/card update smoothly.
+  const poll = win.setInterval(schedule, 90);
   for (const element of scrollables) element.addEventListener('scroll', onScroll, { passive: true });
   document.addEventListener('scroll', onScroll, { passive: true, capture: true });
   document.addEventListener('wheel', onWheel, { passive: true, capture: true });
@@ -123,8 +128,7 @@ export default function ({ data }) {
   schedule();
 
   return () => {
-    mutation.disconnect();
-    resize.disconnect();
+    win.clearInterval(poll);
     if (frame) win.cancelAnimationFrame(frame);
     for (const element of scrollables) element.removeEventListener('scroll', onScroll);
     document.removeEventListener('scroll', onScroll, true);
@@ -141,10 +145,96 @@ export default function ({ data }) {
 _FOLLOW_COMPONENT = st.components.v2.component("qc_scroll_follow", js=_FOLLOW_JS)
 
 
+_FINISH_JS = """
+export default function ({ data }) {
+  const card = [...document.querySelectorAll(data.selector)].at(-1);
+  if (!card) return;
+
+  const win = document.defaultView;
+  let finished = false;
+  let lastSignature = '';
+  let stableSince = win.performance.now();
+
+  function visible(element) {
+    const style = win.getComputedStyle(element);
+    return style.display !== 'none' && style.visibility !== 'hidden';
+  }
+
+  function latestQueryBeforeCard() {
+    const queries = [...document.querySelectorAll(data.querySelector)].filter(visible);
+    return queries.filter(query => {
+      const relation = query.compareDocumentPosition(card);
+      return Boolean(relation & win.Node.DOCUMENT_POSITION_FOLLOWING);
+    }).at(-1) || null;
+  }
+
+  function scrollToStart() {
+    if (finished || !card.isConnected) return;
+    finished = true;
+    card.dataset.qcStreamComplete = 'true';
+    const target = latestQueryBeforeCard() || card;
+    target.style.scrollMarginTop = `${data.topOffset || 82}px`;
+    target.scrollIntoView({
+      block: 'start',
+      behavior: win.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+    });
+    win.clearInterval(poll);
+  }
+
+  function signature() {
+    const box = card.getBoundingClientRect();
+    return [
+      Math.round(box.height),
+      card.scrollHeight || 0,
+      (card.textContent || '').length,
+      card.querySelectorAll?.('button').length || 0
+    ].join(':');
+  }
+
+  function checkSettled() {
+    if (finished || !card.isConnected) return;
+    const nextSignature = signature();
+    if (nextSignature !== lastSignature) {
+      lastSignature = nextSignature;
+      stableSince = win.performance.now();
+      return;
+    }
+    if (win.performance.now() - stableSince >= (data.settleMs || 1100)) {
+      scrollToStart();
+    }
+  }
+
+  lastSignature = signature();
+  const poll = win.setInterval(checkSettled, 120);
+
+  return () => {
+    win.clearInterval(poll);
+  };
+}
+"""
+
+
+_FINISH_COMPONENT = st.components.v2.component("qc_stream_finish", js=_FINISH_JS)
+
+
 def follow_qc_stream() -> None:
     """Mount a zero-height follower before the first streamed response element."""
     _FOLLOW_COMPONENT(
         data={"selector": ".st-key-qc_primary_response"},
         key="qc_stream_follow",
+        height=0,
+    )
+
+
+def finish_qc_stream() -> None:
+    """Return the viewport to the latest query after streamed QC content settles."""
+    _FINISH_COMPONENT(
+        data={
+            "selector": ".st-key-qc_primary_response",
+            "querySelector": ".nc-user-bubble",
+            "topOffset": 82,
+            "settleMs": 1100,
+        },
+        key="qc_stream_finish",
         height=0,
     )

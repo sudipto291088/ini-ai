@@ -51,6 +51,25 @@ class SubjectIntentTests(unittest.TestCase):
             ))
         self.assertEqual(session.qc_pending_request["candidate"], "kubernetes")
 
+    def test_qc_clears_the_composer_when_the_request_is_queued(self):
+        class Session(dict):
+            def __getattr__(self, name):
+                return self[name]
+
+            def __setattr__(self, name, value):
+                self[name] = value
+
+        session = Session()
+        clear_composer = Mock()
+        with patch.object(qc_ui.st, "session_state", session), \
+             patch.object(qc_ui.st, "rerun"):
+            self.assertTrue(qc_ui.maybe_start_qc(
+                "teach me biology as a subject", "interrogate", "v",
+                "http://api", on_queued=clear_composer,
+            ))
+
+        clear_composer.assert_called_once_with()
+
     def test_narrow_topic_is_sent_back_to_normal_chat(self):
         class Session(dict):
             def __getattr__(self, name):
@@ -197,9 +216,11 @@ class GenerationTests(unittest.TestCase):
              patch.object(qc_ui.st, "markdown"), \
              patch.object(qc_ui.st, "container"), \
              patch.object(qc_ui, "follow_qc_stream") as follow_stream, \
+             patch.object(qc_ui, "finish_qc_stream") as finish_stream, \
              patch.object(qc_ui, "_render_qc_body"):
             qc_ui.render_qc("visitor", "http://api", None, render_user_bubble)
             follow_stream.assert_called_once_with()
+            finish_stream.assert_called_once_with()
 
         render_user_bubble.assert_called_once_with(
             prompt, "Thu, Sep 17 • 09:30 AM", query_mode="interrogate",
@@ -219,6 +240,7 @@ class GenerationTests(unittest.TestCase):
              patch.object(qc_ui.st, "markdown"), \
              patch.object(qc_ui.st, "container"), \
              patch.object(qc_ui, "follow_qc_stream"), \
+             patch.object(qc_ui, "finish_qc_stream"), \
              patch.object(qc_ui, "_render_qc_body"):
             qc_ui.render_qc(
                 "visitor",

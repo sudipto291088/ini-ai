@@ -6237,6 +6237,7 @@ st.iframe(
         const old = win.__iniDirectAnswerPointerSync;
         if (old?.observer) old.observer.disconnect();
         if (old?.resizeObserver) old.resizeObserver.disconnect();
+        if (old?.poll) win.clearInterval(old.poll);
         if (old?.onResize) win.removeEventListener('resize', old.onResize);
         if (old?.onScroll) doc.removeEventListener('scroll', old.onScroll, true);
 
@@ -6256,7 +6257,6 @@ st.iframe(
               '.st-key-root_question_map_panel, '
               + 'div[class*="st-key-branch_question_map_panel_"]'
             );
-            if (panel) resizeObserver.observe(panel);
             const stages = panel?.querySelectorAll(
               '[data-testid="stRadioOption"]'
             );
@@ -6277,16 +6277,13 @@ st.iframe(
         const schedule = () => {
           if (!frame) frame = win.requestAnimationFrame(sync);
         };
-        const observer = new MutationObserver(schedule);
-        observer.observe(doc.body, { childList: true, subtree: true });
-        const resizeObserver = new ResizeObserver(schedule);
-        resizeObserver.observe(doc.documentElement);
+        const poll = win.setInterval(schedule, 180);
         const onResize = schedule;
         const onScroll = schedule;
         win.addEventListener('resize', onResize, { passive: true });
         doc.addEventListener('scroll', onScroll, { passive: true, capture: true });
         win.__iniDirectAnswerPointerSync = {
-          observer, resizeObserver, onResize, onScroll
+          poll, onResize, onScroll
         };
         schedule();
       } catch (err) {}
@@ -7692,7 +7689,7 @@ def page_new_chat() -> None:
                                     const schedule = () => {{
                                       if (!state.frame) state.frame = requestAnimationFrame(follow);
                                     }};
-                                    state.observer = new MutationObserver(schedule);
+                                    state.observer = new win.MutationObserver(schedule);
                                     state.observer.observe(response, {{
                                       childList: true,
                                       subtree: true,
@@ -7891,7 +7888,7 @@ def page_new_chat() -> None:
                                           if (!state.frame) state.frame = requestAnimationFrame(follow);
                                         }};
 
-                                        state.observer = new MutationObserver(
+                                        state.observer = new win.MutationObserver(
                                           () => schedule(true)
                                         );
                                         state.observer.observe(response, {{
@@ -10994,6 +10991,12 @@ def page_new_chat() -> None:
         st.rerun()
         return True
 
+    def _advance_new_chat_composer() -> None:
+        """Clear the shared composer as soon as an accepted request is queued."""
+        st.session_state._nc_bottom_composer_revision += 1
+        st.session_state.chat_top_enter_submit = False
+        st.session_state.chat_bottom_enter_submit = False
+
     def _render_new_chat_generation_placeholder(
         action: str = "interrogate",
         status_mode: str = "generating",
@@ -13050,6 +13053,7 @@ def page_new_chat() -> None:
             if not qc_ui.maybe_start_qc(
                 top_prompt, "interrogate", st.session_state.visitor_id,
                 st.session_state.api_base, _attach_curriculum_to_new_chat,
+                _advance_new_chat_composer,
             ):
                 _queue_new_chat_request(top_prompt, "interrogate")
 
@@ -13470,6 +13474,7 @@ def page_new_chat() -> None:
             if not qc_ui.maybe_start_qc(
                 bottom_prompt, "interrogate", st.session_state.visitor_id,
                 st.session_state.api_base, _attach_curriculum_to_new_chat,
+                _advance_new_chat_composer,
             ):
                 _queue_new_chat_request(bottom_prompt, "interrogate")
 
