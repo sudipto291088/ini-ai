@@ -13,6 +13,11 @@ FCE_COMPONENT_SOURCE = (
 LANDING_GUIDANCE_SOURCE = (
     Path(__file__).resolve().parents[1] / "streamlit_app" / "landing_guidance.py"
 ).read_text(encoding="utf-8")
+NEW_CHAT_UPDATE_SOURCE = (
+    Path(__file__).resolve().parents[1]
+    / "streamlit_app"
+    / "new_chat_update_component.py"
+).read_text(encoding="utf-8")
 
 
 def test_sidebar_clock_does_not_force_periodic_app_rerenders() -> None:
@@ -81,6 +86,22 @@ def test_explore_direction_cards_have_borderless_quiet_surfaces() -> None:
     assert "0 3px 10px rgba(15, 23, 42, 0.035)" in APP_SOURCE
     assert "font-weight: 560 !important;" in APP_SOURCE
     assert ".st-key-nc_explore_grid div.stButton > button:focus-visible" in APP_SOURCE
+
+
+def test_new_chat_update_is_compact_borderless_and_version_scoped() -> None:
+    assert "render_new_chat_update(" in APP_SOURCE
+    assert APP_SOURCE.index("render_new_chat_update(") < APP_SOURCE.index(
+        '<div class="nc-explore-label">Explore a direction</div>'
+    )
+    assert 'height: 50px;' in NEW_CHAT_UPDATE_SOURCE
+    assert 'background: transparent;' in NEW_CHAT_UPDATE_SOURCE
+    assert 'box-shadow: none;' in NEW_CHAT_UPDATE_SOURCE
+    assert 'width: 15px;' in NEW_CHAT_UPDATE_SOURCE
+    assert 'sessionStorage.getItem(seenKey)' in NEW_CHAT_UPDATE_SOURCE
+    assert 'ini-new-chat-update:v3:' in NEW_CHAT_UPDATE_SOURCE
+    assert "shouldAnimate ? 'is-animated' : 'is-settled'" in NEW_CHAT_UPDATE_SOURCE
+    assert '}, 3000);' in NEW_CHAT_UPDATE_SOURCE
+    assert 'Learn an entire subject through questions' in NEW_CHAT_UPDATE_SOURCE
 
 
 def test_first_visit_introduction_is_shorter_and_visually_demonstrates_features() -> None:

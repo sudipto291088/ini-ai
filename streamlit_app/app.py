@@ -196,6 +196,7 @@ from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
 from splash_component import render_app_splash
 from landing_guidance import render_landing_guidance
+from new_chat_update_component import render_new_chat_update
 
 
 
@@ -12262,7 +12263,7 @@ def page_new_chat() -> None:
             }}
 
             [data-testid="stElementContainer"]:has(.nc-explore-label) {{
-                margin-top: 36px;
+                margin-top: 8px;
             }}
 
             .nc-explore-label {{
@@ -12980,6 +12981,11 @@ def page_new_chat() -> None:
                     type="secondary",
                     width="stretch",
                 )
+
+        render_new_chat_update(
+            icon_data=f"data:image/png;base64,{icon_data}",
+            version="v0.1.7",
+        )
 
         st.markdown(
             '<div class="nc-explore-label">Explore a direction</div>',
