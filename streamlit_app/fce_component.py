@@ -7,7 +7,7 @@ import streamlit as st
 
 
 _FCE_COMPONENT = st.components.v2.component(
-    "ini_first_conversation_experience_v2",
+    "ini_first_conversation_experience_v3",
     html='<div id="ini-fce-root" aria-live="polite"></div>',
     css="""
     #ini-fce-root { font-family: Aptos, "Segoe UI", system-ui, sans-serif; }
@@ -49,6 +49,12 @@ _FCE_COMPONENT = st.components.v2.component(
     .ini-fce-map-branches::before { position: absolute; top: 17%; bottom: 17%; left: -18px; width: 1px; content: ""; background: rgba(245,27,63,.25); }
     .ini-fce-map-node { position: relative; padding: 10px 12px; border-radius: 11px; background: #fff; color: #465163; font-size: 11px; font-weight: 650; box-shadow: inset 0 0 0 1px rgba(226,232,240,.7); }
     .ini-fce-map-node::before { position: absolute; top: 50%; right: 100%; width: 18px; height: 1px; content: ""; background: rgba(245,27,63,.25); }
+    .ini-fce-curriculum { display: grid; gap: 10px; }
+    .ini-fce-curriculum-subject { display: flex; align-items: center; gap: 10px; padding: 13px 15px; border-radius: 14px; background: linear-gradient(90deg, #fff, #fff5f7); color: #17211f; font-size: 13px; font-weight: 760; box-shadow: inset 0 0 0 1px rgba(245,27,63,.12); }
+    .ini-fce-curriculum-mark { display: grid; width: 27px; height: 27px; flex: 0 0 27px; place-items: center; border-radius: 9px; background: #f51b3f; color: #fff; font-size: 12px; }
+    .ini-fce-curriculum-chapters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+    .ini-fce-curriculum-chapter { padding: 11px; border-radius: 12px; background: #fff; color: #465163; font-size: 11px; font-weight: 650; line-height: 1.35; box-shadow: inset 0 0 0 1px rgba(226,232,240,.7); }
+    .ini-fce-curriculum-number { display: block; margin-bottom: 5px; color: #e2173b; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
     .ini-fce-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: 0 0 auto; padding: 18px 30px 22px; background: rgba(255,255,255,.72); }
     .ini-fce-controls { display: flex; flex-wrap: wrap; gap: 8px; }
     .ini-fce-button { min-height: 38px; padding: 9px 12px; border: 1px solid rgba(225,229,235,.68); border-radius: 14px; background: rgba(255,255,255,.88); color: #4b5563; box-shadow: 0 5px 15px rgba(15,23,42,.055); font: 600 13px/1.2 Aptos, "Segoe UI", sans-serif; cursor: pointer; }
@@ -70,13 +76,14 @@ _FCE_COMPONENT = st.components.v2.component(
     .ini-fce-overlay.is-mobile .ini-fce-flow-arrow { transform: rotate(90deg); }
     .ini-fce-overlay.is-mobile .ini-fce-path-nodes { grid-template-columns: 1fr; }
     .ini-fce-overlay.is-mobile .ini-fce-map { grid-template-columns: 1fr; gap: 15px; }
+    .ini-fce-overlay.is-mobile .ini-fce-curriculum-chapters { grid-template-columns: 1fr; }
     .ini-fce-overlay.is-mobile .ini-fce-map-root::after, .ini-fce-overlay.is-mobile .ini-fce-map-branches::before, .ini-fce-overlay.is-mobile .ini-fce-map-node::before { display: none; }
     .ini-fce-overlay.is-mobile .ini-fce-footer { align-items: stretch; flex-direction: column-reverse; padding: 12px 17px 15px; }
     .ini-fce-overlay.is-mobile .ini-fce-controls { width: 100%; }
     .ini-fce-overlay.is-mobile .ini-fce-button { flex: 1 1 auto; }
     .ini-fce-overlay.is-mobile .ini-fce-final-actions { grid-template-columns: 1fr; }
     @media (max-width: 640px) { .ini-fce-overlay { padding: 6px; } .ini-fce-panel { width: calc(100% - 12px); max-width: none; max-height: calc(100% - 12px); border-radius: 19px; } .ini-fce-close { top: 11px; right: 11px; } .ini-fce-body { min-width: 0; min-height: 0; padding: 36px 16px 0; } .ini-fce-transcript { min-width: 0; min-height: 0; grid-template-columns: 17px minmax(0, 1fr); gap: 10px; padding-block: 18px; } .ini-fce-content { min-width: 0; overflow: hidden; } .ini-fce-message { max-width: 100%; overflow-wrap: anywhere; font-size: clamp(17px, 5vw, 20px); line-height: 1.44; } .ini-fce-topics { gap: 7px; } .ini-fce-topic { max-width: 100%; overflow-wrap: anywhere; } .ini-fce-footer { align-items: stretch; flex-direction: column-reverse; padding: 10px 13px 13px; } .ini-fce-controls { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); } .ini-fce-button { min-width: 0; white-space: normal; } .ini-fce-final-actions { grid-template-columns: 1fr; padding: 12px 13px 14px; } }
-    @media (max-width: 640px) { .ini-fce-visual { margin-top: 16px; padding: 14px; } .ini-fce-question-path { grid-template-columns: 1fr; gap: 8px; } .ini-fce-flow-arrow { transform: rotate(90deg); } .ini-fce-path-nodes { grid-template-columns: 1fr; } .ini-fce-map { grid-template-columns: 1fr; gap: 15px; } .ini-fce-map-root::after, .ini-fce-map-branches::before, .ini-fce-map-node::before { display: none; } }
+    @media (max-width: 640px) { .ini-fce-visual { margin-top: 16px; padding: 14px; } .ini-fce-question-path { grid-template-columns: 1fr; gap: 8px; } .ini-fce-flow-arrow { transform: rotate(90deg); } .ini-fce-path-nodes, .ini-fce-curriculum-chapters { grid-template-columns: 1fr; } .ini-fce-map { grid-template-columns: 1fr; gap: 15px; } .ini-fce-map-root::after, .ini-fce-map-branches::before, .ini-fce-map-node::before { display: none; } }
     /* Reserve the complete welcome window before any words stream in. */
     .ini-fce-panel { width: 78%; height: 78%; max-height: 100%; flex-shrink: 0; }
     .ini-fce-footer-slot { flex: 0 0 auto; }
@@ -169,13 +176,14 @@ _FCE_COMPONENT = st.components.v2.component(
       const quoteMarkup = () => `<section class="ini-fce-quote"><div class="ini-fce-quote-text">“${escapeHtml(data.quote.quote)}”</div><div class="ini-fce-quote-author">— ${escapeHtml(data.quote.author)}</div>${data.quote.attribution_note ? `<div class="ini-fce-quote-note">${escapeHtml(data.quote.attribution_note)}</div>` : ''}</section>`;
       const topicsMarkup = () => `<div class="ini-fce-topics">${(data.topics || []).map((topic) => `<span class="ini-fce-topic">${escapeHtml(topic)}</span>`).join('')}</div>`;
       const visualMarkup = (visual) => {
-        if (visual === 'question-path') return `<section class="ini-fce-visual" aria-label="A question expanding into a learning path"><div class="ini-fce-visual-label">From one thought to a learning path</div><div class="ini-fce-question-path"><div class="ini-fce-seed">How does solar energy work?</div><div class="ini-fce-flow-arrow" aria-hidden="true">→</div><div class="ini-fce-path-nodes"><div class="ini-fce-path-node">Foundations</div><div class="ini-fce-path-node">Connections</div><div class="ini-fce-path-node">Next questions</div></div></div></section>`;
+        if (visual === 'question-path') return `<section class="ini-fce-visual" aria-label="Three ways to begin with InI"><div class="ini-fce-visual-label">Begin in your own words</div><div class="ini-fce-question-path"><div class="ini-fce-seed">What do you want to understand?</div><div class="ini-fce-flow-arrow" aria-hidden="true">→</div><div class="ini-fce-path-nodes"><div class="ini-fce-path-node">Ask a question</div><div class="ini-fce-path-node">Explore a topic</div><div class="ini-fce-path-node">Learn a subject</div></div></div></section>`;
         if (visual === 'answer-views') return `<section class="ini-fce-visual" aria-label="Insight and Technical answer views"><div class="ini-fce-visual-label">Two ways to read an answer</div><div class="ini-fce-view-grid"><div class="ini-fce-view-card"><div class="ini-fce-view-icon" aria-hidden="true">○</div><div class="ini-fce-view-title">Insight</div><div class="ini-fce-view-copy">Plain-language intuition and meaning</div></div><div class="ini-fce-view-card"><div class="ini-fce-view-icon" aria-hidden="true">⌁</div><div class="ini-fce-view-title">Technical</div><div class="ini-fce-view-copy">Mechanisms, detail, and precision</div></div></div></section>`;
         if (visual === 'knowledge-map') return `<section class="ini-fce-visual" aria-label="A connected knowledge structure"><div class="ini-fce-visual-label">Knowledge Structure</div><div class="ini-fce-map"><div class="ini-fce-map-root">Your topic</div><div class="ini-fce-map-branches"><div class="ini-fce-map-node">Prerequisites</div><div class="ini-fce-map-node">Connected concepts</div><div class="ini-fce-map-node">Guided question map</div></div></div></section>`;
+        if (visual === 'question-curriculum') return `<section class="ini-fce-visual" aria-label="A subject organized as a Question Curriculum"><div class="ini-fce-visual-label">Question Curriculum</div><div class="ini-fce-curriculum"><div class="ini-fce-curriculum-subject"><span class="ini-fce-curriculum-mark" aria-hidden="true">◇</span><span>Biology · Subject Map</span></div><div class="ini-fce-curriculum-chapters"><div class="ini-fce-curriculum-chapter"><span class="ini-fce-curriculum-number">01</span>Foundations of life</div><div class="ini-fce-curriculum-chapter"><span class="ini-fce-curriculum-number">02</span>Cells and systems</div><div class="ini-fce-curriculum-chapter"><span class="ini-fce-curriculum-number">03</span>Evolution and ecology</div></div></div></section>`;
         return '';
       };
       const finalMarkup = () => textMarkup(data.messages[data.messages.length - 1], data.messages[data.messages.length - 1].text, false);
-      const finalActionsMarkup = () => `<div class="ini-fce-final-actions"><button class="ini-fce-button" type="button" data-action="replay">Replay</button><button class="ini-fce-button" type="button" data-action="go-introduction">Take Me to Introduction</button><button class="ini-fce-button primary" type="button" data-action="go-chat">Start a New Chat</button></div>`;
+      const finalActionsMarkup = () => `<div class="ini-fce-final-actions"><button class="ini-fce-button" type="button" data-action="replay">Replay</button><button class="ini-fce-button" type="button" data-action="go-introduction">Take Me to Introduction</button><button class="ini-fce-button primary" type="button" data-action="go-chat">Take Me to New Chat</button></div>`;
 
       const currentProgress = () => {
         let elapsed = Date.now() - state.startedAt;

@@ -5,37 +5,40 @@ from typing import Any, Dict, List
 
 FCE_MESSAGES: List[Dict[str, Any]] = [
     {
-        "text": "Hello! 👋\n\nI’m InI.ai — a Question Engine built to help you understand, not just collect answers.",
+        "text": "Hello! 👋\n\nI’m InI.ai — a Question Engine built to help you understand how knowledge is formed, connected, and learned.",
         "emphasis": "identity",
     },
     {
-        "text": "Start with a question, a topic, or even an unfinished thought.\n\nI’ll reveal a learning path around it.",
+        "text": "You can begin with a question, explore a topic, or ask me to teach you an entire subject.\n\nYou don’t need to know which mode to choose.",
         "visual": "question-path",
     },
     {
-        "text": "Read each answer at the level you need — clear intuition or technical depth.",
+        "text": "Ask a question and I’ll form an Initial Answer — structured for clear intuition or technical depth.",
         "visual": "answer-views",
     },
     {
-        "text": "When you want the bigger picture, open Knowledge Structure to see prerequisites, connections, and the questions that move you forward.",
+        "text": "Explore a topic and I’ll build a Knowledge Structure — revealing its prerequisites, connections, and the questions that move you forward.",
         "visual": "knowledge-map",
     },
     {
-        "text": "You don’t need the perfect question. Pick a topic that interests you and begin.",
+        "text": "Learn an entire subject and I’ll create a Question Curriculum — a visual Subject Map of progressive chapters, questions, and focused answers.",
+        "visual": "question-curriculum",
+    },
+    {
+        "text": "Simply tell me what you want to understand. I’ll determine the right way to begin.",
         "topics": True,
     },
     {
-        "text": "Bring your curiosity.\n\nI’ll help with the rest.",
+        "text": "You don’t need the perfect question.\n\nBring your curiosity, and I’ll help with the rest.",
         "emphasis": "final",
     },
 ]
 
 
 FCE_TOPIC_EXAMPLES = [
-    "Artificial Intelligence",
-    "Quantum Computing",
-    "Cognitive Science",
-    "Kubernetes",
+    "What is consciousness?",
+    "Explore artificial intelligence",
+    "Teach me biology as a subject",
 ]
 
 

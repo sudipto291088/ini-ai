@@ -84,14 +84,15 @@ def test_explore_direction_cards_have_borderless_quiet_surfaces() -> None:
 
 
 def test_first_visit_introduction_is_shorter_and_visually_demonstrates_features() -> None:
-    assert FCE_CONTENT_SOURCE.count('"text":') == 6
-    assert FCE_CONTENT_SOURCE.count('"visual":') == 3
+    assert FCE_CONTENT_SOURCE.count('"text":') == 7
+    assert FCE_CONTENT_SOURCE.count('"visual":') == 4
     assert "Most AI systems answer your question" not in FCE_CONTENT_SOURCE
     assert "My New Learning is also evolving" not in FCE_CONTENT_SOURCE
     assert "const visualMarkup = (visual)" in FCE_COMPONENT_SOURCE
-    assert "From one thought to a learning path" in FCE_COMPONENT_SOURCE
+    assert "Three ways to begin with InI" in FCE_COMPONENT_SOURCE
     assert "Two ways to read an answer" in FCE_COMPONENT_SOURCE
     assert "A connected knowledge structure" in FCE_COMPONENT_SOURCE
+    assert "A subject organized as a Question Curriculum" in FCE_COMPONENT_SOURCE
 
 
 def test_first_visit_navigation_is_consumed_once() -> None:
