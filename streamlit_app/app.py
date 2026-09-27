@@ -7268,6 +7268,8 @@ def page_home():
     st.caption("Thank you to arXiv for use of its open access interoperability.")
 
 def page_new_chat() -> None:
+    if st.session_state.pop("_nc_prefill_subject_prompt", False):
+        st.session_state["chat_top_topic_input"] = "Teach me biology as a subject"
     if "chat_answers" not in st.session_state:
         st.session_state.chat_answers = {}
     if "chat_open_questions" not in st.session_state:
@@ -12982,10 +12984,13 @@ def page_new_chat() -> None:
                     width="stretch",
                 )
 
-        render_new_chat_update(
+        update_action = render_new_chat_update(
             icon_data=f"data:image/png;base64,{icon_data}",
             version="v0.1.7",
         )
+        if update_action == "explore-subject":
+            st.session_state._nc_prefill_subject_prompt = True
+            st.rerun()
 
         st.markdown(
             '<div class="nc-explore-label">Explore a direction</div>',

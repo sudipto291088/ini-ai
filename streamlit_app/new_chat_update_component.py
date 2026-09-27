@@ -1,12 +1,13 @@
 """Compact animated release notice for the empty New Chat landing screen."""
 
+from collections.abc import Callable
 from typing import Optional
 
 import streamlit as st
 
 
 _NEW_CHAT_UPDATE = st.components.v2.component(
-    "ini_new_chat_update_v11",
+    "ini_new_chat_update_v12",
     html='<div id="ini-new-chat-update-root"></div>',
     css="""
     #ini-new-chat-update-root {
@@ -55,7 +56,8 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
       line-height: 1.1;
     }
     .ini-update-message {
-      display: block;
+      display: inline-block;
+      min-width: 0;
       overflow: hidden;
       color: var(--st-text-color, #17211f);
       font-size: 13px;
@@ -63,6 +65,29 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
       line-height: 1.25;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .ini-update-line {
+      display: flex;
+      min-width: 0;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .ini-update-action {
+      flex: 0 0 auto;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--st-primary-color, #f51b3f);
+      font: 700 10px/1.2 Aptos, "Segoe UI", system-ui, sans-serif;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .ini-update-action:hover,
+    .ini-update-action:focus-visible {
+      color: #d91435;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      outline: none;
     }
     .ini-update-notice.is-animated .ini-update-mukut {
       animation: ini-update-mukut 1.75s cubic-bezier(.22, .8, .28, 1) forwards;
@@ -100,6 +125,8 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
         text-overflow: clip;
         white-space: normal;
       }
+      .ini-update-line { gap: 7px; }
+      .ini-update-action { font-size: 9px; }
       .ini-update-mukut { width: 14px; height: 25px; }
       .ini-update-notice.is-settled .ini-update-mukut { left: 8px; }
     }
@@ -119,7 +146,7 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
     """,
     js="""
     export default function (component) {
-      const { data, parentElement } = component;
+      const { data, parentElement, setTriggerValue } = component;
       const root = parentElement.querySelector('#ini-new-chat-update-root');
       if (!root) return;
 
@@ -132,11 +159,17 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
           <img class="ini-update-mukut" src="${data.icon_data}" alt="Mukut">
           <span class="ini-update-copy">
             <span class="ini-update-kicker">New in ${data.version}</span>
-            <span class="ini-update-message">${data.message}</span>
+            <span class="ini-update-line">
+              <span class="ini-update-message">${data.message}</span>
+              <button class="ini-update-action" type="button">Explore now →</button>
+            </span>
           </span>
         </section>`;
 
       const notice = root.querySelector('.ini-update-notice');
+      const action = root.querySelector('.ini-update-action');
+      const exploreSubject = () => setTriggerValue('action', 'explore-subject');
+      action?.addEventListener('click', exploreSubject);
       let splashPollTimer = null;
       let revealTimer = null;
       const waitForNewChat = () => {
@@ -154,6 +187,7 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
       return () => {
         window.clearTimeout(splashPollTimer);
         window.clearTimeout(revealTimer);
+        action?.removeEventListener('click', exploreSubject);
       };
     }
     """,
@@ -166,10 +200,13 @@ def render_new_chat_update(
     version: str = "v0.1.7",
     message: str = "Learn an entire subject through questions",
     key: Optional[str] = "ini-new-chat-update-v017",
-) -> None:
+    on_action_change: Optional[Callable[[], None]] = None,
+) -> Optional[str]:
     """Render the small, borderless release announcement."""
-    _NEW_CHAT_UPDATE(
+    result = _NEW_CHAT_UPDATE(
         data={"icon_data": icon_data, "version": version, "message": message},
         key=key,
         height=50,
+        on_action_change=on_action_change or (lambda: None),
     )
+    return getattr(result, "action", None)

@@ -101,6 +101,9 @@ def test_new_chat_update_is_compact_borderless_and_version_scoped() -> None:
     assert 'ini-new-chat-update:v3:' in NEW_CHAT_UPDATE_SOURCE
     assert "shouldAnimate ? 'is-animated' : 'is-settled'" in NEW_CHAT_UPDATE_SOURCE
     assert '}, 3000);' in NEW_CHAT_UPDATE_SOURCE
+    assert 'Explore now →' in NEW_CHAT_UPDATE_SOURCE
+    assert "setTriggerValue('action', 'explore-subject')" in NEW_CHAT_UPDATE_SOURCE
+    assert 'Teach me biology as a subject' in APP_SOURCE
     assert 'Learn an entire subject through questions' in NEW_CHAT_UPDATE_SOURCE
 
 
