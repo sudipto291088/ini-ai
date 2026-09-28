@@ -197,7 +197,14 @@ from fce_content import FCE_MESSAGES, FCE_QUOTES, FCE_TOPIC_EXAMPLES
 from fce_component import render_fce
 from splash_component import render_app_splash
 from landing_guidance import render_landing_guidance
-from new_chat_update_component import render_new_chat_update
+import new_chat_update_component
+
+# Streamlit Cloud may rerun this entry point without clearing imported helper
+# modules after a deploy. Reload an older release-notice helper before binding
+# its callable so a changed function signature cannot crash New Chat.
+if getattr(new_chat_update_component, "NEW_CHAT_UPDATE_COMPONENT_VERSION", 0) < 25:
+    new_chat_update_component = importlib.reload(new_chat_update_component)
+render_new_chat_update = new_chat_update_component.render_new_chat_update
 
 
 

@@ -89,6 +89,9 @@ def test_explore_direction_cards_have_borderless_quiet_surfaces() -> None:
 
 
 def test_new_chat_update_is_compact_borderless_and_version_scoped() -> None:
+    assert "NEW_CHAT_UPDATE_COMPONENT_VERSION = 25" in NEW_CHAT_UPDATE_SOURCE
+    assert 'import new_chat_update_component' in APP_SOURCE
+    assert 'new_chat_update_component = importlib.reload(new_chat_update_component)' in APP_SOURCE
     assert "render_new_chat_update(" in APP_SOURCE
     assert APP_SOURCE.index("render_new_chat_update(") < APP_SOURCE.index(
         "Explore a direction</div>'"

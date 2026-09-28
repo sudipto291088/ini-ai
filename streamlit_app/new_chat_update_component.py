@@ -6,6 +6,9 @@ from typing import Optional
 import streamlit as st
 
 
+NEW_CHAT_UPDATE_COMPONENT_VERSION = 25
+
+
 _NEW_CHAT_UPDATE = st.components.v2.component(
     "ini_new_chat_update_v25",
     html='<div id="ini-new-chat-update-root"></div>',
