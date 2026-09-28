@@ -11470,11 +11470,13 @@ def page_new_chat() -> None:
             tab_index=-1,
         )
 
-        if not qc_ui.process_pending_qc(
+        qc_processed = qc_ui.process_pending_qc(
             st.session_state.visitor_id,
             st.session_state.api_base,
             _attach_curriculum_to_new_chat,
-        ):
+        )
+        generation_slot.empty()
+        if not qc_processed:
             _queue_new_chat_request(pending_prompt, "interrogate")
 
     def _render_nc_latest_scroll_target() -> None:
@@ -13690,16 +13692,20 @@ def page_new_chat() -> None:
             pending_qc["prompt"], now_label(), extra_class="nc-pending-query",
             query_mode="interrogate",
         )
-        _render_new_chat_generation_placeholder(
-            "interrogate",
-            "subject_learning" if pending_qc.get("phase") == "building" else "thinking",
-        )
+        generation_slot = st.empty()
+        with generation_slot.container():
+            _render_new_chat_generation_placeholder(
+                "interrogate",
+                "subject_learning" if pending_qc.get("phase") == "building" else "thinking",
+            )
         _render_new_chat_bottom_uib()
-        if not qc_ui.process_pending_qc(
+        qc_processed = qc_ui.process_pending_qc(
             st.session_state.visitor_id,
             st.session_state.api_base,
             _attach_curriculum_to_new_chat,
-        ):
+        )
+        generation_slot.empty()
+        if not qc_processed:
             _queue_new_chat_request(pending_qc["prompt"], "interrogate")
         return
 

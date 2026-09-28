@@ -121,6 +121,20 @@ class SubjectIntentTests(unittest.TestCase):
 
 
 class GenerationTests(unittest.TestCase):
+    def test_structured_curriculum_generation_retries_one_transient_failure(self):
+        failed = {"answer": "", "error": "temporary", "incomplete": False}
+        recovered = {"answer": '{"chapters": []}', "error": None, "incomplete": False}
+        with patch.object(
+            qc,
+            "generate_dynamic_answer_result",
+            side_effect=[failed, recovered],
+        ) as generate, patch.object(qc.time, "sleep") as pause:
+            result = qc._json_result("Biology", "Return JSON", "qc_outline")
+
+        self.assertEqual(result, {"chapters": []})
+        self.assertEqual(generate.call_count, 2)
+        pause.assert_called_once_with(0.35)
+
     def test_stream_follower_only_mounts_for_new_curriculum_content(self):
         chapter = {
             "id": "chapter-1", "questions": [{"id": "chapter-1-q1"}],

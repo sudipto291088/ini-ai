@@ -2,6 +2,7 @@
 
 import json
 import re
+import time
 from typing import Any
 
 from api.llm_answers import generate_dynamic_answer_result
@@ -43,21 +44,33 @@ def learning_subject_candidate(text: str) -> str:
 
 
 def _json_result(subject: str, instruction: str, mode: str) -> dict[str, Any]:
-    result = generate_dynamic_answer_result(
-        topic=subject,
-        topic_type="subject",
-        archetype="SYSTEM",
-        question=instruction,
-        meta={"mode": mode, "expects": "json"},
-        timeout_s=150,
+    last_error: RuntimeError | ValueError = RuntimeError(
+        "Subject curriculum generation is unavailable or incomplete. Please try again."
     )
-    raw = (result.get("answer") or "").strip()
-    if result.get("error") or result.get("incomplete") or not raw:
-        raise RuntimeError("Subject curriculum generation is unavailable or incomplete. Please try again.")
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise ValueError("The generated curriculum was not valid structured data. Please retry.") from exc
+    for attempt in range(2):
+        result = generate_dynamic_answer_result(
+            topic=subject,
+            topic_type="subject",
+            archetype="SYSTEM",
+            question=instruction,
+            meta={"mode": mode, "expects": "json"},
+            timeout_s=150,
+        )
+        raw = (result.get("answer") or "").strip()
+        if result.get("error") or result.get("incomplete") or not raw:
+            last_error = RuntimeError(
+                "Subject curriculum generation is unavailable or incomplete. Please try again."
+            )
+        else:
+            try:
+                return json.loads(raw)
+            except json.JSONDecodeError:
+                last_error = ValueError(
+                    "The generated curriculum was not valid structured data. Please retry."
+                )
+        if attempt == 0:
+            time.sleep(0.35)
+    raise last_error
 
 
 def assess_subject(candidate: str) -> dict[str, Any]:

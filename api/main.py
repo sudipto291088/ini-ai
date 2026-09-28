@@ -126,7 +126,10 @@ def qc_assess_route(payload: TopicIn):
 
 @app.post("/qc/outline")
 def qc_outline_route(payload: TopicIn):
-    return generate_subject_outline(payload.topic)
+    try:
+        return generate_subject_outline(payload.topic)
+    except (KeyError, ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @app.post("/qc/chapter")

@@ -181,6 +181,11 @@ def test_generation_lights_cover_answer_subject_and_question_map_states() -> Non
     assert 'forming_lines = "" if not progress_light_label else f"""' in APP_SOURCE
 
 
+def test_failed_subject_generation_removes_its_loading_placeholder() -> None:
+    assert APP_SOURCE.count("generation_slot.empty()") >= 2
+    assert "qc_processed = qc_ui.process_pending_qc(" in APP_SOURCE
+
+
 def test_new_chat_landing_does_not_reserve_a_blank_top_band() -> None:
     assert 'margin: clamp(70px, 13vh, 145px) auto 0;' not in APP_SOURCE
     assert 'margin-top: 42px;' not in APP_SOURCE
