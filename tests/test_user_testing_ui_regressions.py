@@ -93,14 +93,15 @@ def test_new_chat_update_is_compact_borderless_and_version_scoped() -> None:
     assert APP_SOURCE.index("render_new_chat_update(") < APP_SOURCE.index(
         "Explore a direction</div>'"
     )
-    assert 'height=54 if revealed else 0' in NEW_CHAT_UPDATE_SOURCE
+    assert "root.style.height = `${height}px`" in NEW_CHAT_UPDATE_SOURCE
     assert 'background: transparent;' in NEW_CHAT_UPDATE_SOURCE
     assert 'box-shadow: none;' in NEW_CHAT_UPDATE_SOURCE
     assert 'width: 15px;' in NEW_CHAT_UPDATE_SOURCE
     assert 'sessionStorage.getItem(seenKey)' in NEW_CHAT_UPDATE_SOURCE
     assert 'ini-new-chat-update:v3:' in NEW_CHAT_UPDATE_SOURCE
-    assert "shouldAnimate ? 'is-animated' : 'is-settled'" in NEW_CHAT_UPDATE_SOURCE
-    assert 'shouldAnimate ? 3000 : 0' in NEW_CHAT_UPDATE_SOURCE
+    assert "animate ? 'is-animated' : 'is-settled'" in NEW_CHAT_UPDATE_SOURCE
+    assert 'revealTimer = window.setTimeout(() => revealNotice(true), 2400)' in NEW_CHAT_UPDATE_SOURCE
+    assert "setTriggerValue('action', 'reveal')" not in NEW_CHAT_UPDATE_SOURCE
     assert 'Explore now →' in NEW_CHAT_UPDATE_SOURCE
     assert "setTriggerValue('action', 'explore-subject')" in NEW_CHAT_UPDATE_SOURCE
     assert 'Teach me biology as a subject' in APP_SOURCE
@@ -120,12 +121,10 @@ def test_new_chat_update_can_be_dismissed_and_reopened_during_release_week() -> 
     assert 'background: transparent;' in NEW_CHAT_UPDATE_SOURCE
     assert 'localStorage.setItem(dismissedKey, \'1\')' in NEW_CHAT_UPDATE_SOURCE
     assert 'ini-new-chat-update:dismissed:' in NEW_CHAT_UPDATE_SOURCE
-    assert "setTriggerValue('action', 'reveal')" in NEW_CHAT_UPDATE_SOURCE
-    assert 'revealed=update_is_revealed' in APP_SOURCE
-    assert 'nc-explore-make-room .42s cubic-bezier(.22, .78, .24, 1)' in APP_SOURCE
-    assert 'nc-explore-return .42s cubic-bezier(.22, .78, .24, 1)' in APP_SOURCE
+    assert "setFlowHeight(54, true)" in NEW_CHAT_UPDATE_SOURCE
+    assert "setFlowHeight(0, true)" in NEW_CHAT_UPDATE_SOURCE
+    assert "height .42s cubic-bezier(.22, .78, .24, 1)" in NEW_CHAT_UPDATE_SOURCE
     assert 'update_action == "dismiss"' in APP_SOURCE
-    assert 'update_action == "storage-dismissed" and not force_update_open' in APP_SOURCE
     assert '"manual" if force_update_open else "auto"' in APP_SOURCE
     assert 'margin-top: 36px;' in APP_SOURCE
     assert '[data-testid="stSidebar"] .st-key-ini_sidebar_whats_new' in APP_SOURCE

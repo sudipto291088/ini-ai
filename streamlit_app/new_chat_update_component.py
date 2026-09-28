@@ -7,17 +7,18 @@ import streamlit as st
 
 
 _NEW_CHAT_UPDATE = st.components.v2.component(
-    "ini_new_chat_update_v23",
+    "ini_new_chat_update_v25",
     html='<div id="ini-new-chat-update-root"></div>',
     css="""
     #ini-new-chat-update-root {
       width: min(100%, 820px);
-      min-height: 54px;
+      height: 0;
       margin: 0 auto;
       overflow: hidden;
       background: transparent;
       box-shadow: none;
       font-family: Aptos, "Segoe UI", system-ui, sans-serif;
+      transition: height .42s cubic-bezier(.22, .78, .24, 1);
     }
     .ini-update-notice {
       position: relative;
@@ -125,6 +126,10 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
       transform: translateY(-3px);
       transition: opacity .16s ease, transform .16s ease;
     }
+    .ini-update-notice.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
     .ini-update-notice.is-animated .ini-update-mukut {
       animation: ini-update-mukut 1.75s cubic-bezier(.22, .8, .28, 1) forwards;
     }
@@ -191,36 +196,11 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
       const seenKey = `ini-new-chat-update:v3:${version}`;
       const dismissedKey = `ini-new-chat-update:dismissed:${version}:${visitor}`;
       const forceOpen = Boolean(data.force_open);
-      const revealed = Boolean(data.revealed);
       const wasDismissed = localStorage.getItem(dismissedKey) === '1';
       const shouldAnimate = !forceOpen && sessionStorage.getItem(seenKey) !== '1';
 
-      if (wasDismissed && !forceOpen) {
-        setTriggerValue('action', 'storage-dismissed');
-        return;
-      }
-
-      let splashPollTimer = null;
-      let revealTimer = null;
-      if (!revealed) {
-        root.innerHTML = '';
-        const requestReveal = () => setTriggerValue('action', 'reveal');
-        const waitForNewChat = () => {
-          if (sessionStorage.getItem('ini_opening_splash_seen_session') !== '1') {
-            splashPollTimer = window.setTimeout(waitForNewChat, 100);
-            return;
-          }
-          revealTimer = window.setTimeout(requestReveal, shouldAnimate ? 3000 : 0);
-        };
-        waitForNewChat();
-        return () => {
-          window.clearTimeout(splashPollTimer);
-          window.clearTimeout(revealTimer);
-        };
-      }
-
       root.innerHTML = `
-        <section class="ini-update-notice"
+        <section class="ini-update-notice is-hidden"
           aria-label="New in ${data.version}: ${data.message}">
           <span class="ini-update-spacer" aria-hidden="true">&nbsp;</span>
           <img class="ini-update-mukut" src="${data.icon_data}" alt="Mukut">
@@ -238,21 +218,64 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
       const notice = root.querySelector('.ini-update-notice');
       const action = root.querySelector('.ini-update-action');
       const dismiss = root.querySelector('.ini-update-dismiss');
+      const setFlowHeight = (height, animate) => {
+        root.style.transition = animate
+          ? 'height .42s cubic-bezier(.22, .78, .24, 1)'
+          : 'none';
+        root.style.height = `${height}px`;
+      };
+      const revealNotice = (animate) => {
+        notice?.classList.remove('is-hidden', 'is-dismissing');
+        notice?.classList.add(animate ? 'is-animated' : 'is-settled');
+        if (animate) {
+          setFlowHeight(0, false);
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => setFlowHeight(54, true));
+          });
+          sessionStorage.setItem(seenKey, '1');
+          return;
+        }
+        setFlowHeight(54, false);
+      };
       const exploreSubject = () => setTriggerValue('action', 'explore-subject');
+      let splashPollTimer = null;
+      let revealTimer = null;
       let dismissTimer = null;
       const dismissUpdate = () => {
         localStorage.setItem(dismissedKey, '1');
         notice?.classList.add('is-dismissing');
+        setFlowHeight(0, true);
         dismissTimer = window.setTimeout(() => {
-          setTriggerValue('action', 'dismiss');
-        }, 170);
+          if (forceOpen) setTriggerValue('action', 'dismiss');
+          else root.innerHTML = '';
+        }, 440);
       };
       action?.addEventListener('click', exploreSubject);
       dismiss?.addEventListener('click', dismissUpdate);
-      notice?.classList.add(shouldAnimate ? 'is-animated' : 'is-settled');
-      if (shouldAnimate) sessionStorage.setItem(seenKey, '1');
+
+      if (wasDismissed && !forceOpen) {
+        root.innerHTML = '';
+        setFlowHeight(0, false);
+      } else if (shouldAnimate) {
+        setFlowHeight(0, false);
+        const waitForNewChat = () => {
+          if (sessionStorage.getItem('ini_opening_splash_seen_session') !== '1') {
+            splashPollTimer = window.setTimeout(waitForNewChat, 100);
+            return;
+          }
+          // The opening splash consumes roughly the first second. Starting the
+          // reveal 2.4s later keeps the total arrival inside the intended 3–4s
+          // window without coinciding with the guidance sentence pause.
+          revealTimer = window.setTimeout(() => revealNotice(true), 2400);
+        };
+        waitForNewChat();
+      } else {
+        revealNotice(false);
+      }
 
       return () => {
+        window.clearTimeout(splashPollTimer);
+        window.clearTimeout(revealTimer);
         window.clearTimeout(dismissTimer);
         action?.removeEventListener('click', exploreSubject);
         dismiss?.removeEventListener('click', dismissUpdate);
@@ -269,7 +292,6 @@ def render_new_chat_update(
     message: str = "Learn an entire subject through questions",
     visitor_id: str = "anonymous",
     force_open: bool = False,
-    revealed: bool = False,
     key: Optional[str] = "ini-new-chat-update-v017",
     on_action_change: Optional[Callable[[], None]] = None,
 ) -> Optional[str]:
@@ -281,10 +303,8 @@ def render_new_chat_update(
             "message": message,
             "visitor_id": visitor_id,
             "force_open": force_open,
-            "revealed": revealed,
         },
         key=key,
-        height=54 if revealed else 0,
         on_action_change=on_action_change or (lambda: None),
     )
     return getattr(result, "action", None)

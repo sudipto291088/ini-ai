@@ -6055,7 +6055,6 @@ with st.sidebar:
 
     def _open_new_chat_update() -> None:
         st.session_state._nc_force_update_version = NEW_CHAT_UPDATE_VERSION
-        st.session_state._nc_update_animate_open = True
         _reset_query_to_page("chat")
 
     if _new_chat_update_window_active():
@@ -7337,34 +7336,14 @@ def page_home():
 def page_new_chat() -> None:
     update_window_active = _new_chat_update_window_active()
     update_dismissed_key = f"_nc_update_dismissed_{NEW_CHAT_UPDATE_VERSION}"
-    update_revealed_key = f"_nc_update_revealed_{NEW_CHAT_UPDATE_VERSION}"
     force_update_open = update_window_active and (
         show_update
         or st.session_state.get("_nc_force_update_version")
         == NEW_CHAT_UPDATE_VERSION
     )
-    if force_update_open and not st.session_state.get(update_revealed_key, False):
-        st.session_state[update_revealed_key] = True
-        st.session_state._nc_update_animate_open = True
     update_is_visible = update_window_active and (
         force_update_open
         or not st.session_state.get(update_dismissed_key, False)
-    )
-    update_is_revealed = update_is_visible and bool(
-        st.session_state.get(update_revealed_key, False)
-    )
-    animate_update_open = bool(
-        st.session_state.pop("_nc_update_animate_open", False)
-    ) and update_is_revealed
-    animate_update_close = bool(
-        st.session_state.pop("_nc_update_animate_close", False)
-    )
-    explore_motion_class = (
-        "is-making-room"
-        if animate_update_open
-        else "is-returning"
-        if animate_update_close
-        else ""
     )
 
     if st.session_state.pop("_nc_prefill_subject_prompt", False):
@@ -12364,26 +12343,7 @@ def page_new_chat() -> None:
             }}
 
             [data-testid="stElementContainer"]:has(.nc-explore-label) {{
-                --nc-update-flow-space: 66px;
                 margin-top: 36px;
-            }}
-
-            [data-testid="stElementContainer"]:has(.nc-explore-label.is-making-room) {{
-                animation: nc-explore-make-room .42s cubic-bezier(.22, .78, .24, 1) both;
-            }}
-
-            [data-testid="stElementContainer"]:has(.nc-explore-label.is-returning) {{
-                animation: nc-explore-return .42s cubic-bezier(.22, .78, .24, 1) both;
-            }}
-
-            @keyframes nc-explore-make-room {{
-                from {{ margin-top: calc(36px - var(--nc-update-flow-space)); }}
-                to {{ margin-top: 36px; }}
-            }}
-
-            @keyframes nc-explore-return {{
-                from {{ margin-top: calc(36px + var(--nc-update-flow-space)); }}
-                to {{ margin-top: 36px; }}
             }}
 
             .nc-explore-label {{
@@ -12395,19 +12355,6 @@ def page_new_chat() -> None:
                 font-weight: 520;
                 text-align: center;
                 text-transform: none;
-            }}
-
-            @media (max-width: 640px) {{
-                [data-testid="stElementContainer"]:has(.nc-explore-label) {{
-                    --nc-update-flow-space: 70px;
-                }}
-            }}
-
-            @media (prefers-reduced-motion: reduce) {{
-                [data-testid="stElementContainer"]:has(.nc-explore-label.is-making-room),
-                [data-testid="stElementContainer"]:has(.nc-explore-label.is-returning) {{
-                    animation-duration: 1ms;
-                }}
             }}
 
             .nc-explore-label::before,
@@ -13121,26 +13068,14 @@ def page_new_chat() -> None:
                 version=NEW_CHAT_UPDATE_VERSION,
                 visitor_id=st.session_state.visitor_id,
                 force_open=force_update_open,
-                revealed=update_is_revealed,
                 key=(
                     "ini-new-chat-update-v017-"
                     + ("manual" if force_update_open else "auto")
-                    + ("-shown" if update_is_revealed else "-waiting")
                 ),
             )
-            if update_action == "reveal":
-                st.session_state[update_revealed_key] = True
-                st.session_state._nc_update_animate_open = True
-                st.rerun()
-            if (
-                update_action == "dismiss"
-                or (update_action == "storage-dismissed" and not force_update_open)
-            ):
+            if update_action == "dismiss":
                 st.session_state[update_dismissed_key] = True
-                st.session_state.pop(update_revealed_key, None)
                 st.session_state.pop("_nc_force_update_version", None)
-                if update_action == "dismiss":
-                    st.session_state._nc_update_animate_close = True
                 if show_update:
                     _reset_query_to_page("chat")
                 st.rerun()
@@ -13152,8 +13087,7 @@ def page_new_chat() -> None:
                 st.rerun()
 
         st.markdown(
-            f'<div class="nc-explore-label {explore_motion_class}">'
-            'Explore a direction</div>',
+            '<div class="nc-explore-label">Explore a direction</div>',
             unsafe_allow_html=True,
         )
         explore_items = [
