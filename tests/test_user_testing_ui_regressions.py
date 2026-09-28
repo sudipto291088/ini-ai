@@ -91,20 +91,44 @@ def test_explore_direction_cards_have_borderless_quiet_surfaces() -> None:
 def test_new_chat_update_is_compact_borderless_and_version_scoped() -> None:
     assert "render_new_chat_update(" in APP_SOURCE
     assert APP_SOURCE.index("render_new_chat_update(") < APP_SOURCE.index(
-        '<div class="nc-explore-label">Explore a direction</div>'
+        "Explore a direction</div>'"
     )
-    assert 'height: 50px;' in NEW_CHAT_UPDATE_SOURCE
+    assert 'height=54 if revealed else 0' in NEW_CHAT_UPDATE_SOURCE
     assert 'background: transparent;' in NEW_CHAT_UPDATE_SOURCE
     assert 'box-shadow: none;' in NEW_CHAT_UPDATE_SOURCE
     assert 'width: 15px;' in NEW_CHAT_UPDATE_SOURCE
     assert 'sessionStorage.getItem(seenKey)' in NEW_CHAT_UPDATE_SOURCE
     assert 'ini-new-chat-update:v3:' in NEW_CHAT_UPDATE_SOURCE
     assert "shouldAnimate ? 'is-animated' : 'is-settled'" in NEW_CHAT_UPDATE_SOURCE
-    assert '}, 3000);' in NEW_CHAT_UPDATE_SOURCE
+    assert 'shouldAnimate ? 3000 : 0' in NEW_CHAT_UPDATE_SOURCE
     assert 'Explore now →' in NEW_CHAT_UPDATE_SOURCE
     assert "setTriggerValue('action', 'explore-subject')" in NEW_CHAT_UPDATE_SOURCE
     assert 'Teach me biology as a subject' in APP_SOURCE
     assert 'Learn an entire subject through questions' in NEW_CHAT_UPDATE_SOURCE
+
+
+def test_new_chat_update_can_be_dismissed_and_reopened_during_release_week() -> None:
+    assert 'NEW_CHAT_UPDATE_WINDOW_DAYS = 7' in APP_SOURCE
+    assert 'def _new_chat_update_window_active(' in APP_SOURCE
+    assert 'show_update = (qp.get("show_update") or "").strip() == "1"' in APP_SOURCE
+    assert 'key="ini_sidebar_whats_new"' in APP_SOURCE
+    assert 'st.session_state._nc_force_update_version' in APP_SOURCE
+    assert 'on_click=_open_new_chat_update' in APP_SOURCE
+    assert "What's new" in APP_SOURCE
+    assert 'class="ini-update-dismiss"' in NEW_CHAT_UPDATE_SOURCE
+    assert 'aria-label="Dismiss this update"' in NEW_CHAT_UPDATE_SOURCE
+    assert 'background: transparent;' in NEW_CHAT_UPDATE_SOURCE
+    assert 'localStorage.setItem(dismissedKey, \'1\')' in NEW_CHAT_UPDATE_SOURCE
+    assert 'ini-new-chat-update:dismissed:' in NEW_CHAT_UPDATE_SOURCE
+    assert "setTriggerValue('action', 'reveal')" in NEW_CHAT_UPDATE_SOURCE
+    assert 'revealed=update_is_revealed' in APP_SOURCE
+    assert 'nc-explore-make-room .42s cubic-bezier(.22, .78, .24, 1)' in APP_SOURCE
+    assert 'nc-explore-return .42s cubic-bezier(.22, .78, .24, 1)' in APP_SOURCE
+    assert 'update_action == "dismiss"' in APP_SOURCE
+    assert 'update_action == "storage-dismissed" and not force_update_open' in APP_SOURCE
+    assert '"manual" if force_update_open else "auto"' in APP_SOURCE
+    assert 'margin-top: 36px;' in APP_SOURCE
+    assert '[data-testid="stSidebar"] .st-key-ini_sidebar_whats_new' in APP_SOURCE
 
 
 def test_first_visit_introduction_is_shorter_and_visually_demonstrates_features() -> None:

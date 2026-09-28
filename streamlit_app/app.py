@@ -7,9 +7,10 @@ import base64
 import importlib
 from contextlib import nullcontext
 from html import escape
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 # Streamlit Cloud launches this file from ``streamlit_app/``. Add the
@@ -206,6 +207,18 @@ from new_chat_update_component import render_new_chat_update
 DEFAULT_API_BASE = os.environ.get("INI_API_BASE", "http://127.0.0.1:8000")
 DEV_MODE = os.environ.get("INI_DEV_MODE", "0") == "1"
 MNL_AVAILABLE = False
+NEW_CHAT_UPDATE_VERSION = "v0.1.7"
+NEW_CHAT_UPDATE_RELEASE_DATE = date(2026, 9, 24)
+NEW_CHAT_UPDATE_WINDOW_DAYS = 7
+
+
+def _new_chat_update_window_active(today: Optional[date] = None) -> bool:
+    """Keep each release notice available for one week from its release date."""
+    current_day = today or datetime.now(ZoneInfo("America/New_York")).date()
+    expires_on = NEW_CHAT_UPDATE_RELEASE_DATE + timedelta(
+        days=NEW_CHAT_UPDATE_WINDOW_DAYS
+    )
+    return NEW_CHAT_UPDATE_RELEASE_DATE <= current_day < expires_on
 
 
 # =========================
@@ -393,6 +406,46 @@ iframe[data-testid="stIFrame"][title="st.iframe"]{
   border-radius:0;
   background:transparent;
   font-size:11px;
+}
+[data-testid="stSidebar"] .st-key-ini_sidebar_whats_new{
+  width:fit-content !important;
+  margin:-4px 0 5px !important;
+}
+[data-testid="stSidebar"] .st-key-ini_sidebar_whats_new div.stButton > button[kind="tertiary"]{
+  width:auto !important;
+  min-height:0 !important;
+  height:auto !important;
+  justify-content:flex-start !important;
+  margin:0 !important;
+  padding:3px 2px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  color:#667085 !important;
+  text-align:left !important;
+}
+[data-testid="stSidebar"] .st-key-ini_sidebar_whats_new div.stButton > button[kind="tertiary"]::before{
+  width:5px;
+  height:5px;
+  margin-right:6px;
+  border-radius:50%;
+  background:#f51b3f;
+  box-shadow:0 0 0 3px rgba(245,27,63,.07);
+  content:"";
+}
+[data-testid="stSidebar"] .st-key-ini_sidebar_whats_new button p{
+  margin:0 !important;
+  font-size:10px !important;
+  font-weight:560 !important;
+  line-height:1.25 !important;
+}
+[data-testid="stSidebar"] .st-key-ini_sidebar_whats_new button:hover,
+[data-testid="stSidebar"] .st-key-ini_sidebar_whats_new button:focus-visible{
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  color:#f51b3f !important;
 }
 .small{ font-size: 12px; }
 .bigtitle{ font-size: 30px; font-weight: 750; margin: 0 0 12px 0; }
@@ -5859,6 +5912,7 @@ chat_q = (qp.get("chat_q") or "").strip()
 learn_q = (qp.get("learn_q") or "").strip()
 session_action = (qp.get("session_action") or "").strip().lower()
 session_sid = (qp.get("session_sid") or "").strip()
+show_update = (qp.get("show_update") or "").strip() == "1"
 
 param_to_page = {
     "home": "Home",
@@ -5998,6 +6052,19 @@ with st.sidebar:
     # A timed Streamlit update dims the entire app in some browsers. Refresh the
     # clock on normal interactions instead of forcing a rerender every second.
     _render_clock_tile()
+
+    def _open_new_chat_update() -> None:
+        st.session_state._nc_force_update_version = NEW_CHAT_UPDATE_VERSION
+        st.session_state._nc_update_animate_open = True
+        _reset_query_to_page("chat")
+
+    if _new_chat_update_window_active():
+        st.button(
+            "What's new",
+            key="ini_sidebar_whats_new",
+            type="tertiary",
+            on_click=_open_new_chat_update,
+        )
 
     st.markdown('<div class="ini-sidebar-section">Navigation</div>', unsafe_allow_html=True)
     intro_nav_href = _private_href(page="home")
@@ -7268,6 +7335,38 @@ def page_home():
     st.caption("Thank you to arXiv for use of its open access interoperability.")
 
 def page_new_chat() -> None:
+    update_window_active = _new_chat_update_window_active()
+    update_dismissed_key = f"_nc_update_dismissed_{NEW_CHAT_UPDATE_VERSION}"
+    update_revealed_key = f"_nc_update_revealed_{NEW_CHAT_UPDATE_VERSION}"
+    force_update_open = update_window_active and (
+        show_update
+        or st.session_state.get("_nc_force_update_version")
+        == NEW_CHAT_UPDATE_VERSION
+    )
+    if force_update_open and not st.session_state.get(update_revealed_key, False):
+        st.session_state[update_revealed_key] = True
+        st.session_state._nc_update_animate_open = True
+    update_is_visible = update_window_active and (
+        force_update_open
+        or not st.session_state.get(update_dismissed_key, False)
+    )
+    update_is_revealed = update_is_visible and bool(
+        st.session_state.get(update_revealed_key, False)
+    )
+    animate_update_open = bool(
+        st.session_state.pop("_nc_update_animate_open", False)
+    ) and update_is_revealed
+    animate_update_close = bool(
+        st.session_state.pop("_nc_update_animate_close", False)
+    )
+    explore_motion_class = (
+        "is-making-room"
+        if animate_update_open
+        else "is-returning"
+        if animate_update_close
+        else ""
+    )
+
     if st.session_state.pop("_nc_prefill_subject_prompt", False):
         st.session_state["chat_top_topic_input"] = "Teach me biology as a subject"
     if "chat_answers" not in st.session_state:
@@ -12265,7 +12364,26 @@ def page_new_chat() -> None:
             }}
 
             [data-testid="stElementContainer"]:has(.nc-explore-label) {{
-                margin-top: 8px;
+                --nc-update-flow-space: 66px;
+                margin-top: 36px;
+            }}
+
+            [data-testid="stElementContainer"]:has(.nc-explore-label.is-making-room) {{
+                animation: nc-explore-make-room .42s cubic-bezier(.22, .78, .24, 1) both;
+            }}
+
+            [data-testid="stElementContainer"]:has(.nc-explore-label.is-returning) {{
+                animation: nc-explore-return .42s cubic-bezier(.22, .78, .24, 1) both;
+            }}
+
+            @keyframes nc-explore-make-room {{
+                from {{ margin-top: calc(36px - var(--nc-update-flow-space)); }}
+                to {{ margin-top: 36px; }}
+            }}
+
+            @keyframes nc-explore-return {{
+                from {{ margin-top: calc(36px + var(--nc-update-flow-space)); }}
+                to {{ margin-top: 36px; }}
             }}
 
             .nc-explore-label {{
@@ -12277,6 +12395,19 @@ def page_new_chat() -> None:
                 font-weight: 520;
                 text-align: center;
                 text-transform: none;
+            }}
+
+            @media (max-width: 640px) {{
+                [data-testid="stElementContainer"]:has(.nc-explore-label) {{
+                    --nc-update-flow-space: 70px;
+                }}
+            }}
+
+            @media (prefers-reduced-motion: reduce) {{
+                [data-testid="stElementContainer"]:has(.nc-explore-label.is-making-room),
+                [data-testid="stElementContainer"]:has(.nc-explore-label.is-returning) {{
+                    animation-duration: 1ms;
+                }}
             }}
 
             .nc-explore-label::before,
@@ -12984,16 +13115,45 @@ def page_new_chat() -> None:
                     width="stretch",
                 )
 
-        update_action = render_new_chat_update(
-            icon_data=f"data:image/png;base64,{icon_data}",
-            version="v0.1.7",
-        )
-        if update_action == "explore-subject":
-            st.session_state._nc_prefill_subject_prompt = True
-            st.rerun()
+        if update_is_visible:
+            update_action = render_new_chat_update(
+                icon_data=f"data:image/png;base64,{icon_data}",
+                version=NEW_CHAT_UPDATE_VERSION,
+                visitor_id=st.session_state.visitor_id,
+                force_open=force_update_open,
+                revealed=update_is_revealed,
+                key=(
+                    "ini-new-chat-update-v017-"
+                    + ("manual" if force_update_open else "auto")
+                    + ("-shown" if update_is_revealed else "-waiting")
+                ),
+            )
+            if update_action == "reveal":
+                st.session_state[update_revealed_key] = True
+                st.session_state._nc_update_animate_open = True
+                st.rerun()
+            if (
+                update_action == "dismiss"
+                or (update_action == "storage-dismissed" and not force_update_open)
+            ):
+                st.session_state[update_dismissed_key] = True
+                st.session_state.pop(update_revealed_key, None)
+                st.session_state.pop("_nc_force_update_version", None)
+                if update_action == "dismiss":
+                    st.session_state._nc_update_animate_close = True
+                if show_update:
+                    _reset_query_to_page("chat")
+                st.rerun()
+            if update_action == "explore-subject":
+                st.session_state._nc_prefill_subject_prompt = True
+                st.session_state.pop("_nc_force_update_version", None)
+                if show_update:
+                    _reset_query_to_page("chat")
+                st.rerun()
 
         st.markdown(
-            '<div class="nc-explore-label">Explore a direction</div>',
+            f'<div class="nc-explore-label {explore_motion_class}">'
+            'Explore a direction</div>',
             unsafe_allow_html=True,
         )
         explore_items = [

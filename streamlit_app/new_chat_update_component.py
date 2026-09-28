@@ -7,12 +7,12 @@ import streamlit as st
 
 
 _NEW_CHAT_UPDATE = st.components.v2.component(
-    "ini_new_chat_update_v12",
+    "ini_new_chat_update_v23",
     html='<div id="ini-new-chat-update-root"></div>',
     css="""
     #ini-new-chat-update-root {
       width: min(100%, 820px);
-      height: 50px;
+      min-height: 54px;
       margin: 0 auto;
       overflow: hidden;
       background: transparent;
@@ -22,9 +22,15 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
     .ini-update-notice {
       position: relative;
       width: 100%;
-      height: 100%;
+      min-height: 54px;
       background: transparent;
       color: var(--st-text-color, #17211f);
+    }
+    .ini-update-spacer {
+      display: block;
+      font-size: 1px;
+      line-height: 54px;
+      visibility: hidden;
     }
     .ini-update-mukut {
       position: absolute;
@@ -42,7 +48,7 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
       position: absolute;
       top: 50%;
       left: 40px;
-      right: 4px;
+      right: 25px;
       min-width: 0;
       opacity: 0;
       transform: translate(10px, -50%);
@@ -89,6 +95,36 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
       text-underline-offset: 3px;
       outline: none;
     }
+    .ini-update-dismiss {
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      right: 2px;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      color: #7b8492;
+      font: 400 19px/20px Aptos, "Segoe UI", system-ui, sans-serif;
+      cursor: pointer;
+      opacity: .64;
+      transform: translateY(-50%);
+      transition: color .16s ease, opacity .16s ease, background .16s ease;
+    }
+    .ini-update-dismiss:hover,
+    .ini-update-dismiss:focus-visible {
+      background: rgba(245, 27, 63, .055);
+      color: var(--st-primary-color, #f51b3f);
+      opacity: 1;
+      outline: none;
+    }
+    .ini-update-notice.is-dismissing {
+      opacity: 0;
+      transform: translateY(-3px);
+      transition: opacity .16s ease, transform .16s ease;
+    }
     .ini-update-notice.is-animated .ini-update-mukut {
       animation: ini-update-mukut 1.75s cubic-bezier(.22, .8, .28, 1) forwards;
     }
@@ -116,8 +152,8 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
       to { opacity: 1; transform: translate(0, -50%); }
     }
     @media (max-width: 640px) {
-      #ini-new-chat-update-root { width: calc(100% - 24px); height: 54px; }
-      .ini-update-copy { left: 34px; right: 4px; }
+      #ini-new-chat-update-root { width: calc(100% - 24px); }
+      .ini-update-copy { left: 34px; right: 24px; }
       .ini-update-message {
         overflow: visible;
         font-size: 12px;
@@ -151,11 +187,42 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
       if (!root) return;
 
       const version = String(data.version || 'latest');
+      const visitor = String(data.visitor_id || 'anonymous');
       const seenKey = `ini-new-chat-update:v3:${version}`;
-      const shouldAnimate = sessionStorage.getItem(seenKey) !== '1';
+      const dismissedKey = `ini-new-chat-update:dismissed:${version}:${visitor}`;
+      const forceOpen = Boolean(data.force_open);
+      const revealed = Boolean(data.revealed);
+      const wasDismissed = localStorage.getItem(dismissedKey) === '1';
+      const shouldAnimate = !forceOpen && sessionStorage.getItem(seenKey) !== '1';
+
+      if (wasDismissed && !forceOpen) {
+        setTriggerValue('action', 'storage-dismissed');
+        return;
+      }
+
+      let splashPollTimer = null;
+      let revealTimer = null;
+      if (!revealed) {
+        root.innerHTML = '';
+        const requestReveal = () => setTriggerValue('action', 'reveal');
+        const waitForNewChat = () => {
+          if (sessionStorage.getItem('ini_opening_splash_seen_session') !== '1') {
+            splashPollTimer = window.setTimeout(waitForNewChat, 100);
+            return;
+          }
+          revealTimer = window.setTimeout(requestReveal, shouldAnimate ? 3000 : 0);
+        };
+        waitForNewChat();
+        return () => {
+          window.clearTimeout(splashPollTimer);
+          window.clearTimeout(revealTimer);
+        };
+      }
+
       root.innerHTML = `
         <section class="ini-update-notice"
           aria-label="New in ${data.version}: ${data.message}">
+          <span class="ini-update-spacer" aria-hidden="true">&nbsp;</span>
           <img class="ini-update-mukut" src="${data.icon_data}" alt="Mukut">
           <span class="ini-update-copy">
             <span class="ini-update-kicker">New in ${data.version}</span>
@@ -164,30 +231,31 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
               <button class="ini-update-action" type="button">Explore now →</button>
             </span>
           </span>
+          <button class="ini-update-dismiss" type="button"
+            aria-label="Dismiss this update" title="Dismiss">×</button>
         </section>`;
 
       const notice = root.querySelector('.ini-update-notice');
       const action = root.querySelector('.ini-update-action');
+      const dismiss = root.querySelector('.ini-update-dismiss');
       const exploreSubject = () => setTriggerValue('action', 'explore-subject');
-      action?.addEventListener('click', exploreSubject);
-      let splashPollTimer = null;
-      let revealTimer = null;
-      const waitForNewChat = () => {
-        if (sessionStorage.getItem('ini_opening_splash_seen_session') !== '1') {
-          splashPollTimer = window.setTimeout(waitForNewChat, 100);
-          return;
-        }
-        revealTimer = window.setTimeout(() => {
-          notice?.classList.add(shouldAnimate ? 'is-animated' : 'is-settled');
-          if (shouldAnimate) sessionStorage.setItem(seenKey, '1');
-        }, 3000);
+      let dismissTimer = null;
+      const dismissUpdate = () => {
+        localStorage.setItem(dismissedKey, '1');
+        notice?.classList.add('is-dismissing');
+        dismissTimer = window.setTimeout(() => {
+          setTriggerValue('action', 'dismiss');
+        }, 170);
       };
-      waitForNewChat();
+      action?.addEventListener('click', exploreSubject);
+      dismiss?.addEventListener('click', dismissUpdate);
+      notice?.classList.add(shouldAnimate ? 'is-animated' : 'is-settled');
+      if (shouldAnimate) sessionStorage.setItem(seenKey, '1');
 
       return () => {
-        window.clearTimeout(splashPollTimer);
-        window.clearTimeout(revealTimer);
+        window.clearTimeout(dismissTimer);
         action?.removeEventListener('click', exploreSubject);
+        dismiss?.removeEventListener('click', dismissUpdate);
       };
     }
     """,
@@ -199,14 +267,24 @@ def render_new_chat_update(
     icon_data: str,
     version: str = "v0.1.7",
     message: str = "Learn an entire subject through questions",
+    visitor_id: str = "anonymous",
+    force_open: bool = False,
+    revealed: bool = False,
     key: Optional[str] = "ini-new-chat-update-v017",
     on_action_change: Optional[Callable[[], None]] = None,
 ) -> Optional[str]:
     """Render the small, borderless release announcement."""
     result = _NEW_CHAT_UPDATE(
-        data={"icon_data": icon_data, "version": version, "message": message},
+        data={
+            "icon_data": icon_data,
+            "version": version,
+            "message": message,
+            "visitor_id": visitor_id,
+            "force_open": force_open,
+            "revealed": revealed,
+        },
         key=key,
-        height=50,
+        height=54 if revealed else 0,
         on_action_change=on_action_change or (lambda: None),
     )
     return getattr(result, "action", None)
