@@ -348,6 +348,30 @@ def render_saved_curricula(visitor_id: str) -> None:
                 st.rerun()
 
 
+def render_qc_history_snapshot(visitor_id: str, curriculum_id: str) -> None:
+    """Render an earlier curriculum turn without activating or replaying it."""
+    state = load_curriculum(visitor_id, curriculum_id)
+    if not isinstance(state, dict):
+        st.caption("This earlier Subject Map could not be restored.")
+        return
+
+    subject = str(state.get("subject") or "Subject learning")
+    chapters = (state.get("outline") or {}).get("chapters") or []
+    safe_key = re.sub(r"[^a-zA-Z0-9_-]+", "-", curriculum_id)
+    st.caption("New Chat · Subject learning")
+    with st.container(border=True, width="stretch", key=f"qc_history_{safe_key}"):
+        st.markdown(f"### :material/{_subject_icon(subject)}: {escape(subject)}")
+        st.markdown("#### Subject Map")
+        st.write("Here is your Subject Map. It shows the chapters in the order we'll learn them.")
+        st.image(_subject_map_svg(subject, chapters), width="stretch")
+        st.markdown("#### :material/menu_book: Chapter path")
+        st.write(
+            "I've broken the chapters into progressive questions, from foundations to advanced ideas."
+        )
+        for index, chapter in enumerate(chapters):
+            st.markdown(f"{index + 1}. {escape(str(chapter.get('title') or 'Chapter'))}")
+
+
 def _render_qc_body(visitor_id: str, api_base: str,
                     attach_to_chat: Callable[[str, str, str], None] | None = None) -> None:
     clarification = st.session_state.get("qc_clarification")
@@ -996,7 +1020,7 @@ def render_qc(visitor_id: str, api_base: str,
     should_follow_stream = _should_follow_qc_stream(state)
     with st.container(border=True, key="qc_primary_response"):
         if should_follow_stream:
-            follow_qc_stream()
+            follow_qc_stream(curriculum_id or "active")
         _render_qc_body(visitor_id, api_base, attach_to_chat)
         if should_follow_stream:
-            finish_qc_stream()
+            finish_qc_stream(curriculum_id or "active")

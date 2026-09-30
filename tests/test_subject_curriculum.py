@@ -234,8 +234,8 @@ class GenerationTests(unittest.TestCase):
              patch.object(qc_ui, "finish_qc_stream") as finish_stream, \
              patch.object(qc_ui, "_render_qc_body"):
             qc_ui.render_qc("visitor", "http://api", None, render_user_bubble)
-            follow_stream.assert_called_once_with()
-            finish_stream.assert_called_once_with()
+            follow_stream.assert_called_once_with("qc-1")
+            finish_stream.assert_called_once_with("qc-1")
 
         render_user_bubble.assert_called_once_with(
             prompt, "Thu, Sep 17 • 09:30 AM", query_mode="interrogate",

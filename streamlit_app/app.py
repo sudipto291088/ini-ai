@@ -5970,7 +5970,20 @@ if learn_sid:
 if chat_sid:
     if st.session_state.chat_loaded_sid != chat_sid:
         _load_new_chat_session(chat_sid)
-    elif not st.session_state.chat.get("topic"):
+    elif (
+        not st.session_state.chat.get("topic")
+        or (
+            not st.session_state.get("chat_branch_answers")
+            and not st.session_state.chat.get("interrogate")
+            and not st.session_state.chat.get("illustrate")
+            and not st.session_state.get("chat_direct_answer")
+            and not st.session_state.get("chat_answers")
+            and not st.session_state.get("chat_root_interrogate")
+            and not st.session_state.get("chat_root_illustrate")
+            and not st.session_state.get("chat_root_direct_answer")
+            and not st.session_state.get("chat_root_answers")
+        )
+    ):
         _load_new_chat_session(chat_sid)
 
 if chat_sid and chat_root == "1":
@@ -7373,13 +7386,18 @@ def page_new_chat() -> None:
 
     def _session_has_existing_root() -> bool:
         return any([
-            st.session_state.chat_root_topic,
             st.session_state.chat_root_interrogate,
             st.session_state.chat_root_illustrate,
             st.session_state.chat_root_intro,
             st.session_state.chat_root_direct_answer,
             st.session_state.chat_root_answers,
         ])
+
+    def _session_has_existing_timeline() -> bool:
+        """Treat curriculum-only chats as real conversations, not blank sessions."""
+        return _session_has_existing_root() or bool(
+            st.session_state.chat_branch_answers
+        )
 
     def _latest_response_mode() -> str:
         branches = st.session_state.chat_branch_answers or []
@@ -13650,7 +13668,7 @@ def page_new_chat() -> None:
     pending_qc = st.session_state.get("qc_pending_request")
     pending_qc_continuation = (
         pending_qc
-        if isinstance(pending_qc, dict) and _session_has_existing_root()
+        if isinstance(pending_qc, dict) and _session_has_existing_timeline()
         else None
     )
     active_qc_id = st.session_state.get("qc_active_id")
@@ -13719,7 +13737,7 @@ def page_new_chat() -> None:
     if (
         st.session_state.get("qc_active_id")
         or st.session_state.get("qc_clarification")
-    ) and not _session_has_existing_root():
+    ) and not _session_has_existing_timeline():
         if st.session_state.get("qc_active_id"):
             _render_nc_scroll_controls()
         qc_ui.render_qc(
@@ -13769,6 +13787,55 @@ def page_new_chat() -> None:
 
     if has_new_chat_content:
         _render_nc_scroll_controls()
+
+    if (
+        not _session_has_existing_root()
+        and st.session_state.chat_branch_answers
+    ):
+        _render_nc_scroll_controls()
+        curriculum_turns = [
+            item for item in st.session_state.chat_branch_answers
+            if isinstance(item, dict) and item.get("kind") == "curriculum"
+        ]
+        total_curricula = len(curriculum_turns)
+        for index, item in enumerate(curriculum_turns):
+            curriculum_id = item.get("curriculum_id")
+            topic = (
+                item.get("topic")
+                or item.get("prompt")
+                or "Subject learning"
+            ).strip()
+            if index == total_curricula - 1:
+                _render_nc_latest_scroll_target()
+            _render_nc_user_bubble(
+                topic,
+                (item.get("ts") or "").strip(),
+                query_mode="interrogate",
+            )
+            if index == total_curricula - 1:
+                qc_ui.render_qc(
+                    st.session_state.visitor_id,
+                    st.session_state.api_base,
+                    _attach_curriculum_to_new_chat,
+                    _render_nc_user_bubble,
+                    include_user_bubble=False,
+                    curriculum_id=curriculum_id,
+                )
+            elif curriculum_id:
+                qc_ui.render_qc_history_snapshot(
+                    st.session_state.visitor_id,
+                    curriculum_id,
+                )
+            st.markdown("---")
+
+        if isinstance(pending_qc_continuation, dict):
+            _render_pending_qc_continuation(pending_qc_continuation)
+        elif isinstance(pending_new_chat_request, dict):
+            _render_pending_new_chat_continuation(pending_new_chat_request)
+        elif not chat_q:
+            _render_nc_scroll_to_latest_once()
+            _render_new_chat_bottom_uib()
+        return
 
     if isinstance(pending_new_chat_request, dict) and not has_new_chat_content:
         pending_prompt = (pending_new_chat_request.get("prompt") or "").strip()

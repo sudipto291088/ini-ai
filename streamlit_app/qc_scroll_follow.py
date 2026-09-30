@@ -217,16 +217,16 @@ export default function ({ data }) {
 _FINISH_COMPONENT = st.components.v2.component("qc_stream_finish", js=_FINISH_JS)
 
 
-def follow_qc_stream() -> None:
+def follow_qc_stream(stream_id: str = "active") -> None:
     """Mount a zero-height follower before the first streamed response element."""
     _FOLLOW_COMPONENT(
         data={"selector": ".st-key-qc_primary_response"},
-        key="qc_stream_follow",
+        key=f"qc_stream_follow_{stream_id}",
         height=0,
     )
 
 
-def finish_qc_stream() -> None:
+def finish_qc_stream(stream_id: str = "active") -> None:
     """Return the viewport to the latest query after streamed QC content settles."""
     _FINISH_COMPONENT(
         data={
@@ -235,6 +235,6 @@ def finish_qc_stream() -> None:
             "topOffset": 82,
             "settleMs": 1100,
         },
-        key="qc_stream_finish",
+        key=f"qc_stream_finish_{stream_id}",
         height=0,
     )
