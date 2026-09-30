@@ -144,6 +144,27 @@ export default function ({ data }) {
 
 _FOLLOW_COMPONENT = st.components.v2.component("qc_scroll_follow", js=_FOLLOW_JS)
 
+_QUERY_COMPONENT = st.components.v2.component("qc_query_focus", js="""
+export default function ({ data }) {
+  const win = document.defaultView;
+  let attempts = 0;
+  const timer = win.setInterval(() => {
+    const query = [...document.querySelectorAll('.nc-pending-inline-query')].at(-1);
+    if (query) {
+      query.style.scrollMarginTop = '82px';
+      query.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      win.clearInterval(timer);
+    } else if (++attempts >= 30) win.clearInterval(timer);
+  }, 50);
+  return () => win.clearInterval(timer);
+}
+""")
+
+
+def focus_qc_query(request_id: str) -> None:
+    """Reveal the submitted query while its response is being prepared."""
+    _QUERY_COMPONENT(data={}, key=f"qc_query_focus_{request_id}", height=0)
+
 
 _FINISH_JS = """
 export default function ({ data }) {
@@ -217,20 +238,20 @@ export default function ({ data }) {
 _FINISH_COMPONENT = st.components.v2.component("qc_stream_finish", js=_FINISH_JS)
 
 
-def follow_qc_stream(stream_id: str = "active") -> None:
+def follow_qc_stream(stream_id: str = "active", *, selector: str = ".st-key-qc_primary_response") -> None:
     """Mount a zero-height follower before the first streamed response element."""
     _FOLLOW_COMPONENT(
-        data={"selector": ".st-key-qc_primary_response"},
+        data={"selector": selector},
         key=f"qc_stream_follow_{stream_id}",
         height=0,
     )
 
 
-def finish_qc_stream(stream_id: str = "active") -> None:
+def finish_qc_stream(stream_id: str = "active", *, selector: str = ".st-key-qc_primary_response") -> None:
     """Return the viewport to the latest query after streamed QC content settles."""
     _FINISH_COMPONENT(
         data={
-            "selector": ".st-key-qc_primary_response",
+            "selector": selector,
             "querySelector": ".nc-user-bubble",
             "topOffset": 82,
             "settleMs": 1100,

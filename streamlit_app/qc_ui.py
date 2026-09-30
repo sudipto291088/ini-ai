@@ -151,6 +151,7 @@ def _begin(subject: str, visitor_id: str, api_base: str,
     }
     save_curriculum(visitor_id, curriculum_id, state)
     st.session_state.qc_active_id = curriculum_id
+    st.session_state.qc_active_id = curriculum_id
     st.session_state.qc_state = state
     st.session_state.qc_clarification = None
     st.session_state.qc_pending_request = None
@@ -348,30 +349,6 @@ def render_saved_curricula(visitor_id: str) -> None:
                 st.rerun()
 
 
-def render_qc_history_snapshot(visitor_id: str, curriculum_id: str) -> None:
-    """Render an earlier curriculum turn without activating or replaying it."""
-    state = load_curriculum(visitor_id, curriculum_id)
-    if not isinstance(state, dict):
-        st.caption("This earlier Subject Map could not be restored.")
-        return
-
-    subject = str(state.get("subject") or "Subject learning")
-    chapters = (state.get("outline") or {}).get("chapters") or []
-    safe_key = re.sub(r"[^a-zA-Z0-9_-]+", "-", curriculum_id)
-    st.caption("New Chat · Subject learning")
-    with st.container(border=True, width="stretch", key=f"qc_history_{safe_key}"):
-        st.markdown(f"### :material/{_subject_icon(subject)}: {escape(subject)}")
-        st.markdown("#### Subject Map")
-        st.write("Here is your Subject Map. It shows the chapters in the order we'll learn them.")
-        st.image(_subject_map_svg(subject, chapters), width="stretch")
-        st.markdown("#### :material/menu_book: Chapter path")
-        st.write(
-            "I've broken the chapters into progressive questions, from foundations to advanced ideas."
-        )
-        for index, chapter in enumerate(chapters):
-            st.markdown(f"{index + 1}. {escape(str(chapter.get('title') or 'Chapter'))}")
-
-
 def _render_qc_body(visitor_id: str, api_base: str,
                     attach_to_chat: Callable[[str, str, str], None] | None = None) -> None:
     clarification = st.session_state.get("qc_clarification")
@@ -418,7 +395,7 @@ def _render_qc_body(visitor_id: str, api_base: str,
     st.caption("New Chat · Subject learning")
     st.markdown(
         """<style>
-        .st-key-qc_subject_title {
+        [class*="st-key-qc_subject_title"] {
             width: 100% !important;
             padding: 12px 20px !important;
             border: 1px solid rgba(194, 202, 213, 0.14) !important;
@@ -426,7 +403,7 @@ def _render_qc_body(visitor_id: str, api_base: str,
             background: linear-gradient(100deg, #ffffff 0%, #ffffff 62%, #fff8f9 82%, #fcecee 100%) !important;
             box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05) !important;
         }
-        .st-key-qc_subject_title h3 {
+        [class*="st-key-qc_subject_title"] h3 {
             margin: 0 !important;
             color: #1b2430 !important;
             font-size: clamp(23px, 3vw, 29px) !important;
@@ -435,12 +412,12 @@ def _render_qc_body(visitor_id: str, api_base: str,
             line-height: 1.25 !important;
             overflow-wrap: anywhere;
         }
-        .st-key-qc_subject_title h3 [role="img"] {
+        [class*="st-key-qc_subject_title"] h3 [role="img"] {
             color: #e33250;
             font-size: 1.05em;
             vertical-align: -0.08em;
         }
-        .st-key-qc_primary_response {
+        [class*="st-key-qc_primary_response"] {
             width: min(1180px, 100%) !important;
             margin: 14px 0 24px !important;
             padding: 22px !important;
@@ -449,27 +426,27 @@ def _render_qc_body(visitor_id: str, api_base: str,
             background: linear-gradient(145deg, #ffffff 0%, #fbfcfe 100%) !important;
             box-shadow: 0 14px 34px rgba(15, 23, 42, 0.045) !important;
         }
-        .st-key-qc_primary_response > div {
+        [class*="st-key-qc_primary_response"] > div {
             background: transparent !important;
         }
         /* Streamlit keeps the prior run's widgets as faded placeholders while
            a new chapter loads. They are not part of the active response. */
-        .st-key-qc_primary_response [data-stale="true"] {
+        [class*="st-key-qc_primary_response"] [data-stale="true"] {
             display: none !important;
         }
         /* A chapter rerun can also briefly leave two container wrappers. */
-        .st-key-qc_primary_response > [data-testid="stLayoutWrapper"]:has(> .st-key-qc_chapter_content_card):has(~ [data-testid="stLayoutWrapper"] > .st-key-qc_chapter_content_card) {
+        [class*="st-key-qc_primary_response"] > [data-testid="stLayoutWrapper"]:has(> [class*="st-key-qc_chapter_content_card"]):has(~ [data-testid="stLayoutWrapper"] > [class*="st-key-qc_chapter_content_card"]) {
             display: none !important;
         }
         /* The previous Subject Map run can leave empty card shells behind
            after a chapter opens, even when Streamlit no longer marks them stale. */
-        .st-key-qc_primary_response:has(.st-key-qc_chapter_content_card) > [data-testid="stLayoutWrapper"]:has(> .st-key-qc_subject_map_card),
-        .st-key-qc_primary_response:has(.st-key-qc_chapter_content_card) > [data-testid="stLayoutWrapper"]:has(> .st-key-qc_chapter_path_card) {
+        [class*="st-key-qc_primary_response"]:has([class*="st-key-qc_chapter_content_card"]) > [data-testid="stLayoutWrapper"]:has(> [class*="st-key-qc_subject_map_card"]),
+        [class*="st-key-qc_primary_response"]:has([class*="st-key-qc_chapter_content_card"]) > [data-testid="stLayoutWrapper"]:has(> [class*="st-key-qc_chapter_path_card"]) {
             display: none !important;
         }
-        .st-key-qc_subject_map_card,
-        .st-key-qc_chapter_path_card,
-        .st-key-qc_chapter_content_card {
+        [class*="st-key-qc_subject_map_card"],
+        [class*="st-key-qc_chapter_path_card"],
+        [class*="st-key-qc_chapter_content_card"] {
             margin: 18px 0 20px !important;
             padding: 20px !important;
             border: 1px solid rgba(194, 202, 213, 0.16) !important;
@@ -477,8 +454,8 @@ def _render_qc_body(visitor_id: str, api_base: str,
             background: #ffffff !important;
             box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045) !important;
         }
-        .st-key-qc_subject_map_card h3,
-        .st-key-qc_chapter_path_card h3 {
+        [class*="st-key-qc_subject_map_card"] h3,
+        [class*="st-key-qc_chapter_path_card"] h3 {
             margin: 0 !important;
             color: #17211f;
             font-size: 16.5px !important;
@@ -486,24 +463,24 @@ def _render_qc_body(visitor_id: str, api_base: str,
             letter-spacing: -0.01em !important;
             line-height: 1.4 !important;
         }
-        .st-key-qc_chapter_path_card h3 [role="img"] {
+        [class*="st-key-qc_chapter_path_card"] h3 [role="img"] {
             color: #e33250;
             font-size: 21px;
             margin-right: 5px;
             vertical-align: -0.16em;
         }
-        .st-key-qc_chapter_list,
-        .st-key-qc_question_list {
+        [class*="st-key-qc_chapter_list"],
+        [class*="st-key-qc_question_list"] {
             padding: 0 !important;
             border: 0 !important;
             background: transparent !important;
             box-shadow: none !important;
         }
-        .st-key-qc_chapter_nav {
+        [class*="st-key-qc_chapter_nav"] {
             margin-bottom: 16px !important;
             gap: 12px !important;
         }
-        .st-key-qc_answer_card {
+        [class*="st-key-qc_answer_card"] {
             width: 100% !important;
             margin: 14px 0 8px !important;
             padding: 24px 28px !important;
@@ -512,7 +489,7 @@ def _render_qc_body(visitor_id: str, api_base: str,
             background: linear-gradient(125deg, #ffffff 0%, #ffffff 72%, #fff9fa 100%) !important;
             box-shadow: 0 12px 32px rgba(25, 34, 49, 0.065) !important;
         }
-        .st-key-qc_answer_card h3 {
+        [class*="st-key-qc_answer_card"] h3 {
             margin: 0 0 18px !important;
             color: #202a36 !important;
             font-size: clamp(19px, 2.1vw, 22px) !important;
@@ -521,36 +498,36 @@ def _render_qc_body(visitor_id: str, api_base: str,
             letter-spacing: -0.018em !important;
             overflow-wrap: anywhere;
         }
-        .st-key-qc_answer_body {
+        [class*="st-key-qc_answer_body"] {
             border-top: 1px solid rgba(194, 202, 213, 0.2) !important;
             padding-top: 18px !important;
             max-width: 92ch !important;
         }
-        .st-key-qc_answer_body p,
-        .st-key-qc_answer_body li {
+        [class*="st-key-qc_answer_body"] p,
+        [class*="st-key-qc_answer_body"] li {
             color: #344153 !important;
             font-size: 15.5px !important;
             font-weight: 400 !important;
             line-height: 1.7 !important;
         }
-        .st-key-qc_answer_body p {
+        [class*="st-key-qc_answer_body"] p {
             margin-bottom: 0.75em !important;
         }
-        .st-key-qc_answer_body strong {
+        [class*="st-key-qc_answer_body"] strong {
             color: #202a36 !important;
             font-weight: 610 !important;
         }
-        .st-key-qc_answer_body ul,
-        .st-key-qc_answer_body ol {
+        [class*="st-key-qc_answer_body"] ul,
+        [class*="st-key-qc_answer_body"] ol {
             padding-left: 1.45em !important;
             margin: 0.35em 0 1em !important;
         }
-        .st-key-qc_answer_actions {
+        [class*="st-key-qc_answer_actions"] {
             margin-top: 22px !important;
             padding-top: 18px !important;
             border-top: 1px solid rgba(194, 202, 213, 0.2) !important;
         }
-        .st-key-qc_back_to_questions button[kind="secondary"] {
+        [class*="st-key-qc_back_to_questions"] button[kind="secondary"] {
             width: auto !important;
             min-height: 36px !important;
             padding: 6px 4px !important;
@@ -561,11 +538,11 @@ def _render_qc_body(visitor_id: str, api_base: str,
             font-size: 13px !important;
             font-weight: 500 !important;
         }
-        .st-key-qc_back_to_questions button[kind="secondary"]:hover {
+        [class*="st-key-qc_back_to_questions"] button[kind="secondary"]:hover {
             color: #c92e49 !important;
             background: transparent !important;
         }
-        .st-key-qc_mark_understood button[kind="secondary"] {
+        [class*="st-key-qc_mark_understood"] button[kind="secondary"] {
             width: auto !important;
             min-height: 40px !important;
             padding: 8px 14px !important;
@@ -577,14 +554,14 @@ def _render_qc_body(visitor_id: str, api_base: str,
             font-size: 13px !important;
             font-weight: 550 !important;
         }
-        .st-key-qc_mark_understood button[kind="secondary"]:hover {
+        [class*="st-key-qc_mark_understood"] button[kind="secondary"]:hover {
             border-color: rgba(201, 46, 73, 0.22) !important;
             background: #fff8f9 !important;
             color: #c92e49 !important;
         }
-        .st-key-qc_previous button[kind="secondary"],
-        .st-key-qc_next button[kind="secondary"],
-        .st-key-qc_next_chapter button[kind="secondary"] {
+        [class*="st-key-qc_previous"] button[kind="secondary"],
+        [class*="st-key-qc_next"] button[kind="secondary"],
+        [class*="st-key-qc_next_chapter"] button[kind="secondary"] {
             width: auto !important;
             min-height: 40px !important;
             padding: 8px 12px !important;
@@ -594,22 +571,22 @@ def _render_qc_body(visitor_id: str, api_base: str,
             font-size: 13px !important;
             font-weight: 550 !important;
         }
-        .st-key-qc_previous button[kind="secondary"] {
+        [class*="st-key-qc_previous"] button[kind="secondary"] {
             background: transparent !important;
             color: #657286 !important;
         }
-        .st-key-qc_next button[kind="secondary"],
-        .st-key-qc_next_chapter button[kind="secondary"] {
+        [class*="st-key-qc_next"] button[kind="secondary"],
+        [class*="st-key-qc_next_chapter"] button[kind="secondary"] {
             background: #fff2f4 !important;
             color: #c92e49 !important;
         }
-        .st-key-qc_previous button[kind="secondary"]:hover,
-        .st-key-qc_next button[kind="secondary"]:hover,
-        .st-key-qc_next_chapter button[kind="secondary"]:hover {
+        [class*="st-key-qc_previous"] button[kind="secondary"]:hover,
+        [class*="st-key-qc_next"] button[kind="secondary"]:hover,
+        [class*="st-key-qc_next_chapter"] button[kind="secondary"]:hover {
             background: #ffe8ec !important;
             color: #ac2740 !important;
         }
-        .st-key-qc_subject_map button[kind="secondary"] {
+        [class*="st-key-qc_subject_map"] button[kind="secondary"] {
             width: auto !important;
             border: 0 !important;
             background: transparent !important;
@@ -621,15 +598,15 @@ def _render_qc_body(visitor_id: str, api_base: str,
             font-size: 13px !important;
             font-weight: 500 !important;
         }
-        .st-key-qc_subject_map button[kind="secondary"]:hover {
+        [class*="st-key-qc_subject_map"] button[kind="secondary"]:hover {
             color: #c92e49 !important;
             background: transparent !important;
         }
-        .st-key-qc_chapter_arrows {
+        [class*="st-key-qc_chapter_arrows"] {
             gap: 4px !important;
         }
-        .st-key-qc_previous_chapter_top button[kind="secondary"],
-        .st-key-qc_next_chapter_top button[kind="secondary"] {
+        [class*="st-key-qc_previous_chapter_top"] button[kind="secondary"],
+        [class*="st-key-qc_next_chapter_top"] button[kind="secondary"] {
             width: 38px !important;
             min-width: 38px !important;
             height: 38px !important;
@@ -644,12 +621,12 @@ def _render_qc_body(visitor_id: str, api_base: str,
             background: transparent !important;
             box-shadow: none !important;
         }
-        .st-key-qc_previous_chapter_top button[kind="secondary"]:hover,
-        .st-key-qc_next_chapter_top button[kind="secondary"]:hover {
+        [class*="st-key-qc_previous_chapter_top"] button[kind="secondary"]:hover,
+        [class*="st-key-qc_next_chapter_top"] button[kind="secondary"]:hover {
             background: transparent !important;
         }
-        .st-key-qc_previous_chapter_top button p,
-        .st-key-qc_next_chapter_top button p {
+        [class*="st-key-qc_previous_chapter_top"] button p,
+        [class*="st-key-qc_next_chapter_top"] button p {
             position: absolute !important;
             width: 1px !important;
             height: 1px !important;
@@ -657,8 +634,8 @@ def _render_qc_body(visitor_id: str, api_base: str,
             clip-path: inset(50%) !important;
             white-space: nowrap !important;
         }
-        .st-key-qc_previous_chapter_top button::before,
-        .st-key-qc_next_chapter_top button::before {
+        [class*="st-key-qc_previous_chapter_top"] button::before,
+        [class*="st-key-qc_next_chapter_top"] button::before {
             content: "";
             display: block;
             width: 0;
@@ -667,19 +644,19 @@ def _render_qc_body(visitor_id: str, api_base: str,
             border-bottom: 9px solid transparent;
             transition: transform 150ms ease, filter 150ms ease;
         }
-        .st-key-qc_previous_chapter_top button::before {
+        [class*="st-key-qc_previous_chapter_top"] button::before {
             border-right: 15px solid #e33250;
         }
-        .st-key-qc_next_chapter_top button::before {
+        [class*="st-key-qc_next_chapter_top"] button::before {
             border-left: 15px solid #e33250;
         }
-        .st-key-qc_previous_chapter_top button:hover::before,
-        .st-key-qc_next_chapter_top button:hover::before {
+        [class*="st-key-qc_previous_chapter_top"] button:hover::before,
+        [class*="st-key-qc_next_chapter_top"] button:hover::before {
             transform: scale(1.12);
             filter: brightness(0.85);
         }
-        .st-key-qc_previous_chapter_top button::after,
-        .st-key-qc_next_chapter_top button::after {
+        [class*="st-key-qc_previous_chapter_top"] button::after,
+        [class*="st-key-qc_next_chapter_top"] button::after {
             position: absolute;
             right: 0;
             bottom: calc(100% + 8px);
@@ -697,62 +674,62 @@ def _render_qc_body(visitor_id: str, api_base: str,
             transition: opacity 150ms ease, transform 150ms ease;
             z-index: 10;
         }
-        .st-key-qc_previous_chapter_top button::after {
+        [class*="st-key-qc_previous_chapter_top"] button::after {
             content: "Previous chapter";
         }
-        .st-key-qc_next_chapter_top button::after {
+        [class*="st-key-qc_next_chapter_top"] button::after {
             content: "Next chapter";
         }
-        .st-key-qc_previous_chapter_top button:hover::after,
-        .st-key-qc_next_chapter_top button:hover::after,
-        .st-key-qc_previous_chapter_top button:focus-visible::after,
-        .st-key-qc_next_chapter_top button:focus-visible::after {
+        [class*="st-key-qc_previous_chapter_top"] button:hover::after,
+        [class*="st-key-qc_next_chapter_top"] button:hover::after,
+        [class*="st-key-qc_previous_chapter_top"] button:focus-visible::after,
+        [class*="st-key-qc_next_chapter_top"] button:focus-visible::after {
             opacity: 1;
             transform: translateY(0);
         }
         @media (max-width: 700px) {
-            .st-key-qc_subject_title {
+            [class*="st-key-qc_subject_title"] {
                 padding: 10px 14px !important;
                 border-radius: 15px !important;
             }
-            .st-key-qc_subject_title h3 {
+            [class*="st-key-qc_subject_title"] h3 {
                 font-size: clamp(21px, 6.6vw, 25px) !important;
             }
-            .st-key-qc_primary_response {
+            [class*="st-key-qc_primary_response"] {
                 width: 100% !important;
                 margin-top: 10px !important;
                 padding: 12px !important;
                 border-radius: 17px !important;
             }
-            .st-key-qc_subject_map_card,
-            .st-key-qc_chapter_path_card,
-            .st-key-qc_chapter_content_card {
+            [class*="st-key-qc_subject_map_card"],
+            [class*="st-key-qc_chapter_path_card"],
+            [class*="st-key-qc_chapter_content_card"] {
                 margin: 12px 0 14px !important;
                 padding: 14px !important;
                 border-radius: 15px !important;
             }
-            .st-key-qc_answer_card {
+            [class*="st-key-qc_answer_card"] {
                 padding: 16px !important;
                 border-radius: 16px !important;
             }
-            .st-key-qc_answer_body p,
-            .st-key-qc_answer_body li {
+            [class*="st-key-qc_answer_body"] p,
+            [class*="st-key-qc_answer_body"] li {
                 font-size: 15px !important;
             }
-            .st-key-qc_chapter_nav {
+            [class*="st-key-qc_chapter_nav"] {
                 flex-wrap: wrap !important;
                 row-gap: 6px !important;
             }
-            .st-key-qc_chapter_arrows {
+            [class*="st-key-qc_chapter_arrows"] {
                 margin-left: auto !important;
             }
-            .st-key-qc_answer_actions > div[data-testid="stLayoutWrapper"]
+            [class*="st-key-qc_answer_actions"] > div[data-testid="stLayoutWrapper"]
             > div[data-testid="stHorizontalBlock"] {
                 align-items: stretch !important;
                 flex-direction: column !important;
                 gap: 9px !important;
             }
-            .st-key-qc_answer_actions div[data-testid="stColumn"] {
+            [class*="st-key-qc_answer_actions"] div[data-testid="stColumn"] {
                 width: 100% !important;
                 min-width: 0 !important;
                 flex: 1 1 auto !important;
@@ -763,8 +740,8 @@ def _render_qc_body(visitor_id: str, api_base: str,
     )
     st.markdown(
         f"""<style>
-        .st-key-qc_subject_map_card h3::before,
-        .st-key-qc_subject_map button::before {{
+        [class*="st-key-qc_subject_map_card"] h3::before,
+        [class*="st-key-qc_subject_map"] button::before {{
             content: "";
             display: inline-block;
             flex: 0 0 20px;
@@ -773,13 +750,13 @@ def _render_qc_body(visitor_id: str, api_base: str,
             margin-right: 7px;
             background: url("{_KNOWLEDGE_ATLAS_ICON}") center / contain no-repeat;
         }}
-        .st-key-qc_subject_map_card h3::before {{
+        [class*="st-key-qc_subject_map_card"] h3::before {{
             vertical-align: -0.22em;
         }}
         </style>""",
         unsafe_allow_html=True,
     )
-    with st.container(border=True, width="stretch", key="qc_subject_title"):
+    with st.container(border=True, width="stretch", key=f"qc_subject_title_{curriculum_id}"):
         st.markdown(f"### :material/{_subject_icon(state['subject'])}: {escape(state['subject'])}")
     outline = state["outline"]
     chapters = outline["chapters"]
@@ -787,7 +764,7 @@ def _render_qc_body(visitor_id: str, api_base: str,
     if not selected_chapter_id:
         reveal_intro = not state.get("intro_revealed", False)
         intro = "Here is your Subject Map. It shows the chapters in the order we'll learn them."
-        with st.container(border=True, key="qc_subject_map_card"):
+        with st.container(border=True, key=f"qc_subject_map_card_{curriculum_id}"):
             st.markdown("### Subject Map")
             st.space(20)
             if reveal_intro:
@@ -803,10 +780,10 @@ def _render_qc_body(visitor_id: str, api_base: str,
                         map_slot.image(_subject_map_svg(state["subject"], chapters, visible), width="stretch")
                         time.sleep(_reveal_pause(len(chapters)))
                     with map_slot.container():
-                        render_subject_map(_subject_map_svg(state["subject"], chapters), state["subject"])
+                        render_subject_map(_subject_map_svg(state["subject"], chapters), state["subject"], key=f"qc_subject_map_viewer_{curriculum_id}")
             else:
-                render_subject_map(_subject_map_svg(state["subject"], chapters), state["subject"])
-        with st.container(border=True, key="qc_chapter_path_card"):
+                render_subject_map(_subject_map_svg(state["subject"], chapters), state["subject"], key=f"qc_subject_map_viewer_{curriculum_id}")
+        with st.container(border=True, key=f"qc_chapter_path_card_{curriculum_id}"):
             st.markdown("### :material/menu_book: Chapter path")
             st.space(20)
             guidance = "I've broken the chapters into progressive questions, from foundations to advanced ideas. Choose a chapter to begin."
@@ -822,7 +799,7 @@ def _render_qc_body(visitor_id: str, api_base: str,
                 if questions:
                     label += f" · {complete}/{len(questions)} understood"
                 chapter_items.append({"id": chapter["id"], "label": label})
-            with st.container(border=False, key="qc_chapter_list"):
+            with st.container(border=False, key=f"qc_chapter_list_{curriculum_id}"):
                 selected = render_stream_cards(
                     chapter_items, key=f"qc_chapter_cards_{curriculum_id}",
                     label="Chapter path", animate=reveal_intro,
@@ -841,25 +818,25 @@ def _render_qc_body(visitor_id: str, api_base: str,
         return
     chapter_index = chapters.index(chapter)
     previous_chapter_id, next_chapter_id = _chapter_neighbors(chapters, chapter_index)
-    with st.container(border=True, key="qc_chapter_content_card"):
+    with st.container(border=True, key=f"qc_chapter_content_card_{curriculum_id}"):
         with st.container(horizontal=True, horizontal_alignment="distribute",
-                          vertical_alignment="center", key="qc_chapter_nav"):
-            if st.button("Back to Subject Map", key="qc_subject_map"):
+                          vertical_alignment="center", key=f"qc_chapter_nav_{curriculum_id}"):
+            if st.button("Back to Subject Map", key=f"qc_subject_map_{curriculum_id}"):
                 state["selected_chapter"] = None
                 state["selected_question"] = None
                 _save(visitor_id, curriculum_id, state)
                 st.rerun()
             with st.container(horizontal=True, horizontal_alignment="right", vertical_alignment="center",
-                              width="content", key="qc_chapter_arrows"):
+                              width="content", key=f"qc_chapter_arrows_{curriculum_id}"):
                 if previous_chapter_id and st.button(
-                    "Previous chapter", key="qc_previous_chapter_top"
+                    "Previous chapter", key=f"qc_previous_chapter_top_{curriculum_id}"
                 ):
                     state["selected_chapter"] = previous_chapter_id
                     state["selected_question"] = None
                     _save(visitor_id, curriculum_id, state)
                     st.rerun()
                 if next_chapter_id and st.button(
-                    "Next chapter", key="qc_next_chapter_top"
+                    "Next chapter", key=f"qc_next_chapter_top_{curriculum_id}"
                 ):
                     state["selected_chapter"] = next_chapter_id
                     state["selected_question"] = None
@@ -894,7 +871,7 @@ def _render_qc_body(visitor_id: str, api_base: str,
                 }
                 for index, question in enumerate(questions)
             ]
-            with st.container(border=False, key="qc_question_list"):
+            with st.container(border=False, key=f"qc_question_list_{curriculum_id}"):
                 selected = render_stream_cards(
                     question_items, key=f"qc_question_cards_{curriculum_id}_{selected_chapter_id}",
                     label="Chapter questions", animate=reveal_questions,
@@ -911,7 +888,7 @@ def _render_qc_body(visitor_id: str, api_base: str,
                 _save(visitor_id, curriculum_id, state)
             return
         question = questions[question_index]
-        if st.button("← Chapter questions", key="qc_back_to_questions"):
+        if st.button("← Chapter questions", key=f"qc_back_to_questions_{curriculum_id}"):
             state["selected_question"] = None
             _save(visitor_id, curriculum_id, state)
             st.rerun()
@@ -919,10 +896,10 @@ def _render_qc_body(visitor_id: str, api_base: str,
         if question["id"] not in visited:
             visited.append(question["id"])
             _save(visitor_id, curriculum_id, state)
-        with st.container(border=True, key="qc_answer_card"):
+        with st.container(border=True, key=f"qc_answer_card_{curriculum_id}"):
             st.caption(f"Question {question_index + 1} of {len(questions)}")
             st.markdown(f"### {question['text']}")
-            with st.container(border=False, key="qc_answer_body"):
+            with st.container(border=False, key=f"qc_answer_body_{curriculum_id}"):
                 if question["id"] not in state["answers"]:
                     try:
                         with st.spinner("Forming your answer..."):
@@ -938,11 +915,11 @@ def _render_qc_body(visitor_id: str, api_base: str,
                         return
                 else:
                     st.markdown(_format_curriculum_answer(state["answers"][question["id"]]))
-            with st.container(border=False, key="qc_answer_actions"):
+            with st.container(border=False, key=f"qc_answer_actions_{curriculum_id}"):
                 action_col, navigation_col = st.columns(2, vertical_alignment="center")
                 with action_col:
                     if question["id"] not in state["completed"]:
-                        if st.button("Mark understood", key="qc_mark_understood"):
+                        if st.button("Mark understood", key=f"qc_mark_understood_{curriculum_id}"):
                             state["completed"].append(question["id"])
                             _save(visitor_id, curriculum_id, state)
                             st.rerun()
@@ -950,19 +927,19 @@ def _render_qc_body(visitor_id: str, api_base: str,
                         st.caption("Understood")
                 with navigation_col:
                     with st.container(horizontal=True, horizontal_alignment="right"):
-                        if question_index > 0 and st.button("← Previous question", key="qc_previous"):
+                        if question_index > 0 and st.button("← Previous question", key=f"qc_previous_{curriculum_id}"):
                             state["selected_question"] = questions[question_index - 1]["id"]
                             if questions[question_index - 1]["id"] not in visited:
                                 visited.append(questions[question_index - 1]["id"])
                             _save(visitor_id, curriculum_id, state)
                             st.rerun()
-                        if question_index + 1 < len(questions) and st.button("Next question →", key="qc_next"):
+                        if question_index + 1 < len(questions) and st.button("Next question →", key=f"qc_next_{curriculum_id}"):
                             state["selected_question"] = questions[question_index + 1]["id"]
                             if questions[question_index + 1]["id"] not in visited:
                                 visited.append(questions[question_index + 1]["id"])
                             _save(visitor_id, curriculum_id, state)
                             st.rerun()
-                        elif question_index + 1 == len(questions) and chapter_index + 1 < len(chapters) and st.button("Next chapter →", key="qc_next_chapter"):
+                        elif question_index + 1 == len(questions) and chapter_index + 1 < len(chapters) and st.button("Next chapter →", key=f"qc_next_chapter_{curriculum_id}"):
                             state["selected_chapter"] = chapters[chapter_index + 1]["id"]
                             state["selected_question"] = None
                             _save(visitor_id, curriculum_id, state)
@@ -980,9 +957,9 @@ def render_qc(visitor_id: str, api_base: str,
         return
 
     curriculum_id = curriculum_id or st.session_state.get("qc_active_id")
-    state = st.session_state.get("qc_state") or (
-        load_curriculum(visitor_id, curriculum_id) if curriculum_id else None
-    )
+    state = (st.session_state.get("qc_state")
+             if curriculum_id == st.session_state.get("qc_active_id") else None)
+    state = state or (load_curriculum(visitor_id, curriculum_id) if curriculum_id else None)
     if curriculum_id and isinstance(state, dict):
         st.session_state["qc_active_id"] = curriculum_id
         st.session_state["qc_state"] = state
@@ -1004,11 +981,11 @@ def render_qc(visitor_id: str, api_base: str,
     # this response. Hide it as soon as the primary card enters the DOM.
     st.markdown(
         """<style>
-        body:has(.st-key-qc_primary_response) .nc-generation-placeholder {
+        body:not(:has(.nc-pending-inline-query)):has([class*="st-key-qc_primary_response"]) .nc-generation-placeholder {
             display: none !important;
         }
-        .st-key-qc_stream_follow,
-        .st-key-qc_stream_finish {
+        [class*="st-key-qc_stream_follow"],
+        [class*="st-key-qc_stream_finish"] {
             position: absolute !important;
             width: 0 !important;
             height: 0 !important;
@@ -1018,9 +995,9 @@ def render_qc(visitor_id: str, api_base: str,
         unsafe_allow_html=True,
     )
     should_follow_stream = _should_follow_qc_stream(state)
-    with st.container(border=True, key="qc_primary_response"):
+    with st.container(border=True, key=f"qc_primary_response_{curriculum_id}"):
         if should_follow_stream:
-            follow_qc_stream(curriculum_id or "active")
+            follow_qc_stream(curriculum_id or "active", selector=f".st-key-qc_primary_response_{curriculum_id}")
         _render_qc_body(visitor_id, api_base, attach_to_chat)
         if should_follow_stream:
-            finish_qc_stream(curriculum_id or "active")
+            finish_qc_stream(curriculum_id or "active", selector=f".st-key-qc_primary_response_{curriculum_id}")

@@ -255,9 +255,9 @@ _MAP_VIEWER = st.components.v2.component(
 )
 
 
-def render_subject_map(svg: str, subject: str) -> None:
+def render_subject_map(svg: str, subject: str, *, key: str = "qc_subject_map_viewer") -> None:
     """Keep the SVG crisp and zoomable in both normal and expanded views."""
     _MAP_VIEWER(
         data={"svg": svg, "label": f"Subject map for {subject}"},
-        key="qc_subject_map_viewer",
+        key=key,
     )

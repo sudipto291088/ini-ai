@@ -196,7 +196,7 @@ class GenerationTests(unittest.TestCase):
                 qc_ui._render_qc_body("visitor", "http://api")
                 self.assertEqual({call.args[0] for call in button.call_args_list}, labels)
                 self.assertTrue(any(
-                    call.kwargs.get("key") == "qc_chapter_arrows"
+                    call.kwargs.get("key") == "qc_chapter_arrows_qc-1"
                     and call.kwargs.get("width") == "content"
                     for call in container.call_args_list
                 ))
@@ -234,12 +234,32 @@ class GenerationTests(unittest.TestCase):
              patch.object(qc_ui, "finish_qc_stream") as finish_stream, \
              patch.object(qc_ui, "_render_qc_body"):
             qc_ui.render_qc("visitor", "http://api", None, render_user_bubble)
-            follow_stream.assert_called_once_with("qc-1")
-            finish_stream.assert_called_once_with("qc-1")
+            follow_stream.assert_called_once_with("qc-1", selector=".st-key-qc_primary_response_qc-1")
+            finish_stream.assert_called_once_with("qc-1", selector=".st-key-qc_primary_response_qc-1")
 
         render_user_bubble.assert_called_once_with(
             prompt, "Thu, Sep 17 • 09:30 AM", query_mode="interrogate",
         )
+
+    def test_each_timeline_curriculum_loads_its_own_state_and_keys(self):
+        first = {"subject": "Biology", "intro_revealed": True}
+        second = {"subject": "Machine Learning", "intro_revealed": True}
+        session = {"qc_active_id": "qc-second", "qc_state": second}
+        with patch.object(qc_ui.st, "session_state", session), \
+             patch.object(qc_ui.st, "markdown"), \
+             patch.object(qc_ui.st, "container") as container, \
+             patch.object(qc_ui, "load_curriculum", side_effect=[first, second]) as load, \
+             patch.object(qc_ui, "_render_qc_body") as body:
+            qc_ui.render_qc("visitor", "http://api", None, Mock(),
+                            include_user_bubble=False, curriculum_id="qc-first")
+            self.assertIs(session["qc_state"], first)
+            qc_ui.render_qc("visitor", "http://api", None, Mock(),
+                            include_user_bubble=False, curriculum_id="qc-second")
+            self.assertIs(session["qc_state"], second)
+            self.assertEqual(body.call_count, 2)
+            self.assertEqual([call.kwargs["key"] for call in container.call_args_list],
+                             ["qc_primary_response_qc-first", "qc_primary_response_qc-second"])
+            self.assertEqual(load.call_count, 2)
 
     def test_timeline_curriculum_does_not_duplicate_the_user_bubble(self):
         session = {

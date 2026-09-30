@@ -25,6 +25,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import streamlit_app.learning_flow as learning_flow
 import streamlit_app.qc_ui as qc_ui
+from streamlit_app.qc_scroll_follow import focus_qc_query
 
 # Streamlit Cloud can rerun this entry point in a process that still has an
 # older helper module cached. Reload before binding newly added helpers so a
@@ -11479,21 +11480,7 @@ def page_new_chat() -> None:
             )
 
         _render_new_chat_bottom_uib()
-        st.iframe(
-            """
-            <script>
-            requestAnimationFrame(() => {
-              try {
-                const doc = window.parent.document;
-                const anchor = doc.querySelector('.nc-pending-inline-anchor');
-                if (anchor) anchor.scrollIntoView({ block: 'center', behavior: 'smooth' });
-              } catch (err) {}
-            });
-            </script>
-            """,
-            height=1,
-            tab_index=-1,
-        )
+        focus_qc_query(str(pending.get("ts") or pending_prompt))
 
         qc_processed = qc_ui.process_pending_qc(
             st.session_state.visitor_id,
@@ -13812,7 +13799,7 @@ def page_new_chat() -> None:
                 (item.get("ts") or "").strip(),
                 query_mode="interrogate",
             )
-            if index == total_curricula - 1:
+            if curriculum_id:
                 qc_ui.render_qc(
                     st.session_state.visitor_id,
                     st.session_state.api_base,
@@ -13820,11 +13807,6 @@ def page_new_chat() -> None:
                     _render_nc_user_bubble,
                     include_user_bubble=False,
                     curriculum_id=curriculum_id,
-                )
-            elif curriculum_id:
-                qc_ui.render_qc_history_snapshot(
-                    st.session_state.visitor_id,
-                    curriculum_id,
                 )
             st.markdown("---")
 
