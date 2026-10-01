@@ -163,6 +163,7 @@ import api.response_strategy as response_strategy
 
 if (
     getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 8
+    or not hasattr(response_strategy, "contextualize_learning_question")
     or not hasattr(response_strategy, "knowledge_structure_map_for_action")
 ):
     response_strategy = importlib.reload(response_strategy)
@@ -171,6 +172,7 @@ KS_RECOMMENDED = response_strategy.KS_RECOMMENDED
 assess_ks_suitability = response_strategy.assess_ks_suitability
 extract_knowledge_structure_topic = response_strategy.extract_knowledge_structure_topic
 fallback_learning_questions = response_strategy.fallback_learning_questions
+contextualize_learning_question = response_strategy.contextualize_learning_question
 is_explicit_knowledge_structure_request = (
     response_strategy.is_explicit_knowledge_structure_request
 )
@@ -8239,6 +8241,7 @@ def page_new_chat() -> None:
                             seen_questions = set()
                             for question in followups:
                                 cleaned = clean_followup_text(question)
+                                cleaned = contextualize_learning_question(cleaned, profile_source)
                                 dedupe_key = re.sub(
                                     r"\s+", " ", cleaned.casefold()
                                 ).strip()
@@ -8256,7 +8259,7 @@ def page_new_chat() -> None:
                                 max(3, visible_count), len(cleaned_questions)
                             )
                             inline_answers_key = (
-                                f"{response_card_key}_question_intelligence_answers"
+                                f"{response_card_key}_question_intelligence_answers_v2_{profile_source}"
                             )
                             inline_answers = st.session_state.setdefault(
                                 inline_answers_key, {}
@@ -8317,9 +8320,10 @@ def page_new_chat() -> None:
                                     ):
                                         with st.spinner("Answering..."):
                                             inline_response = fetch_study_full(
-                                                question,
+                                                contextualize_learning_question(question, profile_source),
                                                 mode="focused",
                                                 max_rounds=0,
+                                                profile_context={"Subject": profile_source},
                                             )
                                         inline_answer = str(
                                             inline_response.get("answer") or ""

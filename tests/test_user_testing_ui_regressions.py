@@ -4,6 +4,13 @@ from pathlib import Path
 APP_SOURCE = (
     Path(__file__).resolve().parents[1] / "streamlit_app" / "app.py"
 ).read_text(encoding="utf-8")
+
+
+def test_inline_question_answers_preserve_parent_topic_and_invalidate_unscoped_cache() -> None:
+    assert "contextualize_learning_question(question, profile_source)" in APP_SOURCE
+    assert 'profile_context={"Subject": profile_source}' in APP_SOURCE
+    assert "question_intelligence_answers_v2_{profile_source}" in APP_SOURCE
+
 FCE_CONTENT_SOURCE = (
     Path(__file__).resolve().parents[1] / "streamlit_app" / "fce_content.py"
 ).read_text(encoding="utf-8")

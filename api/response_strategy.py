@@ -370,6 +370,17 @@ def select_lightweight_questions(
     return selected
 
 
+def contextualize_learning_question(question: str, topic: str) -> str:
+    """Bind a generated/clicked learning question to its own response topic."""
+    question = re.sub(r"\s+", " ", str(question or "")).strip()
+    topic = re.sub(r"\s+", " ", str(topic or "")).strip()
+    if not question or not topic:
+        return question
+    if re.search(r"(?<!\w)" + re.escape(topic) + r"(?!\w)", question, re.IGNORECASE):
+        return question
+    return f"About {topic}: {question}"
+
+
 def fallback_learning_questions(query: str, limit: int = 6) -> list[str]:
     """Provide stable, diverse next directions when map generation is unavailable."""
 
@@ -405,7 +416,7 @@ def fallback_learning_questions(query: str, limit: int = 6) -> list[str]:
             break
         if question not in questions:
             questions.append(question)
-    return questions[:limit]
+    return [contextualize_learning_question(question, query) for question in questions[:limit]]
 
 
 __all__ = [
@@ -417,6 +428,7 @@ __all__ = [
     "assess_ks_suitability",
     "extract_knowledge_structure_topic",
     "fallback_learning_questions",
+    "contextualize_learning_question",
     "initial_answer_opening",
     "is_explicit_knowledge_structure_request",
     "knowledge_structure_bridge",

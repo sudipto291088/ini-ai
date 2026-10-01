@@ -11,6 +11,7 @@ from api.response_strategy import (
     assess_ks_suitability,
     extract_knowledge_structure_topic,
     fallback_learning_questions,
+    contextualize_learning_question,
     initial_answer_opening,
     knowledge_structure_bridge,
     knowledge_structure_action,
@@ -23,6 +24,17 @@ from api.response_strategy import (
 
 
 class ResponseStrategyTests(unittest.TestCase):
+    def test_generic_followups_are_bound_to_the_parent_subject(self):
+        question = "What are the foundational ideas needed to understand this clearly?"
+        git = contextualize_learning_question(question, "Git")
+        biology = contextualize_learning_question(question, "Biology")
+        self.assertEqual(git, f"About Git: {question}")
+        self.assertNotEqual(git, biology)
+        self.assertEqual(contextualize_learning_question(git, "Git"), git)
+        self.assertEqual(contextualize_learning_question("How does Git work?", "Git"),
+                         "How does Git work?")
+        self.assertTrue(all("Git" in item for item in fallback_learning_questions("Git")))
+
     def test_streamlit_import_contract_survives_cached_old_module(self):
         # Streamlit keeps imports alive across hot reloads. The app must
         # recognize and refresh the previous strategy contract.
