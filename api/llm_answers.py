@@ -7,6 +7,16 @@ from typing import Optional, Dict, Any, Tuple, List
 
 import requests
 
+ANSWER_EMPHASIS_CONTRACT = (
+    "\nANSWER EMPHASIS: In explanatory answer prose, use Markdown **bold** selectively "
+    "for important subject-specific terms, defining concepts, core principles, and "
+    "crucial conclusions. Emphasize short phrases, normally one or two per paragraph, "
+    "primarily at their first meaningful occurrence. Never bold whole paragraphs or "
+    "every repeated term. Do not add emphasis inside code, equations, URLs, map labels, "
+    "question/card titles, or structured profile values. Preserve existing headings, "
+    "wording accuracy, and structure.\n"
+)
+
 from api.wikidata_knowledge import (
     format_wikidata_prompt_context,
     retrieve_wikidata_context,
@@ -457,6 +467,9 @@ def generate_dynamic_answer_result(
         "  - For one-liners, still use a fenced block if it contains 'def', 'class', 'import', or multiple statements.\n"
         
     )
+
+    if not expects_json:
+        system_prompt += ANSWER_EMPHASIS_CONTRACT
 
     if expects_json:
         system_prompt += (

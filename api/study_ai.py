@@ -4,7 +4,7 @@ import json
 import re
 from api.response_accuracy import ACCURACY_CONTRACT, normalize_response_accuracy
 
-from api.llm_answers import llm_enabled, generate_dynamic_answer_result
+from api.llm_answers import llm_enabled, generate_dynamic_answer_result, ANSWER_EMPHASIS_CONTRACT
 from api.intent_layer import detect_intent
 
 
@@ -155,7 +155,7 @@ def _build_instruction(mode: str) -> str:
             "- Make UPDATE_RULE display-ready: output one equation only, without a label, prose, Markdown, code fences, or surrounding dollar signs. Prefer conventional mathematical symbols such as ×, −, →, ∑, ∂, √, subscripts, and superscripts over programming notation such as *, ->, sum(), or **.\n"
             "- Define every symbol used in the update rule and keep variable meanings compact.\n"
             "- Use the exact same symbols in UPDATE_RULE and VARIABLES; never provide variable definitions for symbols that do not appear in the displayed relationship.\n"
-            "- Make headings and the Key insight carry the important emphasis; do not use Markdown inside the block.\n"
+            "- In OVERVIEW, step explanatory sentences, KEY_INSIGHT, and WORKED_EXAMPLE, selectively bold important terms with **term**; normally one or two short phrases per paragraph, at first meaningful occurrence. Never bold whole sentences. Keep TITLE, step names, UPDATE_RULE and VARIABLES free of Markdown.\n"
             "- Include a concrete worked example when one improves understanding; otherwise use a realistic conceptual example.\n"
             "- Immediately after the closing CORE_EXPLANATION tag, output this exact machine-readable block:\n"
             "<LEARNING_LOOP>\n"
@@ -291,6 +291,7 @@ def _build_instruction(mode: str) -> str:
             "- Separate each complete thought into a short paragraph with a blank line between paragraphs.\n"
             "- Prefer plain language, but preserve every distinction needed for factual accuracy.\n"
             "- Introduce technical terms only when their purpose is already clear from the explanation.\n"
+            "- Bold the important concepts within the explanatory paragraphs using **term**. Include selective inline emphasis, not just plain prose; use one or two meaningful short phrases per paragraph, without bolding whole sentences.\n"
             "- Use a brief analogy or intuitive question only when it materially improves understanding.\n"
             "- Explain why the answer matters or what tension, consequence, or limitation follows from it.\n"
             "- Target roughly 220 to 360 words in short readable paragraphs.\n"
@@ -308,6 +309,7 @@ def _build_instruction(mode: str) -> str:
             "- Use accepted terminology, named components, variables, equations, or operational stages when relevant.\n"
             "- Distinguish mechanism, evidence, assumptions, limitations, and failure modes where the question requires them.\n"
             "- Use short bold Markdown subheadings only when they help a technical reader scan distinct mechanisms.\n"
+            "- Also bold key technical terms within paragraph text using **term**. Bold headings alone are not sufficient: selectively emphasize defining components, mechanisms, and crucial conclusions at first occurrence.\n"
             "- Separate paragraphs with blank lines and indent Markdown lists conventionally, including any nested items.\n"
             "- Prefer compact paragraphs; use a short list only when the information is genuinely sequential.\n"
             "- Target roughly 220 to 420 words, proportional to the question.\n"
@@ -1328,7 +1330,7 @@ def study_ai(payload: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
         }
 
     # ---- Build prompt ----
-    instruction = _build_instruction(mode) + _processor_accuracy_contract(user_topic) + ACCURACY_CONTRACT
+    instruction = _build_instruction(mode) + _processor_accuracy_contract(user_topic) + ACCURACY_CONTRACT + ANSWER_EMPHASIS_CONTRACT
     if profile_context:
         instruction += (
             "\nCANONICAL TOPIC PROFILE (reuse these facts consistently; do not contradict them):\n"

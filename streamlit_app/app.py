@@ -7,6 +7,7 @@ import base64
 import importlib
 from contextlib import nullcontext
 from html import escape
+from streamlit_app.answer_emphasis import emphasis_html
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import urlencode
@@ -5539,20 +5540,20 @@ def render_nc_core_explanation(explanation: dict[str, Any]) -> None:
     steps_markup = "".join(
         '<div class="ini-nc-core-explanation__step">'
         f'<strong>{escape(str(step.get("Heading") or ""))}</strong><br>'
-        f'{escape(str(step.get("Explanation") or ""))}'
+        f'{emphasis_html(str(step.get("Explanation") or ""))}'
         '</div>'
         for step in visible_steps
         if isinstance(step, dict)
     )
     example_markup = (
         '<div class="ini-nc-core-explanation__example">'
-        f'<strong>Worked example</strong><br>{escape(worked_example)}</div>'
+        f'<strong>Worked example</strong><br>{emphasis_html(worked_example)}</div>'
         if worked_example and (expanded or not is_long)
         else ""
     )
     insight_markup = (
         '<div class="ini-nc-core-explanation__insight">'
-        f'<strong>Key insight:</strong> {escape(key_insight)}</div>'
+        f'<strong>Key insight:</strong> {emphasis_html(key_insight)}</div>'
         if key_insight
         else ""
     )
@@ -5561,7 +5562,7 @@ def render_nc_core_explanation(explanation: dict[str, Any]) -> None:
         (
             '<div class="ini-topic-profile ini-nc-core-explanation">'
             f'<div class="ini-topic-profile__title"><span>{escape(title)}</span></div>'
-            f'<div class="ini-nc-core-explanation__overview">{escape(overview)}</div>'
+            f'<div class="ini-nc-core-explanation__overview">{emphasis_html(overview)}</div>'
             + formula_markup
             + variables_markup
             + f'<div class="ini-nc-core-explanation__steps">{steps_markup}</div>'
@@ -5766,13 +5767,13 @@ def render_nc_intro_preview(
             if not heading and item_index == 0:
                 heading = "Purpose"
 
-            content_html = f"<p>{escape(copy).replace(chr(10), '<br>')}</p>"
+            content_html = f"<p>{emphasis_html(copy).replace(chr(10), '<br>')}</p>"
             if heading == "Major areas":
                 areas, remainder = split_major_areas(copy)
                 if areas:
-                    list_items = "".join(f"<li>{escape(area)}</li>" for area in areas)
+                    list_items = "".join(f"<li>{emphasis_html(area)}</li>" for area in areas)
                     lead_html = (
-                        f'<p class="ini-nc-intro-copy__lead">{escape(remainder)}</p>'
+                        f'<p class="ini-nc-intro-copy__lead">{emphasis_html(remainder)}</p>'
                         if remainder
                         else ""
                     )
@@ -7710,6 +7711,12 @@ def page_new_chat() -> None:
                             {},
                         )
                         persisted_views = response_payload.get("answer_views")
+                        legacy_emphasis = response_payload.get("answer_emphasis_version") != 1
+                        if legacy_emphasis:
+                            answer_views.clear()
+                            persisted_views = {}
+                            response_payload["answer_views"] = {}
+                            response_payload["answer_emphasis_version"] = 1
                         if isinstance(persisted_views, dict):
                             for view_name, view_text in persisted_views.items():
                                 if str(view_text or "").strip():
@@ -7725,13 +7732,8 @@ def page_new_chat() -> None:
                                 str(view_text or "").strip(),
                                 profile_source,
                             )
-                        original_mode = str(
-                            response_payload.get("mode") or "focused"
-                        ).strip().lower()
-                        if original_mode == "clear":
-                            answer_views.setdefault("clear", text)
-                        else:
-                            answer_views.setdefault("technical", text)
+                        # Each tab uses its own generated, emphasis-aware view;
+                        # the original response is not a substitute for either.
 
                         def _render_layered_answer(
                             view_name: str,
