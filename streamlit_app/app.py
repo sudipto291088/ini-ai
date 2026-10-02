@@ -37,7 +37,7 @@ if not hasattr(learning_flow, "resolve_generation_status"):
 # this entry point passes the chat-attachment callback as a fifth argument.
 if (
     not hasattr(qc_ui, "process_pending_qc")
-    or getattr(qc_ui, "QC_UI_VERSION", 0) < 2
+    or getattr(qc_ui, "QC_UI_VERSION", 0) < 3
 ):
     qc_ui = importlib.reload(qc_ui)
 continuation_context = learning_flow.continuation_context

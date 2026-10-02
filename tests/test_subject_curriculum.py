@@ -234,8 +234,8 @@ class GenerationTests(unittest.TestCase):
              patch.object(qc_ui, "finish_qc_stream") as finish_stream, \
              patch.object(qc_ui, "_render_qc_body"):
             qc_ui.render_qc("visitor", "http://api", None, render_user_bubble)
-            follow_stream.assert_called_once_with("qc-1", selector=".st-key-qc_primary_response_qc-1")
-            finish_stream.assert_called_once_with("qc-1", selector=".st-key-qc_primary_response_qc-1")
+            follow_stream.assert_called_once_with("qc-1_map_overview", selector=".st-key-qc_primary_response_qc-1_map_overview")
+            finish_stream.assert_called_once_with("qc-1_map_overview", selector=".st-key-qc_primary_response_qc-1_map_overview")
 
         render_user_bubble.assert_called_once_with(
             prompt, "Thu, Sep 17 • 09:30 AM", query_mode="interrogate",
@@ -258,8 +258,26 @@ class GenerationTests(unittest.TestCase):
             self.assertIs(session["qc_state"], second)
             self.assertEqual(body.call_count, 2)
             self.assertEqual([call.kwargs["key"] for call in container.call_args_list],
-                             ["qc_primary_response_qc-first", "qc_primary_response_qc-second"])
+                             ["qc_primary_response_qc-first_map_overview", "qc_primary_response_qc-second_map_overview"])
             self.assertEqual(load.call_count, 2)
+
+    def test_return_to_map_focuses_a_fresh_view_without_restreaming(self):
+        state = {"subject": "Statistics", "intro_revealed": True,
+                 "selected_chapter": None, "selected_question": None}
+        session = {"qc_active_id": "qc-stat", "qc_state": state,
+                   "qc_last_view_qc-stat": "chapter-1_overview"}
+        with patch.object(qc_ui.st, "session_state", session), \
+             patch.object(qc_ui.st, "markdown"), \
+             patch.object(qc_ui.st, "container") as container, \
+             patch.object(qc_ui, "_render_qc_body"), \
+             patch.object(qc_ui, "focus_qc_view") as focus, \
+             patch.object(qc_ui, "follow_qc_stream") as follow:
+            qc_ui.render_qc("visitor", "http://api", None, Mock(), include_user_bubble=False)
+            focus.assert_called_once_with("qc-stat_map_overview",
+                                          ".st-key-qc_primary_response_qc-stat_map_overview")
+            follow.assert_not_called()
+            self.assertEqual(container.call_args.kwargs["key"],
+                             "qc_primary_response_qc-stat_map_overview")
 
     def test_timeline_curriculum_does_not_duplicate_the_user_bubble(self):
         session = {

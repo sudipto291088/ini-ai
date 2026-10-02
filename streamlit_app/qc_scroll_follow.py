@@ -8,6 +8,8 @@ export default function ({ data }) {
   const card = [...document.querySelectorAll(data.selector)].at(-1);
   if (!card) return;
 
+  card.dataset.qcStreamComplete = 'false';
+
   const win = document.defaultView;
   const scrollables = [];
   for (let element = card.parentElement; element; element = element.parentElement) {
@@ -164,6 +166,27 @@ export default function ({ data }) {
 def focus_qc_query(request_id: str) -> None:
     """Reveal the submitted query while its response is being prepared."""
     _QUERY_COMPONENT(data={}, key=f"qc_query_focus_{request_id}", height=0)
+
+
+_VIEW_COMPONENT = st.components.v2.component("qc_view_focus", js="""
+export default function ({ data }) {
+  const win = document.defaultView;
+  let attempts = 0;
+  const timer = win.setInterval(() => {
+    const card = document.querySelector(data.selector);
+    if (card) {
+      card.style.scrollMarginTop = '82px';
+      card.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      win.clearInterval(timer);
+    } else if (++attempts >= 30) win.clearInterval(timer);
+  }, 50);
+  return () => win.clearInterval(timer);
+}
+""")
+
+
+def focus_qc_view(view_id: str, selector: str) -> None:
+    _VIEW_COMPONENT(data={"selector": selector}, key=f"qc_view_focus_{view_id}", height=0)
 
 
 _FINISH_JS = """

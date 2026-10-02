@@ -1,6 +1,7 @@
 """Subject Map → Question Curriculum inside a New Chat session."""
 
 import math
+import importlib
 import re
 import secrets
 import textwrap
@@ -15,12 +16,17 @@ import streamlit as st
 
 from api.subject_curriculum import learning_subject_candidate
 from streamlit_app.qc_map_viewer import render_subject_map
-from streamlit_app.qc_scroll_follow import finish_qc_stream, follow_qc_stream
+import streamlit_app.qc_scroll_follow as qc_scroll_follow
+if not hasattr(qc_scroll_follow, "focus_qc_view"):
+    qc_scroll_follow = importlib.reload(qc_scroll_follow)
+finish_qc_stream = qc_scroll_follow.finish_qc_stream
+follow_qc_stream = qc_scroll_follow.follow_qc_stream
+focus_qc_view = qc_scroll_follow.focus_qc_view
 from streamlit_app.qc_stream_cards import render_stream_cards
 from streamlit_app.storage_sqlite import load_curriculum, list_curricula, save_curriculum
 
 
-QC_UI_VERSION = 2
+QC_UI_VERSION = 3
 
 
 _KNOWLEDGE_ATLAS_ICON = "data:image/svg+xml," + quote(
@@ -432,16 +438,6 @@ def _render_qc_body(visitor_id: str, api_base: str,
         /* Streamlit keeps the prior run's widgets as faded placeholders while
            a new chapter loads. They are not part of the active response. */
         [class*="st-key-qc_primary_response"] [data-stale="true"] {
-            display: none !important;
-        }
-        /* A chapter rerun can also briefly leave two container wrappers. */
-        [class*="st-key-qc_primary_response"] > [data-testid="stLayoutWrapper"]:has(> [class*="st-key-qc_chapter_content_card"]):has(~ [data-testid="stLayoutWrapper"] > [class*="st-key-qc_chapter_content_card"]) {
-            display: none !important;
-        }
-        /* The previous Subject Map run can leave empty card shells behind
-           after a chapter opens, even when Streamlit no longer marks them stale. */
-        [class*="st-key-qc_primary_response"]:has([class*="st-key-qc_chapter_content_card"]) > [data-testid="stLayoutWrapper"]:has(> [class*="st-key-qc_subject_map_card"]),
-        [class*="st-key-qc_primary_response"]:has([class*="st-key-qc_chapter_content_card"]) > [data-testid="stLayoutWrapper"]:has(> [class*="st-key-qc_chapter_path_card"]) {
             display: none !important;
         }
         [class*="st-key-qc_subject_map_card"],
@@ -995,9 +991,18 @@ def render_qc(visitor_id: str, api_base: str,
         unsafe_allow_html=True,
     )
     should_follow_stream = _should_follow_qc_stream(state)
-    with st.container(border=True, key=f"qc_primary_response_{curriculum_id}"):
+    view = f"{(state or {}).get('selected_chapter') or 'map'}_{(state or {}).get('selected_question') or 'overview'}"
+    view_key = f"qc_last_view_{curriculum_id}"
+    previous_view = st.session_state.get(view_key)
+    st.session_state[view_key] = view
+    stream_id = f"{curriculum_id}_{view}"
+    primary_key = f"qc_primary_response_{curriculum_id}_{view}"
+    selector = f".st-key-{primary_key}"
+    with st.container(border=True, key=primary_key):
+        if previous_view is not None and previous_view != view:
+            focus_qc_view(stream_id, selector)
         if should_follow_stream:
-            follow_qc_stream(curriculum_id or "active", selector=f".st-key-qc_primary_response_{curriculum_id}")
+            follow_qc_stream(stream_id, selector=selector)
         _render_qc_body(visitor_id, api_base, attach_to_chat)
         if should_follow_stream:
-            finish_qc_stream(curriculum_id or "active", selector=f".st-key-qc_primary_response_{curriculum_id}")
+            finish_qc_stream(stream_id, selector=selector)
