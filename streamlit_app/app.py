@@ -7788,12 +7788,27 @@ def page_new_chat() -> None:
                                     if (!response) return;
 
                                     const previous = win.__iniAnswerStreamFollow;
-                                    if (previous?.observer) previous.observer.disconnect();
-                                    if (previous?.frame) cancelAnimationFrame(previous.frame);
+                                    previous?.stop?.();
+                                    const panel = window.frameElement?.closest('[role="tabpanel"]');
+                                    if (!panel) return;
 
-                                    const state = {{ observer: null, frame: 0 }};
+                                    const state = {{ observer: null, frame: 0, key: '{stream_key}', stopped: false }};
+                                    state.stop = () => {{
+                                      state.stopped = true;
+                                      state.observer?.disconnect();
+                                      if (state.frame) win.cancelAnimationFrame(state.frame);
+                                      doc.removeEventListener('click', onTabClick, true);
+                                    }};
+                                    const onTabClick = (event) => {{
+                                      if (event.target.closest?.('[role="tab"]')) state.stop();
+                                    }};
+                                    doc.addEventListener('click', onTabClick, true);
+                                    window.addEventListener('pagehide', state.stop, {{ once: true }});
                                     const follow = () => {{
                                       state.frame = 0;
+                                      if (state.stopped || !panel.isConnected || panel.hidden) return;
+                                      const text = panel.querySelector('[data-testid="stMarkdownContainer"]');
+                                      if (!text) return;
                                       const scrollers = [
                                         doc.scrollingElement,
                                         doc.documentElement,
@@ -7804,7 +7819,7 @@ def page_new_chat() -> None:
                                       ].filter(Boolean);
                                       for (const scroller of [...new Set(scrollers)]) {{
                                         if (scroller.scrollHeight <= scroller.clientHeight + 20) continue;
-                                        const bottom = response.getBoundingClientRect().bottom
+                                        const bottom = text.getBoundingClientRect().bottom
                                           - scroller.getBoundingClientRect().top
                                           + scroller.scrollTop
                                           - scroller.clientHeight
@@ -7816,10 +7831,10 @@ def page_new_chat() -> None:
                                       }}
                                     }};
                                     const schedule = () => {{
-                                      if (!state.frame) state.frame = requestAnimationFrame(follow);
+                                      if (!state.stopped && !state.frame) state.frame = win.requestAnimationFrame(follow);
                                     }};
                                     state.observer = new win.MutationObserver(schedule);
-                                    state.observer.observe(response, {{
+                                    state.observer.observe(panel, {{
                                       childList: true,
                                       subtree: true,
                                       characterData: true
@@ -7844,8 +7859,8 @@ def page_new_chat() -> None:
                                       const doc = window.parent.document;
                                       const win = doc.defaultView || window.parent;
                                       const follower = win.__iniAnswerStreamFollow;
-                                      if (follower?.observer) follower.observer.disconnect();
-                                      if (follower?.frame) cancelAnimationFrame(follower.frame);
+                                      if (!follower || follower.key !== '{stream_key}' || follower.stopped) return;
+                                      follower.stop();
                                       delete win.__iniAnswerStreamFollow;
                                       const response = doc.querySelector('.st-key-{response_card_key}');
                                       if (!response) return;
@@ -7858,12 +7873,6 @@ def page_new_chat() -> None:
                                     }} catch (err) {{}}
                                   }};
                                   requestAnimationFrame(returnToAnswerStart);
-                                  setTimeout(returnToAnswerStart, 250);
-                                  setTimeout(returnToAnswerStart, 1400);
-                                  setTimeout(returnToAnswerStart, 3200);
-                                  setTimeout(returnToAnswerStart, 5200);
-                                  setTimeout(returnToAnswerStart, 8000);
-                                  setTimeout(returnToAnswerStart, 12000);
                                 }})();
                                 </script>
                                 """,
