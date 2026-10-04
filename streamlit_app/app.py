@@ -7,7 +7,6 @@ import base64
 import importlib
 from contextlib import nullcontext
 from html import escape
-from streamlit_app.answer_emphasis import emphasis_html
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import urlencode
@@ -20,6 +19,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+from streamlit_app.answer_emphasis import emphasis_html
 
 import requests
 import streamlit as st
