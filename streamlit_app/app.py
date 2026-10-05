@@ -28,6 +28,7 @@ import streamlit.components.v1 as components
 import streamlit_app.learning_flow as learning_flow
 import streamlit_app.qc_ui as qc_ui
 from streamlit_app.qc_scroll_follow import focus_qc_query
+from streamlit_app.sidebar_clock import render_sidebar_clock
 
 # Streamlit Cloud can rerun this entry point in a process that still has an
 # older helper module cached. Reload before binding newly added helpers so a
@@ -6050,7 +6051,7 @@ with st.sidebar:
 
     def _render_clock_tile():
         cp = clock_parts()
-        st.markdown(
+        render_sidebar_clock(
             f'''
             <div class="clock_tile">
               <div class="clock_center">
@@ -6078,11 +6079,9 @@ with st.sidebar:
               <div class="badge">v0.1.7 &nbsp;&middot;&nbsp; Question Intelligence</div>
             </div>
             ''',
-            unsafe_allow_html=True,
         )
 
-    # A timed Streamlit update dims the entire app in some browsers. Refresh the
-    # clock on normal interactions instead of forcing a rerender every second.
+    # Tick in the browser only: never rerun or dim the chat to update the clock.
     _render_clock_tile()
 
     def _open_new_chat_update() -> None:
