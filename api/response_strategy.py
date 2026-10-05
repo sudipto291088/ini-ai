@@ -16,7 +16,7 @@ NO_KS = "NO_KS"
 CONDITIONAL_KS = "CONDITIONAL_KS"
 KS_RECOMMENDED = "KS_RECOMMENDED"
 KS_EXPLICIT = "KS_EXPLICIT"
-RESPONSE_STRATEGY_VERSION = 8
+RESPONSE_STRATEGY_VERSION = 9
 
 
 def _stable_variant(seed: str, options: tuple[str, ...]) -> str:
@@ -379,6 +379,17 @@ def contextualize_learning_question(question: str, topic: str) -> str:
     if re.search(r"(?<!\w)" + re.escape(topic) + r"(?!\w)", question, re.IGNORECASE):
         return question
     return f"About {topic}: {question}"
+
+
+def learning_question_label(question: str, topic: str) -> str:
+    """Show the question alone while retaining parent context in the request."""
+    question = re.sub(r"\s+", " ", str(question or "")).strip()
+    topic = re.sub(r"\s+", " ", str(topic or "")).strip().rstrip("?.!")
+    if not topic:
+        return question
+    prefix = r"^About\s+" + re.escape(topic) + r"[?.!]*\s*:\s*"
+    label = re.sub(prefix, "", question, count=1, flags=re.IGNORECASE).strip()
+    return label or question
 
 
 def fallback_learning_questions(query: str, limit: int = 6) -> list[str]:

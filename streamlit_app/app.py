@@ -165,7 +165,7 @@ detect_intent = intent_layer.detect_intent
 import api.response_strategy as response_strategy
 
 if (
-    getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 8
+    getattr(response_strategy, "RESPONSE_STRATEGY_VERSION", 0) < 9
     or not hasattr(response_strategy, "contextualize_learning_question")
     or not hasattr(response_strategy, "knowledge_structure_map_for_action")
 ):
@@ -2999,7 +2999,8 @@ a.ini_nc_followup_link:hover {
   color: #f51b3f !important;
 }
 div[class*="st-key-ini_qi_card_"] {
-  width: max-content !important;
+  width: fit-content !important;
+  min-width: 0 !important;
   max-width: 100% !important;
   margin: 4px 0 !important;
   padding: 0 !important;
@@ -3150,12 +3151,15 @@ div[class*="st-key-ini_qi_card_"]:has(div[data-testid="stButton"] > button:hover
   box-shadow: 0 15px 38px rgba(15, 23, 42, 0.10), 0 3px 10px rgba(15, 23, 42, 0.035) !important;
 }
 div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] {
-  width: max-content !important;
+  width: fit-content !important;
+  min-width: 0 !important;
   max-width: 100% !important;
 }
 div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button {
   display: flex !important;
-  width: max-content !important;
+  width: fit-content !important;
+  min-width: 0 !important;
+  height: auto !important;
   max-width: 100% !important;
   min-height: 0 !important;
   align-items: flex-start !important;
@@ -3169,16 +3173,23 @@ div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button {
 }
 div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button p {
   display: block !important;
-  width: max-content !important;
+  width: auto !important;
   max-width: 100% !important;
   margin: 0 !important;
   text-align: left !important;
-  white-space: nowrap !important;
+  white-space: normal !important;
   word-break: normal !important;
-  overflow-wrap: normal !important;
+  overflow-wrap: anywhere !important;
   word-spacing: normal !important;
   letter-spacing: normal !important;
   line-height: 1.4 !important;
+}
+div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button > div,
+div[class*="st-key-ini_qi_card_"] [data-testid="stMarkdownContainer"] {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
 }
 div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button:hover {
   color: #172033 !important;
@@ -8324,7 +8335,7 @@ def page_new_chat() -> None:
                                         gap="xsmall",
                                     ):
                                         question_clicked = st.button(
-                                            f"{question_index}. {question}",
+                                            f"{question_index}. {response_strategy.learning_question_label(question, profile_source)}",
                                             key=(
                                                 f"ini_qi_question_{response_card_key}_"
                                                 f"{question_index}"

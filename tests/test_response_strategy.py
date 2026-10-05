@@ -1,5 +1,7 @@
 import unittest
 import importlib
+from pathlib import Path
+import re
 
 import api.response_strategy as response_strategy
 
@@ -12,6 +14,7 @@ from api.response_strategy import (
     extract_knowledge_structure_topic,
     fallback_learning_questions,
     contextualize_learning_question,
+    learning_question_label,
     initial_answer_opening,
     knowledge_structure_bridge,
     knowledge_structure_action,
@@ -24,6 +27,31 @@ from api.response_strategy import (
 
 
 class ResponseStrategyTests(unittest.TestCase):
+    def test_question_card_text_wraps_at_every_screen_size(self):
+        source = (Path(__file__).parents[1] / "streamlit_app" / "app.py").read_text(encoding="utf-8")
+        selector = 'div[class*="st-key-ini_qi_card_"] div[data-testid="stButton"] > button p'
+        rules = re.findall(re.escape(selector) + r"\s*\{([^}]+)\}", source)
+        self.assertTrue(rules)
+        for rule in rules:
+            self.assertNotIn("white-space: nowrap", rule)
+            self.assertIn("white-space: normal", rule)
+        self.assertIn("overflow-wrap: anywhere", rules[0])
+        self.assertIn("response_strategy.learning_question_label(question, profile_source)", source)
+        self.assertIn("contextualize_learning_question(question, profile_source)", source)
+
+    def test_card_labels_hide_context_without_removing_request_context(self):
+        topic = "What has to stay fixed for a model to count as the same system after fine-tuning?"
+        question = "What metrics distinguish harmless adaptation from a material behavior change?"
+        for parent in (topic, topic.rstrip("?"), "Biology", "Model identity: criteria and evidence"):
+            contextual = contextualize_learning_question(question, parent)
+            self.assertEqual(learning_question_label(contextual, parent), question)
+            self.assertEqual(learning_question_label(contextual, parent + "?"), question)
+            self.assertIn(parent, contextual)
+        self.assertEqual(learning_question_label("How does Biology explain inheritance?", "Biology"),
+                         "How does Biology explain inheritance?")
+        self.assertEqual(learning_question_label("About another subject: why?", "Biology"),
+                         "About another subject: why?")
+
     def test_generic_followups_are_bound_to_the_parent_subject(self):
         question = "What are the foundational ideas needed to understand this clearly?"
         git = contextualize_learning_question(question, "Git")
