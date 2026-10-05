@@ -3774,7 +3774,13 @@ def clock_parts() -> Dict[str, str]:
     now = _user_now()
     t = now.strftime("%I:%M").lstrip("0") or now.strftime("%I:%M")
     full_date = f"{now.strftime('%b')} {now.day}, {now.year}"
-    return {"time": t, "ampm": now.strftime("%p"), "date": full_date, "dow": now.strftime("%a")}
+    return {
+        "time": t, "ampm": now.strftime("%p"), "date": full_date,
+        "dow": now.strftime("%a"),
+        # Use the same minute-resolution timestamp as the digital display.
+        "hour_angle": f"{(now.hour % 12) * 30 + now.minute * 0.5:g}",
+        "minute_angle": f"{now.minute * 6:g}",
+    }
 
 
 def normalize_mojibake(s: str) -> str:
@@ -6062,7 +6068,8 @@ with st.sidebar:
                 <div class="clock_time_group">
                   <svg class="clock_face_icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
                     <circle cx="16" cy="16" r="11.5" stroke="currentColor" stroke-width="1.7"/>
-                    <path d="M16 9.5V16l4.2 3" stroke="#f51b3f" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M16 16V11" transform="rotate({cp['hour_angle']} 16 16)" stroke="#f51b3f" stroke-width="1.9" stroke-linecap="round"/>
+                    <path d="M16 16V8.5" transform="rotate({cp['minute_angle']} 16 16)" stroke="#f51b3f" stroke-width="1.9" stroke-linecap="round"/>
                   </svg>
                   <div class="clock_time">{cp["time"]}</div>
                   <div class="clock_ampm">{cp["ampm"]}</div>
