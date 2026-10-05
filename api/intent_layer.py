@@ -4,7 +4,7 @@ import re
 from typing import Any, Dict, Iterable
 
 
-INTENT_LAYER_VERSION = 6
+INTENT_LAYER_VERSION = 7
 
 
 # ============================================================
@@ -461,11 +461,13 @@ def _is_smalltalk(text: str) -> bool:
         return True
 
     words = set(s.split())
-    if len(s.split()) <= 18:
-        testing_words = {"test", "testing", "check", "checking", "trying"}
-        conversational_targets = {"you", "this", "it", "things"}
-        if words & testing_words and words & conversational_targets:
-            return True
+    if len(s.split()) <= 18 and re.match(
+        r"^(?:(?:i|we) (?:am|are) |im )?(?:just |only )?"
+        r"(?:testing|checking|trying)(?: out)? (?:you|this|it|things)"
+        r"(?: out| here| for now)?$",
+        s,
+    ):
+        return True
 
     # Relational/identity and capability questions are conversation turns,
     # not educational subjects that need a Question Map.
@@ -815,7 +817,9 @@ def _looks_like_topic(text: str) -> bool:
         if not any(s.startswith(x) for x in banned_smalltalk_starts):
             return True
 
-    if "?" in s and any(tok in s for tok in {"what", "why", "how", "explain", "compare"}):
+    # Normalization removes punctuation. Inspect the original question, not
+    # the punctuation-free noun-phrase candidate.
+    if "?" in text and re.match(r"^(?:what|why|how|when|where|which)\b", s):
         smalltalk_question_starts = {
             "how are you", "how are things", "how you doing", "how r u",
             "who are you", "what are you",

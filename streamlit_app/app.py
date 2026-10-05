@@ -149,7 +149,7 @@ import api.conversation_interpreter as conversation_interpreter
 
 if (
     not hasattr(conversation_interpreter, "should_preserve_conversation_context")
-    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 12
+    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 13
 ):
     conversation_interpreter = importlib.reload(conversation_interpreter)
 interpret_turn = conversation_interpreter.interpret_turn
@@ -159,7 +159,7 @@ should_preserve_conversation_context = (
 ensure_honest_ai_voice = conversation_interpreter.ensure_honest_ai_voice
 import api.intent_layer as intent_layer
 
-if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 6:
+if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 7:
     intent_layer = importlib.reload(intent_layer)
 detect_intent = intent_layer.detect_intent
 import api.response_strategy as response_strategy

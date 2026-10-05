@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import re
 
 
-CONVERSATION_INTERPRETER_VERSION = 12
+CONVERSATION_INTERPRETER_VERSION = 13
 
 
 _ACK_ONLY = re.compile(
@@ -149,13 +149,14 @@ def should_preserve_conversation_context(
                 normalized,
             )
             or re.search(
-                r"^(?:what|why)\s+(?:is|are|was|were|does|do|can)\s+"
+                r"^(?:what|why)\s+(?:is|are|was|were|does|do|did|can|has|have|must|should|would)\s+"
                 r"(?!(?:you|your|this|that|it|everything|anything|going)\b)",
                 normalized,
             )
             or re.search(
                 r"^how\s+(?:does|do|can)\s+"
-                r"(?!(?:you|we|i|this|that|it)\b)",
+                r"(?!(?:you|we|i|it)\b|(?:this|that)\s+"
+                r"(?:work|feel|happen|go)\b)",
                 normalized,
             )
             or re.search(
