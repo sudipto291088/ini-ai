@@ -149,7 +149,7 @@ import api.conversation_interpreter as conversation_interpreter
 
 if (
     not hasattr(conversation_interpreter, "should_preserve_conversation_context")
-    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 13
+    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 14
 ):
     conversation_interpreter = importlib.reload(conversation_interpreter)
 interpret_turn = conversation_interpreter.interpret_turn
@@ -9875,7 +9875,11 @@ def page_new_chat() -> None:
             st.session_state.chat_pending_discussion_action = None
 
         active_discussion = st.session_state.get("chat_active_discussion")
-        if isinstance(active_discussion, dict) and not start_discussion_topic:
+        if (
+            isinstance(active_discussion, dict)
+            and not start_discussion_topic
+            and not substantive_learning_turn
+        ):
             questions = list(active_discussion.get("questions") or [])[:3]
             normalized_discussion_reply = re.sub(
                 r"[^a-z0-9 ]+", " ", display_topic_text.lower()
@@ -10319,7 +10323,7 @@ def page_new_chat() -> None:
                             "how it works, its performance, practical uses, or another aspect?"
                         ),
                     }
-                elif discussion_freeform_followup:
+                elif discussion_freeform_followup and not substantive_learning_turn:
                     discussion_topic = (
                         (st.session_state.get("chat_active_discussion") or {}).get("topic")
                         or st.session_state.chat.get("topic")
