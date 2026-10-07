@@ -12268,10 +12268,15 @@ def page_new_chat() -> None:
                 -webkit-text-fill-color: #ffffff !important;
                 font-size: 14px !important;
                 font-weight: 800 !important;
-                line-height: 1 !important;
+                line-height: 1.4 !important;
                 letter-spacing: 0 !important;
                 margin: 0 !important;
                 white-space: nowrap !important;
+            }}
+
+            .st-key-nc_top_interrogate button [data-testid="stMarkdownContainer"],
+            .st-key-nc_top_illustrate button [data-testid="stMarkdownContainer"] {{
+                overflow: visible !important;
             }}
 
             [data-testid="stElementContainer"]:has(.nc-explore-label) {{
@@ -13509,11 +13514,16 @@ def page_new_chat() -> None:
                 -webkit-text-fill-color: #ffffff !important;
                 font-size: 12px !important;
                 font-weight: 800 !important;
-                line-height: 1 !important;
+                line-height: 1.4 !important;
                 letter-spacing: 0 !important;
                 white-space: nowrap !important;
                 overflow-wrap: normal !important;
                 word-break: keep-all !important;
+            }
+
+            .st-key-nc_bottom_interrogate button [data-testid="stMarkdownContainer"],
+            .st-key-nc_bottom_illustrate button [data-testid="stMarkdownContainer"] {
+                overflow: visible !important;
             }
 
             @media (max-width: 560px) {
