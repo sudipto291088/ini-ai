@@ -28,6 +28,15 @@ class WelcomeActionLayoutTests(unittest.TestCase):
         for action in ("replay", "go-introduction", "go-chat"):
             self.assertIn(f'data-action="{action}"', self.source)
 
+    def test_replay_is_an_accessible_icon(self):
+        self.assertIn('aria-label="Replay welcome" title="Replay welcome"', self.source)
+        self.assertIn('class="ini-fce-button ini-fce-replay"', self.source)
+        self.assertNotIn('data-action="replay">Replay</button>', self.source)
+
+    def test_navigation_buttons_have_matching_dimensions(self):
+        self.assertIn('.ini-fce-nav-action { width: 184px; height: 42px;', self.source)
+        self.assertEqual(self.source.count('class="ini-fce-button ini-fce-nav-action'), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

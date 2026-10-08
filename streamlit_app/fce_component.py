@@ -63,6 +63,9 @@ _FCE_COMPONENT = st.components.v2.component(
     .ini-fce-button.primary:hover, .ini-fce-button.primary:focus-visible { border-color: #d91435; background: #d91435; }
     .ini-fce-final-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 18px 30px 22px; }
     .ini-fce-final-actions .ini-fce-button { flex: 0 1 auto; width: fit-content; max-width: 100%; min-height: 42px; padding-inline: 18px; }
+    .ini-fce-final-actions .ini-fce-nav-action { width: 184px; height: 42px; box-sizing: border-box; white-space: nowrap; }
+    .ini-fce-final-actions .ini-fce-replay { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; padding: 0; border-color: transparent; background: transparent; box-shadow: none; color: #f51b3f; }
+    .ini-fce-replay svg { display: block; width: 22px; height: 22px; }
     @keyframes ini-fce-cursor { 0%, 45% { opacity: 1; } 46%, 100% { opacity: 0; } }
     @keyframes ini-fce-mukut-blink { 0%, 42%, 72%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 5px 11px rgba(245,27,63,.28)); } 43%, 71% { opacity: 0; transform: scale(.94); filter: none; } }
     @media (max-width: 900px) { .ini-fce-panel { width: min(82vw, 720px); } .ini-fce-body { padding-inline: 34px; } }
@@ -183,7 +186,7 @@ _FCE_COMPONENT = st.components.v2.component(
         return '';
       };
       const finalMarkup = () => textMarkup(data.messages[data.messages.length - 1], data.messages[data.messages.length - 1].text, false);
-      const finalActionsMarkup = () => `<div class="ini-fce-final-actions"><button class="ini-fce-button" type="button" data-action="replay">Replay</button><button class="ini-fce-button" type="button" data-action="go-introduction">Take Me to Introduction</button><button class="ini-fce-button primary" type="button" data-action="go-chat">Take Me to New Chat</button></div>`;
+      const finalActionsMarkup = () => `<div class="ini-fce-final-actions"><button class="ini-fce-button ini-fce-replay" type="button" data-action="replay" aria-label="Replay welcome" title="Replay welcome"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10a9 9 0 1 1 2.65 8.35M3 4v6h6"/></svg></button><button class="ini-fce-button ini-fce-nav-action" type="button" data-action="go-introduction">Take Me to Introduction</button><button class="ini-fce-button ini-fce-nav-action primary" type="button" data-action="go-chat">Take Me to New Chat</button></div>`;
 
       const currentProgress = () => {
         let elapsed = Date.now() - state.startedAt;
