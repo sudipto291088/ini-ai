@@ -3,6 +3,15 @@ from streamlit.testing.v1 import AppTest
 
 
 class GoogleSigninGateTests(unittest.TestCase):
+    def test_developer_mode_requires_explicit_loopback_binding(self):
+        from unittest.mock import patch
+        from streamlit_app.google_signin import local_developer_enabled
+        for flag, address, expected in [("1", "127.0.0.1", True), ("1", "::1", True),
+                                        ("1", "0.0.0.0", False), ("1", "", False),
+                                        ("0", "127.0.0.1", False)]:
+            with patch.dict("os.environ", {"INI_LOCAL_DEVELOPER": flag}), patch("streamlit_app.google_signin.st.get_option", return_value=address):
+                self.assertEqual(local_developer_enabled(), expected)
+
     def test_missing_configuration_blocks_conversation_content(self):
         app = AppTest.from_string('''
 import streamlit as st

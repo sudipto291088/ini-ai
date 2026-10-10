@@ -3,6 +3,7 @@
 from importlib.util import find_spec
 from pathlib import Path
 import base64
+import os
 
 import streamlit as st
 
@@ -60,7 +61,19 @@ def _signin_page(ready: bool) -> None:
                 st.caption("Google sign-in will be available once account setup is complete.")
 
 
+def local_developer_enabled() -> bool:
+    """Opt-in only on a server explicitly bound to the loopback interface."""
+    return os.environ.get("INI_LOCAL_DEVELOPER") == "1" and st.get_option("server.address") in {"127.0.0.1", "::1"}
+
+
 def require_google_account() -> str:
+    if local_developer_enabled():
+        # Separate local workspace; never infer ownership from a copied URL.
+        owner_id = "local-developer-workspace"
+        if "visitor" in st.query_params:
+            del st.query_params["visitor"]
+        bind_account_state(st.session_state, owner_id)
+        return owner_id
     try:
         configuration = st.secrets.to_dict()
     except (FileNotFoundError, st.errors.StreamlitSecretNotFoundError):
@@ -87,4 +100,7 @@ def require_google_account() -> str:
 def sign_out() -> None:
     st.session_state.clear()
     st.query_params.clear()
+    if local_developer_enabled():
+        st.rerun()
+        return
     st.logout()

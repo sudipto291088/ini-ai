@@ -21,7 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from streamlit_app.answer_emphasis import emphasis_html
-from streamlit_app.google_signin import require_google_account, sign_out
+from streamlit_app.google_signin import require_google_account, sign_out, local_developer_enabled
 
 import requests
 import streamlit as st
@@ -6040,7 +6040,8 @@ if session_action and session_sid:
 # Sidebar
 # =========================
 with st.sidebar:
-    st.button("Sign out", on_click=sign_out, key="account_signout", width="content")
+    if not local_developer_enabled():
+        st.button("Sign out", on_click=sign_out, key="account_signout", width="content")
     sidebar_logo_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
     sidebar_logo_data = base64.b64encode(sidebar_logo_path.read_bytes()).decode("ascii")
     st.markdown(
