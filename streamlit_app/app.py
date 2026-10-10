@@ -240,7 +240,19 @@ def _new_chat_update_window_active(today: Optional[date] = None) -> bool:
 # =========================
 st.set_page_config(page_title="InI.ai", layout="wide", initial_sidebar_state="expanded")
 
-visitor_id = require_google_account()
+google_signin_enabled = os.environ.get("INI_GOOGLE_SIGNIN_ENABLED") == "1"
+if google_signin_enabled:
+    visitor_id = require_google_account()
+else:
+    # Restore the existing public visitor workflow while account login is unfinished.
+    visitor_param = st.query_params.get("visitor")
+    if isinstance(visitor_param, list):
+        visitor_param = visitor_param[-1] if visitor_param else ""
+    visitor_id = str(visitor_param or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]{20,80}", visitor_id):
+        visitor_id = secrets.token_urlsafe(24)
+        st.query_params["visitor"] = visitor_id
+    st.session_state.visitor_id = visitor_id
 
 CSS = """
 <style>
@@ -3906,7 +3918,7 @@ def _format_sidebar_date(created_at: str) -> str:
 def _query_href(**updates: Optional[str]) -> str:
     params: Dict[str, str] = {}
     for key, value in st.query_params.items():
-        if key == "visitor":
+        if key == "visitor" and google_signin_enabled:
             continue
         if isinstance(value, list):
             if value:
@@ -3924,7 +3936,7 @@ def _query_href(**updates: Optional[str]) -> str:
 
 
 def _private_href(**params: Optional[str]) -> str:
-    values: Dict[str, str] = {}
+    values: Dict[str, str] = {} if google_signin_enabled else {"visitor": st.session_state.visitor_id}
     for key, value in params.items():
         if key == "visitor":
             continue
@@ -3935,6 +3947,8 @@ def _private_href(**params: Optional[str]) -> str:
 
 def _reset_query_to_page(page: str) -> None:
     st.query_params.clear()
+    if not google_signin_enabled:
+        st.query_params["visitor"] = st.session_state.visitor_id
     st.query_params["page"] = page
 
 
@@ -6040,7 +6054,7 @@ if session_action and session_sid:
 # Sidebar
 # =========================
 with st.sidebar:
-    if not local_developer_enabled():
+    if google_signin_enabled and not local_developer_enabled():
         st.button("Sign out", on_click=sign_out, key="account_signout", width="content")
     sidebar_logo_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
     sidebar_logo_data = base64.b64encode(sidebar_logo_path.read_bytes()).decode("ascii")

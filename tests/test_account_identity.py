@@ -72,12 +72,11 @@ class AccountIdentityTests(unittest.TestCase):
             storage.save_curriculum(b, "qc-a", {"subject": "Hijacked"})
             self.assertEqual(storage.load_curriculum(a, "qc-a")["subject"], "Statistics")
 
-    def test_entrypoint_gates_before_database_and_does_not_trust_url_identity(self):
+    def test_google_gate_is_explicit_opt_in_before_database(self):
         source = Path("streamlit_app/app.py").read_text(encoding="utf-8")
         self.assertLess(source.index("visitor_id = require_google_account()"), source.index("init_db()"))
-        self.assertNotIn('visitor_param = st.query_params.get("visitor")', source)
-        self.assertNotIn('st.query_params["visitor"] =', source)
-        self.assertNotIn('"visitor": st.session_state.visitor_id', source)
+        self.assertIn('google_signin_enabled = os.environ.get("INI_GOOGLE_SIGNIN_ENABLED") == "1"', source)
+        self.assertIn('if google_signin_enabled:\n    visitor_id = require_google_account()', source)
 
 
 if __name__ == "__main__":

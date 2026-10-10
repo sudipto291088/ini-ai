@@ -57,3 +57,9 @@ Streamlit's documented independent-session behavior, not global revocation.
 
 Unit tests cover claims, state isolation, storage isolation and gate ordering.
 They do not replace a real OAuth round-trip with configured Google credentials.
+# Current access status
+
+Public visitor access is restored by default while Google sign-in is unfinished.
+This retains the previous URL-based visitor privacy limitation; do not treat it as account authentication.
+The saved Google sign-in gate activates only when `INI_GOOGLE_SIGNIN_ENABLED=1` is explicitly set.
+Do not enable it on the live deployment until credentials and a real login round trip have been verified.
