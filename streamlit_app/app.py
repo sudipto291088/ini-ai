@@ -21,6 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from streamlit_app.answer_emphasis import emphasis_html
+from streamlit_app.google_signin import require_google_account, sign_out
 
 import requests
 import streamlit as st
@@ -239,16 +240,7 @@ def _new_chat_update_window_active(today: Optional[date] = None) -> bool:
 # =========================
 st.set_page_config(page_title="InI.ai", layout="wide", initial_sidebar_state="expanded")
 
-visitor_param = st.query_params.get("visitor")
-if isinstance(visitor_param, list):
-    visitor_param = visitor_param[-1] if visitor_param else ""
-
-visitor_id = str(visitor_param or "").strip()
-if not re.fullmatch(r"[A-Za-z0-9_-]{20,80}", visitor_id):
-    visitor_id = secrets.token_urlsafe(24)
-    st.query_params["visitor"] = visitor_id
-
-st.session_state.visitor_id = visitor_id
+visitor_id = require_google_account()
 
 CSS = """
 <style>
@@ -3914,6 +3906,8 @@ def _format_sidebar_date(created_at: str) -> str:
 def _query_href(**updates: Optional[str]) -> str:
     params: Dict[str, str] = {}
     for key, value in st.query_params.items():
+        if key == "visitor":
+            continue
         if isinstance(value, list):
             if value:
                 params[key] = str(value[-1])
@@ -3930,10 +3924,10 @@ def _query_href(**updates: Optional[str]) -> str:
 
 
 def _private_href(**params: Optional[str]) -> str:
-    values: Dict[str, str] = {
-        "visitor": st.session_state.visitor_id,
-    }
+    values: Dict[str, str] = {}
     for key, value in params.items():
+        if key == "visitor":
+            continue
         if value is not None and str(value).strip():
             values[key] = str(value)
     return "?" + urlencode(values)
@@ -3941,7 +3935,6 @@ def _private_href(**params: Optional[str]) -> str:
 
 def _reset_query_to_page(page: str) -> None:
     st.query_params.clear()
-    st.query_params["visitor"] = st.session_state.visitor_id
     st.query_params["page"] = page
 
 
@@ -6047,6 +6040,7 @@ if session_action and session_sid:
 # Sidebar
 # =========================
 with st.sidebar:
+    st.button("Sign out", on_click=sign_out, key="account_signout", width="content")
     sidebar_logo_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
     sidebar_logo_data = base64.b64encode(sidebar_logo_path.read_bytes()).decode("ascii")
     st.markdown(

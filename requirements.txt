@@ -4,3 +4,4 @@ pydantic
 openai
 python-dotenv
 requests
+streamlit[auth]>=1.57,<2
