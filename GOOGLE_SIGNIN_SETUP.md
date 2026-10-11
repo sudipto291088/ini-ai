@@ -1,8 +1,10 @@
 # Google-only sign-in setup
 
-The app now requires a verified Google account before it reads chat storage or
-renders learning/chat UI. There is no anonymous or URL-identity fallback. Without
-credentials it displays a locked sign-in page, not functioning Google login.
+Public visitor access remains enabled by default. Google sign-in is an opt-in
+gate (`INI_GOOGLE_SIGNIN_ENABLED=1`), not yet a live requirement. When enabled,
+the gate requires a verified Google account before reading chat storage or
+rendering learning/chat UI. Do not enable it without configured credentials
+and a verified real Google login round trip.
 
 ## Configure Google
 
