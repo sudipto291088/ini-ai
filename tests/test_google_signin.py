@@ -3,6 +3,43 @@ from streamlit.testing.v1 import AppTest
 
 
 class GoogleSigninGateTests(unittest.TestCase):
+    def test_invalid_identity_logs_out_without_recovery_button(self):
+        app = AppTest.from_string('''
+import streamlit as st
+from unittest.mock import patch
+from streamlit_app.google_signin import require_google_account
+config = {"auth": {"cookie_secret": "x" * 64,
+    "redirect_uri": "http://localhost:8502/oauth2callback",
+    "google": {"client_id": "client", "client_secret": "secret",
+    "server_metadata_url": "https://accounts.google.com/.well-known/openid-configuration"}}}
+def logout():
+    st.session_state["logout_called"] = True
+with patch.object(type(st.secrets), "to_dict", return_value=config), patch("streamlit_app.google_signin.find_spec", return_value=True), patch("streamlit_app.google_signin.st.user", {"is_logged_in": True}), patch("streamlit_app.google_signin.st.logout", side_effect=logout):
+    require_google_account()
+''').run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertTrue(app.session_state["logout_called"])
+        self.assertEqual([button.label for button in app.button], ["Continue with Google"])
+        self.assertEqual(len(app.warning), 0)
+
+    def test_signin_click_is_not_cleared_before_processing(self):
+        app = AppTest.from_string('''
+import streamlit as st
+from unittest.mock import patch
+from streamlit_app.google_signin import require_google_account
+config = {"auth": {"cookie_secret": "x" * 64,
+    "redirect_uri": "http://localhost:8502/oauth2callback",
+    "google": {"client_id": "client", "client_secret": "secret",
+    "server_metadata_url": "https://accounts.google.com/.well-known/openid-configuration"}}}
+def login(provider):
+    st.session_state["login_called"] = provider
+with patch.object(type(st.secrets), "to_dict", return_value=config), patch("streamlit_app.google_signin.find_spec", return_value=True), patch("streamlit_app.google_signin.st.login", side_effect=login):
+    require_google_account()
+''').run()
+        app.button(key="google_signin").click().run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertEqual(app.session_state["login_called"], "google")
+
     def test_developer_mode_requires_explicit_loopback_binding(self):
         from unittest.mock import patch
         from streamlit_app.google_signin import local_developer_enabled

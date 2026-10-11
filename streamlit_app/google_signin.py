@@ -15,6 +15,10 @@ from streamlit_app.account_identity import (
 def _signin_page(ready: bool) -> None:
     logo = base64.b64encode(Path(__file__).with_name("ini_buta_icon_cropped.png").read_bytes()).decode("ascii")
     st.html("""<style>
+    body:has(.st-key-signin_surface) #ini-nc-scroll-controls,
+    body:has(.st-key-signin_surface) #ini-nc-query-navigator {
+      display:none !important;
+    }
     [data-testid="stAppViewContainer"]:has(.st-key-signin_surface) {
       background: radial-gradient(ellipse at 66% 38%, #fcecef 0, transparent 42%),
                   radial-gradient(ellipse at 18% 82%,#e0e5ed 0,transparent 52%),
@@ -138,11 +142,14 @@ def require_google_account() -> str:
     if "visitor" in st.query_params:
         del st.query_params["visitor"]
     if owner_id is None:
-        st.session_state.clear()
+        # Clear prior-account data only on an identity transition. Clearing on
+        # every rerun discards the sign-in button's pending click event.
+        if st.session_state.get("_authenticated_owner"):
+            st.session_state.clear()
         if claims.get("is_logged_in"):
-            st.warning("Your sign-in has expired or could not be verified. Please sign in again.")
-            if st.button("Sign out and try again", key="invalid_google_logout"):
-                st.logout()
+            # An invalid identity is signed out, not a second login-page state.
+            # Logout also starts a fresh page, clearing chat DOM left by JS.
+            st.logout()
         _signin_page(ready)
         st.stop()
     bind_account_state(st.session_state, owner_id)
