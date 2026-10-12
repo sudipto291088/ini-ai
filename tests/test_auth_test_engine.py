@@ -2,10 +2,17 @@ import unittest
 from unittest.mock import patch
 from pathlib import Path
 
-from streamlit_app.auth_test_engine import start_test_engine, TEST_API_BASE
+from streamlit_app.auth_test_engine import start_test_engine, TEST_API_BASE, provider_post
 
 
 class HostedAuthTestEngineTests(unittest.TestCase):
+    def test_gpt4_request_omits_unsupported_reasoning_without_mutating_input(self):
+        payload = {"model": "gpt-4o-mini", "reasoning": {"effort": "minimal"}, "input": "hello"}
+        with patch("streamlit_app.auth_test_engine.requests.post") as post:
+            provider_post("https://api.openai.com/v1/responses", json=payload)
+            self.assertNotIn("reasoning", post.call_args.kwargs["json"])
+        self.assertIn("reasoning", payload)
+
     def tearDown(self):
         start_test_engine.clear()
 
