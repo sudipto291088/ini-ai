@@ -32,6 +32,11 @@ class HostedAuthTestEngineTests(unittest.TestCase):
         self.assertLess(source.index("require_google_account()"), source.index("start_test_engine()"))
         self.assertLess(source.index("start_test_engine()"), source.index("runpy.run_path("))
 
+    def test_hosted_test_defaults_to_verified_local_model(self):
+        source = (Path(__file__).parents[1] / "streamlit_app/auth_test_app.py").read_text(encoding="utf-8")
+        self.assertIn('st.secrets.get("INI_LLM_MODEL", "gpt-5-mini")', source)
+        self.assertLess(source.index('os.environ["INI_LLM_MODEL"]'), source.index("start_test_engine()"))
+
 
 if __name__ == "__main__":
     unittest.main()

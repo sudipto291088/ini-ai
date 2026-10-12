@@ -22,7 +22,8 @@ if not api_key:
     st.error("The test answer engine is not configured yet.")
     st.stop()
 os.environ["OPENAI_API_KEY"] = api_key
-for setting in ("INI_LLM_MODEL", "INI_LLM_MAX_TOKENS"):
+os.environ["INI_LLM_MODEL"] = str(st.secrets.get("INI_LLM_MODEL", "gpt-5-mini")).strip() or "gpt-5-mini"
+for setting in ("INI_LLM_MAX_TOKENS",):
     if setting in st.secrets:
         os.environ[setting] = str(st.secrets[setting])
 os.environ["INI_API_BASE"] = TEST_API_BASE
