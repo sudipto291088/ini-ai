@@ -17,6 +17,18 @@ from streamlit_app.auth_test_engine import TEST_API_BASE, start_test_engine
 
 st.set_page_config(page_title="InI.ai", layout="wide", initial_sidebar_state="expanded")
 require_google_account()
+# Only this isolated entry point opts into the new database when configured.
+database_url = str(st.secrets.get("INI_DATABASE_URL", "")).strip()
+os.environ["INI_STORAGE_BACKEND"] = "postgres" if database_url else "sqlite"
+if database_url:
+    os.environ["INI_DATABASE_URL"] = database_url
+    from streamlit_app.storage_sqlite import init_db
+    from streamlit_app.storage_postgres import StorageUnavailable
+    try:
+        init_db()
+    except StorageUnavailable as exc:
+        st.error(str(exc))
+        st.stop()
 api_key = str(st.secrets.get("OPENAI_API_KEY", "")).strip()
 if not api_key:
     st.error("The test answer engine is not configured yet.")

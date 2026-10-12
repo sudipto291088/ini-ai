@@ -4,6 +4,7 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Dict, Iterator, List, Optional, Tuple
+from functools import lru_cache
 
 DB_PATH = os.environ.get(
     "INI_DB_PATH",
@@ -13,6 +14,11 @@ DB_PATH = os.environ.get(
 
 @contextmanager
 def _conn() -> Iterator[sqlite3.Connection]:
+    if _postgres_enabled():
+        from streamlit_app.storage_postgres import connection
+        with connection() as c:
+            yield c
+        return
     connection = sqlite3.connect(DB_PATH, check_same_thread=False)
     try:
         yield connection
@@ -20,7 +26,27 @@ def _conn() -> Iterator[sqlite3.Connection]:
         connection.close()
 
 
+def _postgres_enabled() -> bool:
+    backend = os.environ.get("INI_STORAGE_BACKEND", "sqlite").strip().lower()
+    if backend not in ("sqlite", "postgres"):
+        raise RuntimeError("Unsupported storage backend.")
+    return backend == "postgres"
+
+
 def init_db() -> None:
+    if _postgres_enabled():
+        _init_postgres(os.environ.get("INI_DATABASE_URL", ""))
+    else:
+        _init_schema()
+
+
+@lru_cache(maxsize=2)
+def _init_postgres(database_url: str) -> None:
+    # Cache only schema initialization, never any user's conversations.
+    _init_schema()
+
+
+def _init_schema() -> None:
     with _conn() as c:
         c.execute(
             """
@@ -34,17 +60,20 @@ def init_db() -> None:
             )
             """
         )
-        columns = {
-            row[1]
-            for row in c.execute("PRAGMA table_info(learning_sessions)").fetchall()
-        }
-        if "visitor_id" not in columns:
-            c.execute(
-                """
-                ALTER TABLE learning_sessions
-                ADD COLUMN visitor_id TEXT NOT NULL DEFAULT ''
-                """
-            )
+        if getattr(c, "postgres", False):
+            c.execute("ALTER TABLE learning_sessions ADD COLUMN IF NOT EXISTS visitor_id TEXT NOT NULL DEFAULT ''")
+        else:
+            columns = {
+                row[1]
+                for row in c.execute("PRAGMA table_info(learning_sessions)").fetchall()
+            }
+            if "visitor_id" not in columns:
+                c.execute(
+                    """
+                    ALTER TABLE learning_sessions
+                    ADD COLUMN visitor_id TEXT NOT NULL DEFAULT ''
+                    """
+                )
         c.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_learning_sessions_visitor_updated

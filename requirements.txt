@@ -5,3 +5,4 @@ openai
 python-dotenv
 requests
 streamlit[auth]>=1.57,<2
+psycopg[binary,pool]>=3.2,<4
