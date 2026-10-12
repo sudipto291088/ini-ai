@@ -39,7 +39,6 @@ def _pool(database_url):
             "prepare_threshold": None,
             "sslmode": "verify-full",
             "sslrootcert": certifi.where(),
-            "options": "-c statement_timeout=15000 -c lock_timeout=10000",
         },
     )
 
@@ -51,6 +50,10 @@ def connection():
         raise StorageUnavailable("Persistent storage is not configured.")
     try:
         with _pool(database_url).connection() as conn:
+            # Neon transaction pooling rejects these as startup parameters.
+            # Apply limits inside the transaction instead.
+            conn.execute("SET LOCAL statement_timeout = '15s'")
+            conn.execute("SET LOCAL lock_timeout = '10s'")
             yield PostgresConnection(conn)
     except StorageUnavailable:
         raise
