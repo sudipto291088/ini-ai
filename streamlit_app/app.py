@@ -527,7 +527,7 @@ div[data-testid="stSidebar"] .block-container{
   list-style:none;
 }
 .ini-sidebar-profile > summary::-webkit-details-marker{display:none;}
-.ini-sidebar-profile__chevron{margin-left:auto; color:#667085; font-size:13px;}
+.ini-sidebar-profile__chevron{margin-left:auto; color:#667085; font-size:19px;line-height:1;}
 .ini-sidebar-profile__menu{
   position:absolute;
   left:0;
@@ -6054,8 +6054,6 @@ if session_action and session_sid:
 # Sidebar
 # =========================
 with st.sidebar:
-    if google_signin_enabled and not local_developer_enabled():
-        st.button("Sign out", on_click=sign_out, key="account_signout", width="content")
     sidebar_logo_path = Path(__file__).with_name("ini_buta_icon_cropped.png")
     sidebar_logo_data = base64.b64encode(sidebar_logo_path.read_bytes()).decode("ascii")
     st.markdown(
@@ -6283,7 +6281,7 @@ with st.sidebar:
                <summary>
                  <span class="ini-sidebar-footer__avatar">S</span>
                  <span>User profile</span>
-                 <span class="ini-sidebar-profile__chevron">⌃</span>
+                 <span class="ini-sidebar-profile__chevron">⋮</span>
                </summary>
                <div class="ini-sidebar-profile__menu">
                  <div class="ini-sidebar-profile__menu-item">
@@ -6298,6 +6296,35 @@ with st.sidebar:
            </div>''',
         unsafe_allow_html=True,
     )
+
+    if google_signin_enabled and not local_developer_enabled():
+        signout_icon_svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 26 26" fill="none" stroke="#eb526c" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.5 5.3a8.5 8.5 0 1 0 0 13.4"/>
+          <path d="M12 12h10m-3.5-3.5L22 12l-3.5 3.5"/>
+        </svg>'''
+        signout_icon_data = base64.b64encode(signout_icon_svg.encode("utf-8")).decode("ascii")
+        st.html(f'''<style>
+          [data-testid="stSidebar"] .st-key-account_signout {{
+            position:fixed;left:212px;bottom:5px;width:38px;z-index:22;
+          }}
+          .st-key-account_signout button {{
+            width:38px !important;min-width:38px !important;min-height:36px !important;height:36px !important;padding:0 !important;
+            gap:0 !important;justify-content:center !important;
+            border:0 !important;background:transparent !important;box-shadow:none !important;
+          }}
+          .st-key-account_signout button p {{font-size:0 !important;line-height:0 !important;}}
+          .st-key-account_signout button > div {{position:absolute;width:0;overflow:hidden;}}
+          .st-key-account_signout button::before {{
+            content:"";width:23px;height:23px;flex:0 0 23px;display:block;
+            background:url("data:image/svg+xml;base64,{signout_icon_data}") center/contain no-repeat;
+          }}
+          .st-key-account_signout button:hover {{background:rgba(229,29,66,.06);}}
+          [data-testid="stSidebar"][aria-expanded="false"] .st-key-account_signout {{display:none;}}
+          @media(max-width:720px) {{
+            [data-testid="stSidebar"] .st-key-account_signout {{left:calc(min(70vw,320px) - 76px);}}
+          }}
+        </style>''')
+        st.button("Sign out", on_click=sign_out, key="account_signout", help="Sign out", width=38)
 
 # On phones, begin with navigation collapsed. The document-level marker keeps
 # Streamlit reruns from closing the drawer again after the user opens it.
