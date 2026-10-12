@@ -1,12 +1,35 @@
 import os
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
 from streamlit_app import storage_sqlite as storage
-from streamlit_app.storage_postgres import PostgresConnection, StorageUnavailable, connection
+from streamlit_app.storage_postgres import PostgresConnection, StorageUnavailable, connection, _pool
 
 
 class PostgresStorageTests(unittest.TestCase):
+    def test_pool_keeps_tls_verification_and_no_startup_options(self):
+        _pool.cache_clear()
+        driver = MagicMock()
+        with patch.dict(sys.modules, {"psycopg_pool": driver}):
+            _pool("private")
+        kwargs = driver.ConnectionPool.call_args.kwargs
+        self.assertEqual(kwargs["kwargs"]["sslmode"], "verify-full")
+        self.assertNotIn("options", kwargs["kwargs"])
+        self.assertEqual(kwargs["max_size"], 5)
+        _pool.cache_clear()
+
+    def test_timeouts_are_transaction_local_for_neon_pooling(self):
+        pool = MagicMock()
+        raw = pool.connection.return_value.__enter__.return_value
+        with patch.dict(os.environ, {"INI_DATABASE_URL": "private"}), patch(
+            "streamlit_app.storage_postgres._pool", return_value=pool
+        ):
+            with connection():
+                pass
+        self.assertEqual(raw.execute.call_args_list[0].args[0], "SET LOCAL statement_timeout = '15s'")
+        self.assertEqual(raw.execute.call_args_list[1].args[0], "SET LOCAL lock_timeout = '10s'")
+
     def test_sql_parameters_are_bound_not_interpolated(self):
         raw = MagicMock()
         adapter = PostgresConnection(raw)
