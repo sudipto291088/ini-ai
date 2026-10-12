@@ -29,6 +29,7 @@ class PostgresConnection:
 
 @lru_cache(maxsize=2)
 def _pool(database_url):
+    import certifi
     from psycopg_pool import ConnectionPool
     return ConnectionPool(
         conninfo=database_url, min_size=0, max_size=5, timeout=15,
@@ -37,7 +38,7 @@ def _pool(database_url):
             "connect_timeout": 10,
             "prepare_threshold": None,
             "sslmode": "verify-full",
-            "sslrootcert": "system",
+            "sslrootcert": certifi.where(),
             "options": "-c statement_timeout=15000 -c lock_timeout=10000",
         },
     )
