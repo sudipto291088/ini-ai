@@ -16,6 +16,9 @@ from streamlit_app.google_signin import require_google_account
 from streamlit_app.auth_test_engine import TEST_API_BASE, start_test_engine
 
 st.set_page_config(page_title="InI.ai", layout="wide", initial_sidebar_state="expanded")
+from streamlit_app.privacy_page import show_public_privacy_page
+if show_public_privacy_page():
+    st.stop()
 require_google_account()
 # Only this isolated entry point opts into the new database when configured.
 database_url = str(st.secrets.get("INI_DATABASE_URL", "")).strip()

@@ -240,6 +240,10 @@ def _new_chat_update_window_active(today: Optional[date] = None) -> bool:
 # =========================
 st.set_page_config(page_title="InI.ai", layout="wide", initial_sidebar_state="expanded")
 
+from streamlit_app.privacy_page import show_public_privacy_page
+if show_public_privacy_page():
+    st.stop()
+
 google_signin_enabled = os.environ.get("INI_GOOGLE_SIGNIN_ENABLED") == "1"
 if google_signin_enabled:
     visitor_id = require_google_account()
@@ -6486,6 +6490,7 @@ if st.session_state.rename_session_sid:
 # =========================
 
 def page_home():
+    st.caption("[Privacy policy](?page=privacy)")
     st.markdown(
         """
         <style>

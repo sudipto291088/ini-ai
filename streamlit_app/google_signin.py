@@ -113,6 +113,7 @@ def _signin_page(ready: bool) -> None:
                         if st.button("Continue with Google", width=240, disabled=not ready, key="google_signin"):
                             st.login("google")
                     st.html('<div class="ini-signin-footer">Sign in to keep your conversations<br>and subject learning together.</div>')
+                    st.caption("[Privacy policy](?page=privacy)")
                     if not ready:
                         st.caption("Google sign-in is not connected yet.")
 
