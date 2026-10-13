@@ -30,6 +30,11 @@ def canonical_subject(text: str) -> str:
     )
     if mechanism_match:
         return mechanism_match.group(1).strip(" .?!")
+    # Preserve the complete causal clause instead of stripping its auxiliary
+    # verb (which can change meaning or leave an ungrammatical fragment).
+    # "Reasons why ..." is a noun phrase even when the source is a why-question.
+    if re.match(r"^why\b", value, flags=re.IGNORECASE):
+        return f"Reasons {value[0].lower()}{value[1:]}"
     previous = None
     while value and value != previous:
         previous = value
@@ -166,6 +171,8 @@ def normalize_topic_profile(
 
     # Verified metadata takes precedence over both model output and inference.
     generated.update(subject_metadata(user_query))
+    if re.match(r"^why\b", generated.get("Subject", ""), flags=re.IGNORECASE):
+        generated["Subject"] = canonical_subject(generated["Subject"])
     if generated.get("Difficulty", "").casefold() not in {
         "beginner", "intermediate", "advanced", "expert",
     }:
