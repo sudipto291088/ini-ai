@@ -25,11 +25,11 @@ def _signin_page(ready: bool) -> None:
                   linear-gradient(125deg,#fafbfc,#f3f5f8);
     }
     [data-testid="stMainBlockContainer"]:has(.st-key-signin_surface) {
-      min-height:100svh; display:flex; flex-direction:column; justify-content:center;
+      min-height:100svh; display:flex; flex-direction:column; justify-content:safe center;
       padding:64px 24px;
     }
     [data-testid="stMainBlockContainer"]:has(.st-key-signin_surface) > [data-testid="stVerticalBlock"] {
-      min-height:calc(100svh - 128px); justify-content:center;
+      min-height:calc(100svh - 128px); justify-content:safe center;
     }
     .st-key-signin_surface {
       padding:16px; border-radius:32px;
@@ -85,15 +85,49 @@ def _signin_page(ready: bool) -> None:
     .st-key-signin_form .ini-signin-title::before {display:none;}
     .ini-signin-kicker {text-align:center;font-size:10px;letter-spacing:2px;color:#d91c40;text-transform:uppercase;margin-bottom:16px;}
     .st-key-signin_form .ini-signin-copy {margin-bottom:32px;}
-    @media(max-width:600px) {
-      [data-testid="stMainBlockContainer"]:has(.st-key-signin_surface) {padding:40px 18px;}
-      .st-key-signin_surface {padding:12px;border-radius:26px;}
-      .ini-signin-title {font-size:27px;}
-      .ini-signin-story {min-height:0;padding:26px 24px;}
-      .ini-signin-story .ini-signin-brand {margin-bottom:24px;}
-      .ini-signin-story h2 {font-size:30px;}
-      .ini-signin-art {height:145px;margin-top:12px;}
-      .st-key-signin_form {padding:28px 18px;}
+    @media(max-width:760px) {
+      [data-testid="stMainBlockContainer"]:has(.st-key-signin_surface) {
+        min-height:100svh; justify-content:flex-start;
+        padding:max(64px,env(safe-area-inset-top)) 14px max(24px,env(safe-area-inset-bottom));
+      }
+      [data-testid="stMainBlockContainer"]:has(.st-key-signin_surface) > [data-testid="stVerticalBlock"] {
+        min-height:0; justify-content:flex-start;
+      }
+      .st-key-signin_surface {padding:10px;border-radius:26px;max-width:100%;min-width:0;}
+      .st-key-signin_surface > [data-testid="stHorizontalBlock"] {
+        flex-direction:column;align-items:stretch;
+      }
+      .st-key-signin_surface > [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        width:100%;min-width:0;flex:1 1 auto;
+      }
+      .ini-signin-story {min-height:0;padding:22px 22px 18px;border-radius:19px;}
+      .ini-signin-story .ini-signin-brand {gap:12px;margin-bottom:20px;}
+      .ini-signin-brand img {width:27px;height:54px;flex-shrink:0;}
+      .ini-signin-wordmark {font-size:27px;}
+      .ini-signin-story h2 {font-size:29px;letter-spacing:-1px;margin-bottom:12px;}
+      .ini-signin-story p {font-size:13px;line-height:1.6;}
+      .ini-signin-network {height:100px;margin-top:16px;}
+      .ini-signin-network::before {width:96px;height:96px;left:calc(50% - 48px);}
+      .ini-signin-network::after {left:25px;right:25px;top:49px;}
+      .ini-signin-node {padding:8px 12px;font-size:10px;}
+      .ini-signin-node.question {left:0;top:35px;font-size:20px;padding:3px 18px;}
+      .ini-signin-node.explore {left:calc(50% - 31px);top:0;}
+      .ini-signin-node.connect {right:0;top:36px;}
+      .ini-signin-node.understand {right:12%;top:72px;}
+      .ini-signin-story-note {margin-top:14px;font-size:9px;}
+      .st-key-signin_form {padding:24px 12px 16px;min-width:0;}
+      .st-key-signin_form .ini-signin-title {font-size:27px;}
+      .ini-signin-kicker {letter-spacing:1.5px;margin-bottom:12px;}
+      .st-key-signin_form .ini-signin-copy {margin-bottom:20px;line-height:1.65;}
+      .st-key-google_signin {max-width:100%;}
+      .st-key-google_signin button {width:100%;max-width:100%;height:60px;min-height:60px;padding:12px;}
+      .st-key-google_signin button p {white-space:normal;line-height:22px;}
+      .ini-signin-footer {margin-top:14px;}
+    }
+    @media(max-width:360px) {
+      .ini-signin-story {padding:18px 16px;}
+      .ini-signin-story h2 {font-size:26px;}
+      .st-key-signin_form {padding-left:4px;padding-right:4px;}
     }
     </style>""")
     with st.container(horizontal_alignment="center"):
