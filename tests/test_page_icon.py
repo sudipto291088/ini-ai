@@ -6,7 +6,7 @@ from streamlit.testing.v1 import AppTest
 
 
 class PageIconTests(unittest.TestCase):
-    def test_both_entry_points_use_the_original_mukut(self):
+    def test_both_entry_points_use_the_approved_mukut_favicon(self):
         app_dir = Path(__file__).resolve().parents[1] / "streamlit_app"
         for name in ("app.py", "auth_test_app.py"):
             with self.subTest(entry_point=name):
@@ -22,7 +22,7 @@ class PageIconTests(unittest.TestCase):
                 icon = next(kw.value for kw in calls[0].keywords if kw.arg == "page_icon")
                 icon_path = eval(compile(ast.Expression(icon), str(path), "eval"),
                                  {"Path": Path, "__file__": str(path)})
-                self.assertEqual(Path(icon_path), app_dir / "ini_buta_icon_white.png")
+                self.assertEqual(Path(icon_path), app_dir / "mukut_favicon.png")
                 self.assertTrue(Path(icon_path).is_file())
                 script = "import streamlit as st\n" + ast.unparse(calls[0])
                 script = script.replace(ast.unparse(icon), repr(icon_path))
