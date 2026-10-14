@@ -238,7 +238,7 @@ def _new_chat_update_window_active(today: Optional[date] = None) -> bool:
 # =========================
 # Page Setup
 # =========================
-st.set_page_config(page_title="InI.ai", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="InI.ai", page_icon=str(Path(__file__).with_name("ini_buta_icon_white.png")), layout="wide", initial_sidebar_state="expanded")
 
 from streamlit_app.privacy_page import show_public_privacy_page
 if show_public_privacy_page():
