@@ -22,6 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from streamlit_app.answer_emphasis import emphasis_html
 from streamlit_app.google_signin import require_google_account, sign_out, local_developer_enabled
+from streamlit_app.user_profile_menu import render_user_profile_menu
 
 import requests
 import streamlit as st
@@ -504,7 +505,7 @@ div[data-testid="stSidebar"] .block-container{
 .ini-sidebar-empty-icon{font-size:21px; color:#f51b3f; line-height:1;}
 .ini-sidebar-empty-title{font-size:13px; font-weight:570; color:var(--ink);}
 .ini-sidebar-empty-copy{font-size:11px; margin-top:2px; line-height:1.35;}
-.ini-sidebar-footer{
+.ini-sidebar-footer, .st-key-account_profile_footer{
   position:fixed;
   left:18px;
   bottom:2px;
@@ -531,7 +532,8 @@ div[data-testid="stSidebar"] .block-container{
   list-style:none;
 }
 .ini-sidebar-profile > summary::-webkit-details-marker{display:none;}
-.ini-sidebar-profile__chevron{margin-left:auto; color:#667085; font-size:19px;line-height:1;}
+.st-key-account_profile_menu button{padding-right:45px;justify-content:flex-start;}
+.st-key-account_profile_menu button > div > div[aria-hidden="true"]{display:none;}
 .ini-sidebar-profile__menu{
   position:absolute;
   left:0;
@@ -928,7 +930,7 @@ button[kind="secondary"]{
     padding-inline: 18px !important;
   }
 
-  .ini-sidebar-footer{
+  .ini-sidebar-footer, .st-key-account_profile_footer{
     left:18px;
     width:calc(min(70vw, 320px) - 36px);
   }
@@ -6279,26 +6281,9 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        '''<div class="ini-sidebar-footer">
-             <details class="ini-sidebar-profile">
-               <summary>
-                 <span class="ini-sidebar-footer__avatar">S</span>
-                 <span>User profile</span>
-                 <span class="ini-sidebar-profile__chevron">⋮</span>
-               </summary>
-               <div class="ini-sidebar-profile__menu">
-                 <div class="ini-sidebar-profile__menu-item">
-                   <svg class="ini-sidebar-profile__menu-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                     <path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z" stroke="currentColor" stroke-width="1.6"/>
-                     <path d="M19.1 13.6a7.9 7.9 0 0 0 0-3.2l2-1.5-2-3.4-2.5 1a8.1 8.1 0 0 0-2.8-1.6L13.5 2h-3l-.4 2.9a8.1 8.1 0 0 0-2.8 1.6l-2.5-1-2 3.4 2 1.5a7.9 7.9 0 0 0 0 3.2l-2 1.5 2 3.4 2.5-1a8.1 8.1 0 0 0 2.8 1.6l.4 2.9h3l.4-2.9a8.1 8.1 0 0 0 2.8-1.6l2.5 1 2-3.4-2.1-1.5Z" stroke="currentColor" stroke-width="1.35" stroke-linejoin="round"/>
-                   </svg>
-                   <span>Settings</span>
-                 </div>
-               </div>
-             </details>
-           </div>''',
-        unsafe_allow_html=True,
+    render_user_profile_menu(
+        can_sign_out=google_signin_enabled and not local_developer_enabled(),
+        on_exit=sign_out,
     )
 
     if google_signin_enabled and not local_developer_enabled():
