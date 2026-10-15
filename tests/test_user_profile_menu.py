@@ -18,7 +18,7 @@ with st.sidebar:
     def test_exit_app_uses_the_signout_callback(self):
         app = self.app()
         self.assertEqual(len(app.exception), 0)
-        self.assertEqual(app.button(key="account_profile_exit").label, "Exit app")
+        self.assertEqual(app.button(key="account_profile_exit").label, "Exit")
         app.button(key="account_profile_exit").click().run()
         self.assertTrue(app.session_state["exit_called"])
 

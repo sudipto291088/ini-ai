@@ -13,7 +13,7 @@ def render_user_profile_menu(*, can_sign_out: bool, on_exit: Callable[[], None])
             st.button("Settings", icon=":material/settings:", disabled=True, type="tertiary",
                       help="Settings are not available yet.", width="stretch",
                       key="account_profile_settings")
-            st.button("Exit app", icon=":material/logout:", on_click=on_exit, type="tertiary",
+            st.button("Exit", icon=":material/logout:", on_click=on_exit, type="tertiary",
                       disabled=not can_sign_out, width="stretch",
                       help="Sign out of InI. Your saved chats will remain."
                       if can_sign_out else "Local developer mode has no signed-in account.",
