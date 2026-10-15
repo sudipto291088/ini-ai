@@ -2,10 +2,15 @@ from pathlib import Path
 import unittest
 
 from streamlit.testing.v1 import AppTest
-from streamlit_app.user_profile_menu import profile_identity
+from streamlit_app.user_profile_menu import profile_identity, PROFILE_TRIGGER_CSS
 
 
 class UserProfileMenuTests(unittest.TestCase):
+    def test_profile_uses_regular_weight_with_larger_avatar(self):
+        self.assertIn("font-weight:400", PROFILE_TRIGGER_CSS)
+        self.assertIn("width:30px;height:30px", PROFILE_TRIGGER_CSS)
+        self.assertNotIn("font-weight:650", PROFILE_TRIGGER_CSS)
+
     def test_signed_in_google_name_and_initials(self):
         self.assertEqual(profile_identity({"is_logged_in": True, "name": "Sudipto Bhadra"}),
                          ("Sudipto Bhadra", "SB"))
