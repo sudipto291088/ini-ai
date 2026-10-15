@@ -2,9 +2,33 @@ from pathlib import Path
 import unittest
 
 from streamlit.testing.v1 import AppTest
+from streamlit_app.user_profile_menu import profile_identity
 
 
 class UserProfileMenuTests(unittest.TestCase):
+    def test_signed_in_google_name_and_initials(self):
+        self.assertEqual(profile_identity({"is_logged_in": True, "name": "Sudipto Bhadra"}),
+                         ("Sudipto Bhadra", "SB"))
+        self.assertEqual(profile_identity({"is_logged_in": True, "given_name": "Sudipto"}),
+                         ("Sudipto", "S"))
+
+    def test_missing_name_does_not_expose_or_parse_email(self):
+        self.assertEqual(profile_identity({"is_logged_in": True, "email": "private@example.com"}),
+                         ("User profile", "U"))
+        self.assertEqual(profile_identity({"is_logged_in": False, "name": "Prior account"}),
+                         ("User profile", "U"))
+
+    def test_profile_name_is_plain_text_not_markdown(self):
+        app = AppTest.from_string('''
+import streamlit as st
+from unittest.mock import patch
+from streamlit_app.user_profile_menu import render_user_profile_menu
+with patch("streamlit_app.user_profile_menu.st.user", {"is_logged_in": True, "name": "A [link](https://example.com)"}):
+    render_user_profile_menu(can_sign_out=True, on_exit=lambda: None)
+''').run()
+        self.assertEqual(len(app.exception), 0)
+        self.assertEqual(app.text[0].value, "A [link](https://example.com)")
+
     def app(self, signed_in=True):
         return AppTest.from_string(f'''
 import streamlit as st

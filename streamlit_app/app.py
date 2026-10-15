@@ -532,8 +532,6 @@ div[data-testid="stSidebar"] .block-container{
   list-style:none;
 }
 .ini-sidebar-profile > summary::-webkit-details-marker{display:none;}
-.st-key-account_profile_menu button{padding-right:45px;justify-content:flex-start;}
-.st-key-account_profile_menu button > div > div[aria-hidden="true"]{display:none;}
 .ini-sidebar-profile__menu{
   position:absolute;
   left:0;
