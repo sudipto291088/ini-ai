@@ -14,8 +14,9 @@ os.environ["INI_DB_PATH"] = str(app_dir / "auth_test_sessions.db")
 import streamlit as st
 from streamlit_app.google_signin import require_google_account
 from streamlit_app.auth_test_engine import TEST_API_BASE, start_test_engine
+from streamlit_app.page_branding import tab_icon
 
-st.set_page_config(page_title="InI.ai", page_icon=str(Path(__file__).with_name("mukut_favicon.png")), layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="InI.ai", page_icon=tab_icon(), layout="wide", initial_sidebar_state="expanded")
 from streamlit_app.privacy_page import show_public_privacy_page
 if show_public_privacy_page():
     st.stop()

@@ -3,6 +3,8 @@ from pathlib import Path
 import unittest
 
 from streamlit.testing.v1 import AppTest
+from PIL import Image
+from streamlit_app.page_branding import tab_icon
 
 
 class PageIconTests(unittest.TestCase):
@@ -20,14 +22,21 @@ class PageIconTests(unittest.TestCase):
                          and node.func.attr == "set_page_config"]
                 self.assertEqual(len(calls), 1)
                 icon = next(kw.value for kw in calls[0].keywords if kw.arg == "page_icon")
-                icon_path = eval(compile(ast.Expression(icon), str(path), "eval"),
-                                 {"Path": Path, "__file__": str(path)})
-                self.assertEqual(Path(icon_path), app_dir / "mukut_favicon.png")
-                self.assertTrue(Path(icon_path).is_file())
-                script = "import streamlit as st\n" + ast.unparse(calls[0])
-                script = script.replace(ast.unparse(icon), repr(icon_path))
+                self.assertEqual(ast.unparse(icon), "tab_icon()")
+                script = "import streamlit as st\nfrom streamlit_app.page_branding import tab_icon\n" + ast.unparse(calls[0])
                 app = AppTest.from_string(script).run()
                 self.assertEqual(len(app.exception), 0)
+
+    def test_canvas_crop_preserves_the_exact_slim_mark_pixels(self):
+        path = Path(__file__).resolve().parents[1] / "streamlit_app" / "mukut_favicon.png"
+        with Image.open(path) as source:
+            original = source.convert("RGBA")
+        rendered = tab_icon()
+        bounds = original.getchannel("A").point(lambda a: 255 if a > 200 else 0).getbbox()
+        output_bounds = rendered.getchannel("A").point(lambda a: 255 if a > 200 else 0).getbbox()
+        self.assertEqual(rendered.width, rendered.height)
+        self.assertLess(rendered.height, original.height)
+        self.assertEqual(original.crop(bounds).tobytes(), rendered.crop(output_bounds).tobytes())
 
 
 if __name__ == "__main__":

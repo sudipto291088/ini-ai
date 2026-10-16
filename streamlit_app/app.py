@@ -23,6 +23,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from streamlit_app.answer_emphasis import emphasis_html
 from streamlit_app.google_signin import require_google_account, sign_out, local_developer_enabled
 from streamlit_app.user_profile_menu import render_user_profile_menu
+from streamlit_app.page_branding import tab_icon
 
 import requests
 import streamlit as st
@@ -239,7 +240,7 @@ def _new_chat_update_window_active(today: Optional[date] = None) -> bool:
 # =========================
 # Page Setup
 # =========================
-st.set_page_config(page_title="InI.ai", page_icon=str(Path(__file__).with_name("mukut_favicon.png")), layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="InI.ai", page_icon=tab_icon(), layout="wide", initial_sidebar_state="expanded")
 
 from streamlit_app.privacy_page import show_public_privacy_page
 if show_public_privacy_page():
