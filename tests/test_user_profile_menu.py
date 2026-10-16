@@ -1,6 +1,7 @@
 from pathlib import Path
 import ast
 import importlib
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -81,8 +82,8 @@ render_user_profile_menu(can_sign_out=True, on_exit=lambda: None, on_settings=se
         tree = ast.parse(source)
         nodes = []
         for node in tree.body:
-            if isinstance(node, ast.ImportFrom) and node.module == "streamlit_app" and any(
-                item.name == "user_profile_menu" for item in node.names
+            if isinstance(node, ast.Assign) and any(
+                isinstance(target, ast.Name) and target.id == "user_profile_menu" for target in node.targets
             ):
                 nodes.append(node)
             elif isinstance(node, ast.If) and "PROFILE_MENU_VERSION" in ast.unparse(node.test):
@@ -97,6 +98,22 @@ render_user_profile_menu(can_sign_out=True, on_exit=lambda: None, on_settings=se
         with patch.object(helper, "PROFILE_MENU_VERSION", 0), patch.object(helper, "render_user_profile_menu", legacy):
             exec(compile(ast.Module(body=nodes, type_ignores=[]), "profile_bootstrap", "exec"), namespace)
             self.assertGreaterEqual(namespace["user_profile_menu"].PROFILE_MENU_VERSION, 3)
+            self.assertIn("on_settings", namespace["render_user_profile_menu"].__kwdefaults__)
+
+    def test_bootstrap_imports_registered_module_when_package_attribute_is_stale(self):
+        import streamlit_app
+        from streamlit_app import user_profile_menu as helper
+        source = (Path(__file__).resolve().parents[1] / "streamlit_app/app.py").read_text(encoding="utf-8-sig")
+        nodes = [node for node in ast.parse(source).body if (
+            isinstance(node, ast.Assign) and any(isinstance(target, ast.Name) and target.id in {
+                "user_profile_menu", "render_user_profile_menu"
+            } for target in node.targets)
+        ) or (isinstance(node, ast.If) and "PROFILE_MENU_VERSION" in ast.unparse(node.test))]
+        namespace = {"importlib": importlib}
+        with patch.dict(sys.modules), patch.object(streamlit_app, "user_profile_menu", helper):
+            sys.modules.pop("streamlit_app.user_profile_menu", None)
+            exec(compile(ast.Module(body=nodes, type_ignores=[]), "profile_bootstrap", "exec"), namespace)
+            self.assertIs(namespace["user_profile_menu"], sys.modules["streamlit_app.user_profile_menu"])
             self.assertIn("on_settings", namespace["render_user_profile_menu"].__kwdefaults__)
 
     def test_profile_has_no_three_dots_and_keeps_red_shortcut(self):

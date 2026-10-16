@@ -22,7 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from streamlit_app.answer_emphasis import emphasis_html
 from streamlit_app.google_signin import require_google_account, sign_out, local_developer_enabled
-from streamlit_app import user_profile_menu
+user_profile_menu = importlib.import_module("streamlit_app.user_profile_menu")
 if getattr(user_profile_menu, "PROFILE_MENU_VERSION", 0) < 3:
     user_profile_menu = importlib.reload(user_profile_menu)
 render_user_profile_menu = user_profile_menu.render_user_profile_menu
