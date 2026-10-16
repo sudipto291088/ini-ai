@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from streamlit.testing.v1 import AppTest
-from streamlit_app.user_profile_menu import profile_identity, PROFILE_TRIGGER_CSS
+from streamlit_app.user_profile_menu import profile_identity, profile_header_html, PROFILE_TRIGGER_CSS
 
 
 class UserProfileMenuTests(unittest.TestCase):
@@ -35,7 +35,10 @@ with patch("streamlit_app.user_profile_menu.st.user", {"is_logged_in": True, "na
     render_user_profile_menu(can_sign_out=True, on_exit=lambda: None)
 ''').run()
         self.assertEqual(len(app.exception), 0)
-        self.assertEqual(app.text[0].value, "A [link](https://example.com)")
+        header = profile_header_html("A [link](https://example.com)", "A", True)
+        self.assertIn("A [link](https://example.com)", header)
+        self.assertNotIn("<a ", header)
+        self.assertIn("&lt;img", profile_header_html('<img src=x onerror="bad">', "A", True))
 
     def app(self, signed_in=True):
         return AppTest.from_string(f'''
@@ -93,7 +96,7 @@ render_user_profile_menu(can_sign_out=True, on_exit=lambda: None, on_settings=se
         namespace = {"importlib": importlib}
         with patch.object(helper, "PROFILE_MENU_VERSION", 0), patch.object(helper, "render_user_profile_menu", legacy):
             exec(compile(ast.Module(body=nodes, type_ignores=[]), "profile_bootstrap", "exec"), namespace)
-            self.assertGreaterEqual(namespace["user_profile_menu"].PROFILE_MENU_VERSION, 2)
+            self.assertGreaterEqual(namespace["user_profile_menu"].PROFILE_MENU_VERSION, 3)
             self.assertIn("on_settings", namespace["render_user_profile_menu"].__kwdefaults__)
 
     def test_profile_has_no_three_dots_and_keeps_red_shortcut(self):

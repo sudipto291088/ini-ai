@@ -6,7 +6,7 @@ import re
 
 import streamlit as st
 
-PROFILE_MENU_VERSION = 2
+PROFILE_MENU_VERSION = 3
 
 
 PROFILE_TRIGGER_CSS = """<style>
@@ -20,6 +20,31 @@ PROFILE_TRIGGER_CSS = """<style>
 .st-key-account_profile_menu [data-testid="stMarkdownContainer"] img{
   width:30px;height:30px;max-height:30px;display:inline-block;vertical-align:middle;margin:0 10px 0 0;
 }
+[data-testid="stPopoverBody"]:has(.st-key-account_profile_panel){
+  width:264px;max-width:calc(100vw - 24px);padding:8px !important;
+  border:1px solid #e9ecf1;border-radius:16px;
+  box-shadow:0 14px 42px #1720331f,0 3px 10px #1720330a;background:#fff;
+}
+.st-key-account_profile_panel,.st-key-account_profile_panel [data-testid="stVerticalBlock"]{gap:2px !important;}
+.ini-profile-menu-header{display:flex;align-items:center;gap:11px;padding:10px 9px 13px;
+  margin:0 2px 6px;border-bottom:1px solid #edf0f4;min-width:0;}
+.ini-profile-menu-avatar{display:grid;place-items:center;width:32px;height:32px;flex:none;
+  border-radius:50%;background:#172033;color:#fff;font-size:11px;font-weight:400;}
+.ini-profile-menu-identity{min-width:0;}
+.ini-profile-menu-name{font-size:14px;font-weight:400;line-height:20px;color:#252d3a;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-profile-menu-kind{font-size:11px;line-height:17px;color:#818998;}
+.st-key-account_profile_panel button{
+  width:100%;height:38px !important;min-height:38px !important;padding:0 10px !important;
+  justify-content:flex-start !important;text-align:left;gap:10px;
+  border:0;border-radius:9px;background:transparent;box-shadow:none;color:#303947;
+}
+.st-key-account_profile_panel button p{font-size:14px;font-weight:400;line-height:20px;margin:0;}
+.st-key-account_profile_panel button > div{justify-content:flex-start !important;}
+.st-key-account_profile_panel button [data-has-shortcut]{gap:10px;}
+.st-key-account_profile_panel button [data-testid="stIconMaterial"]{font-size:18px;line-height:18px;}
+.st-key-account_profile_panel button:not(:disabled):hover{background:#f3f5f8;color:#202733;}
+.st-key-account_profile_panel button:focus-visible{outline:2px solid #e76b80;outline-offset:-2px;}
 </style>"""
 
 
@@ -40,6 +65,14 @@ def _close_profile_menu() -> None:
     st.session_state["account_profile_menu"] = False
 
 
+def profile_header_html(name: str, initials: str, signed_in: bool) -> str:
+    kind = "Google account" if signed_in else "Local workspace"
+    return f'''<div class="ini-profile-menu-header">
+      <div class="ini-profile-menu-avatar" aria-hidden="true">{escape(initials)}</div>
+      <div class="ini-profile-menu-identity"><div class="ini-profile-menu-name" title="{escape(name, quote=True)}">{escape(name)}</div>
+      <div class="ini-profile-menu-kind">{kind}</div></div></div>'''
+
+
 def render_user_profile_menu(*, can_sign_out: bool, on_exit: Callable[[], None],
                              on_settings: Callable[[], None] | None = None) -> None:
     if st.session_state.pop("_settings_deleted_notice", False):
@@ -58,15 +91,15 @@ def render_user_profile_menu(*, can_sign_out: bool, on_exit: Callable[[], None],
         with st.popover(f"![](data:image/svg+xml;base64,{avatar}) {label}",
                         help="Open user profile", type="tertiary", width="stretch", key="account_profile_menu",
                         on_change="rerun"):
-            if name != "User profile":
-                st.text(name)
-            if st.button("Settings", icon=":material/settings:", disabled=on_settings is None, type="tertiary",
-                         help="Manage your account and conversations." if on_settings
-                         else "Account settings are available with Google sign-in.", width="stretch",
-                         key="account_profile_settings", on_click=_close_profile_menu):
-                on_settings()
-            st.button("Exit", icon=":material/logout:", on_click=on_exit, type="tertiary",
-                      disabled=not can_sign_out, width="stretch",
-                      help="Sign out of InI. Your saved chats will remain."
-                      if can_sign_out else "Local developer mode has no signed-in account.",
-                      key="account_profile_exit")
+            with st.container(key="account_profile_panel", gap=None):
+                st.html(profile_header_html(name, initials, can_sign_out))
+                if st.button("Settings", icon=":material/settings:", disabled=on_settings is None, type="tertiary",
+                             help="Manage your account and conversations." if on_settings
+                             else "Account settings are available with Google sign-in.", width="stretch",
+                             key="account_profile_settings", on_click=_close_profile_menu):
+                    on_settings()
+                st.button("Exit", icon=":material/logout:", on_click=on_exit, type="tertiary",
+                          disabled=not can_sign_out, width="stretch",
+                          help="Sign out of InI. Your saved chats will remain."
+                          if can_sign_out else "Local developer mode has no signed-in account.",
+                          key="account_profile_exit")
