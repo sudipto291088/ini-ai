@@ -6,7 +6,7 @@ import re
 
 import streamlit as st
 
-PROFILE_MENU_VERSION = 3
+PROFILE_MENU_VERSION = 4
 
 
 PROFILE_TRIGGER_CSS = """<style>
@@ -89,7 +89,7 @@ def render_user_profile_menu(*, can_sign_out: bool, on_exit: Callable[[], None],
     st.html(PROFILE_TRIGGER_CSS)
     with st.container(key="account_profile_footer"):
         with st.popover(f"![](data:image/svg+xml;base64,{avatar}) {label}",
-                        help="Open user profile", type="tertiary", width="stretch", key="account_profile_menu",
+                        type="tertiary", width="stretch", key="account_profile_menu",
                         on_change="rerun"):
             with st.container(key="account_profile_panel", gap=None):
                 st.html(profile_header_html(name, initials, can_sign_out))
