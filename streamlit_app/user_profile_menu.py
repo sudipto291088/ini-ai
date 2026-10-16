@@ -6,6 +6,8 @@ import re
 
 import streamlit as st
 
+PROFILE_MENU_VERSION = 2
+
 
 PROFILE_TRIGGER_CSS = """<style>
 .st-key-account_profile_menu button{padding:4px 45px 4px 7px;min-height:44px;justify-content:flex-start;}
@@ -34,7 +36,14 @@ def profile_identity(claims: Mapping) -> tuple[str, str]:
     return name, initials
 
 
-def render_user_profile_menu(*, can_sign_out: bool, on_exit: Callable[[], None]) -> None:
+def _close_profile_menu() -> None:
+    st.session_state["account_profile_menu"] = False
+
+
+def render_user_profile_menu(*, can_sign_out: bool, on_exit: Callable[[], None],
+                             on_settings: Callable[[], None] | None = None) -> None:
+    if st.session_state.pop("_settings_deleted_notice", False):
+        st.toast("Your saved conversations and subject curricula were deleted.")
     name, initials = profile_identity(dict(st.user) if can_sign_out else {})
     label = re.sub(r'([\\`*_{}\[\]()<>!|~])', r'\\\1', name)
     avatar_svg = (
@@ -47,12 +56,15 @@ def render_user_profile_menu(*, can_sign_out: bool, on_exit: Callable[[], None])
     st.html(PROFILE_TRIGGER_CSS)
     with st.container(key="account_profile_footer"):
         with st.popover(f"![](data:image/svg+xml;base64,{avatar}) {label}",
-                        help="Open user profile", type="tertiary", width="stretch", key="account_profile_menu"):
+                        help="Open user profile", type="tertiary", width="stretch", key="account_profile_menu",
+                        on_change="rerun"):
             if name != "User profile":
                 st.text(name)
-            st.button("Settings", icon=":material/settings:", disabled=True, type="tertiary",
-                      help="Settings are not available yet.", width="stretch",
-                      key="account_profile_settings")
+            if st.button("Settings", icon=":material/settings:", disabled=on_settings is None, type="tertiary",
+                         help="Manage your account and conversations." if on_settings
+                         else "Account settings are available with Google sign-in.", width="stretch",
+                         key="account_profile_settings", on_click=_close_profile_menu):
+                on_settings()
             st.button("Exit", icon=":material/logout:", on_click=on_exit, type="tertiary",
                       disabled=not can_sign_out, width="stretch",
                       help="Sign out of InI. Your saved chats will remain."

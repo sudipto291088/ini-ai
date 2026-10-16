@@ -1,5 +1,8 @@
 from pathlib import Path
+import ast
+import importlib
 import unittest
+from unittest.mock import patch
 
 from streamlit.testing.v1 import AppTest
 from streamlit_app.user_profile_menu import profile_identity, PROFILE_TRIGGER_CSS
@@ -55,6 +58,43 @@ with st.sidebar:
         app = self.app(False)
         self.assertEqual(len(app.exception), 0)
         self.assertTrue(app.button(key="account_profile_exit").disabled)
+
+    def test_settings_opens_the_supplied_account_panel(self):
+        app = AppTest.from_string('''
+import streamlit as st
+from streamlit_app.user_profile_menu import render_user_profile_menu
+def settings():
+    st.session_state["settings_opened"] = True
+render_user_profile_menu(can_sign_out=True, on_exit=lambda: None, on_settings=settings)
+''').run()
+        self.assertFalse(app.button(key="account_profile_settings").disabled)
+        app.button(key="account_profile_settings").click().run()
+        self.assertTrue(app.session_state["settings_opened"])
+        self.assertFalse(app.session_state["account_profile_menu"])
+
+    def test_running_app_reloads_a_cached_legacy_profile_helper(self):
+        from streamlit_app import user_profile_menu as helper
+        source = (Path(__file__).resolve().parents[1] / "streamlit_app/app.py").read_text(encoding="utf-8-sig")
+        tree = ast.parse(source)
+        nodes = []
+        for node in tree.body:
+            if isinstance(node, ast.ImportFrom) and node.module == "streamlit_app" and any(
+                item.name == "user_profile_menu" for item in node.names
+            ):
+                nodes.append(node)
+            elif isinstance(node, ast.If) and "PROFILE_MENU_VERSION" in ast.unparse(node.test):
+                nodes.append(node)
+            elif isinstance(node, ast.Assign) and any(
+                isinstance(target, ast.Name) and target.id == "render_user_profile_menu" for target in node.targets
+            ):
+                nodes.append(node)
+        def legacy(*, can_sign_out, on_exit):
+            raise AssertionError("The cached legacy renderer must be replaced")
+        namespace = {"importlib": importlib}
+        with patch.object(helper, "PROFILE_MENU_VERSION", 0), patch.object(helper, "render_user_profile_menu", legacy):
+            exec(compile(ast.Module(body=nodes, type_ignores=[]), "profile_bootstrap", "exec"), namespace)
+            self.assertGreaterEqual(namespace["user_profile_menu"].PROFILE_MENU_VERSION, 2)
+            self.assertIn("on_settings", namespace["render_user_profile_menu"].__kwdefaults__)
 
     def test_profile_has_no_three_dots_and_keeps_red_shortcut(self):
         root = Path(__file__).resolve().parents[1]
