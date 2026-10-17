@@ -736,17 +736,7 @@ def generate_dynamic_answer_result(
 
         incomplete, reason = _is_incomplete(data)
 
-        # If truncated, aggressively shorten the visible answer.
-        if incomplete and text:
-            text = text.strip()
-
-            # Cut off unfinished trailing fragments.
-            text = re.sub(r"[,\-\:\s]+$", "", text)
-
-            # Prefer complete ending.
-            last_period = text.rfind(".")
-            if last_period > 200:
-                text = text[: last_period + 1]
+        # Preserve unfinished text so recovery can continue from the actual tail.
 
         # If we got incomplete but no text (rare: reasoning-only output), return debug-safe error
         if incomplete and not text:

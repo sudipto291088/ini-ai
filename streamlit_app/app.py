@@ -21,6 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from streamlit_app.answer_emphasis import emphasis_html
+from streamlit_app.answer_recovery import collect_answer, recover_answer
 from streamlit_app.google_signin import require_google_account, sign_out, local_developer_enabled
 user_profile_menu = importlib.import_module("streamlit_app.user_profile_menu")
 if getattr(user_profile_menu, "PROFILE_MENU_VERSION", 0) < 4:
@@ -4906,32 +4907,11 @@ def fetch_study_full(
     max_rounds: int = 4,
     profile_context: Optional[dict[str, str]] = None,
 ) -> Dict[str, Any]:
-    resp = fetch_study(topic, mode=mode, profile_context=profile_context)
+    resp = collect_answer(fetch_study, topic, mode=mode, max_rounds=max_rounds,
+                          profile_context=profile_context)
     answer = normalize_whitespace_for_readability(
         normalize_mojibake(resp.get("answer", "") or "")
     )
-
-    rounds = 0
-    while rounds < max_rounds and (
-        resp.get("incomplete") is True
-        or (resp.get("stop_reason") or "").strip().lower() == "max_output_tokens"
-    ):
-        resp = fetch_study(
-            topic,
-            mode=mode,
-            continue_mode=True,
-            previous_answer=answer,
-            profile_context=profile_context,
-        )
-        chunk = normalize_whitespace_for_readability(
-            normalize_mojibake(resp.get("answer", "") or "")
-        ).strip()
-
-        if not chunk:
-            break
-
-        answer = (answer.rstrip() + "\n\n" + chunk).strip()
-        rounds += 1
 
     validation: Dict[str, Any] = {
         "valid": True,
@@ -5011,6 +4991,7 @@ def fetch_study_full(
                         len(fallback_answer.split()) >= 35
                         and fallback_answer.casefold() != "no answer generated."
                     ):
+                        resp = fallback_resp
                         answer = fallback_answer
                         validation = {
                             "valid": True,
@@ -8959,8 +8940,9 @@ def page_new_chat() -> None:
 
                                 if is_incomplete:
                                     branch_continue_key = f"branch::{branch_idx}::{q}"
+                                    st.caption("This response is unfinished. Your received text has been kept.")
 
-                                    if st.button("Continue", key=f"branch_{branch_idx}_cont_{section}_{q}"):
+                                    if st.button("Continue response", key=f"branch_{branch_idx}_cont_{section}_{q}"):
                                         st.session_state._nc_continue_loading_q = branch_continue_key
                                         st.rerun()
 
@@ -8983,17 +8965,7 @@ def page_new_chat() -> None:
                                                     normalize_mojibake(resp.get("answer", "") or "")
                                                 ).strip()
 
-                                                combined = (
-                                                    previous_text.rstrip() + "\n\n" + chunk
-                                                ).strip() if chunk else previous_text
-
-                                                branch_answers[q] = {
-                                                    "text": combined,
-                                                    "incomplete": bool(resp.get("incomplete")),
-                                                    "stop_reason": resp.get("stop_reason") or None,
-                                                    "prompt": q,
-                                                    "mode": mode,
-                                                }
+                                                branch_answers[q] = recover_answer(answer_obj, {**resp, "answer": chunk})
 
                                                 if resp.get("followups"):
                                                     branch_followups[q] = resp.get("followups") or []
@@ -9003,8 +8975,8 @@ def page_new_chat() -> None:
                                                 st.session_state.chat_branch_answers[branch_idx] = branch
                                                 _persist_new_chat_session()
 
-                                            except Exception as e:
-                                                st.error(f"Error continuing answer: {e}")
+                                            except Exception:
+                                                st.error("Could not continue right now. Your answer is unchanged; please try again.")
 
                                             finally:
                                                 st.session_state._nc_continue_loading_q = None
@@ -14228,10 +14200,11 @@ def page_new_chat() -> None:
 
         
 
-        if is_incomplete and direct_answer.get("response_mode") != "carm":
+        if is_incomplete:
                 direct_key = "__chat_direct_answer__"
+                st.caption("This response is unfinished. Your received text has been kept.")
 
-                if st.button("Continue", key="nc_cont_direct_answer"):
+                if st.button("Continue response", key="nc_cont_direct_answer"):
                     st.session_state._nc_continue_loading_q = direct_key
                     st.rerun()
 
@@ -14255,27 +14228,14 @@ def page_new_chat() -> None:
                                 normalize_mojibake(resp.get("answer", "") or "")
                             ).strip()
 
-                            if chunk:
-                                combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
-                            else:
-                                combined = previous_text
-
-                            st.session_state.chat_direct_answer = {
-                                "prompt": prompt,
-                                "text": combined,
-                                "incomplete": bool(resp.get("incomplete")),
-                                "stop_reason": resp.get("stop_reason") or None,
-                                "mode": mode,
-                                "followups": resp.get("followups") or direct_answer.get("followups") or [],
-                                "intent": direct_answer.get("intent"),
-                                "should_answer_direct": direct_answer.get("should_answer_direct", False),
-                                "show_followups": direct_answer.get("show_followups", True),
-                                "ts": now_label()
-                            }
+                            st.session_state.chat_direct_answer = recover_answer(
+                                direct_answer, {**resp, "answer": chunk}
+                            )
+                            _sync_chat_root_snapshot()
                             _persist_new_chat_session()
 
-                        except Exception as e:
-                            st.error(f"Error continuing answer: {e}")
+                        except Exception:
+                            st.error("Could not continue right now. Your answer is unchanged; please try again.")
                         finally:
                             st.session_state._nc_continue_loading_q = None
 
@@ -14560,7 +14520,8 @@ def page_new_chat() -> None:
                                     is_incomplete = bool(answer_obj.get("incomplete"))
 
                                 if is_incomplete:
-                                    if st.button("Continue", key=f"nc_cont_{section}_{q}"):
+                                    st.caption("This response is unfinished. Your received text has been kept.")
+                                    if st.button("Continue response", key=f"nc_cont_{section}_{q}"):
                                         st.session_state._nc_continue_loading_q = q
                                         st.rerun()
 
@@ -14588,18 +14549,9 @@ def page_new_chat() -> None:
                                                     normalize_mojibake(resp.get("answer", "") or "")
                                                 ).strip()
 
-                                                if chunk:
-                                                    combined = (previous_text.rstrip() + "\n\n" + chunk).strip()
-                                                else:
-                                                    combined = previous_text
-
-                                                st.session_state.chat_answers[q] = {
-                                                    "text": combined,
-                                                    "incomplete": bool(resp.get("incomplete")),
-                                                    "stop_reason": resp.get("stop_reason") or None,
-                                                    "prompt": q,
-                                                    "mode": mode,
-                                                }
+                                                st.session_state.chat_answers[q] = recover_answer(
+                                                    answer_obj, {**resp, "answer": chunk}
+                                                )
 
                                                 if resp.get("followups"):
                                                     st.session_state.chat_followups[q] = resp.get("followups") or []
@@ -14607,8 +14559,8 @@ def page_new_chat() -> None:
                                                 _sync_chat_root_snapshot()
                                                 _persist_new_chat_session()
 
-                                            except Exception as e:
-                                                st.error(f"Error continuing answer: {e}")
+                                            except Exception:
+                                                st.error("Could not continue right now. Your answer is unchanged; please try again.")
 
                                             finally:
                                                 st.session_state._nc_continue_loading_q = None
