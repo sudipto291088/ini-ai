@@ -582,12 +582,12 @@ div[data-testid="stSidebar"] .block-container{
   pointer-events: none !important;
 }
 @media (min-width: 721px) {
-  [data-testid="stSidebar"][aria-expanded="true"] {
+  [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"]) {
     width: 288px !important;
     min-width: 288px !important;
     max-width: 288px !important;
   }
-  [data-testid="stSidebar"][aria-expanded="true"] .block-container {
+  [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"]) .block-container {
     width: 100% !important;
     max-width: 100% !important;
   }
@@ -911,7 +911,7 @@ button[kind="secondary"]{
   }
 
   /* Keep mobile navigation compact without covering the entire display. */
-  [data-testid="stSidebar"][aria-expanded="true"]{
+  [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"]){
     position: fixed !important;
     inset: 0 auto 0 0 !important;
     z-index: 2147482000 !important;
@@ -927,7 +927,7 @@ button[kind="secondary"]{
     overflow-x: hidden !important;
   }
 
-  [data-testid="stSidebar"][aria-expanded="true"] .block-container{
+  [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"]) .block-container{
     width: 100% !important;
     max-width: none !important;
     margin-inline: 0 !important;
@@ -939,7 +939,7 @@ button[kind="secondary"]{
     width:calc(min(70vw, 320px) - 36px);
   }
 
-  [data-testid="stSidebar"][aria-expanded="true"]
+  [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
   [data-testid="stSidebarCollapseButton"]{
     position: absolute !important;
     top: 12px !important;
@@ -6293,7 +6293,7 @@ with st.sidebar:
             background:url("data:image/svg+xml;base64,{signout_icon_data}") center/contain no-repeat;
           }}
           .st-key-account_signout button:hover {{background:rgba(229,29,66,.06);}}
-          [data-testid="stSidebar"][aria-expanded="false"] .st-key-account_signout {{display:none;}}
+          [data-testid="stSidebar"]:is([aria-expanded="false"], [data-collapsed="true"]) .st-key-account_signout {{display:none;}}
           @media(max-width:720px) {{
             [data-testid="stSidebar"] .st-key-account_signout {{left:calc(min(70vw,320px) - 76px);}}
           }}
@@ -13272,7 +13272,7 @@ def page_new_chat() -> None:
             }
 
             [data-testid="stAppViewContainer"]:has(
-                [data-testid="stSidebar"][aria-expanded="true"]
+                [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
             ) div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
                 left: calc(50% + 128px);
                 width: min(980px, calc(100vw - 288px));
@@ -13280,7 +13280,7 @@ def page_new_chat() -> None:
 
             @media (min-width: 721px) {
                 [data-testid="stAppViewContainer"]:has(
-                    [data-testid="stSidebar"][aria-expanded="true"]
+                    [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
                 ) div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
                     left: calc(50% + 144px);
                     width: min(980px, calc(100vw - 320px));
@@ -13321,7 +13321,7 @@ def page_new_chat() -> None:
             }
 
             [data-testid="stAppViewContainer"]:has(
-                [data-testid="stSidebar"][aria-expanded="true"]
+                [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
             ) .nc-pending-query {
                 left: 288px;
             }
@@ -13338,7 +13338,7 @@ def page_new_chat() -> None:
             }
 
             [data-testid="stAppViewContainer"]:has(
-                [data-testid="stSidebar"][aria-expanded="true"]
+                [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
             ) [data-testid="stMain"]:has(.nc-pending-screen)
             .nc-generation-placeholder {
                 left: 352px;
@@ -13370,7 +13370,7 @@ def page_new_chat() -> None:
             }
 
             [data-testid="stAppViewContainer"]:has(
-                [data-testid="stSidebar"][aria-expanded="true"]
+                [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
             ) [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"])::after {
                 left: 256px;
             }
@@ -13538,7 +13538,7 @@ def page_new_chat() -> None:
                 [data-testid="stMain"]:has(.nc-pending-screen)
                 .nc-generation-placeholder,
                 [data-testid="stAppViewContainer"]:has(
-                    [data-testid="stSidebar"][aria-expanded="true"]
+                    [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
                 ) [data-testid="stMain"]:has(.nc-pending-screen)
                 .nc-generation-placeholder {
                     top: 166px;
@@ -13557,7 +13557,7 @@ def page_new_chat() -> None:
                 }
 
                 [data-testid="stAppViewContainer"]:has(
-                    [data-testid="stSidebar"][aria-expanded="true"]
+                    [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
                 ) div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
                     left: 50%;
                     width: calc(100% - 12px);
@@ -13570,7 +13570,7 @@ def page_new_chat() -> None:
 
                 [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"])::after,
                 [data-testid="stAppViewContainer"]:has(
-                    [data-testid="stSidebar"][aria-expanded="true"]
+                    [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
                 ) [data-testid="stMainBlockContainer"]:has(input[aria-label="NC_BOTTOM_TOPIC"])::after {
                     left: 0;
                     height: calc(176px + env(safe-area-inset-bottom));
@@ -15098,10 +15098,10 @@ def _render_my_learning_styles() -> None:
         }
         @media (min-width: 1200px) {
           [data-testid="stAppViewContainer"]:has(
-            [data-testid="stSidebar"][aria-expanded="true"]
+            [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
           ) [class*="st-key-mnl_assistant_"],
           [data-testid="stAppViewContainer"]:has(
-            [data-testid="stSidebar"][aria-expanded="true"]
+            [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
           ) .st-key-mnl_generation {
             --mnl-left-extension:
               clamp(12px, calc(38vw - 486px), 240px);
@@ -15154,7 +15154,7 @@ def _render_my_learning_styles() -> None:
           pointer-events: none;
         }
         [data-testid="stAppViewContainer"]:has(
-          [data-testid="stSidebar"][aria-expanded="true"]
+          [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
         ) [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)::after {
           left: 256px;
         }
@@ -15175,7 +15175,7 @@ def _render_my_learning_styles() -> None:
           flex: 0 0 auto !important;
         }
         [data-testid="stAppViewContainer"]:has(
-          [data-testid="stSidebar"][aria-expanded="true"]
+          [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
         ) [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)
         [data-testid="stForm"]:has(input[aria-label="MNL_PROMPT"]) {
           left: calc(50% + 128px);
@@ -15370,7 +15370,7 @@ def _render_my_learning_styles() -> None:
           [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)
           [data-testid="stForm"]:has(input[aria-label="MNL_PROMPT"]),
           [data-testid="stAppViewContainer"]:has(
-            [data-testid="stSidebar"][aria-expanded="true"]
+            [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
           ) [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)
           [data-testid="stForm"]:has(input[aria-label="MNL_PROMPT"]) {
             bottom: 10px;
@@ -15378,7 +15378,7 @@ def _render_my_learning_styles() -> None:
             width: calc(100vw - 20px);
           }
           [data-testid="stAppViewContainer"]:has(
-            [data-testid="stSidebar"][aria-expanded="true"]
+            [data-testid="stSidebar"]:is([aria-expanded="true"], [data-collapsed="false"])
           ) [data-testid="stMainBlockContainer"]:has(.mnl-active-spacer)::after {
             left: 0;
           }
