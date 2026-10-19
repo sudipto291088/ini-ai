@@ -22,6 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from streamlit_app.answer_emphasis import emphasis_html
 from streamlit_app.answer_recovery import collect_answer, recover_answer
+from streamlit_app.subject_choice import recognised_subject, render_subject_choice
 from streamlit_app.google_signin import require_google_account, sign_out, local_developer_enabled
 user_profile_menu = importlib.import_module("streamlit_app.user_profile_menu")
 if getattr(user_profile_menu, "PROFILE_MENU_VERSION", 0) < 4:
@@ -11068,6 +11069,7 @@ def page_new_chat() -> None:
         request_kind: str = "",
         semantic_topic: str = "",
         knowledge_structure_data: Optional[Dict[str, Any]] = None,
+        offer_subject_choice: bool = True,
     ) -> bool:
         prompt = (topic_text or "").strip()
         action = (action or "interrogate").strip().lower()
@@ -11081,6 +11083,20 @@ def page_new_chat() -> None:
             or st.session_state.get("qc_pending_request")
         ):
             return False
+
+        # Bare recognised fields get a choice, never an inferred curriculum.
+        subject = recognised_subject(prompt) if action == "interrogate" and not request_kind else ""
+        if offer_subject_choice and subject:
+            st.session_state._ini_subject_choice = {
+                "subject": subject, "prompt": prompt,
+                "owner": st.session_state.visitor_id,
+                "chat": st.session_state.chat_active_id,
+            }
+            st.session_state.nc_started = True
+            _advance_new_chat_composer()
+            st.rerun()
+
+        st.session_state.pop("_ini_subject_choice", None)
 
         # The active subject view shares this composer with ordinary New Chat.
         # Keep its curriculum in history while allowing the next message to run.
@@ -13700,6 +13716,29 @@ def page_new_chat() -> None:
             st.rerun()
         except Exception as e:
             st.error(f"Error auto-running chat FUQ: {e}")
+
+    subject_choice = st.session_state.get("_ini_subject_choice")
+    if isinstance(subject_choice, dict):
+        if (subject_choice.get("owner") != st.session_state.visitor_id
+                or subject_choice.get("chat") != st.session_state.chat_active_id):
+            st.session_state.pop("_ini_subject_choice", None)
+        else:
+            choice = render_subject_choice(subject_choice["subject"])
+            if choice:
+                st.session_state.pop("_ini_subject_choice", None)
+                if choice == "overview":
+                    _queue_new_chat_request(subject_choice["prompt"], "interrogate", offer_subject_choice=False)
+                elif choice == "study":
+                    qc_ui.maybe_start_qc(
+                        f"Teach me {subject_choice['subject']} as a subject", "interrogate",
+                        st.session_state.visitor_id, st.session_state.api_base,
+                        _attach_curriculum_to_new_chat, _advance_new_chat_composer,
+                    )
+                elif not _session_has_existing_timeline():
+                    st.session_state.nc_started = False
+                st.rerun()
+            _render_new_chat_bottom_uib()
+            return
 
     pending_qc = st.session_state.get("qc_pending_request")
     pending_qc_continuation = (
