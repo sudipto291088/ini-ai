@@ -24,6 +24,7 @@ from streamlit_app.answer_emphasis import emphasis_html
 from streamlit_app.answer_recovery import collect_answer, recover_answer
 from streamlit_app.subject_choice import recognised_subject, render_subject_choice
 from api.abbreviation_clarification import abbreviation_clarification
+from streamlit_app.learning_trail import render_learning_trail, continuation_prompt
 from streamlit_app.google_signin import require_google_account, sign_out, local_developer_enabled
 user_profile_menu = importlib.import_module("streamlit_app.user_profile_menu")
 if getattr(user_profile_menu, "PROFILE_MENU_VERSION", 0) < 4:
@@ -7702,7 +7703,7 @@ def page_new_chat() -> None:
             or payload_info.get("response_mode") == "knowledge_structure"
         )
         is_meaning_check = payload_info.get("intent") == "abbreviation_clarification"
-        if is_meaning_check:
+        if is_meaning_check or payload_info.get("intent") == "learning_trail":
             topic_profile = None
             compact_profile = False
         elif not is_knowledge_structure:
@@ -8450,6 +8451,21 @@ def page_new_chat() -> None:
                     and response_payload.get("explain_ks_decision")
                 ):
                     st.markdown(no_knowledge_structure_notice(guidance_seed))
+
+                next_step = render_learning_trail(
+                    response_prompt, text, payload_info, response_card_key,
+                    disabled=bool(st.session_state.get("_nc_generating") or st.session_state.get("_nc_pending_request")),
+                )
+                if next_step:
+                    _queue_new_chat_request(
+                        f"{next_step['title']} — {next_step['topic']}", "interrogate",
+                        request_kind="learning_trail", offer_subject_choice=False,
+                        learning_trail_action={
+                            "action": next_step["action"], "topic": next_step["topic"],
+                            "answer": text[:6000], "owner": st.session_state.visitor_id,
+                            "chat": st.session_state.chat_active_id,
+                        },
+                    )
 
                 st.markdown(
                     f"<div style='margin-top:14px; text-align:right; color:#64748b; font-size:11px;'>{ts or now_label()}</div>",
@@ -9633,6 +9649,7 @@ def page_new_chat() -> None:
         show_spinner: bool = True,
         forced_knowledge_structure_topic: str = "",
         forced_knowledge_structure_data: Optional[Dict[str, Any]] = None,
+        learning_trail_action: Optional[Dict[str, Any]] = None,
     ) -> None:
         # Context-dependent phrases must remain verbatim. Otherwise the fuzzy
         # follow-up resolver can expand "what else" into an older suggested
@@ -10092,7 +10109,19 @@ def page_new_chat() -> None:
                 else nullcontext()
             )
             with spinner_context:
-                if abbreviation_clarification(display_topic_text):
+                if learning_trail_action:
+                    data = {
+                        "categories": {}, "followups": [], "intent": "learning_trail",
+                        "should_answer_direct": True, "response_mode": "conversation",
+                        "context_intent": "learning_trail", "needs_clarification": False,
+                        "profile_prompt": learning_trail_action["topic"],
+                        "topic_profile": {"Subject": learning_trail_action["topic"]},
+                        "direct_answer_prompt": continuation_prompt(
+                            learning_trail_action["action"], learning_trail_action["topic"],
+                            learning_trail_action["answer"],
+                        ),
+                    }
+                elif abbreviation_clarification(display_topic_text):
                     data = {
                         "categories": {}, "followups": [],
                         "intent": "abbreviation_clarification",
@@ -10591,7 +10620,7 @@ def page_new_chat() -> None:
                         "context_intent": context_intent,
                         "show_followups": show_followups,
                         "needs_clarification": bool(data.get("needs_clarification")),
-                        "profile_prompt": (
+                        "profile_prompt": data.get("profile_prompt") or (
                             recommended_topic
                             if recommended_topic
                             else qm_discussion_topic
@@ -10602,6 +10631,8 @@ def page_new_chat() -> None:
                             )
                         ),
                         "topic_profile": data.get("topic_profile"),
+                        "learning_trail_source": (learning_trail_action or {}).get("topic", ""),
+                        "learning_trail_action_kind": (learning_trail_action or {}).get("action", ""),
                         # A contextual CARM reply belongs to the existing
                         # implementation guide; repeating a new Topic Profile
                         # would incorrectly label replies such as "I don't
@@ -11085,6 +11116,7 @@ def page_new_chat() -> None:
         semantic_topic: str = "",
         knowledge_structure_data: Optional[Dict[str, Any]] = None,
         offer_subject_choice: bool = True,
+        learning_trail_action: Optional[Dict[str, Any]] = None,
     ) -> bool:
         prompt = (topic_text or "").strip()
         action = (action or "interrogate").strip().lower()
@@ -11179,6 +11211,7 @@ def page_new_chat() -> None:
             "request_kind": request_kind,
             "semantic_topic": semantic_topic,
             "knowledge_structure_data": knowledge_structure_data,
+            "learning_trail_action": learning_trail_action,
         }
         st.session_state._nc_bottom_composer_revision += 1
         st.session_state.chat_top_enter_submit = False
@@ -11338,6 +11371,13 @@ def page_new_chat() -> None:
         request_kind = (pending.get("request_kind") or "").strip().lower()
         semantic_topic = (pending.get("semantic_topic") or "").strip()
         knowledge_structure_data = pending.get("knowledge_structure_data")
+        learning_trail_action = pending.get("learning_trail_action")
+        if isinstance(learning_trail_action, dict) and (
+            learning_trail_action.get("owner") != st.session_state.visitor_id
+            or learning_trail_action.get("chat") != st.session_state.chat_active_id
+        ):
+            st.session_state._nc_pending_request = None
+            return
         status_mode = (pending.get("status_mode") or "generating").strip().lower()
         if not prompt:
             st.session_state._nc_pending_request = None
@@ -11478,6 +11518,7 @@ def page_new_chat() -> None:
                             if request_kind == "knowledge_structure"
                             else None
                         ),
+                        learning_trail_action=learning_trail_action,
                     )
         finally:
             st.session_state._nc_pending_request = None
