@@ -12001,7 +12001,7 @@ def page_new_chat() -> None:
             tab_index=-1,
         )
 
-    def _render_new_chat_top_uib() -> None:
+    def _render_new_chat_top_uib() -> tuple:
         if st.session_state.chat_top_topic_input == "" and st.session_state.chat.get("topic"):
             st.session_state.chat_top_topic_input = st.session_state.chat.get("topic", "")
 
@@ -13294,22 +13294,9 @@ def page_new_chat() -> None:
             unsafe_allow_html=True,
         )
 
-        if illustrate_run:
-            _queue_new_chat_request(
-                top_prompt,
-                "illustrate",
-            )
-
-        if explore_topic:
-            _queue_new_chat_request(explore_topic, "interrogate")
-
-        if run:
-            if not qc_ui.maybe_start_qc(
-                top_prompt, "interrogate", st.session_state.visitor_id,
-                st.session_state.api_base, _attach_curriculum_to_new_chat,
-                _advance_new_chat_composer,
-            ):
-                _queue_new_chat_request(top_prompt, "interrogate")
+        # Dispatch outside this panel so no response is emitted alongside
+        # stale landing cards during Streamlit's incremental rerender.
+        return top_prompt, run, illustrate_run, explore_topic
 
 
     def _render_new_chat_bottom_uib() -> None:
@@ -13895,7 +13882,24 @@ def page_new_chat() -> None:
     )
 
     if is_new_chat_landing:
-        _render_new_chat_top_uib()
+        landing_slot = st.empty()
+        with landing_slot.container():
+            top_prompt, run, illustrate_run, explore_topic = _render_new_chat_top_uib()
+        if (top_prompt.strip() and (run or illustrate_run)) or explore_topic:
+            # Remove the entire landing tree, including its CSS, cards and
+            # footer, before any synchronous answer or curriculum work.
+            landing_slot.empty()
+            if illustrate_run:
+                _queue_new_chat_request(top_prompt, "illustrate")
+            elif explore_topic:
+                _queue_new_chat_request(explore_topic, "interrogate")
+            elif run:
+                if not qc_ui.maybe_start_qc(
+                    top_prompt, "interrogate", st.session_state.visitor_id,
+                    st.session_state.api_base, _attach_curriculum_to_new_chat,
+                    _advance_new_chat_composer,
+                ):
+                    _queue_new_chat_request(top_prompt, "interrogate")
     elif not pending_new_chat_request:
         active_chat_title = (st.session_state.chat_root_topic or "").strip()
         if st.session_state.chat_branch_answers:
@@ -13913,9 +13917,6 @@ def page_new_chat() -> None:
                 or ""
             )
         active_chat_title = active_chat_title or "New Chat"
-        st.caption(
-            "Explore the key ideas, profile and question ladder for this topic."
-        )
 
     if has_new_chat_content:
         _render_nc_scroll_controls()
