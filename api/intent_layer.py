@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import re
 from typing import Any, Dict, Iterable
+from api.abbreviation_clarification import abbreviation_clarification
 
 
-INTENT_LAYER_VERSION = 7
+INTENT_LAYER_VERSION = 8
 
 
 # ============================================================
@@ -837,6 +838,13 @@ def detect_intent(text: str) -> Dict[str, Any]:
     raw = (text or "").strip()
     s = _normalize_compact(raw)
     mode = _detect_mode(raw)
+    meaning_check = abbreviation_clarification(raw)
+    if meaning_check:
+        return {
+            "intent": "abbreviation_clarification", "reply": meaning_check,
+            "followups": [], "should_interrogate": False,
+            "should_answer_direct": False, "mode_hint": "focused", "confidence": 1.0,
+        }
 
     if not s:
         return {

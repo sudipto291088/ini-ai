@@ -23,6 +23,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from streamlit_app.answer_emphasis import emphasis_html
 from streamlit_app.answer_recovery import collect_answer, recover_answer
 from streamlit_app.subject_choice import recognised_subject, render_subject_choice
+from api.abbreviation_clarification import abbreviation_clarification
 from streamlit_app.google_signin import require_google_account, sign_out, local_developer_enabled
 user_profile_menu = importlib.import_module("streamlit_app.user_profile_menu")
 if getattr(user_profile_menu, "PROFILE_MENU_VERSION", 0) < 4:
@@ -168,7 +169,7 @@ should_preserve_conversation_context = (
 ensure_honest_ai_voice = conversation_interpreter.ensure_honest_ai_voice
 import api.intent_layer as intent_layer
 
-if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 7:
+if getattr(intent_layer, "INTENT_LAYER_VERSION", 0) < 8:
     intent_layer = importlib.reload(intent_layer)
 detect_intent = intent_layer.detect_intent
 import api.response_strategy as response_strategy
@@ -7700,7 +7701,11 @@ def page_new_chat() -> None:
             payload_info.get("knowledge_structure_rendered")
             or payload_info.get("response_mode") == "knowledge_structure"
         )
-        if not is_knowledge_structure:
+        is_meaning_check = payload_info.get("intent") == "abbreviation_clarification"
+        if is_meaning_check:
+            topic_profile = None
+            compact_profile = False
+        elif not is_knowledge_structure:
             if not topic_profile and profile_source:
                 topic_profile = _profile_for_response(
                     profile_source,
@@ -9634,6 +9639,7 @@ def page_new_chat() -> None:
         # question merely because that question contains the same words.
         if (
             not _is_ambiguous_context_followup(topic_text)
+            and not abbreviation_clarification(topic_text)
             and not isinstance(st.session_state.get("chat_active_discussion"), dict)
         ):
             topic_text = _resolve_typed_followup(topic_text)
@@ -10086,7 +10092,16 @@ def page_new_chat() -> None:
                 else nullcontext()
             )
             with spinner_context:
-                if capability_boundary:
+                if abbreviation_clarification(display_topic_text):
+                    data = {
+                        "categories": {}, "followups": [],
+                        "intent": "abbreviation_clarification",
+                        "should_answer_direct": False,
+                        "response_mode": "conversation", "context_intent": "conversation",
+                        "needs_clarification": False, "suppress_profile": True,
+                        "reply": abbreviation_clarification(display_topic_text),
+                    }
+                elif capability_boundary:
                     data = {
                         "categories": {},
                         "followups": [],
@@ -11110,7 +11125,8 @@ def page_new_chat() -> None:
         # hosted rerun interrupts the transition.
         quick_profile = _refresh_chat_user_profile(prompt)
         if not request_kind and action == "interrogate" and (
-            _local_conversation_answer(prompt, quick_profile)
+            abbreviation_clarification(prompt)
+            or _local_conversation_answer(prompt, quick_profile)
             or answer_ini_product_query(prompt)
         ):
             st.session_state._nc_bottom_composer_revision += 1
