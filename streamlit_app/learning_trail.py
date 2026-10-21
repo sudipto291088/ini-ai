@@ -63,6 +63,11 @@ def continuation_prompt(action: str, topic: str, answer: str) -> str:
 
 def render_learning_trail(prompt: str, answer: str, payload: dict, key: str, *, disabled: bool = False) -> dict | None:
     actions = trail_actions(prompt, answer, payload)
+    return render_trail_rows(actions, key, disabled=disabled)
+
+
+def render_trail_rows(actions: list[dict], key: str, *, heading: str = "Choose your next step", disabled: bool = False) -> dict | None:
+    """Shared presentation for next steps and explicit meaning choices."""
     if not actions:
         return None
     token = hashlib.sha256(key.encode()).hexdigest()[:16]
@@ -112,7 +117,7 @@ def render_learning_trail(prompt: str, answer: str, payload: dict, key: str, *, 
     </style>''', unsafe_allow_html=True)
     selected = None
     with st.container(key=f"ini_learning_trail_{token}", gap="xsmall"):
-        st.markdown('<div class="ini-trail-heading">Choose your next step</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="ini-trail-heading">{heading}</div>', unsafe_allow_html=True)
         for item in actions:
             if st.button(f"{item['title']}\n\n{item['description']}", icon=f":material/{item['icon']}:",
                          key=f"ini_trail_action_{token}_{item['action']}", width="stretch",

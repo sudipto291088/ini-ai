@@ -23,7 +23,14 @@ if str(PROJECT_ROOT) not in sys.path:
 from streamlit_app.answer_emphasis import emphasis_html
 from streamlit_app.answer_recovery import collect_answer, recover_answer
 from streamlit_app.subject_choice import recognised_subject, render_subject_choice
-from api.abbreviation_clarification import abbreviation_clarification
+abbreviation_module = importlib.import_module("api.abbreviation_clarification")
+if not hasattr(abbreviation_module, "clarification_choices"):
+    abbreviation_module = importlib.reload(abbreviation_module)
+abbreviation_clarification = abbreviation_module.abbreviation_clarification
+clarification_ui = importlib.import_module("streamlit_app.clarification_choices")
+if getattr(clarification_ui, "CLARIFICATION_CHOICES_VERSION", 0) < 2:
+    clarification_ui = importlib.reload(clarification_ui)
+render_clarification_choices = clarification_ui.render_clarification_choices
 from streamlit_app.learning_trail import render_learning_trail, continuation_prompt
 from streamlit_app.google_signin import require_google_account, sign_out, local_developer_enabled
 user_profile_menu = importlib.import_module("streamlit_app.user_profile_menu")
@@ -8451,6 +8458,14 @@ def page_new_chat() -> None:
                     and response_payload.get("explain_ks_decision")
                 ):
                     st.markdown(no_knowledge_structure_notice(guidance_seed))
+
+                if is_meaning_check:
+                    meaning = render_clarification_choices(
+                        response_prompt, response_card_key,
+                        disabled=bool(st.session_state.get("_nc_generating") or st.session_state.get("_nc_pending_request")),
+                    )
+                    if meaning:
+                        _queue_new_chat_request(meaning, "interrogate")
 
                 next_step = render_learning_trail(
                     response_prompt, text, payload_info, response_card_key,
