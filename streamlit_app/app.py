@@ -90,7 +90,7 @@ from topic_profile import (
 )
 import response_profile
 
-if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 7:
+if getattr(response_profile, "RESPONSE_PROFILE_VERSION", 0) < 8:
     response_profile = importlib.reload(response_profile)
 build_response_profile = response_profile.build_response_profile
 import api.response_accuracy as response_accuracy
@@ -10489,7 +10489,15 @@ def page_new_chat() -> None:
                     # learner still gets a direct answer, three useful next
                     # directions, and an on-demand opportunity to retry the
                     # complete structure.
-                    if intent_name == "unsupported_learning_topic":
+                    full_factual_learning_answer = bool(
+                        intent_name == "direct_factual_query"
+                        and self_contained_request
+                        and should_answer_direct
+                        and response_mode not in {"carm", "conversation", "discussion_answer"}
+                        and not data.get("needs_clarification")
+                        and not _looks_like_live_local_query(display_topic_text)
+                    )
+                    if intent_name == "unsupported_learning_topic" or full_factual_learning_answer:
                         explicit_learning_fallback = bool(
                             re.match(
                                 r"^(?:what|why|how|when|where|which)\s+|"
@@ -10512,10 +10520,10 @@ def page_new_chat() -> None:
                         reply = (direct_resp.get("answer") or "").strip() or (
                             data.get("reply") or "No answer generated."
                         ).strip()
-                        followups = fallback_learning_questions(
-                            display_topic_text,
-                            limit=question_limit,
-                        )
+                        followups = _dedupe_followups([
+                            *(direct_resp.get("followups") or []),
+                            *fallback_learning_questions(display_topic_text, limit=question_limit),
+                        ])[:question_limit]
                         direct_payload = {
                             "prompt": display_topic_text,
                             "text": reply,
@@ -10540,6 +10548,8 @@ def page_new_chat() -> None:
                             "question_intelligence_count": len(followups),
                             "needs_clarification": False,
                             "suppress_profile": False,
+                            "profile_prompt": display_topic_text,
+                            "topic_profile": data.get("topic_profile"),
                             "knowledge_structure_available": True,
                             "knowledge_structure_topic": (
                                 data.get("topic") or display_topic_text

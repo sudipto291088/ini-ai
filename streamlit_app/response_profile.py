@@ -10,7 +10,7 @@ from streamlit_app.subject_metadata import fallback_subject_metadata, subject_me
 ProfileRows = List[Tuple[str, str]]
 
 
-RESPONSE_PROFILE_VERSION = 7
+RESPONSE_PROFILE_VERSION = 8
 
 
 def _subject(text: str, limit: int = 92) -> str:
@@ -118,6 +118,15 @@ def _illustration_topic_profile(text: str, normalized: str) -> ProfileRows:
 
 def _educational_topic_profile(text: str, normalized: str) -> ProfileRows:
     """Describe a learning subject and expose its foundations immediately."""
+    if re.search(r"\b(?:rayleigh scattering|sky.{0,20}blue|blue.{0,20}sky)\b", normalized):
+        return [
+            ("Name type", _learning_name_type(text)),
+            ("Entity type", "Atmospheric optical phenomenon"),
+            ("Broad field", "Physics / Atmospheric optics"),
+            ("Subject", "Sky colour and Rayleigh scattering"),
+            ("Related topics", "Sunlight, wavelengths, molecular scattering, colour perception, sunsets"),
+            ("Prerequisites", "Light as a wave; the visible spectrum; molecules in the atmosphere"),
+        ]
     metadata = subject_metadata(text)
     if metadata:
         return [("Name type", _learning_name_type(text)), *metadata.items()]
