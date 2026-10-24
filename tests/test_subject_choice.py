@@ -32,7 +32,7 @@ def render():
 '''
         for label in ("Quick overview", "Study as a subject", "Cancel"):
             app = AppTest.from_string(script + source[start:end] + '\nrender()').run()
-            next(button for button in app.button if button.label == label).click().run()
+            next(button for button in app.button if button.label.split("\n\n")[0] == label).click().run()
             app.run()
             self.assertEqual(len(app.exception), 0)
             self.assertNotIn("_ini_subject_choice", app.session_state)
@@ -71,7 +71,7 @@ if result:
         for label, expected in (("Quick overview", "overview"), ("Study as a subject", "study"), ("Cancel", "cancel")):
             app = AppTest.from_string(script).run()
             self.assertNotIn("result", app.session_state)
-            next(button for button in app.button if button.label == label).click().run()
+            next(button for button in app.button if button.label.split("\n\n")[0] == label).click().run()
             self.assertEqual(len(app.exception), 0)
             self.assertEqual(app.session_state["result"], expected)
 

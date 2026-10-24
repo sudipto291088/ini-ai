@@ -1,9 +1,15 @@
 """Conservative subject discovery: exact catalogue matches, never inferred intent."""
 import re
+import importlib
 import unicodedata
 from html import escape
 
 import streamlit as st
+
+SUBJECT_CHOICE_VERSION = 2
+learning_trail = importlib.import_module("streamlit_app.learning_trail")
+if not hasattr(learning_trail, "render_trail_rows"):
+    learning_trail = importlib.reload(learning_trail)
 
 # These are recognised fields, not a claim that every generated course is audited.
 # Ambiguous abbreviations (AI, ML, OS, etc.) deliberately have no aliases.
@@ -33,43 +39,42 @@ def render_subject_choice(subject: str) -> str | None:
     """Native, keyboard-accessible actions, with no preselected learning mode."""
     st.markdown('''<style>
     .st-key-ini_subject_choice {
-      max-width:640px; margin:24px 0 32px; padding:22px 24px;
-      border:1px solid rgba(15,23,42,.07); border-radius:18px;
-      background:#fff; box-shadow:0 8px 28px rgba(15,23,42,.035);
+      max-width:720px; margin:24px 0 32px; padding:26px 28px 18px;
+      border:1px solid rgba(15,23,42,.045); border-radius:22px;
+      background:#fff; box-shadow:0 10px 36px rgba(15,23,42,.025);
     }
     .st-key-ini_subject_choice .subject-choice-title {
-      color:#172033; font-size:18px; font-weight:450; line-height:1.5; margin:0 0 5px;
+      color:#172033; font-size:20px; font-weight:400; line-height:1.5; margin:0 0 8px;
     }
     .st-key-ini_subject_choice .subject-choice-copy {
-      color:#64748b; font-size:13px; font-weight:400; line-height:1.6; margin:0 0 18px;
+      color:#64748b; font-size:13px; font-weight:400; line-height:1.6; margin:0;
     }
-    .st-key-ini_subject_choice button {
-      min-height:40px !important; border-radius:11px !important; font-weight:450 !important;
-      border:1px solid rgba(15,23,42,.09) !important; background:#f8fafc !important; color:#263247 !important;
-      box-shadow:0 2px 5px rgba(15,23,42,.025) !important; padding:8px 16px !important;
+    .st-key-ini_subject_choice .st-key-ini_subject_cancel div.stButton > button {
+      background:transparent !important; border:0 !important; box-shadow:none !important;
+      color:#64748b !important; min-width:0 !important; padding:6px 10px !important;
+      min-height:32px !important; height:auto !important; width:auto !important;
+      font-weight:400 !important; border-radius:8px !important;
     }
-    .st-key-ini_subject_choice button p {font-size:13px !important; font-weight:450 !important;}
-    .st-key-ini_subject_choice button:hover {border-color:#cbd5e1 !important; background:#f1f5f9 !important;}
-    .st-key-ini_subject_choice .st-key-ini_subject_study div.stButton > button {background:#101b30 !important; color:#fff !important; border-color:#101b30 !important;}
-    .st-key-ini_subject_choice .st-key-ini_subject_study div.stButton > button:hover {background:#1e2d47 !important; color:#fff !important;}
-    .st-key-ini_subject_choice .st-key-ini_subject_cancel div.stButton > button {background:transparent !important; border-color:transparent !important; box-shadow:none !important; color:#64748b !important; min-width:0 !important; padding:4px 0 !important; min-height:28px !important;}
+    .st-key-ini_subject_choice .st-key-ini_subject_cancel button p {font-size:12px !important; font-weight:400 !important;}
     @media(max-width:560px) {
-      .st-key-ini_subject_choice {padding:18px 16px; margin:16px 0 24px;}
-      .st-key-ini_subject_choice .subject-choice-title {font-size:17px;}
+      .st-key-ini_subject_choice {padding:22px 16px 14px; margin:16px 0 24px;}
+      .st-key-ini_subject_choice .subject-choice-title {font-size:18px;}
     }
     </style>''', unsafe_allow_html=True)
     result = None
     with st.container(key="ini_subject_choice"):
         st.markdown(f'<p class="subject-choice-title">How would you like to explore {escape(subject)}?</p>'
-                    '<p class="subject-choice-copy">A brief introduction, or a structured path through the subject.</p>',
+                    '<p class="subject-choice-copy">Start with the essentials, or build your understanding step by step.</p>',
                     unsafe_allow_html=True)
-        with st.container(horizontal=True, gap="small"):
-            if st.button("Quick overview", key="ini_subject_overview", width="content"):
-                result = "overview"
-            with st.container(key="ini_subject_study", width="content"):
-                if st.button("Study as a subject", key="ini_subject_curriculum", width="content"):
-                    result = "study"
+        selected = learning_trail.render_trail_rows([
+            dict(action="overview", title="Quick overview", icon="explore",
+                 description="The key ideas, with a clear starting point."),
+            dict(action="study", title="Study as a subject", icon="route",
+                 description="A structured learning path, guided by questions."),
+        ], f"subject-choice-{subject}", heading="Choose your approach")
+        if selected:
+            result = selected["action"]
         with st.container(key="ini_subject_cancel", width="content"):
-            if st.button("Cancel", key="ini_subject_dismiss", width="content"):
+            if st.button("Cancel", key="ini_subject_dismiss", width="content", type="tertiary"):
                 result = "cancel"
     return result

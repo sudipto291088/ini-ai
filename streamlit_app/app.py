@@ -22,7 +22,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from streamlit_app.answer_emphasis import emphasis_html
 from streamlit_app.answer_recovery import collect_answer, recover_answer
-from streamlit_app.subject_choice import recognised_subject, render_subject_choice
+subject_choice_ui = importlib.import_module("streamlit_app.subject_choice")
+if getattr(subject_choice_ui, "SUBJECT_CHOICE_VERSION", 0) < 2:
+    subject_choice_ui = importlib.reload(subject_choice_ui)
+recognised_subject = subject_choice_ui.recognised_subject
+render_subject_choice = subject_choice_ui.render_subject_choice
 abbreviation_module = importlib.import_module("api.abbreviation_clarification")
 if not hasattr(abbreviation_module, "clarification_choices"):
     abbreviation_module = importlib.reload(abbreviation_module)
