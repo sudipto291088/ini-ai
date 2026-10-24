@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import re
 
 
-CONVERSATION_INTERPRETER_VERSION = 14
+CONVERSATION_INTERPRETER_VERSION = 15
 
 
 _ACK_ONLY = re.compile(
@@ -93,6 +93,24 @@ def interpret_turn(text: str) -> ConversationTurn:
         is_ambiguous_followup=normalized in _AMBIGUOUS_FOLLOWUPS,
         has_substantive_text=bool(semantic_normalized) and not confirmation and not denial,
     )
+
+
+def is_self_contained_request(text: str, intent: dict) -> bool:
+    """A fresh explicit question is not an answer to an earlier clarification.
+
+    Keep references such as 'its applications' contextual; never decide a
+    topic switch merely from the length of the user's reply.
+    """
+    semantic = interpret_turn(text).semantic_text.casefold()
+    if not (intent.get("should_interrogate") or intent.get("should_answer_direct")):
+        return False
+    if re.search(r"\b(?:it|its|this|that|these|those|they|their|them|above|earlier|previous)\b", semantic):
+        return False
+    return bool(re.match(
+        r"^(?:what|why|how|when|where|which|who)\b|"
+        r"^(?:explain|define|describe|compare|summarize|write|draft|teach)\b",
+        semantic,
+    ))
 
 
 def should_preserve_conversation_context(
@@ -272,6 +290,7 @@ __all__ = [
     "CONVERSATION_INTERPRETER_VERSION",
     "ConversationTurn",
     "interpret_turn",
+    "is_self_contained_request",
     "should_preserve_conversation_context",
     "ensure_honest_ai_voice",
 ]

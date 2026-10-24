@@ -171,10 +171,11 @@ import api.conversation_interpreter as conversation_interpreter
 
 if (
     not hasattr(conversation_interpreter, "should_preserve_conversation_context")
-    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 14
+    or getattr(conversation_interpreter, "CONVERSATION_INTERPRETER_VERSION", 0) < 15
 ):
     conversation_interpreter = importlib.reload(conversation_interpreter)
 interpret_turn = conversation_interpreter.interpret_turn
+is_self_contained_request = conversation_interpreter.is_self_contained_request
 should_preserve_conversation_context = (
     conversation_interpreter.should_preserve_conversation_context
 )
@@ -9322,15 +9323,20 @@ def page_new_chat() -> None:
     def _latest_assistant_conversation_reply() -> str:
         """Return the latest conversational answer for short-reply resolution."""
         for item in reversed(st.session_state.chat_branch_answers or []):
-            if not isinstance(item, dict) or item.get("kind") != "direct":
+            if not isinstance(item, dict):
                 continue
+            if item.get("kind") != "direct":
+                return ""
             payload = item.get("direct_answer") or {}
             if not isinstance(payload, dict):
-                continue
+                return ""
             if str(payload.get("response_mode") or "").lower() == "conversation":
                 text = str(payload.get("text") or "").strip()
                 if text:
                     return text
+            # Do not search past the latest turn for an old conversation or
+            # unresolved clarification after another response has replaced it.
+            return ""
 
         payload = st.session_state.get("chat_direct_answer")
         if isinstance(payload, dict) and str(payload.get("response_mode") or "").lower() == "conversation":
@@ -9708,8 +9714,15 @@ def page_new_chat() -> None:
             active_learning_topic,
         )
         semantic_intent = detect_intent(semantic_topic_text)
+        self_contained_request = is_self_contained_request(
+            display_topic_text, semantic_intent,
+        )
         substantive_learning_turn = bool(
             semantic_intent.get("should_interrogate", False)
+            or (
+                semantic_intent.get("should_answer_direct", False)
+                and self_contained_request
+            )
         )
         active_capability_boundary = st.session_state.get(
             "chat_active_capability_boundary"
@@ -10048,7 +10061,7 @@ def page_new_chat() -> None:
         pending_context = st.session_state.get("chat_pending_context_clarification")
         if isinstance(pending_context, dict):
             reply_words = re.findall(r"[A-Za-z0-9+#.-]+", display_topic_text)
-            if 0 < len(reply_words) <= 14:
+            if 0 < len(reply_words) <= 14 and not self_contained_request:
                 original_request = (pending_context.get("original_request") or "").strip()
                 topic_text = (
                     f"{original_request} The application or tool specified by the user is "
