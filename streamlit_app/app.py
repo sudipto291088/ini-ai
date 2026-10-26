@@ -13341,7 +13341,7 @@ def page_new_chat() -> None:
         return top_prompt, run, illustrate_run, explore_topic
 
 
-    def _render_new_chat_bottom_uib() -> None:
+    def _render_new_chat_bottom_uib_styles() -> None:
         st.markdown(
             """
             <style>
@@ -13715,6 +13715,7 @@ def page_new_chat() -> None:
             unsafe_allow_html=True,
         )
 
+    def _render_new_chat_bottom_uib() -> None:
         run = False
         illustrate_run = False
         composer_revision = st.session_state._nc_bottom_composer_revision
@@ -13765,6 +13766,11 @@ def page_new_chat() -> None:
                 _advance_new_chat_composer,
             ):
                 _queue_new_chat_request(bottom_prompt, "interrogate")
+
+    # Keep composer styling alive before any slow/streamed timeline rendering.
+    # Otherwise the previous-run UIB briefly reverts to a faint inline form
+    # while the subject map and chapter path are being painted above it.
+    _render_new_chat_bottom_uib_styles()
 
     # Auto-run FUQ opened in a new tab for New Chat
     if chat_q and st.session_state.chat_seed_done != chat_q:
