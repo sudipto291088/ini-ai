@@ -23,7 +23,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from streamlit_app.answer_emphasis import emphasis_html
 from streamlit_app.answer_recovery import collect_answer, recover_answer
 subject_choice_ui = importlib.import_module("streamlit_app.subject_choice")
-if getattr(subject_choice_ui, "SUBJECT_CHOICE_VERSION", 0) < 2:
+if getattr(subject_choice_ui, "SUBJECT_CHOICE_VERSION", 0) < 3:
     subject_choice_ui = importlib.reload(subject_choice_ui)
 recognised_subject = subject_choice_ui.recognised_subject
 render_subject_choice = subject_choice_ui.render_subject_choice
@@ -11563,6 +11563,10 @@ def page_new_chat() -> None:
                         learning_trail_action=learning_trail_action,
                     )
         finally:
+            # Clear the loading UI before a rerun starts painting the answer.
+            # Streamlit otherwise keeps this previous-run container visible
+            # until the new run reaches its old position (after the answer).
+            generation_slot.empty()
             st.session_state._nc_pending_request = None
             st.session_state._nc_generating = False
             st.session_state._nc_generating_started_at = 0.0
@@ -13345,6 +13349,12 @@ def page_new_chat() -> None:
         st.markdown(
             """
             <style>
+            /* A previous run's loading message must not fade into the answer
+               while Streamlit incrementally replaces the old timeline. */
+            [data-testid="stElementContainer"][data-stale="true"] .nc-generation-placeholder {
+                display: none !important;
+            }
+
             div[data-testid="stHorizontalBlock"]:has(input[aria-label="NC_BOTTOM_TOPIC"]) {
                 position: fixed;
                 z-index: 50;

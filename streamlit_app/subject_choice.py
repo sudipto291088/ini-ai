@@ -6,7 +6,7 @@ from html import escape
 
 import streamlit as st
 
-SUBJECT_CHOICE_VERSION = 2
+SUBJECT_CHOICE_VERSION = 3
 learning_trail = importlib.import_module("streamlit_app.learning_trail")
 if not hasattr(learning_trail, "render_trail_rows"):
     learning_trail = importlib.reload(learning_trail)
@@ -19,7 +19,7 @@ SUBJECTS = (
     "Computer Science", "Machine Learning", "Artificial Intelligence", "Data Science",
     "Operating Systems", "Computer Networks", "Database Systems", "Software Engineering",
     "Cybersecurity", "Cryptography", "Computer Architecture", "Algorithms",
-    "Quantum Computing", "Robotics", "Electrical Engineering", "Mechanical Engineering",
+    "Quantum Computing", "Kubernetes", "Robotics", "Electrical Engineering", "Mechanical Engineering",
     "Civil Engineering", "Chemical Engineering", "Materials Science",
     "Economics", "Microeconomics", "Macroeconomics", "Accounting", "Finance",
     "Psychology", "Sociology", "Anthropology", "Political Science", "Philosophy",

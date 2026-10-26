@@ -30,16 +30,18 @@ class QC:
 qc_ui = QC()
 def render():
 '''
-        for label in ("Quick overview", "Study as a subject", "Cancel"):
-            app = AppTest.from_string(script + source[start:end] + '\nrender()').run()
+        for subject, label in ((subject, label) for subject in ("Physics", "Kubernetes")
+                               for label in ("Quick overview", "Study as a subject", "Cancel")):
+            subject_script = script.replace('"Physics"', repr(subject))
+            app = AppTest.from_string(subject_script + source[start:end] + '\nrender()').run()
             next(button for button in app.button if button.label.split("\n\n")[0] == label).click().run()
             app.run()
             self.assertEqual(len(app.exception), 0)
             self.assertNotIn("_ini_subject_choice", app.session_state)
             if label == "Quick overview":
-                self.assertEqual(app.session_state["routed"], ("overview", "Physics", {"offer_subject_choice": False}))
+                self.assertEqual(app.session_state["routed"], ("overview", subject, {"offer_subject_choice": False}))
             elif label == "Study as a subject":
-                self.assertEqual(app.session_state["routed"], ("study", "Teach me Physics as a subject"))
+                self.assertEqual(app.session_state["routed"], ("study", f"Teach me {subject} as a subject"))
             else:
                 self.assertFalse(app.session_state["nc_started"])
         app = AppTest.from_string(script + source[start:end] + '\nrender()').run()
@@ -52,12 +54,14 @@ def render():
         for subject in SUBJECTS:
             self.assertEqual(recognised_subject("  " + subject.upper() + "  "), subject)
         self.assertEqual(recognised_subject("machine   learning"), "Machine Learning")
+        self.assertEqual(recognised_subject("kubernetes"), "Kubernetes")
 
     def test_questions_topics_and_ambiguous_queries_do_not_match(self):
         for prompt in ("What is physics?", "Physics?", "Explain physics", "Teach me physics",
                        "cancer mutation", "gradient descent", "CPU scheduling", "transformers",
                        "AI", "ML", "OS", "history of my chats", "random query", "", "physics and chemistry",
-                       "I don't want to study physics", "Python", "Java", "Marketing tips"):
+                       "I don't want to study physics", "Python", "Java", "Marketing tips",
+                       "What is Kubernetes?", "How do Kubernetes pods work?", "Kubernetes vs Docker"):
             self.assertEqual(recognised_subject(prompt), "", prompt)
 
     def test_subject_choice_is_explicit_and_cancelable(self):
