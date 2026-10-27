@@ -35,7 +35,7 @@ clarification_ui = importlib.import_module("streamlit_app.clarification_choices"
 if getattr(clarification_ui, "CLARIFICATION_CHOICES_VERSION", 0) < 2:
     clarification_ui = importlib.reload(clarification_ui)
 render_clarification_choices = clarification_ui.render_clarification_choices
-from streamlit_app.learning_trail import render_learning_trail, continuation_prompt
+from streamlit_app.learning_trail import render_learning_trail, render_trail_rows, continuation_prompt
 from streamlit_app.google_signin import require_google_account, sign_out, local_developer_enabled
 user_profile_menu = importlib.import_module("streamlit_app.user_profile_menu")
 if getattr(user_profile_menu, "PROFILE_MENU_VERSION", 0) < 4:
@@ -8430,16 +8430,16 @@ def page_new_chat() -> None:
                     isinstance(response_payload, dict)
                     and response_payload.get("knowledge_structure_available")
                 ):
-                    st.markdown(
-                        knowledge_structure_bridge(
-                            guidance_seed,
-                            str(response_payload.get("ks_suitability") or ""),
-                        )
-                    )
-                    if st.button(
-                        "Open the Knowledge Structure",
+                    if render_trail_rows(
+                        [dict(
+                            action="open_knowledge_structure",
+                            title="Explore the Knowledge Structure",
+                            description="Foundations, connections, and questions—mapped into one clear view.",
+                            icon="schema",
+                        )],
                         key=f"{response_card_key}_open_knowledge_structure",
-                        width="content",
+                        heading="",
+                        disabled=bool(st.session_state.get("_nc_pending_request")),
                     ):
                         ks_topic = str(
                             response_payload.get("knowledge_structure_topic") or ""

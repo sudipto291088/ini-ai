@@ -111,13 +111,24 @@ def render_trail_rows(actions: list[dict], key: str, *, heading: str = "Choose y
     [class*="st-key-ini_learning_trail_"] div.stButton > button:focus-visible {
       outline:2px solid #c5ccd6 !important; outline-offset:2px;
     }
+    [class*="st-key-ini_trail_action_"][class*="_open_knowledge_structure"] button p {
+      font-size:13.5px !important;
+    }
+    [class*="st-key-ini_trail_action_"][class*="_open_knowledge_structure"] button p + p {
+      font-size:13px !important;
+    }
+    [class*="st-key-ini_trail_action_"][class*="_open_knowledge_structure"] button,
+    [class*="st-key-ini_trail_action_"][class*="_open_knowledge_structure"] button * {
+      text-decoration:none !important;
+    }
     @media(max-width:560px) {
       [class*="st-key-ini_learning_trail_"] div.stButton > button {padding:10px 6px !important;}
     }
     </style>''', unsafe_allow_html=True)
     selected = None
     with st.container(key=f"ini_learning_trail_{token}", gap="xsmall"):
-        st.markdown(f'<div class="ini-trail-heading">{heading}</div>', unsafe_allow_html=True)
+        if heading:
+            st.markdown(f'<div class="ini-trail-heading">{heading}</div>', unsafe_allow_html=True)
         for item in actions:
             if st.button(f"{item['title']}\n\n{item['description']}", icon=f":material/{item['icon']}:",
                          key=f"ini_trail_action_{token}_{item['action']}", width="stretch",
