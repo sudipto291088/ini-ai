@@ -58,6 +58,7 @@ from api.arxiv_knowledge import (
     retrieve_arxiv_context,
 )
 from api.nasa_knowledge import retrieve_nasa_context, format_nasa_prompt_context
+from api.usgs_knowledge import retrieve_usgs_context, format_usgs_prompt_context
 
 
 # ============================================================
@@ -555,6 +556,8 @@ def generate_dynamic_answer_result(
     arxiv_prompt_context = ""
     nasa_context = retrieve_nasa_context(topic)
     nasa_prompt_context = format_nasa_prompt_context(nasa_context)
+    usgs_context = retrieve_usgs_context(topic)
+    usgs_prompt_context = format_usgs_prompt_context(usgs_context)
     # QC's scope check, outline, chapter sequence, and lesson are generated from
     # their own curriculum context. Generic topic retrieval adds latency and can
     # distract from the requested structured sequence; ordinary IA is unchanged.
@@ -610,6 +613,7 @@ def generate_dynamic_answer_result(
             europe_pmc_context,
             arxiv_context,
             nasa_context,
+            usgs_context,
         )
         if context
     ]
@@ -632,6 +636,7 @@ def generate_dynamic_answer_result(
         f"{europe_pmc_prompt_context}\n\n"
         f"{arxiv_prompt_context}\n\n"
         f"{nasa_prompt_context}\n\n"
+        f"{usgs_prompt_context}\n\n"
         f"User question / instruction:\n{question}\n"
     )
 
