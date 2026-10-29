@@ -9495,19 +9495,31 @@ def page_new_chat() -> None:
         text: str,
         profile: Dict[str, Any],
     ) -> Optional[str]:
-        normalized = re.sub(r"[^a-z0-9 ']+", " ", (text or "").lower()).strip()
+        normalized = re.sub(
+            r"[^a-z0-9 ']+", " ", (text or "").lower().replace("’", "'")
+        ).strip()
         full_name = str(profile.get("full_name") or "").strip()
         preferred_name = str(profile.get("preferred_name") or "").strip()
-        if full_name and re.search(
-            r"\b(?:do you (?:know|remember)|what(?:'s| is)|tell me)\s+my\s+(?:full\s+)?name\b",
+        asks_name = bool(re.search(
+            r"\b(?:do you (?:know|remember)|what(?:'s|s| is)|tell me)\s+my\s+(?:full\s+)?name\b",
             normalized,
-        ):
+        ))
+        if asks_name and (full_name or preferred_name):
             preferred_detail = (
-                f", and you prefer to be called {preferred_name}" if preferred_name else ""
+                f", and you prefer to be called {preferred_name}"
+                if full_name and preferred_name and full_name != preferred_name else ""
             )
             return (
-                f"You identified yourself to me as {full_name}{preferred_detail}. "
+                f"You identified yourself to me as {full_name or preferred_name}{preferred_detail}. "
                 "I remember that within this conversation."
+            )
+        if asks_name and str(profile.get("self_reported_role") or "").casefold() in {
+            "your founder", "your creator",
+        }:
+            return (
+                "Based on what you’ve told me—that you’re InI’s founder or creator—"
+                "you’re Sudipto, who prefers to be called Sid. "
+                "That’s a conversational inference, not a verified account identity."
             )
         if preferred_name and re.search(r"\bi am\s+sid\b.*\bcreator\b", normalized):
             return (
