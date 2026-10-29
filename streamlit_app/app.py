@@ -22,6 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from streamlit_app.answer_emphasis import emphasis_html
 from streamlit_app.answer_recovery import collect_answer, recover_answer
+from streamlit_app.conversation_identity import parse_self_introduction, role_acknowledgement
 subject_choice_ui = importlib.import_module("streamlit_app.subject_choice")
 if getattr(subject_choice_ui, "SUBJECT_CHOICE_VERSION", 0) < 3:
     subject_choice_ui = importlib.reload(subject_choice_ui)
@@ -9459,30 +9460,16 @@ def page_new_chat() -> None:
             for value in history
         ]
 
-        latest_normalized = normalized_turns[-1] if normalized_turns else ""
-        introduced_name = re.match(
-            r"^(?:i am|im|my name is|you can call me|call me)\s+"
-            r"([a-z][a-z0-9 -]{0,39})$",
-            latest_normalized,
-        )
-        non_name_words = {
-            "only", "just", "checking", "testing", "trying", "ready", "fine",
-            "okay", "ok", "here", "back", "done", "tired", "happy", "sad",
-            "going", "working", "learning", "asking", "wondering",
-        }
-        introduced_words = (
-            introduced_name.group(1).split() if introduced_name else []
-        )
-        if (
-            introduced_name
-            and 1 <= len(introduced_words) <= 4
-            and not (set(introduced_words) & non_name_words)
-        ):
-            display_name = " ".join(
-                part.capitalize() for part in introduced_words
-            )
-            profile["preferred_name"] = display_name
+        previous_name = str(profile.get("preferred_name") or "").strip()
+        if (profile.get("identity_source") == "self_reported" and previous_name
+                and parse_self_introduction("I am " + previous_name).get("kind") == "role"):
+            profile.pop("preferred_name", None)
+        introduction = parse_self_introduction(current_text)
+        if introduction.get("kind") == "name":
+            profile["preferred_name"] = introduction["value"]
             profile["identity_source"] = "self_reported"
+        elif introduction.get("kind") == "role":
+            profile["self_reported_role"] = introduction["value"]
 
         creator_declared = any(
             re.search(r"\bi am\s+sid\b.*\b(?:your\s+)?creator\b", value)
@@ -9608,24 +9595,11 @@ def page_new_chat() -> None:
         preferred_name = str(active_profile.get("preferred_name") or "").strip()
         address = f", {preferred_name}" if preferred_name else ""
 
-        introduced = re.match(
-            r"^(?:i am|im|my name is|you can call me|call me)\s+"
-            r"([a-z][a-z0-9 -]{0,39})$",
-            normalized,
-        )
-        non_name_words = {
-            "only", "just", "checking", "testing", "trying", "ready", "fine",
-            "okay", "ok", "here", "back", "done", "tired", "happy", "sad",
-            "going", "working", "learning", "asking", "wondering",
-        }
-        introduced_words = introduced.group(1).split() if introduced else []
-        if (
-            introduced
-            and 1 <= len(introduced_words) <= 4
-            and not (set(introduced_words) & non_name_words)
-        ):
-            name = " ".join(part.capitalize() for part in introduced_words)
-            return f"Nice to meet you, {name}. I’ll remember that in this conversation."
+        introduction = parse_self_introduction(text)
+        if introduction.get("kind") == "role":
+            return role_acknowledgement(introduction["value"])
+        if introduction.get("kind") == "name":
+            return f"Nice to meet you, {introduction['value']}. I’ll remember that in this conversation."
 
         if _is_positive_acknowledgement(normalized):
             return f"Glad to hear it{address}."
