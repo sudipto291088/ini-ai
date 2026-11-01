@@ -117,7 +117,7 @@ try:
     # helper modules after a deployment sync. Force a reload when the running
     # module predates the routing repair so hosted sessions cannot retain the
     # old product-query detector.
-    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 8:
+    if getattr(product_knowledge, "PRODUCT_KNOWLEDGE_VERSION", 0) < 9:
         product_knowledge = importlib.reload(product_knowledge)
     answer_ini_product_query = product_knowledge.answer_ini_product_query
 except ModuleNotFoundError as exc:
@@ -232,7 +232,7 @@ import new_chat_update_component
 # Streamlit Cloud may rerun this entry point without clearing imported helper
 # modules after a deploy. Reload an older release-notice helper before binding
 # its callable so a changed function signature cannot crash New Chat.
-if getattr(new_chat_update_component, "NEW_CHAT_UPDATE_COMPONENT_VERSION", 0) < 25:
+if getattr(new_chat_update_component, "NEW_CHAT_UPDATE_COMPONENT_VERSION", 0) < 26:
     new_chat_update_component = importlib.reload(new_chat_update_component)
 render_new_chat_update = new_chat_update_component.render_new_chat_update
 
@@ -244,8 +244,8 @@ render_new_chat_update = new_chat_update_component.render_new_chat_update
 DEFAULT_API_BASE = os.environ.get("INI_API_BASE", "http://127.0.0.1:8000")
 DEV_MODE = os.environ.get("INI_DEV_MODE", "0") == "1"
 MNL_AVAILABLE = False
-NEW_CHAT_UPDATE_VERSION = "v0.1.7"
-NEW_CHAT_UPDATE_RELEASE_DATE = date(2026, 9, 24)
+NEW_CHAT_UPDATE_VERSION = "v0.1.8"
+NEW_CHAT_UPDATE_RELEASE_DATE = date(2026, 10, 31)
 NEW_CHAT_UPDATE_WINDOW_DAYS = 7
 
 
@@ -6100,7 +6100,7 @@ with st.sidebar:
                   <div class="clock_ampm">{cp["ampm"]}</div>
                 </div>
               </div>
-              <div class="badge">v0.1.7 &nbsp;&middot;&nbsp; Question Intelligence</div>
+              <div class="badge">v0.1.8 &nbsp;&middot;&nbsp; Question Intelligence</div>
             </div>
             ''',
         )
@@ -7186,6 +7186,24 @@ def page_home():
         )
 
     intro_releases = {
+        "v0.1.8": {
+            "date": "October 31, 2026",
+            "items": (
+                ("Google sign-in and private conversations", "Google account sign-in connects conversation ownership to the signed-in user, with an account-aware profile and clearer sign-out controls."),
+                ("Durable conversation storage", "PostgreSQL support adds durable hosted conversation storage with verified TLS, pooled transactions, query timeouts, and account-isolation safeguards."),
+                ("Account controls", "A refined profile menu opens settings for private chat export and confirmed deletion, alongside a publicly accessible privacy notice."),
+                ("Clearer subject choices", "Recognized bare subjects offer explicit learning directions; ambiguous abbreviations ask for clarification before committing to an interpretation."),
+                ("A contextual Learning trail", "Compact next-step actions offer worked examples, conceptual connections, and reasoning checks, with a refined route into the Knowledge Structure."),
+                ("More dependable answers", "Improved incomplete-answer recovery, restored factual Insight and Technical views and questions, and stronger protection against stale clarification context."),
+                ("Bounded science sources", "Reviewed NASA and USGS notes add attributed science grounding with scope limits, expiry guards, and no claim to live hazard information."),
+                ("A calmer interface and better continuity", "Refined mobile sign-in, Mukut favicon, sidebar behavior, subject handoffs, stale loading indicators, and conversational name and role handling."),
+            ),
+            "note": (
+                "v0.1.8 brings more deliberate learning choices, account-owned conversations, "
+                "and a more dependable path from one question to the next. InI remains in alpha; "
+                "these improvements do not imply perfect answers or verified personal identity."
+            ),
+        },
         "v0.1.7": {
             "date": "September 24, 2026",
             "items": (
@@ -7304,11 +7322,11 @@ def page_home():
             ),
         },
     }
-    if st.session_state.get("intro_release_catalog_version") != "v0.1.7":
-        st.session_state.intro_release_catalog_version = "v0.1.7"
-        st.session_state.intro_selected_release = "v0.1.7"
+    if st.session_state.get("intro_release_catalog_version") != "v0.1.8":
+        st.session_state.intro_release_catalog_version = "v0.1.8"
+        st.session_state.intro_selected_release = "v0.1.8"
     elif st.session_state.get("intro_selected_release") not in intro_releases:
-        st.session_state.intro_selected_release = "v0.1.7"
+        st.session_state.intro_selected_release = "v0.1.8"
 
     selected_release = st.session_state.intro_selected_release
     release = intro_releases[selected_release]
@@ -7323,6 +7341,7 @@ def page_home():
 
     release_history_col, release_details_col = st.columns([1, 3.2], gap="medium")
     release_slots = (
+        "v0.1.9",
         "v0.1.8",
         "v0.1.7",
         "v0.1.6",
@@ -7344,7 +7363,7 @@ def page_home():
             )
             for version in release_slots:
                 is_released = version in intro_releases
-                if version == "v0.1.7":
+                if version == "v0.1.8":
                     button_label = f"{version}  ·  Current"
                 elif not is_released:
                     button_label = f"{version}  ·  Unreleased"
@@ -10278,11 +10297,10 @@ def page_new_chat() -> None:
                         "needs_clarification": False,
                         "suppress_profile": False,
                         "reply": (
-                            "InI.ai v0.1.7 introduces Question Curriculum (QC), turning complete subjects "
-                            "into navigable chapter maps, progressive questions, and focused answers. It "
-                            "clarifies the IA, KS, and QC learning layers, expands trusted research retrieval, "
-                            "and strengthens streaming, persistence, routing, mobile behavior, and the "
-                            "first-use experience. It was released on September 24, 2026."
+                            "InI.ai v0.1.8 adds Google sign-in, account-owned conversations, PostgreSQL "
+                            "storage support, account controls, clearer subject choices, contextual Learning "
+                            "trail actions, bounded NASA and USGS notes, and answer and interface reliability "
+                            "improvements. It was released on October 31, 2026. InI remains in alpha."
                         ),
                     }
                 elif start_discussion_topic:
@@ -13232,7 +13250,7 @@ def page_new_chat() -> None:
                 visitor_id=st.session_state.visitor_id,
                 force_open=force_update_open,
                 key=(
-                    "ini-new-chat-update-v017-"
+                    "ini-new-chat-update-v018-"
                     + ("manual" if force_update_open else "auto")
                 ),
             )

@@ -6,7 +6,7 @@ import re
 from typing import Any, Dict, Optional
 
 
-PRODUCT_KNOWLEDGE_VERSION = 8
+PRODUCT_KNOWLEDGE_VERSION = 9
 
 
 def _normalize(text: str) -> str:
@@ -159,12 +159,17 @@ def answer_ini_product_query(
 
     if re.search(r"\b(how many|which|previous|earlier|history).*(versions?|releases?)\b", s):
         return (
-            "I am currently on v0.1.7. I have seven documented releases, from v0.1.1 "
-            "through v0.1.7; work before v0.1.1 belonged to the experimental v0 phase "
+            "I am currently on v0.1.8. I have eight documented releases, from v0.1.1 "
+            "through v0.1.8; work before v0.1.1 belonged to the experimental v0 phase "
             "rather than the formal release history."
         )
 
     earlier_releases = {
+        "v0.1.7": (
+            "v0.1.7 introduced Question Curriculum (QC), navigable subject maps, progressive "
+            "questions and answers, clearer IA, KS, and QC learning layers, expanded research "
+            "retrieval, and improvements to streaming, persistence, and the first-use experience."
+        ),
         "v0.1.6": (
             "v0.1.6 expanded trusted knowledge retrieval, strengthened topic and conversation "
             "routing, made Knowledge Maps more meaningful, improved direct-answer navigation, "
@@ -197,14 +202,16 @@ def answer_ini_product_query(
         if version in s:
             return summary
 
-    if re.search(r"\b(current|latest|new|special|update|changed|improved).*(versions?|releases?|v0.1.7)\b", s) or re.search(
-        r"\b(versions?|releases?|v0.1.7).*(current|latest|new|special|update|changed|improved)\b", s
+    if re.search(r"\b(current|latest|new|special|update|changed|improved).*(versions?|releases?|v0.1.8)\b", s) or re.search(
+        r"\b(versions?|releases?|v0.1.8).*(current|latest|new|special|update|changed|improved)\b", s
     ):
         return (
-            "v0.1.7 is my current release. It introduces Question Curriculum (QC), which turns "
-            "complete subjects into navigable chapter maps, progressive questions, and answers; "
-            "clarifies the IA, KS, and QC learning layers; expands trusted research retrieval; "
-            "and strengthens streaming, persistence, routing, mobile behavior, and the first-use experience."
+            "v0.1.8 is my current release, released October 31, 2026. It adds Google sign-in, "
+            "account-owned conversations, PostgreSQL storage support, account settings, clearer "
+            "subject choices, contextual Learning trail actions, and bounded NASA and USGS notes. "
+            "It also improves answer recovery, factual learning views, mobile sign-in, sidebar and "
+            "loading-state behavior, and conversational identity continuity. Question Curriculum "
+            "remains available from v0.1.7. InI is still in alpha."
         )
 
     if re.search(r"\b(plan|planned|planning|roadmap|future|coming|next)\b", s):

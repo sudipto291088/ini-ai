@@ -6,11 +6,11 @@ from typing import Optional
 import streamlit as st
 
 
-NEW_CHAT_UPDATE_COMPONENT_VERSION = 25
+NEW_CHAT_UPDATE_COMPONENT_VERSION = 26
 
 
 _NEW_CHAT_UPDATE = st.components.v2.component(
-    "ini_new_chat_update_v25",
+    "ini_new_chat_update_v26",
     html='<div id="ini-new-chat-update-root"></div>',
     css="""
     #ini-new-chat-update-root {
@@ -291,11 +291,11 @@ _NEW_CHAT_UPDATE = st.components.v2.component(
 def render_new_chat_update(
     *,
     icon_data: str,
-    version: str = "v0.1.7",
-    message: str = "Learn an entire subject through questions",
+    version: str = "v0.1.8",
+    message: str = "Clearer learning choices. More connected next steps.",
     visitor_id: str = "anonymous",
     force_open: bool = False,
-    key: Optional[str] = "ini-new-chat-update-v017",
+    key: Optional[str] = "ini-new-chat-update-v018",
     on_action_change: Optional[Callable[[], None]] = None,
 ) -> Optional[str]:
     """Render the small, borderless release announcement."""
