@@ -13468,7 +13468,13 @@ def page_new_chat() -> None:
             [data-testid="stElementContainer"]:has(.st-key-nc_explore_ai),
             [data-testid="stElementContainer"]:has(.st-key-nc_explore_quantum),
             [data-testid="stElementContainer"]:has(.st-key-nc_explore_cognitive),
-            [data-testid="stElementContainer"]:has(.st-key-nc_explore_kubernetes),
+            [data-testid="stElementContainer"]:has(.st-key-nc_explore_kubernetes) {
+                display: none !important;
+            }
+
+            /* These styles load before landing or timeline content. Hide the
+               landing heading only when the active composer is present. */
+            [data-testid="stMain"]:has(input[aria-label="NC_BOTTOM_TOPIC"])
             [data-testid="stElementContainer"]:has(.nc-explore-label) {
                 display: none !important;
             }

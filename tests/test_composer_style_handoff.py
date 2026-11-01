@@ -1,6 +1,7 @@
 """The floating UIB must be styled before slow subject rendering starts."""
 import ast
 from pathlib import Path
+import re
 import unittest
 from unittest.mock import MagicMock
 
@@ -10,6 +11,21 @@ TREE = ast.parse(SOURCE)
 
 
 class ComposerStyleHandoffTests(unittest.TestCase):
+    def test_early_styles_do_not_hide_empty_landing_heading(self):
+        fn = next(n for n in ast.walk(TREE) if isinstance(n, ast.FunctionDef)
+                  and n.name == "_render_new_chat_bottom_uib_styles")
+        st = MagicMock()
+        scope = {"st": st}
+        exec(compile(ast.Module(body=[fn], type_ignores=[]), "uib_styles", "exec"), scope)
+        scope[fn.name]()
+        css = st.markdown.call_args.args[0]
+        rules = re.findall(r"([^{}]+)\{([^{}]*)\}", css)
+        heading_rules = [selector.strip() for selector, body in rules
+                         if ".nc-explore-label" in selector and "display: none" in body]
+        self.assertEqual(len(heading_rules), 1)
+        self.assertIn('[data-testid="stMain"]:has(input[aria-label="NC_BOTTOM_TOPIC"])', heading_rules[0])
+        self.assertNotIn(",", heading_rules[0])
+
     def test_styles_render_independently_of_composer_widgets(self):
         fn = next(n for n in ast.walk(TREE) if isinstance(n, ast.FunctionDef)
                   and n.name == "_render_new_chat_bottom_uib_styles")
